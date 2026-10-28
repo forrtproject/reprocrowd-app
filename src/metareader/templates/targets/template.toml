@@ -1,0 +1,5 @@
+label = "R targets pipeline"
+language = "R"
+command = "Rscript -e 'targets::tar_make()'"
+master = "_targets.R"
+files = [{ src = "_targets.R.j2", dest = "_targets.R" }]

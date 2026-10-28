@@ -1,0 +1,258 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://metareader.example/schemas/results-schema.schema.json",
+  "title": "ResultsSchema (results_schema.json)",
+  "$defs": {
+    "Identifier": {
+      "additionalProperties": false,
+      "description": "A work identifier that OpenAlex can resolve.",
+      "properties": {
+        "scheme": {
+          "enum": [
+            "doi",
+            "openalex",
+            "pmid",
+            "pmcid"
+          ],
+          "title": "Scheme",
+          "type": "string"
+        },
+        "value": {
+          "description": "normalized: DOI lower-case without resolver prefix, OpenAlex id like W123, PMID digits, PMCID like PMC123",
+          "minLength": 1,
+          "title": "Value",
+          "type": "string"
+        }
+      },
+      "required": [
+        "scheme",
+        "value"
+      ],
+      "title": "Identifier",
+      "type": "object"
+    },
+    "Paper": {
+      "additionalProperties": false,
+      "properties": {
+        "title": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Title"
+        },
+        "identifier": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Identifier"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "identifiers": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Identifiers",
+          "type": "object"
+        }
+      },
+      "title": "Paper",
+      "type": "object"
+    },
+    "Ref": {
+      "additionalProperties": false,
+      "description": "Points at one sentence, figure or table of an extraction.",
+      "properties": {
+        "extraction": {
+          "description": "resource name of the extraction, e.g. ex-grobid",
+          "title": "Extraction",
+          "type": "string"
+        },
+        "id": {
+          "description": "sentence (sec3.p2.s1, fig1.s1), figure (fig1) or table (tab1) id in that extraction",
+          "title": "Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "extraction",
+        "id"
+      ],
+      "title": "Ref",
+      "type": "object"
+    },
+    "Target": {
+      "additionalProperties": false,
+      "properties": {
+        "refs": {
+          "items": {
+            "$ref": "#/$defs/Ref"
+          },
+          "title": "Refs",
+          "type": "array"
+        },
+        "unreferenced": {
+          "default": false,
+          "description": "set to allow an empty refs list; then note is required",
+          "title": "Unreferenced",
+          "type": "boolean"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Note"
+        },
+        "type": {
+          "enum": [
+            "number",
+            "categorical",
+            "table",
+            "figure"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
+        "description": {
+          "description": "self-contained: variable, model/test, subgroup",
+          "minLength": 1,
+          "title": "Description",
+          "type": "string"
+        },
+        "quote": {
+          "default": "",
+          "description": "verbatim text from the paper that states the result",
+          "title": "Quote",
+          "type": "string"
+        },
+        "expected": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "items": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "number for number, string for categorical, rows of cell strings for table, null for figure",
+          "title": "Expected"
+        },
+        "comparator": {
+          "anyOf": [
+            {
+              "enum": [
+                "=",
+                "<",
+                "<=",
+                ">",
+                ">=",
+                "~"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "for numbers: how the paper states it (\"p < .001\" -> \"<\"); null means \"=\"",
+          "title": "Comparator"
+        },
+        "decimals": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "decimals as printed",
+          "title": "Decimals"
+        },
+        "unit": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Unit"
+        },
+        "id": {
+          "pattern": "^T\\d{3,}$",
+          "title": "Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "description",
+        "id"
+      ],
+      "title": "Target",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "results_schema.json: the enabled targets at the time the master script was created.",
+  "properties": {
+    "schema_version": {
+      "const": "1.0",
+      "default": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "paper": {
+      "$ref": "#/$defs/Paper"
+    },
+    "targets": {
+      "items": {
+        "$ref": "#/$defs/Target"
+      },
+      "title": "Targets",
+      "type": "array"
+    }
+  },
+  "required": [
+    "paper",
+    "targets"
+  ],
+  "type": "object"
+}

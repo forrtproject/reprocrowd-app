@@ -1,0 +1,16 @@
+{"schema_name": "DoclingDocument", "version": "1.3.0", "name": "paper",
+ "body": {"self_ref": "#/body", "children": [{"$ref": "#/texts/0"}, {"$ref": "#/texts/1"}, {"$ref": "#/texts/2"}, {"$ref": "#/tables/0"}, {"$ref": "#/groups/0"}, {"$ref": "#/texts/5"}]},
+ "groups": [{"self_ref": "#/groups/0", "label": "list", "children": [{"$ref": "#/texts/4"}]}],
+ "texts": [
+  {"self_ref": "#/texts/0", "label": "title", "text": "A Test Paper"},
+  {"self_ref": "#/texts/1", "label": "section_header", "level": 1, "text": "Methods"},
+  {"self_ref": "#/texts/2", "label": "text", "text": "We ran a test. It worked.", "prov": [{"page_no": 1, "bbox": {"l": 1, "t": 20, "r": 100, "b": 10, "coord_origin": "BOTTOMLEFT"}}]},
+  {"self_ref": "#/texts/3", "label": "caption", "text": "Table 1: Descriptives."},
+  {"self_ref": "#/texts/4", "label": "list_item", "text": "First item."},
+  {"self_ref": "#/texts/5", "label": "page_footer", "text": "Page 1"}
+ ],
+ "tables": [{"self_ref": "#/tables/0", "label": "table", "captions": [{"$ref": "#/texts/3"}],
+   "data": {"num_rows": 2, "num_cols": 2, "table_cells": [
+     {"text": "Group", "start_row_offset_idx": 0, "start_col_offset_idx": 0}, {"text": "M", "start_row_offset_idx": 0, "start_col_offset_idx": 1},
+     {"text": "A", "start_row_offset_idx": 1, "start_col_offset_idx": 0}, {"text": "512.4", "start_row_offset_idx": 1, "start_col_offset_idx": 1}]}}],
+ "pictures": []}

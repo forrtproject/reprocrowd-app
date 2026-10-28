@@ -1,0 +1,16 @@
+# Reproduction package: {{ paper.title or "(untitled)" }}
+
+{% for k, v in paper.identifiers.items() %}- {{ k }}: {{ v }}
+{% endfor %}
+| Path | Contents |
+|---|---|
+| `{{ tpl.master }}` | Master script: {{ tpl.label }} |
+| `analysis_plan.json` | Steps: load inputs, the paper's actions, collect results |
+| `results_schema.json` | Reproduction targets with expected values |
+| `targets.json`, `actions.json` | Curated targets and actions, with LLM provenance |
+| `extractions/` | The paper's text (sections > paragraphs > sentences, figures, tables) |
+| `inputs/` | Input files: data, the authors' original code, other material |
+| `schemas/` | JSON Schemas of every JSON file in the package |
+| `datapackage.json` | Manifest of all files, with sizes and SHA-256 hashes (Frictionless Data Package) |
+
+Run: `{{ tpl.command }}`

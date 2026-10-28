@@ -1,0 +1,18 @@
+{% import "_macros.j2" as m -%}
+{%- macro out(s) -%}
+{{ '"outputs/results.json"' if s.kind == "results" else '"outputs/.steps/' ~ s.id ~ '.done"' }}
+{%- endmacro -%}
+{{ m.header(paper, tpl, marker) }}
+
+rule all:
+    input: "outputs/results.json"
+{% for s in plan.steps %}
+
+{{ m.step_header(s) | trim }}
+rule {{ s.id | lower }}:
+    input: {% set ins = s.inputs | map("tojson") | list %}{% for d in s.depends_on %}{% set _ = ins.append(out(steps_by_id[d])) %}{% endfor %}{{ ins | join(", ") if ins else "[]" }}
+    output: {{ 'touch(' ~ out(s) ~ ')' if s.kind != "results" else out(s) }}
+    run:
+        # {{ marker }}: implement {{ s.id }}
+        pass
+{% endfor %}

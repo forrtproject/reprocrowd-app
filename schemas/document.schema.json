@@ -1,0 +1,390 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://metareader.example/schemas/document.schema.json",
+  "title": "Document (extractions/<id>.json)",
+  "$defs": {
+    "Box": {
+      "additionalProperties": false,
+      "description": "A rectangle on a PDF page.",
+      "properties": {
+        "page": {
+          "description": "1-based page number",
+          "minimum": 1,
+          "title": "Page",
+          "type": "integer"
+        },
+        "x0": {
+          "title": "X0",
+          "type": "number"
+        },
+        "y0": {
+          "title": "Y0",
+          "type": "number"
+        },
+        "x1": {
+          "title": "X1",
+          "type": "number"
+        },
+        "y1": {
+          "title": "Y1",
+          "type": "number"
+        },
+        "origin": {
+          "description": "\"top\": y measured from the page top (GROBID); \"bottom\": PDF native",
+          "enum": [
+            "top",
+            "bottom"
+          ],
+          "title": "Origin",
+          "type": "string"
+        }
+      },
+      "required": [
+        "page",
+        "x0",
+        "y0",
+        "x1",
+        "y1",
+        "origin"
+      ],
+      "title": "Box",
+      "type": "object"
+    },
+    "DocumentSource": {
+      "additionalProperties": false,
+      "properties": {
+        "method": {
+          "enum": [
+            "parse",
+            "reconcile"
+          ],
+          "title": "Method",
+          "type": "string"
+        },
+        "format": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "source format for parse (tei, jats, docling); null for reconcile",
+          "title": "Format"
+        },
+        "fulltexts": {
+          "description": "resource names of the full texts this was made from",
+          "items": {
+            "type": "string"
+          },
+          "title": "Fulltexts",
+          "type": "array"
+        },
+        "llm_call": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "id of the LLM call (reconcile only)",
+          "title": "Llm Call"
+        }
+      },
+      "required": [
+        "method",
+        "fulltexts"
+      ],
+      "title": "DocumentSource",
+      "type": "object"
+    },
+    "Figure": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^fig\\d+$",
+          "title": "Id",
+          "type": "string"
+        },
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "section": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "id of the section the figure appears in",
+          "title": "Section"
+        },
+        "caption": {
+          "items": {
+            "$ref": "#/$defs/Sentence"
+          },
+          "title": "Caption",
+          "type": "array"
+        },
+        "boxes": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/Box"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Boxes"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "caption"
+      ],
+      "title": "Figure",
+      "type": "object"
+    },
+    "Paragraph": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^sec\\d+\\.p\\d+$",
+          "title": "Id",
+          "type": "string"
+        },
+        "sentences": {
+          "items": {
+            "$ref": "#/$defs/Sentence"
+          },
+          "minItems": 1,
+          "title": "Sentences",
+          "type": "array"
+        },
+        "boxes": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/Box"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Boxes"
+        }
+      },
+      "required": [
+        "id",
+        "sentences"
+      ],
+      "title": "Paragraph",
+      "type": "object"
+    },
+    "Section": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^sec\\d+$",
+          "title": "Id",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "level": {
+          "minimum": 1,
+          "title": "Level",
+          "type": "integer"
+        },
+        "paragraphs": {
+          "items": {
+            "$ref": "#/$defs/Paragraph"
+          },
+          "title": "Paragraphs",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "level",
+        "paragraphs"
+      ],
+      "title": "Section",
+      "type": "object"
+    },
+    "Sentence": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^(sec\\d+\\.p\\d+|fig\\d+|tab\\d+)\\.s\\d+$",
+          "title": "Id",
+          "type": "string"
+        },
+        "text": {
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "boxes": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/Box"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Boxes"
+        }
+      },
+      "required": [
+        "id",
+        "text"
+      ],
+      "title": "Sentence",
+      "type": "object"
+    },
+    "Table": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^tab\\d+$",
+          "title": "Id",
+          "type": "string"
+        },
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "section": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "id of the section the table appears in",
+          "title": "Section"
+        },
+        "caption": {
+          "items": {
+            "$ref": "#/$defs/Sentence"
+          },
+          "title": "Caption",
+          "type": "array"
+        },
+        "rows": {
+          "items": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "title": "Rows",
+          "type": "array"
+        },
+        "boxes": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/Box"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Boxes"
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "caption",
+        "rows"
+      ],
+      "title": "Table",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "A paper's text as sections > paragraphs > sentences, plus figures and tables.",
+  "properties": {
+    "schema_version": {
+      "const": "1.0",
+      "default": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "title": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Title"
+    },
+    "source": {
+      "$ref": "#/$defs/DocumentSource"
+    },
+    "sections": {
+      "items": {
+        "$ref": "#/$defs/Section"
+      },
+      "title": "Sections",
+      "type": "array"
+    },
+    "figures": {
+      "items": {
+        "$ref": "#/$defs/Figure"
+      },
+      "title": "Figures",
+      "type": "array"
+    },
+    "tables": {
+      "items": {
+        "$ref": "#/$defs/Table"
+      },
+      "title": "Tables",
+      "type": "array"
+    }
+  },
+  "required": [
+    "source",
+    "sections"
+  ],
+  "type": "object"
+}

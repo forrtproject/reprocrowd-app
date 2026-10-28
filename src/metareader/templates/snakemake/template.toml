@@ -1,0 +1,5 @@
+label = "Python Snakemake pipeline"
+language = "Python"
+command = "snakemake --cores 1"
+master = "Snakefile"
+files = [{ src = "Snakefile.j2", dest = "Snakefile" }]

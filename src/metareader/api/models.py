@@ -1,0 +1,203 @@
+"""Request and response bodies of the HTTP API (stored-file schemas are in metareader.schemas)."""
+from __future__ import annotations
+
+from datetime import datetime
+from typing import Annotated, Any, Literal, Optional, Union
+
+from pydantic import BaseModel, ConfigDict, Field, create_model
+
+from ..schemas.common import Identifier, Model
+from ..schemas.curation import Action, ActionFields, Target, TargetFields
+from ..schemas.manifest import Role
+
+
+class Req(Model):
+    """Base of request bodies: unknown fields are rejected."""
+
+
+# ---------- service ----------
+
+
+class Health(BaseModel):
+    status: Literal["ok"] = "ok"
+    version: str
+
+
+class LlmProfileView(BaseModel):
+    name: str
+    default: bool
+    argv: list[str] = Field(description="read-only: configured in the service, never set by callers")
+    model: str
+    effort: str
+    timeout_s: int
+
+
+class TemplateView(BaseModel):
+    id: str
+    label: str
+    language: str
+    command: str
+    master: str
+
+
+# ---------- packages ----------
+
+
+class PackageCreate(Req):
+    path: str = Field(description="folder on the service's machine; created if missing, must be empty")
+    identifier: str | None = Field(default=None, description="DOI, OpenAlex id (W…), pmid:…, or pmcid:…")
+    fetch_metadata: bool = Field(default=False, description="query OpenAlex with the identifier right away")
+    adopt: bool = Field(default=False, description="register a folder that already contains a package")
+
+
+class PackageSummary(BaseModel):
+    id: str
+    path: str
+    title: str | None
+    identifier: Identifier | None
+    identifiers: dict[str, str]
+    metadata_fetched_at: datetime | None
+    resources: dict[str, int] = Field(description="number of resources per kind")
+
+
+class MetadataRequest(Req):
+    identifier: str | None = Field(default=None, description="defaults to the package's identifier")
+
+
+class MetadataSummary(BaseModel):
+    title: str | None
+    publication_year: int | None
+    authors: list[str | None]
+    venue: str | None
+    identifiers: dict[str, str]
+    open_access: bool | None
+
+
+# ---------- full texts and extractions ----------
+
+
+class FulltextFromPath(Req):
+    path: str = Field(description="local file (pdf, TEI/JATS XML, Docling JSON) on the service's machine")
+    name: str | None = Field(default=None, description="resource name; default ft-<file stem>-<format>")
+
+
+class FulltextFromCandidate(Req):
+    candidate: str = Field(description="id from GET …/fulltexts/candidates")
+    name: str | None = None
+
+
+FulltextCreate = Union[FulltextFromPath, FulltextFromCandidate]
+
+
+class CandidateView(BaseModel):
+    id: str
+    label: str
+    url: str
+    format: str
+    filename: str
+    openalex_auth: bool
+
+
+class CandidateList(BaseModel):
+    candidates: list[CandidateView]
+    notes: list[str]
+
+
+class ExtractionParse(Req):
+    method: Literal["parse"]
+    fulltext: str = Field(description="full-text resource (tei, jats or docling)")
+    name: str | None = Field(default=None, description="ignored by PUT (the name is in the path)")
+
+
+class ExtractionReconcile(Req):
+    method: Literal["reconcile"]
+    sources: list[str] = Field(min_length=1, description="full-text resources the LLM reads")
+    prompt: str | None = Field(default=None, description="custom prompt template; placeholders $files, $schema, $instructions. Omit for the default")
+    instructions: str = Field(default="", description="extra instructions added to the prompt")
+    profile: str | None = Field(default=None, description="LLM profile name; default from the service config")
+    name: str | None = None
+
+
+ExtractionCreate = Annotated[Union[ExtractionParse, ExtractionReconcile], Field(discriminator="method")]
+
+
+# ---------- inputs ----------
+
+
+class InputCreate(Req):
+    path: str = Field(description="local file on the service's machine; zip archives are unpacked")
+    role: Role | None = Field(default=None, description="default: guessed from the file extension")
+    note: str = ""
+    unpack: bool = Field(default=True, description="unpack zip archives into inputs/<stem>/")
+
+
+class InputPatch(Req):
+    """JSON merge patch (RFC 7396)."""
+
+    role: Role | None = None
+    note: str | None = None
+    used: bool | None = None
+
+
+# ---------- targets and actions ----------
+
+
+class Origin(BaseModel):
+    source: Literal["manual", "llm"]
+    run: str | None = None
+    edited: bool | None = Field(default=None, description="LLM entries: the user changed fields")
+    disabled: bool | None = None
+
+
+class TargetView(BaseModel):
+    item: Target
+    origin: Origin
+
+
+class ActionView(BaseModel):
+    item: Action
+    origin: Origin
+
+
+class ScopeModel(Req):
+    sections: list[str] = Field(default_factory=list, description="section ids (all their sentences, figures and tables)")
+    items: list[str] = Field(default_factory=list, description="single sentence, figure or table ids")
+
+
+class RunCreate(Req):
+    extraction: str = Field(description="extraction whose ids the items will reference")
+    scope: ScopeModel = Field(default_factory=ScopeModel, description="empty = the whole document")
+    instructions: str = ""
+    prompt: str | None = Field(default=None, description="custom prompt template; placeholders $document, $schema, $instructions (actions also $inputs, $targets)")
+    profile: str | None = None
+
+
+class RunPatch(Req):
+    disabled: bool
+
+
+def _patch_model(name: str, fields: type[BaseModel]) -> type[BaseModel]:
+    """All fields of the item optional, plus ``disabled``: a JSON merge patch body."""
+    defs: dict[str, Any] = {k: (Optional[f.annotation], None) for k, f in fields.model_fields.items()}
+    defs["disabled"] = (Optional[bool], Field(default=None, description="LLM entries only: exclude from the effective list"))
+    return create_model(name, __config__=ConfigDict(extra="forbid"), __doc__="JSON merge patch (RFC 7396) of the item's fields.", **defs)
+
+
+TargetPatch = _patch_model("TargetPatch", TargetFields)
+ActionPatch = _patch_model("ActionPatch", ActionFields)
+
+
+# ---------- scripts ----------
+
+
+class ScriptRequest(Req):
+    template: str = Field(description="template id from GET /templates")
+    force: bool = Field(default=False, description="overwrite generated files that were changed since")
+
+
+class ScriptResult(BaseModel):
+    created: bool
+    template: str
+    command: str
+    master: str
+    files: list[str]

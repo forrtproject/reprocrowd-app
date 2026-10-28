@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<TEI xmlns="http://www.tei-c.org/ns/1.0">
+  <teiHeader>
+    <fileDesc><titleStmt><title level="a" type="main">A Test Paper</title></titleStmt></fileDesc>
+    <profileDesc><abstract><div><p><s>We test things.</s><s>Results were good.</s></p></div></abstract></profileDesc>
+  </teiHeader>
+  <text>
+    <body>
+      <div><head n="1">Methods</head>
+        <p><s coords="1,10,20,100,10">We ran a t-test on 40 participants.</s><s>Data were cleaned first.</s></p>
+      </div>
+      <div><head n="2">Results</head>
+        <p><s>The effect was significant, t(38) = 2.31, p = .026.</s><s>Mean RT was 512.4 ms.</s></p>
+        <figure xml:id="fig_0"><head>Figure 1.</head><figDesc>Reaction times by group.</figDesc></figure>
+        <figure type="table" xml:id="tab_0"><head>Table 1.</head><figDesc>Descriptives.</figDesc>
+          <table><row><cell>Group</cell><cell>M</cell></row><row><cell>A</cell><cell>512.4</cell></row></table>
+        </figure>
+      </div>
+    </body>
+    <back><div type="references"><listBibl><biblStruct/></listBibl></div></back>
+  </text>
+</TEI>

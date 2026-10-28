@@ -1,0 +1,517 @@
+# Schemas
+
+Generated from the Pydantic models in `src/metareader/schemas/` by `mr-schemas export`; do not edit.
+The JSON Schemas are in `schemas/`; every package gets a copy in its own `schemas/` folder.
+
+Validation beyond what JSON Schema expresses (references resolve, ids unique, no dependency cycles) is
+done by `GET /packages/{p}/validation` (src/metareader/validation.py).
+
+## `datapackage`: datapackage.json
+
+File: `schemas/datapackage.schema.json`
+
+### Root
+
+datapackage.json
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `name` | string | yes | pattern `^[a-z0-9][a-z0-9._-]*$` |
+| `title` | string \| null |  |  |
+| `resources` | list of [Resource](#resource) |  |  |
+| `metareader` | [PackageMeta](#packagemeta) | yes |  |
+
+### CheckResult
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `passed` | boolean | yes |  |
+| `checked_at` | string (date-time) | yes |  |
+| `notes` | list of string |  | non-fatal observations (e.g. page count) |
+
+### ExtractionMeta
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `kind` | `"extraction"` |  | default `extraction` |
+| `added_at` | string (date-time) | yes |  |
+| `method` | `"parse"` \| `"reconcile"` | yes |  |
+| `fulltexts` | list of string | yes | full-text resources it was made from |
+| `llm_call` | string \| null |  |  |
+
+### FulltextMeta
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `kind` | `"fulltext"` |  | default `fulltext` |
+| `added_at` | string (date-time) | yes |  |
+| `flavor` | `"pdf"` \| `"tei"` \| `"jats"` \| `"docling"` | yes |  |
+| `origin` | [LocalOrigin](#localorigin) \| [UrlOrigin](#urlorigin) | yes |  |
+| `check` | [CheckResult](#checkresult) | yes |  |
+
+### Identifier
+
+A work identifier that OpenAlex can resolve.
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `scheme` | `"doi"` \| `"openalex"` \| `"pmid"` \| `"pmcid"` | yes |  |
+| `value` | string | yes | normalized: DOI lower-case without resolver prefix, OpenAlex id like W123, PMID digits, PMCID like PMC123 |
+
+### InputMeta
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `kind` | `"input"` |  | default `input` |
+| `added_at` | string (date-time) | yes |  |
+| `role` | `"data"` \| `"code"` \| `"other"` | yes |  |
+| `note` | string |  | default `` |
+| `used` | boolean |  | false: kept on disk but not part of the reproduction; default `True` |
+| `archive` | string \| null |  | resource name of the zip archive this file was unpacked from |
+| `origin` | [LocalOrigin](#localorigin) | yes |  |
+
+### LocalOrigin
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `type` | `"local"` |  | default `local` |
+| `path` | string | yes | absolute path the file was copied from |
+
+### OtherMeta
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `kind` | `"metadata"` \| `"curation"` \| `"export"` \| `"script"` \| `"schema"` | yes |  |
+| `added_at` | string (date-time) | yes |  |
+
+### PackageMeta
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `version` | `"1.0"` |  | default `1.0` |
+| `created_at` | string (date-time) | yes |  |
+| `identifier` | [Identifier](#identifier) \| null |  | identifier the package was created for |
+| `identifiers` | map of string |  | all identifiers known from OpenAlex (doi, openalex, pmid, pmcid) |
+| `metadata_fetched_at` | string (date-time) \| null |  |  |
+
+### Resource
+
+One file of the package (Frictionless Data Resource).
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `name` | string | yes | unique id, e.g. ft-grobid, ex-grobid, in-data-csv; pattern `^[a-z0-9][a-z0-9._-]*$` |
+| `path` | string | yes | package-relative, /-separated |
+| `type` | `"file"` \| `"json"` | yes | "json" for JSON files (frictionless parses them), "file" otherwise |
+| `format` | string | yes |  |
+| `mediatype` | string | yes |  |
+| `bytes` | integer | yes |  |
+| `hash` | string | yes | pattern `^sha256:[0-9a-f]{64}$` |
+| `jsonSchema` | string \| null |  | package-relative path of the JSON Schema the file must satisfy |
+| `metareader` | [FulltextMeta](#fulltextmeta) \| [ExtractionMeta](#extractionmeta) \| [InputMeta](#inputmeta) \| [OtherMeta](#othermeta) | yes |  |
+
+### UrlOrigin
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `type` | `"url"` |  | default `url` |
+| `url` | string | yes | download URL (secrets such as API keys removed) |
+| `candidate` | string | yes | candidate id it was chosen as |
+| `label` | string | yes | where the candidate came from, e.g. "OpenAlex best OA location" |
+
+## `document`: extractions/<id>.json
+
+File: `schemas/document.schema.json`
+
+### Root
+
+A paper's text as sections > paragraphs > sentences, plus figures and tables.
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `schema_version` | `"1.0"` |  | default `1.0` |
+| `title` | string \| null |  |  |
+| `source` | [DocumentSource](#documentsource) | yes |  |
+| `sections` | list of [Section](#section) | yes |  |
+| `figures` | list of [Figure](#figure) |  |  |
+| `tables` | list of [Table](#table) |  |  |
+
+### Box
+
+A rectangle on a PDF page.
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `page` | integer | yes | 1-based page number |
+| `x0` | number | yes |  |
+| `y0` | number | yes |  |
+| `x1` | number | yes |  |
+| `y1` | number | yes |  |
+| `origin` | `"top"` \| `"bottom"` | yes | "top": y measured from the page top (GROBID); "bottom": PDF native |
+
+### DocumentSource
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `method` | `"parse"` \| `"reconcile"` | yes |  |
+| `format` | string \| null |  | source format for parse (tei, jats, docling); null for reconcile |
+| `fulltexts` | list of string | yes | resource names of the full texts this was made from |
+| `llm_call` | string \| null |  | id of the LLM call (reconcile only) |
+
+### Figure
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `id` | string | yes | pattern `^fig\d+$` |
+| `label` | string | yes |  |
+| `section` | string \| null |  | id of the section the figure appears in |
+| `caption` | list of [Sentence](#sentence) | yes |  |
+| `boxes` | list of [Box](#box) \| null |  |  |
+
+### Paragraph
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `id` | string | yes | pattern `^sec\d+\.p\d+$` |
+| `sentences` | list of [Sentence](#sentence) | yes |  |
+| `boxes` | list of [Box](#box) \| null |  |  |
+
+### Section
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `id` | string | yes | pattern `^sec\d+$` |
+| `title` | string | yes |  |
+| `level` | integer | yes |  |
+| `paragraphs` | list of [Paragraph](#paragraph) | yes |  |
+
+### Sentence
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `id` | string | yes | pattern `^(sec\d+\.p\d+\|fig\d+\|tab\d+)\.s\d+$` |
+| `text` | string | yes |  |
+| `boxes` | list of [Box](#box) \| null |  |  |
+
+### Table
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `id` | string | yes | pattern `^tab\d+$` |
+| `label` | string | yes |  |
+| `section` | string \| null |  | id of the section the table appears in |
+| `caption` | list of [Sentence](#sentence) | yes |  |
+| `rows` | list of list of string | yes |  |
+| `boxes` | list of [Box](#box) \| null |  |  |
+
+## `document-draft`: parser / reconcile-LLM output, before ids are assigned
+
+File: `schemas/document-draft.schema.json`
+
+### Root
+
+Document content without ids, in reading order (output of parsers and of the reconcile LLM).
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `title` | string \| null |  |  |
+| `sections` | list of [DraftSection](#draftsection) | yes |  |
+| `figures` | list of [DraftFigure](#draftfigure) |  | figures not tied to a section |
+| `tables` | list of [DraftTable](#drafttable) |  | tables not tied to a section |
+
+### DraftFigure
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `label` | string | yes | e.g. "Figure 2" |
+| `caption` | list of [DraftSentence](#draftsentence) |  |  |
+| `boxes` | list of [Box](#box) \| null |  |  |
+
+### DraftParagraph
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `sentences` | list of [DraftSentence](#draftsentence) | yes | sentences in order; a plain string is shorthand for {"text": ...} |
+| `boxes` | list of [Box](#box) \| null |  |  |
+
+### DraftSection
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `title` | string | yes | section heading; "" if the source has none |
+| `level` | integer |  | 1 = top level, 2 = subsection, …; default `1` |
+| `paragraphs` | list of [DraftParagraph](#draftparagraph) |  |  |
+| `figures` | list of [DraftFigure](#draftfigure) |  | figures that appear in this section |
+| `tables` | list of [DraftTable](#drafttable) |  | tables that appear in this section |
+
+### DraftSentence
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `text` | string | yes |  |
+| `boxes` | list of [Box](#box) \| null |  |  |
+
+### DraftTable
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `label` | string | yes | e.g. "Table 1" |
+| `caption` | list of [DraftSentence](#draftsentence) |  |  |
+| `boxes` | list of [Box](#box) \| null |  |  |
+| `rows` | list of list of string |  | cell texts, header row(s) included |
+
+## `targets`: targets.json
+
+File: `schemas/targets.schema.json`
+
+### Root
+
+targets.json
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `schema_version` | `"1.0"` |  | default `1.0` |
+| `kind` | `"targets"` |  | default `targets` |
+| `manual` | list of [Target](#target) |  |  |
+| `llm_runs` | list of [LlmRun_Target_](#llmrun_target_) |  |  |
+
+### LlmCall
+
+Everything needed to understand (and repeat) one LLM call.
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `id` | string | yes | also the folder llm-calls/<id>/ holding prompt.txt, stdout.txt, stderr.txt |
+| `task` | `"reconcile"` \| `"targets"` \| `"actions"` | yes |  |
+| `profile` | string | yes | name of the LLM profile in the service config |
+| `argv` | list of string | yes | the exact command line that was run (prompt goes to stdin) |
+| `model` | string | yes | model passed to the CLI; "" = the CLI default |
+| `effort` | string | yes | effort level passed to the CLI; "" = the CLI default |
+| `template` | `"default"` \| `"custom"` | yes | whether the built-in prompt template or a caller-supplied one was used |
+| `instructions` | string |  | extra instructions appended to the template; default `` |
+| `prompt` | string | yes | the full prompt sent |
+| `output` | string | yes | raw stdout of the call |
+| `started_at` | string (date-time) | yes |  |
+| `duration_ms` | integer | yes |  |
+| `exit_code` | integer \| null |  |  |
+
+### LlmEntry_Target_
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `base` | [Target](#target) | yes | the item as extracted from the LLM output (never changed) |
+| `edit` | object \| null |  | user changes: fields of the item that override base |
+| `disabled` | boolean |  | default `False` |
+
+### LlmRun_Target_
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `id` | string | yes | pattern `^run\d+$` |
+| `disabled` | boolean |  | true: none of the run's entries are effective; default `False` |
+| `request` | object | yes | what was asked: extraction, scope, … |
+| `call` | [LlmCall](#llmcall) | yes |  |
+| `entries` | list of [LlmEntry_Target_](#llmentry_target_) | yes |  |
+| `rejected` | list of [Rejected](#rejected) |  | items of the output that failed validation |
+
+### Ref
+
+Points at one sentence, figure or table of an extraction.
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `extraction` | string | yes | resource name of the extraction, e.g. ex-grobid |
+| `id` | string | yes | sentence (sec3.p2.s1, fig1.s1), figure (fig1) or table (tab1) id in that extraction |
+
+### Rejected
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `item` | any | yes | the LLM's item as returned |
+| `errors` | list of string | yes |  |
+
+### Target
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `refs` | list of [Ref](#ref) |  |  |
+| `unreferenced` | boolean |  | set to allow an empty refs list; then note is required; default `False` |
+| `note` | string \| null |  |  |
+| `type` | `"number"` \| `"categorical"` \| `"table"` \| `"figure"` | yes |  |
+| `description` | string | yes | self-contained: variable, model/test, subgroup |
+| `quote` | string |  | verbatim text from the paper that states the result; default `` |
+| `expected` | number \| integer \| string \| list of list of string \| null |  | number for number, string for categorical, rows of cell strings for table, null for figure |
+| `comparator` | `"="` \| `"<"` \| `"<="` \| `">"` \| `">="` \| `"~"` \| null |  | for numbers: how the paper states it ("p < .001" -> "<"); null means "=" |
+| `decimals` | integer \| null |  | decimals as printed |
+| `unit` | string \| null |  |  |
+| `id` | string | yes | pattern `^T\d{3,}$` |
+
+## `actions`: actions.json
+
+File: `schemas/actions.schema.json`
+
+### Root
+
+actions.json
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `schema_version` | `"1.0"` |  | default `1.0` |
+| `kind` | `"actions"` |  | default `actions` |
+| `manual` | list of [Action](#action) |  |  |
+| `llm_runs` | list of [LlmRun_Action_](#llmrun_action_) |  |  |
+
+### Action
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `refs` | list of [Ref](#ref) |  |  |
+| `unreferenced` | boolean |  | set to allow an empty refs list; then note is required; default `False` |
+| `note` | string \| null |  |  |
+| `kind` | `"transform"` \| `"analysis"` | yes |  |
+| `summary` | string | yes | imperative description, specific enough to code |
+| `quote` | string |  | verbatim text from the paper this action implements; default `` |
+| `inputs` | list of string |  | input resource names (in-…) used directly |
+| `depends_on` | list of string |  | ids of actions that must run first |
+| `produces` | list of string |  | ids of targets this action computes |
+| `id` | string | yes | pattern `^A\d{2,}$` |
+
+### LlmEntry_Action_
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `base` | [Action](#action) | yes | the item as extracted from the LLM output (never changed) |
+| `edit` | object \| null |  | user changes: fields of the item that override base |
+| `disabled` | boolean |  | default `False` |
+
+### LlmRun_Action_
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `id` | string | yes | pattern `^run\d+$` |
+| `disabled` | boolean |  | true: none of the run's entries are effective; default `False` |
+| `request` | object | yes | what was asked: extraction, scope, … |
+| `call` | [LlmCall](#llmcall) | yes |  |
+| `entries` | list of [LlmEntry_Action_](#llmentry_action_) | yes |  |
+| `rejected` | list of [Rejected](#rejected) |  | items of the output that failed validation |
+
+## `target-llm-output`: output of the target-extraction prompt
+
+File: `schemas/target-llm-output.schema.json`
+
+### Root
+
+Output format of the target-extraction prompt.
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `targets` | list of [TargetLlmItem](#targetllmitem) | yes |  |
+
+### TargetLlmItem
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `type` | `"number"` \| `"categorical"` \| `"table"` \| `"figure"` | yes |  |
+| `description` | string | yes |  |
+| `quote` | string |  | default `` |
+| `expected` | number \| integer \| string \| list of list of string \| null |  |  |
+| `comparator` | `"="` \| `"<"` \| `"<="` \| `">"` \| `">="` \| `"~"` \| null |  |  |
+| `decimals` | integer \| null |  |  |
+| `unit` | string \| null |  |  |
+| `refs` | list of string | yes | ids in brackets the result comes from |
+
+## `action-llm-output`: output of the action-extraction prompt
+
+File: `schemas/action-llm-output.schema.json`
+
+### Root
+
+Output format of the action-extraction prompt.
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `actions` | list of [ActionLlmItem](#actionllmitem) | yes |  |
+
+### ActionLlmItem
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `key` | string | yes | A1, A2, … in order; used by depends_on |
+| `kind` | `"transform"` \| `"analysis"` | yes |  |
+| `summary` | string | yes |  |
+| `quote` | string |  | default `` |
+| `refs` | list of string | yes |  |
+| `inputs` | list of string |  | input names (in-…) used directly |
+| `depends_on` | list of string |  | keys of earlier actions |
+| `produces` | list of string |  | target ids computed by this action |
+
+## `results-schema`: results_schema.json
+
+File: `schemas/results-schema.schema.json`
+
+### Root
+
+results_schema.json: the enabled targets at the time the master script was created.
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `schema_version` | `"1.0"` |  | default `1.0` |
+| `paper` | [Paper](#paper) | yes |  |
+| `targets` | list of [Target](#target) | yes |  |
+
+### Paper
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `title` | string \| null |  |  |
+| `identifier` | [Identifier](#identifier) \| null |  |  |
+| `identifiers` | map of string |  |  |
+
+## `analysis-plan`: analysis_plan.json
+
+File: `schemas/analysis-plan.schema.json`
+
+### Root
+
+analysis_plan.json: load steps (one per used data input), the enabled actions, the results step.
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `schema_version` | `"1.0"` |  | default `1.0` |
+| `steps` | list of [PlanStep](#planstep) | yes |  |
+
+### PlanStep
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `id` | string | yes | L01… load steps, A… actions, OUT the results step |
+| `kind` | `"load"` \| `"transform"` \| `"analysis"` \| `"results"` | yes |  |
+| `summary` | string | yes |  |
+| `quote` | string |  | default `` |
+| `refs` | list of [Ref](#ref) |  |  |
+| `inputs` | list of string |  | package-relative paths of input files |
+| `depends_on` | list of string |  |  |
+| `produces` | list of string |  | target ids |
+
+## `results-output`: outputs/results.json
+
+File: `schemas/results-output.schema.json`
+
+### Root
+
+outputs/results.json, written by the reproduction code.
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `results` | list of [OutputResult](#outputresult) | yes |  |
+
+### OutputResult
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `id` | string | yes | target id |
+| `value` | number \| integer \| string \| null |  | number/categorical targets; unrounded |
+| `table` | list of list of string \| number \| integer \| null \| null |  | table targets; same layout as expected |
+| `file` | string \| null |  | figure targets: package-relative image path |
+| `step` | string \| null |  | plan step that produced it |
+| `note` | string \| null |  |  |

@@ -1,0 +1,35 @@
+# MetaReader service configuration. Location: $MR_CONFIG, else ~/.config/metareader/config.toml.
+# Everything executable is configured here; API callers can only choose a profile by name.
+
+[server]
+host = "127.0.0.1"
+port = 8770
+token = ""                 # if set, requests need "Authorization: Bearer <token>"
+registry = "~/.local/share/metareader/registry.json"
+allowed_roots = []         # e.g. ["~/papers"]: local paths the service may read or create packages under
+
+[openalex]
+api_key = ""               # needed for OpenAlex cached content (PDF, GROBID TEI)
+mailto = ""
+
+[downloads]
+max_download_mb = 200
+
+[llm]
+default_profile = "claude"
+
+# {model} and {effort} are substituted; an empty value drops the placeholder and the flag before it.
+# The prompt is sent on stdin; the working directory is the package folder.
+[llm.profiles.claude]
+argv = ["claude", "-p", "--output-format", "text", "--model", "{model}", "--effort", "{effort}"]
+read_files_argv = ["--allowedTools", "Read"]   # appended when the LLM must read package files (reconcile)
+model = "sonnet"
+effort = "medium"
+timeout_s = 1800
+
+[llm.profiles.claude-fast]
+argv = ["claude", "-p", "--output-format", "text", "--model", "{model}", "--effort", "{effort}"]
+read_files_argv = ["--allowedTools", "Read"]
+model = "haiku"
+effort = "low"
+timeout_s = 600

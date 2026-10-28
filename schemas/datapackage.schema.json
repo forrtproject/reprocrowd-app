@@ -1,0 +1,498 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://metareader.example/schemas/datapackage.schema.json",
+  "title": "Manifest (datapackage.json)",
+  "$defs": {
+    "CheckResult": {
+      "additionalProperties": false,
+      "properties": {
+        "passed": {
+          "title": "Passed",
+          "type": "boolean"
+        },
+        "checked_at": {
+          "format": "date-time",
+          "title": "Checked At",
+          "type": "string"
+        },
+        "notes": {
+          "description": "non-fatal observations (e.g. page count)",
+          "items": {
+            "type": "string"
+          },
+          "title": "Notes",
+          "type": "array"
+        }
+      },
+      "required": [
+        "passed",
+        "checked_at"
+      ],
+      "title": "CheckResult",
+      "type": "object"
+    },
+    "ExtractionMeta": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "extraction",
+          "default": "extraction",
+          "title": "Kind",
+          "type": "string"
+        },
+        "added_at": {
+          "format": "date-time",
+          "title": "Added At",
+          "type": "string"
+        },
+        "method": {
+          "enum": [
+            "parse",
+            "reconcile"
+          ],
+          "title": "Method",
+          "type": "string"
+        },
+        "fulltexts": {
+          "description": "full-text resources it was made from",
+          "items": {
+            "type": "string"
+          },
+          "title": "Fulltexts",
+          "type": "array"
+        },
+        "llm_call": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Llm Call"
+        }
+      },
+      "required": [
+        "added_at",
+        "method",
+        "fulltexts"
+      ],
+      "title": "ExtractionMeta",
+      "type": "object"
+    },
+    "FulltextMeta": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "fulltext",
+          "default": "fulltext",
+          "title": "Kind",
+          "type": "string"
+        },
+        "added_at": {
+          "format": "date-time",
+          "title": "Added At",
+          "type": "string"
+        },
+        "flavor": {
+          "enum": [
+            "pdf",
+            "tei",
+            "jats",
+            "docling"
+          ],
+          "title": "Flavor",
+          "type": "string"
+        },
+        "origin": {
+          "discriminator": {
+            "mapping": {
+              "local": "#/$defs/LocalOrigin",
+              "url": "#/$defs/UrlOrigin"
+            },
+            "propertyName": "type"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/LocalOrigin"
+            },
+            {
+              "$ref": "#/$defs/UrlOrigin"
+            }
+          ],
+          "title": "Origin"
+        },
+        "check": {
+          "$ref": "#/$defs/CheckResult"
+        }
+      },
+      "required": [
+        "added_at",
+        "flavor",
+        "origin",
+        "check"
+      ],
+      "title": "FulltextMeta",
+      "type": "object"
+    },
+    "Identifier": {
+      "additionalProperties": false,
+      "description": "A work identifier that OpenAlex can resolve.",
+      "properties": {
+        "scheme": {
+          "enum": [
+            "doi",
+            "openalex",
+            "pmid",
+            "pmcid"
+          ],
+          "title": "Scheme",
+          "type": "string"
+        },
+        "value": {
+          "description": "normalized: DOI lower-case without resolver prefix, OpenAlex id like W123, PMID digits, PMCID like PMC123",
+          "minLength": 1,
+          "title": "Value",
+          "type": "string"
+        }
+      },
+      "required": [
+        "scheme",
+        "value"
+      ],
+      "title": "Identifier",
+      "type": "object"
+    },
+    "InputMeta": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "input",
+          "default": "input",
+          "title": "Kind",
+          "type": "string"
+        },
+        "added_at": {
+          "format": "date-time",
+          "title": "Added At",
+          "type": "string"
+        },
+        "role": {
+          "enum": [
+            "data",
+            "code",
+            "other"
+          ],
+          "title": "Role",
+          "type": "string"
+        },
+        "note": {
+          "default": "",
+          "title": "Note",
+          "type": "string"
+        },
+        "used": {
+          "default": true,
+          "description": "false: kept on disk but not part of the reproduction",
+          "title": "Used",
+          "type": "boolean"
+        },
+        "archive": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "resource name of the zip archive this file was unpacked from",
+          "title": "Archive"
+        },
+        "origin": {
+          "$ref": "#/$defs/LocalOrigin"
+        }
+      },
+      "required": [
+        "added_at",
+        "role",
+        "origin"
+      ],
+      "title": "InputMeta",
+      "type": "object"
+    },
+    "LocalOrigin": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "local",
+          "default": "local",
+          "title": "Type",
+          "type": "string"
+        },
+        "path": {
+          "description": "absolute path the file was copied from",
+          "title": "Path",
+          "type": "string"
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "title": "LocalOrigin",
+      "type": "object"
+    },
+    "OtherMeta": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "metadata",
+            "curation",
+            "export",
+            "script",
+            "schema"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "added_at": {
+          "format": "date-time",
+          "title": "Added At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "added_at"
+      ],
+      "title": "OtherMeta",
+      "type": "object"
+    },
+    "PackageMeta": {
+      "additionalProperties": false,
+      "properties": {
+        "version": {
+          "const": "1.0",
+          "default": "1.0",
+          "title": "Version",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "identifier": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Identifier"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "identifier the package was created for"
+        },
+        "identifiers": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "all identifiers known from OpenAlex (doi, openalex, pmid, pmcid)",
+          "title": "Identifiers",
+          "type": "object"
+        },
+        "metadata_fetched_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Metadata Fetched At"
+        }
+      },
+      "required": [
+        "created_at"
+      ],
+      "title": "PackageMeta",
+      "type": "object"
+    },
+    "Resource": {
+      "additionalProperties": false,
+      "description": "One file of the package (Frictionless Data Resource).",
+      "properties": {
+        "name": {
+          "description": "unique id, e.g. ft-grobid, ex-grobid, in-data-csv",
+          "pattern": "^[a-z0-9][a-z0-9._-]*$",
+          "title": "Name",
+          "type": "string"
+        },
+        "path": {
+          "description": "package-relative, /-separated",
+          "title": "Path",
+          "type": "string"
+        },
+        "type": {
+          "description": "\"json\" for JSON files (frictionless parses them), \"file\" otherwise",
+          "enum": [
+            "file",
+            "json"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
+        "format": {
+          "title": "Format",
+          "type": "string"
+        },
+        "mediatype": {
+          "title": "Mediatype",
+          "type": "string"
+        },
+        "bytes": {
+          "minimum": 0,
+          "title": "Bytes",
+          "type": "integer"
+        },
+        "hash": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Hash",
+          "type": "string"
+        },
+        "jsonSchema": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "package-relative path of the JSON Schema the file must satisfy",
+          "title": "Jsonschema"
+        },
+        "metareader": {
+          "discriminator": {
+            "mapping": {
+              "curation": "#/$defs/OtherMeta",
+              "export": "#/$defs/OtherMeta",
+              "extraction": "#/$defs/ExtractionMeta",
+              "fulltext": "#/$defs/FulltextMeta",
+              "input": "#/$defs/InputMeta",
+              "metadata": "#/$defs/OtherMeta",
+              "schema": "#/$defs/OtherMeta",
+              "script": "#/$defs/OtherMeta"
+            },
+            "propertyName": "kind"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/FulltextMeta"
+            },
+            {
+              "$ref": "#/$defs/ExtractionMeta"
+            },
+            {
+              "$ref": "#/$defs/InputMeta"
+            },
+            {
+              "$ref": "#/$defs/OtherMeta"
+            }
+          ],
+          "title": "Metareader"
+        }
+      },
+      "required": [
+        "name",
+        "path",
+        "type",
+        "format",
+        "mediatype",
+        "bytes",
+        "hash",
+        "metareader"
+      ],
+      "title": "Resource",
+      "type": "object"
+    },
+    "UrlOrigin": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "url",
+          "default": "url",
+          "title": "Type",
+          "type": "string"
+        },
+        "url": {
+          "description": "download URL (secrets such as API keys removed)",
+          "title": "Url",
+          "type": "string"
+        },
+        "candidate": {
+          "description": "candidate id it was chosen as",
+          "title": "Candidate",
+          "type": "string"
+        },
+        "label": {
+          "description": "where the candidate came from, e.g. \"OpenAlex best OA location\"",
+          "title": "Label",
+          "type": "string"
+        }
+      },
+      "required": [
+        "url",
+        "candidate",
+        "label"
+      ],
+      "title": "UrlOrigin",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "datapackage.json",
+  "properties": {
+    "name": {
+      "pattern": "^[a-z0-9][a-z0-9._-]*$",
+      "title": "Name",
+      "type": "string"
+    },
+    "title": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Title"
+    },
+    "resources": {
+      "items": {
+        "$ref": "#/$defs/Resource"
+      },
+      "title": "Resources",
+      "type": "array"
+    },
+    "metareader": {
+      "$ref": "#/$defs/PackageMeta"
+    }
+  },
+  "required": [
+    "name",
+    "metareader"
+  ],
+  "type": "object"
+}

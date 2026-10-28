@@ -1,0 +1,353 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://metareader.example/schemas/actions.schema.json",
+  "title": "ActionsFile (actions.json)",
+  "$defs": {
+    "Action": {
+      "additionalProperties": false,
+      "properties": {
+        "refs": {
+          "items": {
+            "$ref": "#/$defs/Ref"
+          },
+          "title": "Refs",
+          "type": "array"
+        },
+        "unreferenced": {
+          "default": false,
+          "description": "set to allow an empty refs list; then note is required",
+          "title": "Unreferenced",
+          "type": "boolean"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Note"
+        },
+        "kind": {
+          "enum": [
+            "transform",
+            "analysis"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "summary": {
+          "description": "imperative description, specific enough to code",
+          "minLength": 1,
+          "title": "Summary",
+          "type": "string"
+        },
+        "quote": {
+          "default": "",
+          "description": "verbatim text from the paper this action implements",
+          "title": "Quote",
+          "type": "string"
+        },
+        "inputs": {
+          "description": "input resource names (in-…) used directly",
+          "items": {
+            "type": "string"
+          },
+          "title": "Inputs",
+          "type": "array"
+        },
+        "depends_on": {
+          "description": "ids of actions that must run first",
+          "items": {
+            "type": "string"
+          },
+          "title": "Depends On",
+          "type": "array"
+        },
+        "produces": {
+          "description": "ids of targets this action computes",
+          "items": {
+            "type": "string"
+          },
+          "title": "Produces",
+          "type": "array"
+        },
+        "id": {
+          "pattern": "^A\\d{2,}$",
+          "title": "Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "summary",
+        "id"
+      ],
+      "title": "Action",
+      "type": "object"
+    },
+    "LlmCall": {
+      "additionalProperties": false,
+      "description": "Everything needed to understand (and repeat) one LLM call.",
+      "properties": {
+        "id": {
+          "description": "also the folder llm-calls/<id>/ holding prompt.txt, stdout.txt, stderr.txt",
+          "title": "Id",
+          "type": "string"
+        },
+        "task": {
+          "enum": [
+            "reconcile",
+            "targets",
+            "actions"
+          ],
+          "title": "Task",
+          "type": "string"
+        },
+        "profile": {
+          "description": "name of the LLM profile in the service config",
+          "title": "Profile",
+          "type": "string"
+        },
+        "argv": {
+          "description": "the exact command line that was run (prompt goes to stdin)",
+          "items": {
+            "type": "string"
+          },
+          "title": "Argv",
+          "type": "array"
+        },
+        "model": {
+          "description": "model passed to the CLI; \"\" = the CLI default",
+          "title": "Model",
+          "type": "string"
+        },
+        "effort": {
+          "description": "effort level passed to the CLI; \"\" = the CLI default",
+          "title": "Effort",
+          "type": "string"
+        },
+        "template": {
+          "description": "whether the built-in prompt template or a caller-supplied one was used",
+          "enum": [
+            "default",
+            "custom"
+          ],
+          "title": "Template",
+          "type": "string"
+        },
+        "instructions": {
+          "default": "",
+          "description": "extra instructions appended to the template",
+          "title": "Instructions",
+          "type": "string"
+        },
+        "prompt": {
+          "description": "the full prompt sent",
+          "title": "Prompt",
+          "type": "string"
+        },
+        "output": {
+          "description": "raw stdout of the call",
+          "title": "Output",
+          "type": "string"
+        },
+        "started_at": {
+          "format": "date-time",
+          "title": "Started At",
+          "type": "string"
+        },
+        "duration_ms": {
+          "title": "Duration Ms",
+          "type": "integer"
+        },
+        "exit_code": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Exit Code"
+        }
+      },
+      "required": [
+        "id",
+        "task",
+        "profile",
+        "argv",
+        "model",
+        "effort",
+        "template",
+        "prompt",
+        "output",
+        "started_at",
+        "duration_ms"
+      ],
+      "title": "LlmCall",
+      "type": "object"
+    },
+    "LlmEntry_Action_": {
+      "additionalProperties": false,
+      "properties": {
+        "base": {
+          "$ref": "#/$defs/Action",
+          "description": "the item as extracted from the LLM output (never changed)"
+        },
+        "edit": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "user changes: fields of the item that override base",
+          "title": "Edit"
+        },
+        "disabled": {
+          "default": false,
+          "title": "Disabled",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "base"
+      ],
+      "title": "LlmEntry[Action]",
+      "type": "object"
+    },
+    "LlmRun_Action_": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^run\\d+$",
+          "title": "Id",
+          "type": "string"
+        },
+        "disabled": {
+          "default": false,
+          "description": "true: none of the run's entries are effective",
+          "title": "Disabled",
+          "type": "boolean"
+        },
+        "request": {
+          "additionalProperties": true,
+          "description": "what was asked: extraction, scope, …",
+          "title": "Request",
+          "type": "object"
+        },
+        "call": {
+          "$ref": "#/$defs/LlmCall"
+        },
+        "entries": {
+          "items": {
+            "$ref": "#/$defs/LlmEntry_Action_"
+          },
+          "title": "Entries",
+          "type": "array"
+        },
+        "rejected": {
+          "description": "items of the output that failed validation",
+          "items": {
+            "$ref": "#/$defs/Rejected"
+          },
+          "title": "Rejected",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "request",
+        "call",
+        "entries"
+      ],
+      "title": "LlmRun[Action]",
+      "type": "object"
+    },
+    "Ref": {
+      "additionalProperties": false,
+      "description": "Points at one sentence, figure or table of an extraction.",
+      "properties": {
+        "extraction": {
+          "description": "resource name of the extraction, e.g. ex-grobid",
+          "title": "Extraction",
+          "type": "string"
+        },
+        "id": {
+          "description": "sentence (sec3.p2.s1, fig1.s1), figure (fig1) or table (tab1) id in that extraction",
+          "title": "Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "extraction",
+        "id"
+      ],
+      "title": "Ref",
+      "type": "object"
+    },
+    "Rejected": {
+      "additionalProperties": false,
+      "properties": {
+        "item": {
+          "description": "the LLM's item as returned",
+          "title": "Item"
+        },
+        "errors": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Errors",
+          "type": "array"
+        }
+      },
+      "required": [
+        "item",
+        "errors"
+      ],
+      "title": "Rejected",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "actions.json",
+  "properties": {
+    "schema_version": {
+      "const": "1.0",
+      "default": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "kind": {
+      "const": "actions",
+      "default": "actions",
+      "title": "Kind",
+      "type": "string"
+    },
+    "manual": {
+      "items": {
+        "$ref": "#/$defs/Action"
+      },
+      "title": "Manual",
+      "type": "array"
+    },
+    "llm_runs": {
+      "items": {
+        "$ref": "#/$defs/LlmRun_Action_"
+      },
+      "title": "Llm Runs",
+      "type": "array"
+    }
+  },
+  "type": "object"
+}

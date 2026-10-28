@@ -1,0 +1,5 @@
+label = "Monolithic R script"
+language = "R"
+command = "Rscript analysis.R"
+master = "analysis.R"
+files = [{ src = "analysis.R.j2", dest = "analysis.R" }]

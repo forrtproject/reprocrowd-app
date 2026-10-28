@@ -1,0 +1,22 @@
+{% import "_macros.j2" as m -%}
+{{ m.header(paper, tpl, marker) }}
+
+library(targets)
+# {{ marker }}: declare packages
+tar_option_set(packages = c())
+
+list(
+{% for s in plan.steps %}
+  {{ m.step_header(s, "  ") | trim }}
+  tar_target({{ s.id | lower }}, {
+{% if s.depends_on %}
+    # uses: {{ s.depends_on | map("lower") | join(", ") }}
+{% endif %}
+    # {{ marker }}: implement {{ s.id }}
+    {{ '"outputs/results.json"' if s.kind == "results" else "NULL" }}
+  }{{ ', format = "file"' if s.kind == "results" }}){{ "," if not loop.last }}
+{% if not loop.last %}
+
+{% endif %}
+{% endfor %}
+)

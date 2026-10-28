@@ -1,0 +1,131 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://metareader.example/schemas/target-llm-output.schema.json",
+  "title": "TargetLlmOutput (output of the target-extraction prompt)",
+  "$defs": {
+    "TargetLlmItem": {
+      "properties": {
+        "type": {
+          "enum": [
+            "number",
+            "categorical",
+            "table",
+            "figure"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "quote": {
+          "default": "",
+          "title": "Quote",
+          "type": "string"
+        },
+        "expected": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "items": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Expected"
+        },
+        "comparator": {
+          "anyOf": [
+            {
+              "enum": [
+                "=",
+                "<",
+                "<=",
+                ">",
+                ">=",
+                "~"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Comparator"
+        },
+        "decimals": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Decimals"
+        },
+        "unit": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Unit"
+        },
+        "refs": {
+          "description": "ids in brackets the result comes from",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Refs",
+          "type": "array"
+        }
+      },
+      "required": [
+        "type",
+        "description",
+        "refs"
+      ],
+      "title": "TargetLlmItem",
+      "type": "object"
+    }
+  },
+  "description": "Output format of the target-extraction prompt.",
+  "properties": {
+    "targets": {
+      "items": {
+        "$ref": "#/$defs/TargetLlmItem"
+      },
+      "title": "Targets",
+      "type": "array"
+    }
+  },
+  "required": [
+    "targets"
+  ],
+  "type": "object"
+}

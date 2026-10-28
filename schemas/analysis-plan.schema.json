@@ -1,0 +1,116 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://metareader.example/schemas/analysis-plan.schema.json",
+  "title": "AnalysisPlan (analysis_plan.json)",
+  "$defs": {
+    "PlanStep": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "description": "L01… load steps, A… actions, OUT the results step",
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "load",
+            "transform",
+            "analysis",
+            "results"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "summary": {
+          "title": "Summary",
+          "type": "string"
+        },
+        "quote": {
+          "default": "",
+          "title": "Quote",
+          "type": "string"
+        },
+        "refs": {
+          "items": {
+            "$ref": "#/$defs/Ref"
+          },
+          "title": "Refs",
+          "type": "array"
+        },
+        "inputs": {
+          "description": "package-relative paths of input files",
+          "items": {
+            "type": "string"
+          },
+          "title": "Inputs",
+          "type": "array"
+        },
+        "depends_on": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Depends On",
+          "type": "array"
+        },
+        "produces": {
+          "description": "target ids",
+          "items": {
+            "type": "string"
+          },
+          "title": "Produces",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "summary"
+      ],
+      "title": "PlanStep",
+      "type": "object"
+    },
+    "Ref": {
+      "additionalProperties": false,
+      "description": "Points at one sentence, figure or table of an extraction.",
+      "properties": {
+        "extraction": {
+          "description": "resource name of the extraction, e.g. ex-grobid",
+          "title": "Extraction",
+          "type": "string"
+        },
+        "id": {
+          "description": "sentence (sec3.p2.s1, fig1.s1), figure (fig1) or table (tab1) id in that extraction",
+          "title": "Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "extraction",
+        "id"
+      ],
+      "title": "Ref",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "analysis_plan.json: load steps (one per used data input), the enabled actions, the results step.",
+  "properties": {
+    "schema_version": {
+      "const": "1.0",
+      "default": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "steps": {
+      "items": {
+        "$ref": "#/$defs/PlanStep"
+      },
+      "title": "Steps",
+      "type": "array"
+    }
+  },
+  "required": [
+    "steps"
+  ],
+  "type": "object"
+}

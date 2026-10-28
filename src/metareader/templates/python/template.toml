@@ -1,0 +1,5 @@
+label = "Monolithic Python script"
+language = "Python"
+command = "python3 analysis.py"
+master = "analysis.py"
+files = [{ src = "analysis.py.j2", dest = "analysis.py" }]
