@@ -23,6 +23,7 @@ def client(tmp_path, monkeypatch):
         '[llm]\ndefault_profile = "ok"\n\n'
         + "".join(_profile(m) for m in ("ok", "garbage", "badschema", "fail"))
         + _profile("sleep", timeout=1)
+        + "".join(_profile(m) + 'json_schema_argv = ["--json-schema", "{schema}"]\noutput = "claude-json"\n' for m in ("structured", "structured-error"))
         + '\n[agent]\ndefault_profile = "ok"\n'
         + "".join(f'[agent.profiles.{name}]\nargv = ["{sys.executable}", "{HERE / "fake_agent.py"}", "{mode}", "--tools", "{{tools}}"]\nmodel = "fake-agent-1"\ntimeout_s = {t}\n'
                   for name, mode, t in (("ok", "ok", 30), ("slow", "slow", 30), ("fail", "fail", 30), ("short", "slow", 1)))

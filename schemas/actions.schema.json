@@ -155,6 +155,29 @@
           "title": "Output",
           "type": "string"
         },
+        "output_format": {
+          "default": "text",
+          "description": "how stdout was read",
+          "enum": [
+            "text",
+            "claude-json"
+          ],
+          "title": "Output Format",
+          "type": "string"
+        },
+        "output_schema": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "name of the JSON Schema the CLI was asked to constrain its output to (structured output)",
+          "title": "Output Schema"
+        },
         "started_at": {
           "format": "date-time",
           "title": "Started At",

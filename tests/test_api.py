@@ -355,3 +355,21 @@ def test_outdated_schema_copies_are_refreshed(client, pkg):
     (root / "schemas" / "targets.schema.json").write_text('{"type": "object", "required": ["old"]}')
     client.post(f"/v1/packages/{pkg}/targets", json={"type": "number", "description": "x", "expected": 1, "unreferenced": True, "note": "n"})
     assert client.get(f"/v1/packages/{pkg}/validation").json()["valid"]
+
+
+def test_structured_output(client, pkg):
+    """Profiles with json_schema_argv get the task's output schema; the envelope's structured_output is used."""
+    setup_paper(client, pkg)
+    P = f"/v1/packages/{pkg}"
+    run = client.post(P + "/targets/runs", json={"extraction": "ex-paper-tei", "profile": "structured"})
+    assert run.status_code == 201, run.text
+    call = run.json()["call"]
+    assert call["output_format"] == "claude-json" and call["output_schema"] == "target-llm-output"
+    passed = json.loads(call["argv"][-1])
+    assert call["argv"][-2] == "--json-schema" and passed["title"].startswith("TargetLlmOutput")
+    assert "$schema" not in passed and "$id" not in passed  # Claude Code's validator rejects the 2020-12 meta-schema URI
+    assert len(run.json()["entries"]) == 3
+    r = client.post(P + "/extractions", json={"method": "reconcile", "sources": ["ft-paper-tei"], "profile": "structured"})
+    assert r.status_code == 201, r.text
+    e = problem(client.post(P + "/targets/runs", json={"extraction": "ex-paper-tei", "profile": "structured-error"}), 502, "llm_call_failed")
+    assert e["subtype"] == "error_max_turns" and "ran out of turns" in e["result"]

@@ -8637,6 +8637,28 @@
             "title": "Output",
             "description": "raw stdout of the call"
           },
+          "output_format": {
+            "type": "string",
+            "enum": [
+              "text",
+              "claude-json"
+            ],
+            "title": "Output Format",
+            "description": "how stdout was read",
+            "default": "text"
+          },
+          "output_schema": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output Schema",
+            "description": "name of the JSON Schema the CLI was asked to constrain its output to (structured output)"
+          },
           "started_at": {
             "type": "string",
             "format": "date-time",

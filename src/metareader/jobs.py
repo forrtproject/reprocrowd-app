@@ -9,6 +9,7 @@ the record is reported as "interrupted" afterwards.
 """
 from __future__ import annotations
 
+import logging
 import os
 import secrets
 import signal
@@ -27,6 +28,7 @@ from .package import Package, atomic_write, dump_json
 from .schemas.common import now
 from .schemas.jobs import Job, JobType
 
+log = logging.getLogger("metareader.jobs")
 _procs: dict[str, subprocess.Popen] = {}  # "<package root>::<job id>" → process
 _cancelled: set[str] = set()
 _guard = threading.Lock()
@@ -138,13 +140,20 @@ def _watch(pkg: Package, job: Job, proc: subprocess.Popen, stdin: str, timeout_s
         try:
             job.result = finish(job)
         except Exception as e:  # the job ran; report the bookkeeping failure without losing the record
+            log.exception("job %s: finishing failed", job.id)
             job.error = f"after the job: {type(e).__name__}: {e}"
-        job.finished_at = now()
-        save(pkg, job)
+    except Exception as e:  # never leave a record that says "running" for a job that ended
+        log.exception("job %s: watcher failed", job.id)
+        job.status = "failed" if job.status == "running" else job.status
+        job.error = job.error or f"{type(e).__name__}: {e}"
     finally:
-        with _guard:
-            _procs.pop(key, None)
-            _cancelled.discard(key)
+        job.finished_at = now()
+        try:
+            save(pkg, job)
+        finally:
+            with _guard:
+                _procs.pop(key, None)
+                _cancelled.discard(key)
 
 
 def _kill(proc: subprocess.Popen) -> None:

@@ -10,6 +10,7 @@ import time
 
 mode = sys.argv[1]
 prompt = sys.stdin.read()
+schema = json.loads(sys.argv[sys.argv.index("--json-schema") + 1]) if "--json-schema" in sys.argv else None
 
 if mode == "fail":
     print("model overloaded", file=sys.stderr)
@@ -45,4 +46,11 @@ elif "ACTIONS" in prompt:
     ]}
 else:
     out = {"unexpected": True}
-print("Here you go:\n```json\n" + json.dumps(out) + "\n```")
+if mode == "structured":  # like claude --output-format json --json-schema: an envelope with structured_output
+    assert schema and "$defs" in schema or "properties" in schema, "no usable schema passed"
+    print(json.dumps({"type": "result", "subtype": "success", "is_error": False, "result": "(see structured_output)",
+                      "structured_output": out, "schema_title": schema.get("title")}))
+elif mode == "structured-error":
+    print(json.dumps({"type": "result", "subtype": "error_max_turns", "is_error": True, "result": "ran out of turns"}))
+else:
+    print("Here you go:\n```json\n" + json.dumps(out) + "\n```")

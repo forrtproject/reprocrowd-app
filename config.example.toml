@@ -38,16 +38,22 @@ default_profile = "claude"
 
 # {model} and {effort} are substituted; an empty value drops the placeholder and the flag before it.
 # The prompt is sent on stdin; the working directory is the package folder.
+# Structured output: json_schema_argv is appended with {schema} = the task's output JSON Schema, and
+# output = "claude-json" reads Claude's --output-format json envelope. Leave both out for plain-text CLIs.
 [llm.profiles.claude]
-argv = ["claude", "-p", "--output-format", "text", "--model", "{model}", "--effort", "{effort}"]
+argv = ["claude", "-p", "--output-format", "json", "--model", "{model}", "--effort", "{effort}"]
 read_files_argv = ["--allowedTools", "Read"]   # appended when the LLM must read package files (reconcile)
+json_schema_argv = ["--json-schema", "{schema}"]
+output = "claude-json"
 model = "sonnet"
 effort = "medium"
 timeout_s = 1800
 
 [llm.profiles.claude-fast]
-argv = ["claude", "-p", "--output-format", "text", "--model", "{model}", "--effort", "{effort}"]
+argv = ["claude", "-p", "--output-format", "json", "--model", "{model}", "--effort", "{effort}"]
 read_files_argv = ["--allowedTools", "Read"]
+json_schema_argv = ["--json-schema", "{schema}"]
+output = "claude-json"
 model = "haiku"
 effort = "low"
 timeout_s = 600

@@ -51,6 +51,8 @@ class LlmCall(Model):
     instructions: str = Field(default="", description="extra instructions appended to the template")
     prompt: str = Field(description="the full prompt sent")
     output: str = Field(description="raw stdout of the call")
+    output_format: Literal["text", "claude-json"] = Field(default="text", description="how stdout was read")
+    output_schema: str | None = Field(default=None, description="name of the JSON Schema the CLI was asked to constrain its output to (structured output)")
     started_at: datetime
     duration_ms: int
     exit_code: int | None = None

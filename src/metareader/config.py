@@ -14,6 +14,10 @@ from pydantic import BaseModel, Field
 class LlmProfile(BaseModel):
     argv: list[str] = Field(description="command line; {model} and {effort} are substituted, the prompt goes to stdin")
     read_files_argv: list[str] = Field(default_factory=list, description="appended when the LLM must read package files (cwd = package root)")
+    json_schema_argv: list[str] = Field(default_factory=list, description="appended with {schema} = the task's output JSON Schema, for CLIs "
+                                                                          "that constrain output to a schema (claude: --json-schema)")
+    output: Literal["text", "claude-json"] = Field(default="text", description="how to read stdout: plain text, or Claude's --output-format json "
+                                                                               "envelope (structured_output / result)")
     model: str = ""
     effort: str = ""
     timeout_s: int = 1800
@@ -62,8 +66,10 @@ def _default_agents() -> dict[str, AgentProfile]:
 def _default_profiles() -> dict[str, LlmProfile]:
     return {
         "claude": LlmProfile(
-            argv=["claude", "-p", "--output-format", "text", "--model", "{model}", "--effort", "{effort}"],
+            argv=["claude", "-p", "--output-format", "json", "--model", "{model}", "--effort", "{effort}"],
             read_files_argv=["--allowedTools", "Read"],
+            json_schema_argv=["--json-schema", "{schema}"],
+            output="claude-json",
             model="sonnet",
             effort="medium",
         )

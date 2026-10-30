@@ -335,8 +335,10 @@ LLM profiles:
 
 ```toml
 [llm.profiles.claude]
-argv = ["claude", "-p", "--output-format", "text", "--model", "{model}", "--effort", "{effort}"]
+argv = ["claude", "-p", "--output-format", "json", "--model", "{model}", "--effort", "{effort}"]
 read_files_argv = ["--allowedTools", "Read"]   # appended when the LLM must read package files (reconcile)
+json_schema_argv = ["--json-schema", "{schema}"]  # structured output: the task's output schema
+output = "claude-json"                         # read stdout as Claude's JSON envelope
 model = "sonnet"
 effort = "medium"
 timeout_s = 1800
@@ -523,6 +525,27 @@ sequenceDiagram
 > **Implemented in:** `uploads.py`, `fulltexts.add_upload`, `inputs.add_upload`/`add_directory`,
 > `api/app.py` (`json_or_upload`, `json_or_multipart` + OpenAPI merge, `Page`), CLI `--upload`.
 
-## TODO (later phases)
+## Structured output
 
-- Structured output (`--json-schema`) for profiles whose CLI supports it.
+LLM profiles may constrain the model's output to the task's JSON Schema, for CLIs that support it:
+`json_schema_argv` (e.g. `["--json-schema", "{schema}"]`) is appended with `{schema}` = the output schema
+(`document-draft` for reconcile, `target-llm-output` / `action-llm-output` for extraction runs), generated
+from the same Pydantic models and sent without the `$schema`/`$id` metadata (Claude Code's validator rejects
+the 2020-12 meta-schema URI). `output: claude-json` reads Claude's `--output-format json` envelope: its
+`structured_output` if present, else the JSON in `result`; an envelope that reports an error is
+`llm_call_failed`. Everything after that (validation, `llm_output_invalid` stages, rejected items) is the
+same as for text output. The call record notes `output_format` and `output_schema`. The built-in `claude`
+profile uses structured output; text profiles keep working for CLIs without it.
+
+> **Implemented in:** `config.LlmProfile` (`json_schema_argv`, `output`), `llm.run`/`cli_schema`/`output_json`.
+> Tested with a fake structured CLI and with Claude Code (Haiku): a target extraction (24 accepted, 0
+> rejected) and a small reconcile of GROBID TEI + PDF.
+
+## TODO
+
+All planned phases are implemented. Possible next steps:
+
+- Reconcile and extraction runs as jobs (like code generation), for long documents.
+- Upload progress for large submissions (the plugin showed a progress bar).
+- The package database serves the report from its own URL, so the report's relative links to figure crops
+  don't resolve there; embedding crops (data URLs) in the archived report would fix that.

@@ -22,6 +22,7 @@ from typing import Any
 from .config import LlmProfile, expand_argv, settings
 from .errors import ApiError
 from .package import Package, atomic_write, dump_json
+from .schemas import json_schema
 from .schemas.common import LlmCall, now
 
 
@@ -53,9 +54,14 @@ def render(template: str, values: dict[str, str], required: tuple[str, ...] = ()
     return text
 
 
-def run(pkg: Package, task: str, prompt: str, *, profile_name: str | None, template: str, instructions: str, read_files: bool = False) -> LlmCall:
+def run(pkg: Package, task: str, prompt: str, *, profile_name: str | None, template: str, instructions: str, read_files: bool = False,
+        schema: str | None = None) -> LlmCall:
+    """``schema``: name of the output's JSON Schema; passed to the CLI if the profile supports structured output."""
     name, p = profile(profile_name)
     argv = build_argv(p, read_files)
+    structured = schema if schema and p.json_schema_argv else None
+    if structured:
+        argv += expand_argv(p.json_schema_argv, {"schema": cli_schema(structured)})
     call_id = f"{task}-{time.strftime('%Y%m%dT%H%M%S')}-{secrets.token_hex(2)}"
     folder = pkg.path(f"llm-calls/{call_id}")
     folder.mkdir(parents=True)
@@ -66,7 +72,7 @@ def run(pkg: Package, task: str, prompt: str, *, profile_name: str | None, templ
         (folder / "stdout.txt").write_text(out, encoding="utf-8")
         (folder / "stderr.txt").write_text(err, encoding="utf-8")
         call = LlmCall(id=call_id, task=task, profile=name, argv=argv, model=p.model, effort=p.effort, template=template,
-                       instructions=instructions, prompt=prompt, output=out, started_at=started,
+                       instructions=instructions, prompt=prompt, output=out, output_format=p.output, output_schema=structured, started_at=started,
                        duration_ms=int((time.monotonic() - t0) * 1000), exit_code=code)
         atomic_write(folder / "call.json", dump_json(call))
         return call
@@ -88,7 +94,44 @@ def run(pkg: Package, task: str, prompt: str, *, profile_name: str | None, templ
     if proc.returncode != 0:
         raise ApiError(502, "llm_call_failed", f"the LLM command exited with {proc.returncode}",
                        {"call": call_id, "stderr": err[-2000:], "stdout": out[-2000:]})
+    if p.output == "claude-json":
+        env = _envelope(out)
+        if env is None or env.get("is_error") or env.get("subtype") not in (None, "success"):
+            raise ApiError(502, "llm_call_failed", "the LLM CLI reported an error",
+                           {"call": call_id, "result": str((env or {}).get("result") or out[-2000:])[:2000], "subtype": (env or {}).get("subtype")})
     return call
+
+
+def cli_schema(name: str) -> str:
+    """The output schema for a CLI's structured-output flag: without the "$schema"/"$id" metadata, which some
+    validators reject (Claude Code: no schema with key "https://json-schema.org/draft/2020-12/schema")."""
+    schema = {k: v for k, v in json_schema(name).items() if k not in ("$schema", "$id")}
+    return json.dumps(schema, separators=(",", ":"))
+
+
+def _envelope(out: str) -> dict | None:
+    """Claude's --output-format json: one JSON object (the last line, if there are several)."""
+    for line in reversed([x for x in out.strip().splitlines() if x.strip()] or [""]):
+        try:
+            v = json.loads(line)
+            return v if isinstance(v, dict) else None
+        except ValueError:
+            continue
+    try:
+        v = json.loads(out)
+        return v if isinstance(v, dict) else None
+    except ValueError:
+        return None
+
+
+def output_json(call: LlmCall) -> Any:
+    """The JSON object the call produced: the structured output if the CLI gave one, else parsed from the text."""
+    if call.output_format == "claude-json":
+        env = _envelope(call.output) or {}
+        if isinstance(env.get("structured_output"), (dict, list)):
+            return env["structured_output"]
+        return extract_json(str(env.get("result") or ""))
+    return extract_json(call.output)
 
 
 def extract_json(text: str) -> Any:

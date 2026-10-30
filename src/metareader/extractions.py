@@ -60,10 +60,10 @@ def reconcile(pkg: Package, sources: list[str], *, prompt: str | None, instructi
     }
     text = llm.render(prompt if prompt is not None else llm.load_prompt("reconcile"), values, required=("files", "schema"))
     call = llm.run(pkg, "reconcile", text, profile_name=profile, template="custom" if prompt is not None else "default",
-                   instructions=instructions, read_files=True)
+                   instructions=instructions, read_files=True, schema="document-draft")
     # From here on the call succeeded; anything wrong is the output's fault (llm_output_invalid).
     try:
-        raw = llm.extract_json(call.output)
+        raw = llm.output_json(call)
     except ValueError as e:
         raise llm.output_invalid(call, "json", [str(e)])
     try:

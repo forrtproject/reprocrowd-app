@@ -301,10 +301,10 @@ class Curation:
         required = ("document", "schema") + (("inputs", "targets") if self.spec.kind == "actions" else ())
         text = llm.render(prompt if prompt is not None else llm.load_prompt(self.spec.kind), values, required=required)
         call = llm.run(self.pkg, self.spec.kind, text, profile_name=profile, template="custom" if prompt is not None else "default",
-                       instructions=instructions)
+                       instructions=instructions, schema=f"{self.spec.kind[:-1]}-llm-output")
         # The call succeeded; problems from here on are the output's fault.
         try:
-            raw = llm.extract_json(call.output)
+            raw = llm.output_json(call)
         except ValueError as e:
             raise llm.output_invalid(call, "json", [str(e)])
         items = raw.get(self.spec.output_key) if isinstance(raw, dict) else None
