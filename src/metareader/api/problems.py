@@ -66,6 +66,11 @@ CATALOG: dict[str, tuple[int, str]] = {
     "package_invalid": (409, "The package doesn't validate"),
     "report_missing": (409, "Create the report first"),
     "archive_missing": (409, "Create the archive first"),
+    # figure crops
+    "not_a_figure_target": (422, "Crops are made for figure targets"),
+    "no_figure_reference": (422, "The target doesn't reference a figure"),
+    "no_coordinates": (422, "The figure has no usable coordinates"),
+    "pdf_unknown": (409, "Can't tell which PDF the coordinates refer to; name it"),
     # package database
     "database_not_configured": (409, "No package database is configured"),
     "database_unreachable": (502, "The package database could not be reached"),

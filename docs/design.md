@@ -72,6 +72,7 @@ flowchart LR
   jobs/<id>.json, jobs/<id>/  job records; the agent's prompt (stdin.txt), stdout.log, stderr.log
   AGENT_PROMPT.md             instructions for a coding agent (written by the script step)
   .git/                       created by the first job: commits before and after every agent run
+  targets/figures/<id>.png    crops of the original figures (PUT …/figures)
   report.html, comparison.json  the reproduction report (PUT …/report)
   archive/<doi>-reproduction.zip  the package as a ZIP (PUT …/archive; not itself a resource)
 ```
@@ -172,6 +173,7 @@ clients) works without special cases.
 | `DELETE …/jobs/{j}` | | 202, cancels | `job_finished` |
 | `POST …/jobs` | `{type:"run"}` | 202 job; result: results file present, output errors/warnings, commit | `script_missing`, `job_running` |
 | `GET …/comparison` | `?rounding=reported\|N&threshold=P` | per-target status, deviation, table cells; summary | `script_missing`, `results_missing` |
+| `PUT …/figures/{target}` · `PUT …/figures` · `GET …/figures/{target}` | `{pdf?, scale?}` | crop · per-target outcomes · the PNG | `not_a_figure_target`, `no_figure_reference`, `no_coordinates`, `pdf_unknown` |
 | `PUT …/report` · `GET …/report` | `{rounding?, threshold?}` | 201/200 summary · the HTML | `script_missing`, `results_missing`, `job_running`, `report_missing` |
 | `PUT …/archive` · `GET …/archive` | | 201/200 archive info · the ZIP | `package_invalid`, `report_missing`, `archive_missing` |
 | `GET /v1/database` · `GET /v1/database/packages?doi=` | | status · packages for a DOI | `database_not_configured`, `database_unreachable` |
@@ -450,6 +452,24 @@ size and hashes are recorded in the manifest (`metareader.archive`). `GET …/ar
 > `Graph.lineage`), `templates/_report.html.j2`, `schemas/manifest.py` (`ArchiveInfo`), CLI `mr report`,
 > `mr archive`. Checked visually on the scratch package (25 targets, 15 actions).
 
+## Figure crops
+
+`PUT …/figures/{target}` (or `PUT …/figures` for all figure targets) renders the original figure of a figure
+target to `targets/figures/<target>.png` (kind `figure`), which the report shows next to the reproduced one.
+
+- **Which figure**: one the target references (the figure or a caption sentence); otherwise one its
+  description, quote or referenced sentences mention ("Fig 3"); the result says which way it was found.
+  The prompt listing for a scope also includes the figures and tables its text mentions, so the extraction
+  LLM can cite them.
+- **Where**: the figure's boxes from the extraction (GROBID `coords`, Docling `prov`; JATS has none →
+  `no_coordinates`), on the page most of them are on, with a 4 pt margin.
+- **Which PDF**: through provenance (the extraction's full text is the PDF, or was converted from it), or
+  named explicitly (`pdf`) for a TEI added from a local file (`pdf_unknown` otherwise).
+
+> **Implemented in:** `figures.py` (`crop`, `crop_all`), `extractions.mentions`/`float_number`, PDFium
+> (pypdfium2) for rendering; CLI `mr figures`. Tested on a fixture page (exact crop size) and on Head et al.
+> (2015): Figure 3 from the real PDF.
+
 ## Submission to the package database
 
 Optional (`[database] url`), compatible with the AI-Assisted Reproduction Database the plugin used. The
@@ -491,7 +511,6 @@ sequenceDiagram
 
 ## TODO (later phases)
 
-- Figure crops for figure targets (needs PDF coordinates → image rendering).
 - Multipart upload as an alternative to server-local paths. Directory inputs. Pagination for lists, if
   packages grow large.
 - Structured output (`--json-schema`) for profiles whose CLI supports it.

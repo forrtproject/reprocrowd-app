@@ -327,7 +327,7 @@
     },
     "OtherMeta": {
       "additionalProperties": false,
-      "description": "metadata: OpenAlex record · curation: targets/actions · export: files derived for the agent · schema: JSON Schema\ncopies · code: files created by the agent or the user · output: files under outputs/ (written by runs) ·\nreport: report.html and comparison.json.",
+      "description": "metadata: OpenAlex record · curation: targets/actions · export: files derived for the agent · schema: JSON Schema\ncopies · code: files created by the agent or the user · output: files under outputs/ (written by runs) ·\nreport: report.html and comparison.json · figure: crops of the original figures (targets/figures/).",
       "properties": {
         "kind": {
           "enum": [
@@ -337,7 +337,8 @@
             "schema",
             "code",
             "output",
-            "report"
+            "report",
+            "figure"
           ],
           "title": "Kind",
           "type": "string"
@@ -489,6 +490,7 @@
               "curation": "#/$defs/OtherMeta",
               "export": "#/$defs/OtherMeta",
               "extraction": "#/$defs/ExtractionMeta",
+              "figure": "#/$defs/OtherMeta",
               "fulltext": "#/$defs/FulltextMeta",
               "input": "#/$defs/InputMeta",
               "metadata": "#/$defs/OtherMeta",

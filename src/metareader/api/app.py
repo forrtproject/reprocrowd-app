@@ -20,7 +20,7 @@ from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, Str
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from .. import __version__, codegen, curation, database, report, run, extractions, files, fulltexts, inputs, jobs, metadata, scripts
+from .. import __version__, codegen, curation, database, figures, report, run, extractions, files, fulltexts, inputs, jobs, metadata, scripts
 from ..config import settings
 from ..errors import ApiError, not_found
 from ..extractions import Scope
@@ -619,6 +619,37 @@ def get_comparison(pkg: Pkg, rounding: Annotated[str, Query(pattern=r"^(reported
                    threshold: Annotated[float, Query(ge=0)] = 5):
     st = CompareSettings(rounding="reported" if rounding == "reported" else int(rounding), threshold=threshold)
     return run.comparison(pkg, st)
+
+
+# ---------- figure crops ----------
+
+CROP_ERRORS = errors("not_found", "not_a_figure_target", "no_figure_reference", "no_coordinates", "pdf_unknown", "not_convertible")
+
+
+@api.put("/packages/{pkg}/figures/{target}", tags=["report"], response_model=M.CropResult, summary="Crop the original figure of a figure target",
+         description="Renders the figure's area (from the extraction's coordinates) from the PDF to `targets/figures/<target>.png`. "
+                     "The report shows it next to the reproduced figure. 201 the first time, 200 when replacing.",
+         responses={201: {"model": M.CropResult, "description": "created"}, **CROP_ERRORS})
+def put_figure(pkg: Pkg, target: str, response: Response, body: M.CropRequest = Body(default_factory=M.CropRequest)):
+    first = pkg.load().get(f"figure-{target.lower()}") is None
+    out = figures.crop(pkg, target, body.pdf, body.scale)
+    if first:
+        created(response, f"/v1/packages/{pkg.id}/figures/{target}")
+    return out
+
+
+@api.put("/packages/{pkg}/figures", tags=["report"], response_model=list[M.CropOutcome], summary="Crop the figures of all figure targets",
+         description="Like `PUT …/figures/{target}` for every enabled figure target; problems are reported per target.")
+def put_figures(pkg: Pkg, body: M.CropRequest = Body(default_factory=M.CropRequest)):
+    return figures.crop_all(pkg, body.pdf, body.scale)
+
+
+@api.get("/packages/{pkg}/figures/{target}", tags=["report"], response_class=FileResponse, summary="The crop (PNG)", responses=errors("not_found"))
+def get_figure(pkg: Pkg, target: str):
+    r = pkg.load().get(f"figure-{target.lower()}")
+    if r is None:
+        raise not_found("figure crop", target)
+    return FileResponse(pkg.path(r.path), media_type="image/png")
 
 
 # ---------- report and archive ----------

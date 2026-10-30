@@ -301,3 +301,29 @@ class DatabaseStatus(BaseModel):
 
 class SubmissionCreate(Req):
     note: str = Field(default="", max_length=4000, description="shown with the package in the database")
+
+
+# ---------- figure crops ----------
+
+
+class CropRequest(Req):
+    pdf: str | None = Field(default=None, description="PDF full text the coordinates refer to; default: found through provenance")
+    scale: float = Field(default=2.0, gt=0, le=8, description="pixels per point")
+
+
+class CropResult(BaseModel):
+    resource: Resource
+    target: str
+    figure: str = Field(description="extraction and figure id")
+    pdf: str
+    page: int
+    size: list[int] = Field(description="width, height in pixels")
+
+
+class CropOutcome(BaseModel):
+    target: str
+    ok: bool
+    path: str | None = None
+    page: int | None = None
+    error: str | None = None
+    code: str | None = None

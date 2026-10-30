@@ -479,6 +479,14 @@ def compare_cmd(pkg: str, rounding: str = typer.Option("reported", help='"report
         typer.echo(f"results.json: {e}", err=True)
 
 
+@app.command("figures")
+def figures_cmd(pkg: str, target: Optional[str] = typer.Argument(None, help="one figure target; default: all"),
+                pdf: Optional[str] = typer.Option(None, help="PDF full text the coordinates refer to (default: from provenance)"), scale: float = 2.0):
+    """Crop the original figures of figure targets from the PDF (shown in the report)."""
+    body = {"pdf": pdf, "scale": scale}
+    out(call("PUT", f"/packages/{pkg}/figures" + (f"/{target}" if target else ""), body))
+
+
 @app.command("report")
 def report_cmd(pkg: str, rounding: str = typer.Option("reported", help='"reported" or a number of decimals'), threshold: float = 5,
                open_: bool = typer.Option(False, "--open", help="open report.html in the browser")):

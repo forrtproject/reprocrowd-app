@@ -82,9 +82,9 @@ class ScriptMeta(Model):
 class OtherMeta(Model):
     """metadata: OpenAlex record · curation: targets/actions · export: files derived for the agent · schema: JSON Schema
     copies · code: files created by the agent or the user · output: files under outputs/ (written by runs) ·
-    report: report.html and comparison.json."""
+    report: report.html and comparison.json · figure: crops of the original figures (targets/figures/)."""
 
-    kind: Literal["metadata", "curation", "export", "schema", "code", "output", "report"]
+    kind: Literal["metadata", "curation", "export", "schema", "code", "output", "report", "figure"]
     added_at: datetime
 
 

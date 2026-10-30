@@ -3,6 +3,7 @@ reconcile LLM call. Both paths end in build_document() + validation before anyth
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass, field
 
 from pydantic import ValidationError
@@ -115,6 +116,20 @@ def check_scope(doc: Document, scope: Scope) -> None:
         raise invalid("unknown_ids", f"not in the extraction: {', '.join(bad[:20])}", {"ids": bad})
 
 
+_MENTION = {"figure": r"\bFig(?:ure|s?\.)?\s*(\d+)", "table": r"\bTab(?:le|\.)?\s*(\d+)"}
+
+
+def float_number(label: str) -> str | None:
+    """"Fig 3" / "Figure 3." / "Table 2" → "3" / "2"."""
+    m = re.search(r"(\d+)", label)
+    return m.group(1) if m else None
+
+
+def mentions(text: str, kind: str | None) -> list[str]:
+    """Numbers of the figures (or tables) a text mentions."""
+    return re.findall(_MENTION.get(kind or "", r"(?!x)x"), text, re.I)
+
+
 def listing(doc: Document, scope: Scope | None = None, with_tables: bool = True) -> str:
     """Readable text with every referenceable id in brackets."""
     scope = scope or Scope()
@@ -122,8 +137,19 @@ def listing(doc: Document, scope: Scope | None = None, with_tables: bool = True)
     want = set(scope.items)
     whole = scope.empty()
 
-    def shown(item_id: str) -> bool:
+    def in_scope(item_id: str) -> bool:
         return whole or item_id in want or doc.section_of(item_id) in want_sec
+
+    # Figures and tables the in-scope text mentions ("Fig 3", "Table 2") are shown too, wherever they are.
+    mentioned: set[str] = set()
+    if not whole:
+        text = " ".join(s.text for sec in doc.sections for p in sec.paragraphs for s in p.sentences if in_scope(s.id))
+        for f in [*doc.figures, *doc.tables]:
+            if (n := float_number(f.label)) and any(n == m for m in mentions(text, ref_kind(f.id))):
+                mentioned.add(f.id)
+
+    def shown(item_id: str) -> bool:
+        return in_scope(item_id) or item_id.split(".")[0] in mentioned
 
     lines: list[str] = [f"# {doc.title}"] if doc.title else []
     for sec in doc.sections:
