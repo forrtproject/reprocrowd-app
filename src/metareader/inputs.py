@@ -6,13 +6,14 @@ import mimetypes
 import shutil
 import zipfile
 from pathlib import Path
-from typing import Any
+from typing import Any, BinaryIO, Callable
 
 from .config import settings
 from .errors import ApiError, conflict, invalid, not_found
 from .package import Package, slug
 from .schemas.common import now
-from .schemas.manifest import InputMeta, LocalOrigin, Manifest, Resource, Role
+from .schemas.manifest import InputMeta, LocalOrigin, Manifest, Resource, Role, UploadOrigin
+from .uploads import copy_limited, upload_name
 
 DATA_EXT = {"csv", "tsv", "tab", "txt", "dat", "json", "jsonl", "ndjson", "xml", "xlsx", "xls", "ods", "sav", "zsav", "por", "dta",
             "sas7bdat", "xpt", "rds", "rdata", "rda", "feather", "parquet", "arrow", "h5", "hdf5", "nc", "mat", "sqlite", "db",
@@ -39,18 +40,42 @@ def _register(pkg: Package, m: Manifest, rel: str, meta: InputMeta) -> Resource:
     return pkg.put(m, pkg.describe(name, rel, type="file", format=ext or "bin", mediatype=mediatype, meta=meta))
 
 
-def add(pkg: Package, path: str, role: Role | None, note: str, unpack: bool) -> list[Resource]:
+MAX_DIRECTORY_FILES = 5000
+
+
+def _source(path: str) -> Path:
     src = Path(path).expanduser().resolve()
     if not settings().path_allowed(src):
         raise ApiError(403, "path_not_allowed", f"{src} is outside the configured allowed_roots")
+    return src
+
+
+def add(pkg: Package, path: str, role: Role | None, note: str, unpack: bool) -> list[Resource]:
+    """A local file (zip archives unpacked) or a whole directory."""
+    src = _source(path)
+    if src.is_dir():
+        return add_directory(pkg, src, role, note)
     if not src.is_file():
-        raise ApiError(400, "not_a_file", f"{src} is not a readable file (directories: TODO)")
-    origin = LocalOrigin(path=str(src))
+        raise ApiError(400, "not_a_file", f"{src} is not a readable file or directory")
+    return _add_file(pkg, src.name, lambda dest: shutil.copyfile(src, dest), LocalOrigin(path=str(src)), role, note, unpack)
+
+
+def add_upload(pkg: Package, filename: str, data: BinaryIO, role: Role | None, note: str, unpack: bool) -> list[Resource]:
+    """An uploaded file (multipart): same as a local file."""
+    name = upload_name(filename)
+    return _add_file(pkg, name, lambda dest: copy_limited(data, dest), UploadOrigin(filename=name), role, note, unpack)
+
+
+def _add_file(pkg: Package, filename: str, write: Callable[[Path], None], origin, role: Role | None, note: str, unpack: bool) -> list[Resource]:
     with pkg.edit() as m:
-        rel = pkg.free_path(f"inputs/{src.name}")
+        rel = pkg.free_path(f"inputs/{filename}")
         dest = pkg.path(rel)
         dest.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(src, dest)
+        try:
+            write(dest)
+        except BaseException:
+            dest.unlink(missing_ok=True)
+            raise
         is_zip = unpack and zipfile.is_zipfile(dest)
         archive = _register(pkg, m, rel, InputMeta(added_at=now(), role=role or ("other" if is_zip else guess_role(rel)), note=note, origin=origin))
         if not is_zip:
@@ -61,11 +86,36 @@ def add(pkg: Package, path: str, role: Role | None, note: str, unpack: bool) -> 
             pkg.remove(m, archive.name)
             if isinstance(e, ApiError):
                 raise
-            raise invalid("invalid_archive", f"{src.name}: {e}")
+            raise invalid("invalid_archive", f"{filename}: {e}")
         return [archive, *members]
 
 
-def _unpack(pkg: Package, m: Manifest, zpath: Path, rel: str, archive: str, origin: LocalOrigin) -> list[Resource]:
+def add_directory(pkg: Package, src: Path, role: Role | None, note: str) -> list[Resource]:
+    """Every regular file below ``src`` (hidden files and folders and symlinks are skipped; zips stay packed)."""
+    files = []
+    for p in sorted(src.rglob("*")):
+        rel = p.relative_to(src)
+        if any(part.startswith(".") for part in rel.parts) or p.is_symlink() or not p.is_file():
+            continue
+        files.append(rel)
+        if len(files) > MAX_DIRECTORY_FILES:
+            raise invalid("directory_too_large", f"{src} has more than {MAX_DIRECTORY_FILES} files; zip the part you need")
+    if not files:
+        raise invalid("directory_empty", f"{src} contains no regular files")
+    out = []
+    with pkg.edit() as m:
+        base = pkg.free_path(f"inputs/{src.name}")
+        origin = LocalOrigin(path=str(src))
+        for rel in files:
+            member_rel = f"{base}/{rel.as_posix()}"
+            dest = pkg.path(member_rel)
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(src / rel, dest)
+            out.append(_register(pkg, m, member_rel, InputMeta(added_at=now(), role=role or guess_role(member_rel), note=note, origin=origin)))
+    return out
+
+
+def _unpack(pkg: Package, m: Manifest, zpath: Path, rel: str, archive: str, origin) -> list[Resource]:
     base = pkg.free_path(rel.rsplit(".", 1)[0])
     out: list[Resource] = []
     with zipfile.ZipFile(zpath) as z:

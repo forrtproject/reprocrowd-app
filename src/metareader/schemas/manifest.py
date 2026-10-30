@@ -38,6 +38,11 @@ class ConvertedOrigin(Model):
     detail: str = Field(default="", description="e.g. the GROBID URL or the docling command")
 
 
+class UploadOrigin(Model):
+    type: Literal["upload"] = "upload"
+    filename: str = Field(description="file name the client sent (multipart upload)")
+
+
 class CheckResult(Model):
     passed: bool
     checked_at: datetime
@@ -48,7 +53,7 @@ class FulltextMeta(Model):
     kind: Literal["fulltext"] = "fulltext"
     added_at: datetime
     flavor: Flavor
-    origin: Annotated[Union[LocalOrigin, UrlOrigin, ConvertedOrigin], Field(discriminator="type")]
+    origin: Annotated[Union[LocalOrigin, UrlOrigin, ConvertedOrigin, UploadOrigin], Field(discriminator="type")]
     check: CheckResult
 
 
@@ -67,7 +72,7 @@ class InputMeta(Model):
     note: str = ""
     used: bool = Field(default=True, description="false: kept on disk but not part of the reproduction")
     archive: str | None = Field(default=None, description="resource name of the zip archive this file was unpacked from")
-    origin: LocalOrigin
+    origin: Annotated[Union[LocalOrigin, UploadOrigin], Field(discriminator="type")]
 
 
 class ScriptMeta(Model):

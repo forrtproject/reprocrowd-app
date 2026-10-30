@@ -79,6 +79,7 @@ class Settings(BaseModel):
     openalex_api_key: str = ""
     mailto: str = ""
     max_download_mb: int = 200
+    max_upload_mb: int = 500
     llm_default_profile: str = "claude"
     llm_profiles: dict[str, LlmProfile] = Field(default_factory=_default_profiles)
     grobid_url: str = Field(default="", description="GROBID service, e.g. http://localhost:8070; empty = not configured")
@@ -113,8 +114,9 @@ def load_settings(path: Path | None = None) -> Settings:
         data["openalex_api_key"] = openalex["api_key"]
     if "mailto" in openalex:
         data["mailto"] = openalex["mailto"]
-    if "max_download_mb" in raw.get("downloads", {}):
-        data["max_download_mb"] = raw["downloads"]["max_download_mb"]
+    for k in ("max_download_mb", "max_upload_mb"):
+        if k in raw.get("downloads", {}):
+            data[k] = raw["downloads"][k]
     if "default_profile" in llm:
         data["llm_default_profile"] = llm["default_profile"]
     if "profiles" in llm:

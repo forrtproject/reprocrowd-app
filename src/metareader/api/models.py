@@ -145,6 +145,20 @@ class InputCreate(Req):
     unpack: bool = Field(default=True, description="unpack zip archives into inputs/<stem>/")
 
 
+class FulltextUploadForm(Req):
+    """multipart/form-data fields of an upload (the file is the `file` part)."""
+
+    name: str | None = None
+
+
+class InputUploadForm(Req):
+    """multipart/form-data fields of an upload (the file is the `file` part)."""
+
+    role: Role | None = None
+    note: str = ""
+    unpack: bool = True
+
+
 class InputPatch(Req):
     """JSON merge patch (RFC 7396)."""
 

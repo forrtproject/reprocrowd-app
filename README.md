@@ -45,7 +45,8 @@ mr submit phacking                               # upload to the package databas
 mr validate phacking
 ```
 
-`mr --help` lists all commands. `MR_URL` and `MR_TOKEN` point the client at another service.
+`mr --help` lists all commands. `MR_URL` and `MR_TOKEN` point the client at another service; with a service on
+another machine, `mr fulltext add … --upload` and `mr input add … --upload` send the file's content.
 
 ## Development
 

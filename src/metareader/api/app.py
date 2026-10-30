@@ -18,6 +18,9 @@ from fastapi import APIRouter, Body, Depends, FastAPI, Path, Query, Request, Res
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, StreamingResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from pydantic import TypeAdapter, ValidationError
+from starlette.concurrency import run_in_threadpool
+from starlette.datastructures import UploadFile as StarletteUploadFile
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from .. import __version__, codegen, curation, database, figures, report, run, extractions, files, fulltexts, inputs, jobs, metadata, scripts
@@ -161,6 +164,92 @@ def get_pkg(request: Request, pkg: Annotated[str, Path(description="package id")
 Pkg = Annotated[Package, Depends(get_pkg)]
 
 
+# ---------- request bodies: JSON or a multipart upload ----------
+
+EXTRA_SCHEMAS: dict[str, tuple[Any, bool]] = {}  # name → (type, is a multipart form with a file part); merged into components
+
+
+def json_or_multipart(json_name: str, json_type: Any, form_model: type) -> dict[str, Any]:
+    """OpenAPI: the endpoint takes either a JSON body or a multipart form with a `file`."""
+    EXTRA_SCHEMAS[json_name] = (json_type, False)
+    EXTRA_SCHEMAS[form_model.__name__] = (form_model, True)
+    return {"requestBody": {"required": True, "content": {
+        "application/json": {"schema": {"$ref": f"#/components/schemas/{json_name}"}},
+        "multipart/form-data": {"schema": {"$ref": f"#/components/schemas/{form_model.__name__}"}}}}}
+
+
+async def json_or_upload(request: Request, json_type: Any, form_model: type):
+    """(validated JSON body, None) or (None, (upload, validated form fields)); invalid input → request_invalid."""
+    if request.headers.get("content-type", "").startswith("multipart/form-data"):
+        form = await request.form(max_files=1, max_fields=20)
+        upload = form.get("file")
+        if not isinstance(upload, StarletteUploadFile):
+            raise RequestValidationError([{"loc": ("body", "file"), "msg": "a file is required", "type": "missing"}])
+        try:
+            fields = form_model.model_validate({k: v for k, v in form.items() if k != "file"})
+        except ValidationError as e:
+            raise RequestValidationError(e.errors())
+        return None, (upload, fields)
+    try:
+        data = await request.json()
+    except ValueError:
+        raise RequestValidationError([{"loc": ("body",), "msg": "not valid JSON", "type": "json_invalid"}])
+    try:
+        return TypeAdapter(json_type).validate_python(data), None
+    except ValidationError as e:
+        raise RequestValidationError(e.errors())
+
+
+def _openapi() -> dict[str, Any]:
+    if app.openapi_schema:
+        return app.openapi_schema
+    spec = FastAPI.openapi(app)
+    comps = spec.setdefault("components", {}).setdefault("schemas", {})
+    for name, (tp, upload) in EXTRA_SCHEMAS.items():
+        schema = TypeAdapter(tp).json_schema(ref_template="#/components/schemas/{model}")
+        for k, v in schema.pop("$defs", {}).items():
+            comps.setdefault(k, v)
+        if upload:
+            schema["properties"] = {"file": {"type": "string", "format": "binary", "description": "the file"}, **schema.get("properties", {})}
+            schema["required"] = ["file", *schema.get("required", [])]
+        comps[name] = schema
+    return spec
+
+
+app.openapi = _openapi
+
+
+# ---------- pagination (opt-in) ----------
+
+
+class Page:
+    """?limit=&offset= on list endpoints. Bodies stay plain arrays; X-Total-Count and RFC 8288 Link headers
+    (first, prev, next, last) describe the pages. Without limit, the whole list is returned."""
+
+    def __init__(self, request: Request, response: Response,
+                 limit: Annotated[int | None, Query(ge=1, le=1000, description="page size; omit for the whole list")] = None,
+                 offset: Annotated[int, Query(ge=0, description="items to skip")] = 0):
+        self.request, self.response, self.limit, self.offset = request, response, limit, offset
+
+    def __call__(self, items: list) -> list:
+        total = len(items)
+        self.response.headers["X-Total-Count"] = str(total)
+        if self.limit is None:
+            return items[self.offset:]
+        lim, off = self.limit, self.offset
+        url = lambda o: str(self.request.url.include_query_params(limit=lim, offset=o))  # noqa: E731
+        links = {"first": 0, "last": max(0, (total - 1) // lim * lim)}
+        if off + lim < total:
+            links["next"] = off + lim
+        if off > 0:
+            links["prev"] = max(0, off - lim)
+        self.response.headers["Link"] = ", ".join(f'<{url(o)}>; rel="{rel}"' for rel, o in links.items())
+        return items[off:off + lim]
+
+
+Paged = Annotated[Page, Depends()]
+
+
 def created(response: Response, location: str) -> None:
     response.status_code = 201
     response.headers["Location"] = location
@@ -177,8 +266,8 @@ def health():
 
 
 @service.get("/problems", response_model=list[ProblemType], summary="Problem types returned by this API")
-def list_problems():
-    return problem_types()
+def list_problems(page: Paged):
+    return page(problem_types())
 
 
 @service.get("/problems/{code}", response_model=ProblemType, summary="One problem type", responses=errors("not_found"))
@@ -230,14 +319,14 @@ def create_package(body: M.PackageCreate, response: Response):
 
 
 @api.get("/packages", tags=["packages"], response_model=list[M.PackageSummary], summary="List packages")
-def list_packages():
+def list_packages(page: Paged):
     out = []
     for p in Registry().list():
         try:
             out.append(p.summary())
         except ApiError:
             continue  # folder gone; still registered
-    return out
+    return page(out)
 
 
 @api.get("/packages/{pkg}", tags=["packages"], response_model=M.PackageSummary, summary="Get a package", responses=errors("not_found", "package_missing"))
@@ -289,8 +378,8 @@ def put_metadata(pkg: Pkg, body: M.MetadataRequest = Body(default_factory=M.Meta
 
 
 @api.get("/packages/{pkg}/fulltexts", tags=["fulltexts"], response_model=list[Resource], summary="List full texts")
-def list_fulltexts(pkg: Pkg):
-    return pkg.load().by_kind("fulltext")
+def list_fulltexts(pkg: Pkg, page: Paged):
+    return page(pkg.load().by_kind("fulltext"))
 
 
 @api.get("/packages/{pkg}/fulltexts/candidates", tags=["fulltexts"], response_model=M.CandidateList, summary="Download candidates from OpenAlex",
@@ -301,17 +390,24 @@ def candidates(pkg: Pkg):
 
 
 @api.post("/packages/{pkg}/fulltexts", tags=["fulltexts"], status_code=201, response_model=Resource, summary="Add a full text",
-          description="From a local `path`, by downloading a `candidate`, or by converting a PDF full text (`source` + "
-                      "`converter`). The file is accepted only if it passes its format's integrity check.",
+          description="JSON: from a local `path` (on the service's machine), by downloading a `candidate`, or by converting a "
+                      "PDF full text (`source` + `converter`). multipart/form-data: an uploaded `file`. The file is accepted "
+                      "only if it passes its format's integrity check.",
+          openapi_extra=json_or_multipart("FulltextCreate", M.FulltextCreate, M.FulltextUploadForm),
           responses=errors("integrity_check_failed", "duplicate_fulltext", "not_a_file", "path_not_allowed", "metadata_missing", "download_failed",
-                           "not_found", "unknown_converter", "converter_not_configured", "not_convertible", "conversion_failed", "conversion_timeout"))
-def add_fulltext(pkg: Pkg, body: M.FulltextCreate, response: Response):
-    if isinstance(body, M.FulltextFromPath):
-        r = fulltexts.add_local(pkg, body.path, body.name)
+                           "not_found", "unknown_converter", "converter_not_configured", "not_convertible", "conversion_failed", "conversion_timeout",
+                           "invalid_filename", "upload_too_large"))
+async def add_fulltext(pkg: Pkg, request: Request, response: Response):
+    body, form = await json_or_upload(request, M.FulltextCreate, M.FulltextUploadForm)
+    if form is not None:
+        upload, fields = form
+        r = await run_in_threadpool(fulltexts.add_upload, pkg, upload.filename, upload.file, fields.name)
+    elif isinstance(body, M.FulltextFromPath):
+        r = await run_in_threadpool(fulltexts.add_local, pkg, body.path, body.name)
     elif isinstance(body, M.FulltextFromConversion):
-        r = fulltexts.convert(pkg, body.source, body.converter, body.name)
+        r = await run_in_threadpool(fulltexts.convert, pkg, body.source, body.converter, body.name)
     else:
-        r = fulltexts.add_candidate(pkg, body.candidate, body.name)
+        r = await run_in_threadpool(fulltexts.add_candidate, pkg, body.candidate, body.name)
     created(response, f"/v1/packages/{pkg.id}/fulltexts/{r.name}")
     return r
 
@@ -345,8 +441,8 @@ def _make_extraction(pkg: Package, body, name: str | None, replace: bool) -> Res
 
 
 @api.get("/packages/{pkg}/extractions", tags=["extractions"], response_model=list[Resource], summary="List extractions")
-def list_extractions(pkg: Pkg):
-    return pkg.load().by_kind("extraction")
+def list_extractions(pkg: Pkg, page: Paged):
+    return page(pkg.load().by_kind("extraction"))
 
 
 @api.post("/packages/{pkg}/extractions", tags=["extractions"], status_code=201, response_model=Resource, summary="Create an extraction",
@@ -385,15 +481,23 @@ def delete_extraction(pkg: Pkg, name: str):
 
 
 @api.get("/packages/{pkg}/inputs", tags=["inputs"], response_model=list[Resource], summary="List inputs")
-def list_inputs(pkg: Pkg):
-    return pkg.load().by_kind("input")
+def list_inputs(pkg: Pkg, page: Paged):
+    return page(pkg.load().by_kind("input"))
 
 
-@api.post("/packages/{pkg}/inputs", tags=["inputs"], status_code=201, response_model=list[Resource], summary="Add an input file",
-          description="Copies the file into `inputs/`. Zip archives are unpacked; the archive and every member become resources.",
-          responses=errors("not_a_file", "path_not_allowed", "invalid_archive"))
-def add_input(pkg: Pkg, body: M.InputCreate, response: Response):
-    rs = inputs.add(pkg, body.path, body.role, body.note, body.unpack)
+@api.post("/packages/{pkg}/inputs", tags=["inputs"], status_code=201, response_model=list[Resource], summary="Add input files",
+          description="JSON: a local `path` (on the service's machine): a file, or a directory (every regular file in it; hidden "
+                      "files and symlinks skipped). multipart/form-data: an uploaded `file`. Files go into `inputs/`; zip archives "
+                      "are unpacked, the archive and every member become resources.",
+          openapi_extra=json_or_multipart("InputCreate", M.InputCreate, M.InputUploadForm),
+          responses=errors("not_a_file", "path_not_allowed", "invalid_archive", "directory_too_large", "directory_empty", "invalid_filename", "upload_too_large"))
+async def add_input(pkg: Pkg, request: Request, response: Response):
+    body, form = await json_or_upload(request, M.InputCreate, M.InputUploadForm)
+    if form is not None:
+        upload, f = form
+        rs = await run_in_threadpool(inputs.add_upload, pkg, upload.filename, upload.file, f.role, f.note, f.unpack)
+    else:
+        rs = await run_in_threadpool(inputs.add, pkg, body.path, body.role, body.note, body.unpack)
     created(response, f"/v1/packages/{pkg.id}/inputs/{rs[0].name}")
     return rs
 
@@ -428,11 +532,11 @@ def curation_routes(kind: str, fields: type, view: type, patch_model: type) -> N
     @api.get(base, tags=[kind], response_model=list[view] | FileModel, summary=f"List {kind}",
              description=f"`view=effective` (default): manual {kind} and enabled LLM entries with edits applied, with their origin. "
                          f"`view=raw`: the stored {kind}.json (LLM versions, edits, runs).")
-    def list_items(pkg: Pkg, view_: Annotated[Literal["effective", "raw"], Query(alias="view")] = "effective", include_disabled: bool = False):
+    def list_items(pkg: Pkg, page: Paged, view_: Annotated[Literal["effective", "raw"], Query(alias="view")] = "effective", include_disabled: bool = False):
         cur = curation.Curation(pkg, kind)
         if view_ == "raw":
             return cur.load()
-        return [{"item": i, "origin": o} for i, o in cur.effective(include_disabled)]
+        return page([{"item": i, "origin": o} for i, o in cur.effective(include_disabled)])
 
     @api.post(base, tags=[kind], status_code=201, response_model=curation.CURATIONS[kind].item, summary=f"Add a {noun} by hand",
               description="Needs `refs` into an extraction, or `unreferenced: true` with a `note`.",
@@ -443,8 +547,8 @@ def curation_routes(kind: str, fields: type, view: type, patch_model: type) -> N
         return item
 
     @api.get(base + "/runs", tags=[kind], response_model=list[LlmRunModel], summary="List LLM runs")
-    def list_runs(pkg: Pkg):
-        return curation.Curation(pkg, kind).load().llm_runs
+    def list_runs(pkg: Pkg, page: Paged):
+        return page(curation.Curation(pkg, kind).load().llm_runs)
 
     @api.post(base + "/runs", tags=[kind], status_code=201, response_model=LlmRunModel, summary=f"Extract {kind} with an LLM",
               description="Runs the default (or a custom) prompt over the extraction (or a scope of it) with a configured profile. "
@@ -548,8 +652,8 @@ def create_job(pkg: Pkg, body: Annotated[M.JobCreate, Body()], response: Respons
 
 
 @api.get("/packages/{pkg}/jobs", tags=["jobs"], response_model=list[Job], summary="List jobs (oldest first)")
-def list_jobs(pkg: Pkg):
-    return jobs.list_jobs(pkg)
+def list_jobs(pkg: Pkg, page: Paged):
+    return page(jobs.list_jobs(pkg))
 
 
 @api.get("/packages/{pkg}/jobs/{job}", tags=["jobs"], response_model=Job, summary="Get a job", responses=JOB_ERRORS)
@@ -719,8 +823,8 @@ def submit(pkg: Pkg, response: Response, body: M.SubmissionCreate = Body(default
 
 
 @api.get("/packages/{pkg}/submissions", tags=["database"], response_model=list[Submission], summary="Submissions of this package")
-def list_submissions(pkg: Pkg):
-    return pkg.load().metareader.submissions
+def list_submissions(pkg: Pkg, page: Paged):
+    return page(pkg.load().metareader.submissions)
 
 
 @api.get("/packages/{pkg}/submissions/{sub}", tags=["database"], response_model=Submission, summary="A submission, with its status refreshed from the database",
@@ -735,8 +839,8 @@ def get_submission(pkg: Pkg, sub: str):
 @api.get("/packages/{pkg}/files", tags=["packages"], response_model=list[M.FileEntry], summary="Files on disk (most recent first)",
          description="Everything in the package folder except bookkeeping (jobs/, llm-calls/, hidden files), with the resource "
                      "each file belongs to. Useful to watch an agent at work.")
-def list_files(pkg: Pkg):
-    return files.listing(pkg)
+def list_files(pkg: Pkg, page: Paged):
+    return page(files.listing(pkg))
 
 
 @api.post("/packages/{pkg}:sync", tags=["packages"], response_model=M.SyncReport, summary="Register files changed outside the API",

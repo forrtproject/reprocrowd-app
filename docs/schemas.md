@@ -68,7 +68,7 @@ The last ZIP of the package (PUT …/archive).
 | `kind` | `"fulltext"` |  | default `fulltext` |
 | `added_at` | string (date-time) | yes |  |
 | `flavor` | `"pdf"` \| `"tei"` \| `"jats"` \| `"docling"` | yes |  |
-| `origin` | [LocalOrigin](#localorigin) \| [UrlOrigin](#urlorigin) \| [ConvertedOrigin](#convertedorigin) | yes |  |
+| `origin` | [LocalOrigin](#localorigin) \| [UrlOrigin](#urlorigin) \| [ConvertedOrigin](#convertedorigin) \| [UploadOrigin](#uploadorigin) | yes |  |
 | `check` | [CheckResult](#checkresult) | yes |  |
 
 ### Identifier
@@ -90,7 +90,7 @@ A work identifier that OpenAlex can resolve.
 | `note` | string |  | default `` |
 | `used` | boolean |  | false: kept on disk but not part of the reproduction; default `True` |
 | `archive` | string \| null |  | resource name of the zip archive this file was unpacked from |
-| `origin` | [LocalOrigin](#localorigin) | yes |  |
+| `origin` | [LocalOrigin](#localorigin) \| [UploadOrigin](#uploadorigin) | yes |  |
 
 ### LocalOrigin
 
@@ -167,6 +167,13 @@ An upload of the archive to the package database.
 | `archive_sha256` | string | yes |  |
 | `note` | string |  | default `` |
 | `package_url` | string \| null |  | the package's page once confirmed |
+
+### UploadOrigin
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `type` | `"upload"` |  | default `upload` |
+| `filename` | string | yes | file name the client sent (multipart upload) |
 
 ### UrlOrigin
 

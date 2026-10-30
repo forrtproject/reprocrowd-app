@@ -31,12 +31,19 @@ def _main(
     _state["url"], _state["token"] = url.rstrip("/"), token
 
 
-def call(method: str, path: str, body: Any = None, params: dict | None = None, timeout: float | None = 60, raw: bool = False) -> Any:
+def call(method: str, path: str, body: Any = None, params: dict | None = None, timeout: float | None = 60, raw: bool = False,
+         upload: Path | None = None) -> Any:
+    """One request. With ``upload``, the file is sent as multipart/form-data and ``body`` as its form fields."""
     headers = {"Authorization": f"Bearer {_state['token']}"} if _state.get("token") else {}
     if method == "PATCH":
         headers["Content-Type"] = "application/merge-patch+json"
     try:
-        r = httpx.request(method, _state["url"] + path, json=body, params=params, headers=headers, timeout=timeout)
+        if upload is not None:
+            fields = {k: str(v).lower() if isinstance(v, bool) else str(v) for k, v in (body or {}).items() if v is not None}
+            with upload.open("rb") as f:
+                r = httpx.request(method, _state["url"] + path, data=fields, files={"file": (upload.name, f)}, params=params, headers=headers, timeout=timeout)
+        else:
+            r = httpx.request(method, _state["url"] + path, json=body, params=params, headers=headers, timeout=timeout)
     except httpx.HTTPError as e:
         typer.echo(f"cannot reach {_state['url']}: {e} (is `mr serve` running?)", err=True)
         raise typer.Exit(2)
@@ -167,9 +174,13 @@ app.add_typer(ft, name="fulltext")
 
 
 @ft.command("add")
-def fulltext_add(pkg: str, file: str, name: Optional[str] = None):
-    """Add a local PDF / TEI / JATS / Docling JSON file (integrity-checked)."""
-    out(call("POST", f"/packages/{pkg}/fulltexts", {"path": abspath(file), "name": name}))
+def fulltext_add(pkg: str, file: str, name: Optional[str] = None,
+                 upload: bool = typer.Option(False, "--upload", help="send the file's content (for a service on another machine)")):
+    """Add a PDF / TEI / JATS / Docling JSON file (integrity-checked)."""
+    if upload:
+        out(call("POST", f"/packages/{pkg}/fulltexts", {"name": name}, upload=Path(file), timeout=None))
+    else:
+        out(call("POST", f"/packages/{pkg}/fulltexts", {"path": abspath(file), "name": name}))
 
 
 @ft.command("candidates")
@@ -258,8 +269,14 @@ app.add_typer(inp, name="input")
 
 @inp.command("add")
 def input_add(pkg: str, file: str, role: Optional[str] = typer.Option(None, help="data, code or other (default: guessed)"),
-              note: str = "", unpack: bool = typer.Option(True, help="unpack zip archives")):
-    out(call("POST", f"/packages/{pkg}/inputs", {"path": abspath(file), "role": role, "note": note, "unpack": unpack}))
+              note: str = "", unpack: bool = typer.Option(True, help="unpack zip archives"),
+              upload: bool = typer.Option(False, "--upload", help="send the file's content (for a service on another machine)")):
+    """Add an input file, zip archive or directory (directories: not with --upload)."""
+    body = {"role": role, "note": note, "unpack": unpack}
+    if upload:
+        out(call("POST", f"/packages/{pkg}/inputs", body, upload=Path(file), timeout=None))
+    else:
+        out(call("POST", f"/packages/{pkg}/inputs", body | {"path": abspath(file)}))
 
 
 @inp.command("list")

@@ -128,6 +128,8 @@ clients) works without special cases.
 | Concurrency | Package-scoped responses carry an `ETag` (hash of the manifest). Unsafe requests may send `If-Match`; on mismatch the answer is 412 `precondition_failed`. Writes are serialized per package and files are written atomically. |
 | Auth | Bearer token (OpenAPI `HTTPBearer` scheme), enforced when the config sets `token`. `/v1/health` and `/v1/problems` are open. Binds to 127.0.0.1 by default. |
 | Tracing | `X-Request-ID` echoed or generated on every response, also in problem bodies. |
+| Uploads | Endpoints that take a server-local `path` also accept `multipart/form-data` with a `file` part (same URL; both bodies documented). Size limit `max_upload_mb`; file names are reduced to their last component. |
+| Pagination | Opt-in `?limit=&offset=` on list endpoints. Bodies stay arrays; `X-Total-Count` and RFC 8288 `Link` headers (`first`, `prev`, `next`, `last`). Without `limit` the whole list is returned. |
 | Long operations | Jobs: `202 Accepted` + `Location` of a job resource; progress as Server-Sent Events; `DELETE` cancels. LLM extraction calls are synchronous (bounded by the profile's timeout). |
 | Custom methods | Operations that aren't CRUD on a resource use a `:verb` suffix (`POST /packages/{pkg}:sync`). |
 
@@ -157,7 +159,7 @@ clients) works without special cases.
 | | `{method:"reconcile", sources[], prompt?, instructions?, profile?}` | | `llm_output_invalid` (+`stage`, `errors`, `raw_output`), `llm_call_failed`, `llm_timeout`, `unknown_profile` |
 | `GET …/extractions[/{x}]` | `?view=document\|outline` | resources · document JSON or text with ids | |
 | `DELETE …/extractions/{x}` | | 204 | `in_use` |
-| `POST …/inputs` · `GET …/inputs[/{in}]` | `{path, role?, note?, unpack?}` | 201 resources (archive + members) | `invalid_archive`, `not_a_file` |
+| `POST …/inputs` · `GET …/inputs[/{in}]` | `{path, role?, note?, unpack?}` (file, zip or directory) or multipart `file` | 201 resources (archive + members, or the directory's files) | `invalid_archive`, `not_a_file`, `directory_too_large`, `directory_empty`, `upload_too_large` |
 | `PATCH` / `DELETE …/inputs/{in}` | `{role?, note?, used?}` | resource · 204 | `archive_member`, `in_use` |
 | `GET …/targets` | `?view=effective\|raw&include_disabled` | `[{item, origin}]` or `targets.json` | |
 | `POST …/targets` | target fields | 201 target | `request_invalid`, `invalid_reference` |
@@ -509,8 +511,18 @@ sequenceDiagram
 > (`Submission`), `report.write_archive` (`inputs.json`), CLI `mr submit`, `mr submission`. Tested with a mocked
 > database, and end to end against the local simulation (upload, confirmation by a signed-in user, status).
 
+## Uploads, directories, pagination
+
+- **Uploads**: `POST …/fulltexts` and `POST …/inputs` accept either JSON with a server-local `path` or a
+  multipart upload (`file` plus the same fields as form fields), so the service can run on another machine.
+  Origins record which (`{type: upload, filename}`). The CLI sends the file with `--upload`.
+- **Directories**: `POST …/inputs {path: <directory>}` adds every regular file in it, keeping the folder
+  structure under `inputs/<name>/`; hidden files and folders and symlinks are skipped, at most 5000 files.
+- **Pagination**: see the conventions table.
+
+> **Implemented in:** `uploads.py`, `fulltexts.add_upload`, `inputs.add_upload`/`add_directory`,
+> `api/app.py` (`json_or_upload`, `json_or_multipart` + OpenAPI merge, `Page`), CLI `--upload`.
+
 ## TODO (later phases)
 
-- Multipart upload as an alternative to server-local paths. Directory inputs. Pagination for lists, if
-  packages grow large.
 - Structured output (`--json-schema`) for profiles whose CLI supports it.

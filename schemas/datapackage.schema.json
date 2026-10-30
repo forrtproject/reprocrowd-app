@@ -187,6 +187,7 @@
             "mapping": {
               "conversion": "#/$defs/ConvertedOrigin",
               "local": "#/$defs/LocalOrigin",
+              "upload": "#/$defs/UploadOrigin",
               "url": "#/$defs/UrlOrigin"
             },
             "propertyName": "type"
@@ -200,6 +201,9 @@
             },
             {
               "$ref": "#/$defs/ConvertedOrigin"
+            },
+            {
+              "$ref": "#/$defs/UploadOrigin"
             }
           ],
           "title": "Origin"
@@ -293,7 +297,22 @@
           "title": "Archive"
         },
         "origin": {
-          "$ref": "#/$defs/LocalOrigin"
+          "discriminator": {
+            "mapping": {
+              "local": "#/$defs/LocalOrigin",
+              "upload": "#/$defs/UploadOrigin"
+            },
+            "propertyName": "type"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/LocalOrigin"
+            },
+            {
+              "$ref": "#/$defs/UploadOrigin"
+            }
+          ],
+          "title": "Origin"
         }
       },
       "required": [
@@ -665,6 +684,27 @@
         "archive_sha256"
       ],
       "title": "Submission",
+      "type": "object"
+    },
+    "UploadOrigin": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "upload",
+          "default": "upload",
+          "title": "Type",
+          "type": "string"
+        },
+        "filename": {
+          "description": "file name the client sent (multipart upload)",
+          "title": "Filename",
+          "type": "string"
+        }
+      },
+      "required": [
+        "filename"
+      ],
+      "title": "UploadOrigin",
       "type": "object"
     },
     "UrlOrigin": {

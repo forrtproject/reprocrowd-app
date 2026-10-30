@@ -6,6 +6,7 @@ import secrets
 import shutil
 from dataclasses import asdict
 from pathlib import Path
+from typing import BinaryIO
 
 from . import formats, metadata, openalex
 from .config import settings
@@ -13,7 +14,8 @@ from .errors import ApiError, conflict, invalid, not_found
 from .package import Package, sha256_file, slug
 from .schemas.common import now
 from .converters import CONVERTERS
-from .schemas.manifest import CheckResult, ConvertedOrigin, FulltextMeta, LocalOrigin, Resource, UrlOrigin
+from .schemas.manifest import CheckResult, ConvertedOrigin, FulltextMeta, LocalOrigin, Resource, UploadOrigin, UrlOrigin
+from .uploads import copy_limited, upload_name
 
 
 def _stem(filename: str) -> str:
@@ -63,6 +65,18 @@ def add_local(pkg: Package, path: str, name: str | None = None) -> Resource:
     tmp = _incoming(pkg)
     shutil.copyfile(src, tmp)
     return _accept(pkg, tmp, src.name, LocalOrigin(path=str(src)), name)
+
+
+def add_upload(pkg: Package, filename: str, data: BinaryIO, name: str | None = None) -> Resource:
+    """An uploaded file (multipart), checked like a local one."""
+    clean = upload_name(filename)
+    tmp = _incoming(pkg)
+    try:
+        copy_limited(data, tmp)
+    except BaseException:
+        tmp.unlink(missing_ok=True)
+        raise
+    return _accept(pkg, tmp, clean, UploadOrigin(filename=clean), name)
 
 
 def convert(pkg: Package, source: str, converter: str, name: str | None = None) -> Resource:

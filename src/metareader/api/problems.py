@@ -20,6 +20,10 @@ CATALOG: dict[str, tuple[int, str]] = {
     "package_exists": (409, "A package is already registered or present at this path"),
     "folder_not_empty": (409, "The folder exists and is not empty"),
     "package_missing": (410, "The registered package folder no longer exists"),
+    "invalid_filename": (400, "Unusable upload file name"),
+    "upload_too_large": (413, "The upload exceeds the configured size limit"),
+    "directory_too_large": (422, "Too many files in the directory"),
+    "directory_empty": (422, "The directory contains no regular files"),
     # metadata
     "invalid_identifier": (400, "Unrecognized work identifier"),
     "no_identifier": (400, "No identifier given and the package has none"),
