@@ -75,3 +75,34 @@ def test_database_not_configured(client, pkg):
     settings().database_url = ""
     problem(client.post(f"/v1/packages/{pkg}/submissions", json={}), 409, "database_not_configured")
     assert client.get("/v1/database").json()["configured"] is False
+
+
+@respx.mock
+def test_submit_with_database_token(client, pkg):
+    """With the user's database token the upload is published at once; the token is forwarded, never stored."""
+    mock_openalex()
+    P = f"/v1/packages/{pkg}"
+    root = ready(client, pkg)
+    published = {**UPLOAD, "status": "submitted", "package": {"id": "p9", "url": "http://db.test/packages/p9"}}
+    upload = respx.post("http://db.test/api/uploads").mock(return_value=httpx.Response(201, json=published))
+    r = client.post(P + "/submissions", json={"note": "", "database_token": "tok-123"})
+    assert r.status_code == 201, r.text
+    assert r.json()["status"] == "submitted" and r.json()["package_url"] == "http://db.test/packages/p9"
+    assert upload.calls.last.request.headers["authorization"] == "Bearer tok-123"
+    assert "tok-123" not in (root / "datapackage.json").read_text()
+
+    upload.mock(return_value=httpx.Response(401, json={"error": "invalid or expired token"}))
+    problem(client.post(P + "/submissions", json={"database_token": "old"}), 403, "database_token_invalid")
+    upload.mock(return_value=httpx.Response(403, json={"error": "This account is suspended"}))
+    problem(client.post(P + "/submissions", json={"database_token": "tok-123"}), 403, "database_forbidden")
+
+
+def test_file_download(client, pkg):
+    P = f"/v1/packages/{pkg}"
+    root = package_with_targets(client, pkg)
+    (root / "analysis.py").write_text(SCRIPT)
+    r = client.get(P + "/files/analysis.py")
+    assert r.status_code == 200 and r.text == SCRIPT and r.headers["content-type"].startswith("text/plain")
+    assert client.get(P + "/files/targets.json").json()["kind"] == "targets"
+    for bad in ["datapackage.json", "../x", "jobs/x.json", ".git/config", "nope.txt"]:
+        assert client.get(f"{P}/files/{bad}").status_code == 404, bad

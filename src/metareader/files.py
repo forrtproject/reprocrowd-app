@@ -31,6 +31,29 @@ def disk_files(pkg: Package) -> list[Path]:
     return sorted(p for p in pkg.root.rglob("*") if p.is_file() and not _skipped(p.relative_to(pkg.root).as_posix()))
 
 
+def file_path(pkg: Package, rel: str) -> Path | None:
+    """The file at a package-relative path, if it is one that ``listing`` shows (no traversal, no bookkeeping)."""
+    rel = rel.strip("/")
+    if not rel or "\\" in rel or any(part in ("", ".", "..") for part in rel.split("/")) or _skipped(rel):
+        return None
+    p = pkg.root / rel
+    try:
+        p.resolve().relative_to(pkg.root.resolve())
+    except ValueError:
+        return None
+    return p if p.is_file() and not p.is_symlink() else None
+
+
+TEXT_SUFFIXES = {".r", ".py", ".smk", ".md", ".txt", ".log", ".csv", ".tsv", ".json", ".toml", ".yml", ".yaml", ".do", ".sh", ".qmd", ".rmd"}
+
+
+def mediatype(rel: str) -> str:
+    """Code and logs as UTF-8 text (mimetypes guesses e.g. .R as nothing, .py as text/x-python)."""
+    if Path(rel).suffix.lower() in TEXT_SUFFIXES or Path(rel).name in ("Snakefile", "README"):
+        return "application/json" if rel.lower().endswith(".json") else "text/plain; charset=utf-8"
+    return mimetypes.guess_type(rel)[0] or "application/octet-stream"
+
+
 def listing(pkg: Package) -> list[dict[str, Any]]:
     """Every file with its resource (if any), most recently modified first."""
     m = pkg.load()

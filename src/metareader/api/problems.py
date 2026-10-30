@@ -85,6 +85,8 @@ CATALOG: dict[str, tuple[int, str]] = {
     "openalex_record_missing": (409, "No OpenAlex record (with a title) for the DOI"),
     "duplicate_submission": (409, "An identical package was submitted before"),
     "submission_rejected": (422, "The database refused the package"),
+    "database_token_invalid": (403, "The package database didn't accept the database token; sign in to it again"),
+    "database_forbidden": (403, "The package database refused this account (e.g. suspended)"),
     # jobs
     "job_running": (409, "Another job is running in this package"),
     "job_finished": (409, "The job is not running"),

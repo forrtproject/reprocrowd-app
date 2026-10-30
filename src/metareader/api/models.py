@@ -4,7 +4,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Annotated, Any, Literal, Optional, Union
 
-from pydantic import BaseModel, ConfigDict, Field, create_model
+from pydantic import BaseModel, ConfigDict, Field, SecretStr, create_model
 
 from ..schemas.common import Identifier, Model
 from ..schemas.curation import Action, ActionFields, Target, TargetFields
@@ -315,6 +315,9 @@ class DatabaseStatus(BaseModel):
 
 class SubmissionCreate(Req):
     note: str = Field(default="", max_length=4000, description="shown with the package in the database")
+    database_token: SecretStr | None = Field(
+        default=None, description="the user's token for the package database (from its /auth/client sign-in). With it the package is "
+                                  "published at once under that user; without it the user confirms at finish_url. Passed on, never stored")
 
 
 # ---------- figure crops ----------

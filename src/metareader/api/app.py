@@ -812,12 +812,14 @@ def database_packages(doi: Annotated[str, Query(min_length=3)]):
 
 @api.post("/packages/{pkg}/submissions", tags=["database"], status_code=201, response_model=Submission, summary="Submit the archive to the package database",
           description="Uploads the archive with bibliographic metadata looked up in OpenAlex by DOI now. Needs a DOI, a last "
-                      "run that succeeded and an up-to-date archive. The submission then waits for the user to sign in and "
-                      "confirm at `finish_url`; `GET …/submissions/{id}` reports whether that happened.",
+                      "run that succeeded and an up-to-date archive. With `database_token` (the user's token for the database) "
+                      "the package is published at once (`status: submitted`). Without it, the submission waits for the user "
+                      "to sign in and confirm at `finish_url`; `GET …/submissions/{id}` reports whether that happened.",
           responses=errors("database_not_configured", "no_doi", "run_not_succeeded", "archive_missing", "archive_stale", "openalex_record_missing",
-                           "duplicate_submission", "submission_rejected", "database_unreachable", "database_error", "job_running"))
+                           "duplicate_submission", "submission_rejected", "database_token_invalid", "database_forbidden",
+                           "database_unreachable", "database_error", "job_running"))
 def submit(pkg: Pkg, response: Response, body: M.SubmissionCreate = Body(default_factory=M.SubmissionCreate)):
-    sub = database.submit(pkg, body.note)
+    sub = database.submit(pkg, body.note, body.database_token.get_secret_value() if body.database_token else None)
     created(response, f"/v1/packages/{pkg.id}/submissions/{sub.id}")
     return sub
 
@@ -841,6 +843,16 @@ def get_submission(pkg: Pkg, sub: str):
                      "each file belongs to. Useful to watch an agent at work.")
 def list_files(pkg: Pkg, page: Paged):
     return page(files.listing(pkg))
+
+
+@api.get("/packages/{pkg}/files/{path:path}", tags=["packages"], response_class=FileResponse, summary="Download one file of the package",
+         description="Any file `GET …/files` lists (not bookkeeping such as jobs/, llm-calls/ or hidden files), e.g. the master "
+                     "script, `AGENT_PROMPT.md`, the run log or a reproduced figure.", responses=errors("not_found"))
+def get_file(pkg: Pkg, path: str):
+    p = files.file_path(pkg, path)
+    if p is None:
+        raise not_found("file", path)
+    return FileResponse(p, media_type=files.mediatype(path))
 
 
 @api.post("/packages/{pkg}:sync", tags=["packages"], response_model=M.SyncReport, summary="Register files changed outside the API",

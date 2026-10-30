@@ -179,9 +179,9 @@ clients) works without special cases.
 | `PUT …/report` · `GET …/report` | `{rounding?, threshold?}` | 201/200 summary · the HTML | `script_missing`, `results_missing`, `job_running`, `report_missing` |
 | `PUT …/archive` · `GET …/archive` | | 201/200 archive info · the ZIP | `package_invalid`, `report_missing`, `archive_missing` |
 | `GET /v1/database` · `GET /v1/database/packages?doi=` | | status · packages for a DOI | `database_not_configured`, `database_unreachable` |
-| `POST …/submissions` | `{note?}` | 201 submission (`finish_url` to confirm in the browser) | `no_doi`, `run_not_succeeded`, `archive_missing`, `archive_stale`, `duplicate_submission`, `submission_rejected`, … |
+| `POST …/submissions` | `{note?, database_token?}` | 201 submission (`finish_url` to confirm in the browser; published at once with a token) | `no_doi`, `run_not_succeeded`, `archive_missing`, `archive_stale`, `duplicate_submission`, `submission_rejected`, `database_token_invalid`, `database_forbidden`, … |
 | `GET …/submissions[/{id}]` | | submissions · one, status refreshed from the database | |
-| `GET …/files` · `POST …/{pkg}:sync` | | files on disk with their resource · `{added, updated, removed}` | `job_running` |
+| `GET …/files` · `GET …/files/{path}` · `POST …/{pkg}:sync` | | files on disk with their resource · one file's content · `{added, updated, removed}` | `not_found`, `job_running` |
 
 **LLM error classes (reconcile, target/action runs):**
 - `llm_call_failed` (502): the configured command could not start or exited non-zero (stderr included).
@@ -499,6 +499,11 @@ sequenceDiagram
 ```
 
 - Bibliographic metadata comes only from OpenAlex, looked up at submission (as in the plugin).
+- **With the user's database token** (`database_token`, which a client such as the Repro AI Zotero plugin gets
+  from the database's browser sign-in, `/auth/client` with PKCE), the upload carries `Authorization: Bearer`
+  and the database publishes it at once (`status: submitted`, `package_url`). The service forwards the token
+  and never stores it. The database answering 401 becomes 403 `database_token_invalid` (sign in again), a
+  suspended account 403 `database_forbidden`.
 - The archive must be up to date: its `datapackage.json` must list the same resources with the same hashes
   as the package now (`archive_stale` otherwise).
 - Database answers map to problems: 409 `duplicate_submission` (identical contents submitted before, with

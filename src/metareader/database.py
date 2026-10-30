@@ -7,6 +7,9 @@ where the user signs in and confirms. ``status`` polls whether that happened.
 
 Preconditions: a DOI, a run of the master script that succeeded, and an archive that is up to date (its
 datapackage.json lists the same resources as the package now).
+
+A caller may pass the user's own database token (obtained by the client from the database's sign-in); it is
+forwarded with the upload, which the database then publishes at once, and never stored.
 """
 from __future__ import annotations
 
@@ -73,7 +76,7 @@ def _check_archive(pkg: Package) -> None:
         raise conflict("archive_stale", "the package changed since the archive was made; create it again (PUT …/archive)")
 
 
-def submit(pkg: Package, note: str = "") -> Submission:
+def submit(pkg: Package, note: str = "", token: str | None = None) -> Submission:
     url = base()
     jobs.ensure_idle(pkg)
     m = pkg.load()
@@ -110,9 +113,16 @@ def submit(pkg: Package, note: str = "") -> Submission:
     }
     header = base64.b64encode(json.dumps({k: v for k, v in metadata.items() if v is not None}).encode()).decode()
     path = archive_path(pkg)
+    headers = {"Content-Type": "application/zip", "X-Package-Metadata": header}
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
     with path.open("rb") as f:
-        r = _request("POST", f"{url}/api/uploads", content=f, headers={"Content-Type": "application/zip", "X-Package-Metadata": header}, timeout=600)
+        r = _request("POST", f"{url}/api/uploads", content=f, headers=headers, timeout=600)
     body = _json(r)
+    if r.status_code == 401 and token:
+        raise ApiError(403, "database_token_invalid", body.get("error") or "the package database didn't accept the token")
+    if r.status_code == 403:
+        raise ApiError(403, "database_forbidden", body.get("error") or "the package database refused this account")
     if r.status_code == 409:
         raise conflict("duplicate_submission", body.get("error") or "an identical package was submitted before", {"existing": body.get("existing")})
     if r.status_code == 422:
@@ -120,8 +130,9 @@ def submit(pkg: Package, note: str = "") -> Submission:
     if r.status_code != 201:
         raise ApiError(502, "database_error", f"the package database returned HTTP {r.status_code}", {"body": r.text[:500]})
     sub = Submission(id=f"sub-{secrets.token_hex(4)}", database=url, upload_id=body["id"], finish_url=body["finish_url"],
-                     status_url=body["status_url"], expires=body["expires"], status="pending", submitted_at=now(),
-                     archive_sha256=m.metareader.archive.sha256, note=note)
+                     status_url=body["status_url"], expires=body["expires"], status="submitted" if body.get("status") == "submitted" else "pending",
+                     submitted_at=now(), archive_sha256=m.metareader.archive.sha256, note=note,
+                     package_url=(body.get("package") or {}).get("url"))
     with pkg.edit() as m:
         m.metareader.submissions.append(sub)
     return sub
