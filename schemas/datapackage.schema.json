@@ -31,6 +31,39 @@
       "title": "CheckResult",
       "type": "object"
     },
+    "ConvertedOrigin": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "conversion",
+          "default": "conversion",
+          "title": "Type",
+          "type": "string"
+        },
+        "source": {
+          "description": "resource name of the PDF it was converted from",
+          "title": "Source",
+          "type": "string"
+        },
+        "converter": {
+          "description": "converter name (grobid, docling)",
+          "title": "Converter",
+          "type": "string"
+        },
+        "detail": {
+          "default": "",
+          "description": "e.g. the GROBID URL or the docling command",
+          "title": "Detail",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source",
+        "converter"
+      ],
+      "title": "ConvertedOrigin",
+      "type": "object"
+    },
     "ExtractionMeta": {
       "additionalProperties": false,
       "properties": {
@@ -109,6 +142,7 @@
         "origin": {
           "discriminator": {
             "mapping": {
+              "conversion": "#/$defs/ConvertedOrigin",
               "local": "#/$defs/LocalOrigin",
               "url": "#/$defs/UrlOrigin"
             },
@@ -120,6 +154,9 @@
             },
             {
               "$ref": "#/$defs/UrlOrigin"
+            },
+            {
+              "$ref": "#/$defs/ConvertedOrigin"
             }
           ],
           "title": "Origin"

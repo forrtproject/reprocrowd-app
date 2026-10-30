@@ -31,6 +31,13 @@ class UrlOrigin(Model):
     label: str = Field(description='where the candidate came from, e.g. "OpenAlex best OA location"')
 
 
+class ConvertedOrigin(Model):
+    type: Literal["conversion"] = "conversion"
+    source: str = Field(description="resource name of the PDF it was converted from")
+    converter: str = Field(description="converter name (grobid, docling)")
+    detail: str = Field(default="", description="e.g. the GROBID URL or the docling command")
+
+
 class CheckResult(Model):
     passed: bool
     checked_at: datetime
@@ -41,7 +48,7 @@ class FulltextMeta(Model):
     kind: Literal["fulltext"] = "fulltext"
     added_at: datetime
     flavor: Flavor
-    origin: Annotated[Union[LocalOrigin, UrlOrigin], Field(discriminator="type")]
+    origin: Annotated[Union[LocalOrigin, UrlOrigin, ConvertedOrigin], Field(discriminator="type")]
     check: CheckResult
 
 

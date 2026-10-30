@@ -12,7 +12,8 @@ from .config import settings
 from .errors import ApiError, conflict, invalid, not_found
 from .package import Package, sha256_file, slug
 from .schemas.common import now
-from .schemas.manifest import CheckResult, FulltextMeta, LocalOrigin, Resource, UrlOrigin
+from .converters import CONVERTERS
+from .schemas.manifest import CheckResult, ConvertedOrigin, FulltextMeta, LocalOrigin, Resource, UrlOrigin
 
 
 def _stem(filename: str) -> str:
@@ -62,6 +63,27 @@ def add_local(pkg: Package, path: str, name: str | None = None) -> Resource:
     tmp = _incoming(pkg)
     shutil.copyfile(src, tmp)
     return _accept(pkg, tmp, src.name, LocalOrigin(path=str(src)), name)
+
+
+def convert(pkg: Package, source: str, converter: str, name: str | None = None) -> Resource:
+    """Convert a PDF full text with a configured converter; the result is checked like any other full text."""
+    conv = CONVERTERS.get(converter)
+    if conv is None:
+        raise ApiError(400, "unknown_converter", f"no converter {converter!r}; available: {', '.join(CONVERTERS)}")
+    if not conv.configured():
+        raise conflict("converter_not_configured", f"{converter} is not configured in the service ([converters.{converter}])")
+    src = get(pkg, source)
+    if src.metareader.flavor != "pdf":
+        raise invalid("not_convertible", f"{source} is {src.metareader.flavor}; converters take PDFs")
+    tmp = _incoming(pkg)
+    try:
+        conv.run(pkg.path(src.path), tmp)
+    except BaseException:
+        tmp.unlink(missing_ok=True)
+        raise
+    tag = "" if converter in conv.output else f".{converter}"  # x.grobid.tei.xml, but x.docling.json
+    filename = f"{_stem(src.path)}{tag}{conv.output}"
+    return _accept(pkg, tmp, filename, ConvertedOrigin(source=src.name, converter=converter, detail=conv.detail()), name)
 
 
 def list_candidates(pkg: Package) -> dict:

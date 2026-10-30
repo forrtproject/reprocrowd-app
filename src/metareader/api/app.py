@@ -195,6 +195,13 @@ def llm_profiles():
             for n, p in cfg.llm_profiles.items()]
 
 
+@api.get("/converters", tags=["service"], response_model=list[M.ConverterView], summary="PDF converters and whether they are configured")
+def list_converters():
+    from ..converters import CONVERTERS
+
+    return [M.ConverterView(name=c.name, configured=c.configured(), output=c.output, detail=c.detail()) for c in CONVERTERS.values()]
+
+
 @api.get("/templates", tags=["service"], response_model=list[M.TemplateView], summary="Master-script templates")
 def list_templates():
     return [M.TemplateView(id=t.id, label=t.label, language=t.language, command=t.command, master=t.master) for t in scripts.templates().values()]
@@ -290,12 +297,15 @@ def candidates(pkg: Pkg):
 
 
 @api.post("/packages/{pkg}/fulltexts", tags=["fulltexts"], status_code=201, response_model=Resource, summary="Add a full text",
-          description="From a local `path`, or by downloading a `candidate`. The file is accepted only if it passes its "
-                      "format's integrity check.",
-          responses=errors("integrity_check_failed", "duplicate_fulltext", "not_a_file", "path_not_allowed", "metadata_missing", "download_failed", "not_found"))
+          description="From a local `path`, by downloading a `candidate`, or by converting a PDF full text (`source` + "
+                      "`converter`). The file is accepted only if it passes its format's integrity check.",
+          responses=errors("integrity_check_failed", "duplicate_fulltext", "not_a_file", "path_not_allowed", "metadata_missing", "download_failed",
+                           "not_found", "unknown_converter", "converter_not_configured", "not_convertible", "conversion_failed", "conversion_timeout"))
 def add_fulltext(pkg: Pkg, body: M.FulltextCreate, response: Response):
     if isinstance(body, M.FulltextFromPath):
         r = fulltexts.add_local(pkg, body.path, body.name)
+    elif isinstance(body, M.FulltextFromConversion):
+        r = fulltexts.convert(pkg, body.source, body.converter, body.name)
     else:
         r = fulltexts.add_candidate(pkg, body.candidate, body.name)
     created(response, f"/v1/packages/{pkg.id}/fulltexts/{r.name}")

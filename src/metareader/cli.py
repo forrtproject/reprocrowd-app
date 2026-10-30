@@ -183,6 +183,18 @@ def fulltext_fetch(pkg: str, candidate: str, name: Optional[str] = None):
     out(call("POST", f"/packages/{pkg}/fulltexts", {"candidate": candidate, "name": name}, timeout=600))
 
 
+@ft.command("convert")
+def fulltext_convert(pkg: str, source: str, converter: str = typer.Option(..., help="grobid (→ TEI) or docling (→ Docling JSON)"), name: Optional[str] = None):
+    """Convert a PDF full text with a converter configured in the service."""
+    out(call("POST", f"/packages/{pkg}/fulltexts", {"source": source, "converter": converter, "name": name}, timeout=None))
+
+
+@app.command()
+def converters():
+    """PDF converters and whether the service has them configured."""
+    out(call("GET", "/converters"))
+
+
 @ft.command("list")
 def fulltext_list(pkg: str):
     out(call("GET", f"/packages/{pkg}/fulltexts"))

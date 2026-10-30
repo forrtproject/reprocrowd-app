@@ -81,6 +81,11 @@ class Settings(BaseModel):
     max_download_mb: int = 200
     llm_default_profile: str = "claude"
     llm_profiles: dict[str, LlmProfile] = Field(default_factory=_default_profiles)
+    grobid_url: str = Field(default="", description="GROBID service, e.g. http://localhost:8070; empty = not configured")
+    grobid_timeout_s: int = 600
+    docling_argv: list[str] = Field(default_factory=lambda: ["docling", "--to", "json", "--output", "{outdir}", "{input}"],
+                                    description="{input}: the PDF, {outdir}: folder for the JSON; empty = not configured")
+    docling_timeout_s: int = 1800
     agent_default_profile: str = "claude"
     agent_profiles: dict[str, AgentProfile] = Field(default_factory=_default_agents)
 
@@ -112,6 +117,10 @@ def load_settings(path: Path | None = None) -> Settings:
         data["llm_default_profile"] = llm["default_profile"]
     if "profiles" in llm:
         data["llm_profiles"] = llm["profiles"]
+    conv = raw.get("converters", {})
+    for name in ("grobid", "docling"):
+        for k, v in conv.get(name, {}).items():
+            data[f"{name}_{k}"] = v
     agent = raw.get("agent", {})
     if "default_profile" in agent:
         data["agent_default_profile"] = agent["default_profile"]

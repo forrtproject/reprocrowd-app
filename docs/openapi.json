@@ -158,6 +158,58 @@
         ]
       }
     },
+    "/v1/converters": {
+      "get": {
+        "tags": [
+          "service"
+        ],
+        "summary": "PDF converters and whether they are configured",
+        "operationId": "list_converters_v1_converters_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ConverterView"
+                  },
+                  "type": "array",
+                  "title": "Response List Converters V1 Converters Get"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthorized`: Missing or wrong bearer token",
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "`request_invalid`: The request body or parameters don't match the API schema",
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/v1/templates": {
       "get": {
         "tags": [
@@ -1002,7 +1054,7 @@
           "fulltexts"
         ],
         "summary": "Add a full text",
-        "description": "From a local `path`, or by downloading a `candidate`. The file is accepted only if it passes its format's integrity check.",
+        "description": "From a local `path`, by downloading a `candidate`, or by converting a PDF full text (`source` + `converter`). The file is accepted only if it passes its format's integrity check.",
         "operationId": "add_fulltext_v1_packages__pkg__fulltexts_post",
         "security": [
           {
@@ -1033,6 +1085,9 @@
                   },
                   {
                     "$ref": "#/components/schemas/FulltextFromCandidate"
+                  },
+                  {
+                    "$ref": "#/components/schemas/FulltextFromConversion"
                   }
                 ],
                 "title": "Body"
@@ -1071,7 +1126,7 @@
                 }
               }
             },
-            "description": "`integrity_check_failed`: The file failed its format's integrity check"
+            "description": "`integrity_check_failed`: The file failed its format's integrity check; `not_convertible`: Converters take PDF full texts"
           },
           "409": {
             "content": {
@@ -1082,7 +1137,7 @@
                 }
               }
             },
-            "description": "`duplicate_fulltext`: An identical full text is already in the package; `metadata_missing`: Retrieve the OpenAlex metadata first"
+            "description": "`duplicate_fulltext`: An identical full text is already in the package; `metadata_missing`: Retrieve the OpenAlex metadata first; `converter_not_configured`: The converter is not configured in the service"
           },
           "400": {
             "content": {
@@ -1093,7 +1148,7 @@
                 }
               }
             },
-            "description": "`not_a_file`: The path is not a readable file"
+            "description": "`not_a_file`: The path is not a readable file; `unknown_converter`: No such converter"
           },
           "403": {
             "content": {
@@ -1115,7 +1170,7 @@
                 }
               }
             },
-            "description": "`download_failed`: The candidate could not be downloaded"
+            "description": "`download_failed`: The candidate could not be downloaded; `conversion_failed`: The converter failed"
           },
           "404": {
             "content": {
@@ -1127,6 +1182,17 @@
               }
             },
             "description": "`not_found`: No such resource"
+          },
+          "504": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "`conversion_timeout`: The converter exceeded its timeout"
           }
         }
       }
@@ -5662,6 +5728,67 @@
         ],
         "title": "CodegenResult"
       },
+      "ConvertedOrigin": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "conversion",
+            "title": "Type",
+            "default": "conversion"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source",
+            "description": "resource name of the PDF it was converted from"
+          },
+          "converter": {
+            "type": "string",
+            "title": "Converter",
+            "description": "converter name (grobid, docling)"
+          },
+          "detail": {
+            "type": "string",
+            "title": "Detail",
+            "description": "e.g. the GROBID URL or the docling command",
+            "default": ""
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "source",
+          "converter"
+        ],
+        "title": "ConvertedOrigin"
+      },
+      "ConverterView": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "configured": {
+            "type": "boolean",
+            "title": "Configured"
+          },
+          "output": {
+            "type": "string",
+            "title": "Output"
+          },
+          "detail": {
+            "type": "string",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "configured",
+          "output",
+          "detail"
+        ],
+        "title": "ConverterView"
+      },
       "Document": {
         "properties": {
           "schema_version": {
@@ -6044,6 +6171,38 @@
         ],
         "title": "FulltextFromCandidate"
       },
+      "FulltextFromConversion": {
+        "properties": {
+          "source": {
+            "type": "string",
+            "title": "Source",
+            "description": "PDF full text to convert"
+          },
+          "converter": {
+            "type": "string",
+            "title": "Converter",
+            "description": "converter name from GET /converters (grobid → TEI, docling → Docling JSON)"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "source",
+          "converter"
+        ],
+        "title": "FulltextFromConversion"
+      },
       "FulltextFromPath": {
         "properties": {
           "path": {
@@ -6101,12 +6260,16 @@
               },
               {
                 "$ref": "#/components/schemas/UrlOrigin"
+              },
+              {
+                "$ref": "#/components/schemas/ConvertedOrigin"
               }
             ],
             "title": "Origin",
             "discriminator": {
               "propertyName": "type",
               "mapping": {
+                "conversion": "#/components/schemas/ConvertedOrigin",
                 "local": "#/components/schemas/LocalOrigin",
                 "url": "#/components/schemas/UrlOrigin"
               }

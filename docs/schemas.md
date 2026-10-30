@@ -29,6 +29,15 @@ datapackage.json
 | `checked_at` | string (date-time) | yes |  |
 | `notes` | list of string |  | non-fatal observations (e.g. page count) |
 
+### ConvertedOrigin
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `type` | `"conversion"` |  | default `conversion` |
+| `source` | string | yes | resource name of the PDF it was converted from |
+| `converter` | string | yes | converter name (grobid, docling) |
+| `detail` | string |  | e.g. the GROBID URL or the docling command; default `` |
+
 ### ExtractionMeta
 
 | Field | Type | Req. | Description |
@@ -46,7 +55,7 @@ datapackage.json
 | `kind` | `"fulltext"` |  | default `fulltext` |
 | `added_at` | string (date-time) | yes |  |
 | `flavor` | `"pdf"` \| `"tei"` \| `"jats"` \| `"docling"` | yes |  |
-| `origin` | [LocalOrigin](#localorigin) \| [UrlOrigin](#urlorigin) | yes |  |
+| `origin` | [LocalOrigin](#localorigin) \| [UrlOrigin](#urlorigin) \| [ConvertedOrigin](#convertedorigin) | yes |  |
 | `check` | [CheckResult](#checkresult) | yes |  |
 
 ### Identifier

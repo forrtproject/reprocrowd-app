@@ -24,6 +24,7 @@ mr package create ~/papers/phacking --id 10.1371/journal.pbio.1002106 --fetch
 mr fulltext add phacking ~/Downloads/paper.pdf
 mr fulltext candidates phacking                  # URLs found through OpenAlex / Europe PMC
 mr fulltext fetch phacking c-6226b070            # download one (integrity-checked)
+mr fulltext convert phacking ft-paper-pdf --converter grobid   # PDF → TEI (or docling → Docling JSON)
 mr extract parse phacking ft-europepmc-jats      # → ex-europepmc-jats (common document schema)
 mr extract show phacking ex-europepmc-jats --outline
 mr extract reconcile phacking ft-europepmc-jats ft-paper-pdf --profile claude

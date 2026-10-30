@@ -87,7 +87,20 @@ class FulltextFromCandidate(Req):
     name: str | None = None
 
 
-FulltextCreate = Union[FulltextFromPath, FulltextFromCandidate]
+class FulltextFromConversion(Req):
+    source: str = Field(description="PDF full text to convert")
+    converter: str = Field(description="converter name from GET /converters (grobid → TEI, docling → Docling JSON)")
+    name: str | None = None
+
+
+FulltextCreate = Union[FulltextFromPath, FulltextFromCandidate, FulltextFromConversion]
+
+
+class ConverterView(BaseModel):
+    name: str
+    configured: bool
+    output: str
+    detail: str
 
 
 class CandidateView(BaseModel):

@@ -147,6 +147,8 @@ clients) works without special cases.
 | `GET …/fulltexts` · `GET …/fulltexts/{ft}[/content]` | | resources · the file | |
 | `GET …/fulltexts/candidates` | | `{candidates[], notes[]}` | `metadata_missing` |
 | `POST …/fulltexts` | `{path}` or `{candidate}`, `name?` | 201 resource | `integrity_check_failed` (+`problems`), `duplicate_fulltext`, `download_failed` |
+| `POST …/fulltexts` | `{source, converter}` (PDF → TEI via GROBID, → Docling JSON via docling) | 201 resource, origin `conversion` | `unknown_converter`, `converter_not_configured`, `not_convertible`, `conversion_failed`, `conversion_timeout` |
+| `GET /v1/converters` | | converters and whether they are configured | |
 | `DELETE …/fulltexts/{ft}` | | 204 | `in_use` |
 | `POST …/extractions` · `PUT …/extractions/{x}` | `{method:"parse", fulltext}` | 201 / 200 resource | `not_parseable`, `parse_failed`, `extraction_exists` |
 | | `{method:"reconcile", sources[], prompt?, instructions?, profile?}` | | `llm_output_invalid` (+`stage`, `errors`, `raw_output`), `llm_call_failed`, `llm_timeout`, `unknown_profile` |
@@ -213,6 +215,16 @@ is parsed without DTDs, entities or network access.
 | tei | XML root `TEI` / `teiCorpus` | well-formed, has body or abstract | `XmlMapping` (uses GROBID `<s>` and `coords` when present) |
 | jats | XML root `article` | well-formed, has body or abstract | `XmlMapping` (floats inside paragraphs are lifted out) |
 | docling | JSON `schema_name: DoclingDocument` | valid JSON with `body`, non-empty `texts` | label table |
+
+**Converters** turn a PDF full text into TEI (GROBID service: sentence segmentation and coordinates
+requested) or Docling JSON (docling command). They are configured in the service (`[converters.grobid] url`,
+`[converters.docling] argv` with `{input}`/`{outdir}`); the output goes through the same integrity check and
+records its origin (`{type: conversion, source: <pdf resource>, converter}`), which links coordinates in
+the TEI/Docling back to the PDF they refer to.
+
+> **Implemented in:** `converters.py` (registry, GROBID client, docling runner), `fulltexts.convert`.
+> Tested with a mocked GROBID and a fake docling, and with the real local GROBID and docling on Head et
+> al. (2015): 20 s each.
 
 > **Implemented in:** `schemas/document.py` (Document, DocumentDraft), `formats/builder.py` (id scheme),
 > `formats/base.py` (Format interface), `formats/__init__.py` (registry, detection), `formats/xmlmap.py`
@@ -372,7 +384,6 @@ sequenceDiagram
 
 ## TODO (later phases)
 
-- GROBID and docling conversion of PDFs as service calls (configured like the LLM profiles).
 - Run the master script (job), validate `outputs/results.json` (`results-output` schema exists), compare
   with targets (rounding, tolerance).
 - Report (HTML) and ZIP. Submission to the package database.
