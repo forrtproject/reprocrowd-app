@@ -20,7 +20,7 @@ from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, Str
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from .. import __version__, codegen, curation, run, extractions, files, fulltexts, inputs, jobs, metadata, scripts
+from .. import __version__, codegen, curation, report, run, extractions, files, fulltexts, inputs, jobs, metadata, scripts
 from ..config import settings
 from ..errors import ApiError, not_found
 from ..extractions import Scope
@@ -30,7 +30,7 @@ from ..events import EventReader, read_events
 from ..schemas.document import Document
 from ..schemas.comparison import Comparison, CompareSettings
 from ..schemas.jobs import Job, JobEvent
-from ..schemas.manifest import Resource
+from ..schemas.manifest import ArchiveInfo, Resource
 from ..validation import ValidationReport, validate_package
 from . import models as M
 from .problems import CATALOG, STATUS_CODES, Problem, ProblemType, problem_types
@@ -49,6 +49,7 @@ TAGS = [
     {"name": "script", "description": "Master-script templates rendered from targets and actions."},
     {"name": "jobs", "description": "Long-running work (coding agent, pipeline run) followed asynchronously, with live progress events."},
     {"name": "comparison", "description": "Reproduced results compared with the targets."},
+    {"name": "report", "description": "The reproduction report and the ZIP of the package."},
 ]
 
 app = FastAPI(
@@ -616,6 +617,46 @@ def get_comparison(pkg: Pkg, rounding: Annotated[str, Query(pattern=r"^(reported
                    threshold: Annotated[float, Query(ge=0)] = 5):
     st = CompareSettings(rounding="reported" if rounding == "reported" else int(rounding), threshold=threshold)
     return run.comparison(pkg, st)
+
+
+# ---------- report and archive ----------
+
+
+@api.put("/packages/{pkg}/report", tags=["report"], response_model=M.ReportResult, summary="Create or replace the report",
+         description="Writes `report.html` (results comparison, provenance diagram, sources and LLM provenance, inputs, plan, "
+                     "every file with its hash) and `comparison.json`. 201 the first time, 200 when replacing.",
+         responses={201: {"model": M.ReportResult, "description": "created"}, **errors("script_missing", "results_missing", "job_running")})
+def put_report(pkg: Pkg, body: M.ReportRequest, response: Response):
+    first = pkg.load().get("report") is None
+    out = report.write_report(pkg, CompareSettings(rounding=body.rounding, threshold=body.threshold))
+    if first:
+        created(response, f"/v1/packages/{pkg.id}/report")
+    return out
+
+
+@api.get("/packages/{pkg}/report", tags=["report"], response_class=FileResponse, summary="The report (HTML)", responses=errors("report_missing"))
+def get_report(pkg: Pkg):
+    if not pkg.load().get("report"):
+        raise ApiError(409, "report_missing", "create the report first (PUT …/report)")
+    return FileResponse(pkg.path(report.REPORT), media_type="text/html")
+
+
+@api.put("/packages/{pkg}/archive", tags=["report"], response_model=ArchiveInfo, summary="Create or replace the ZIP of the package",
+         description="Zips `datapackage.json` and every resource it lists (a Frictionless zipped data package) into "
+                     "`archive/`. Only for a package that validates and has a report; the archive's hash is recorded in the manifest.",
+         responses={201: {"model": ArchiveInfo, "description": "created"}, **errors("package_invalid", "report_missing", "job_running")})
+def put_archive(pkg: Pkg, response: Response):
+    first = pkg.load().metareader.archive is None
+    info = report.write_archive(pkg)
+    if first:
+        created(response, f"/v1/packages/{pkg.id}/archive")
+    return info
+
+
+@api.get("/packages/{pkg}/archive", tags=["report"], response_class=FileResponse, summary="Download the ZIP", responses=errors("archive_missing"))
+def get_archive(pkg: Pkg):
+    path = report.archive_path(pkg)
+    return FileResponse(path, media_type="application/zip", filename=path.name)
 
 
 # ---------- files ----------

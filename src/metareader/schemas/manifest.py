@@ -81,9 +81,10 @@ class ScriptMeta(Model):
 
 class OtherMeta(Model):
     """metadata: OpenAlex record · curation: targets/actions · export: files derived for the agent · schema: JSON Schema
-    copies · code: files created by the agent or the user · output: files under outputs/ (written by runs)."""
+    copies · code: files created by the agent or the user · output: files under outputs/ (written by runs) ·
+    report: report.html and comparison.json."""
 
-    kind: Literal["metadata", "curation", "export", "schema", "code", "output"]
+    kind: Literal["metadata", "curation", "export", "schema", "code", "output", "report"]
     added_at: datetime
 
 
@@ -106,12 +107,24 @@ class Resource(Model):
     metareader: ResourceMeta
 
 
+class ArchiveInfo(Model):
+    """The last ZIP of the package (PUT …/archive)."""
+
+    path: str = Field(description="package-relative, under archive/ (not itself a resource)")
+    bytes: int
+    sha256: str
+    created_at: datetime
+    manifest_sha256: str = Field(description="hash of the datapackage.json inside the archive")
+    files: int
+
+
 class PackageMeta(Model):
     version: Literal["1.0"] = "1.0"
     created_at: datetime
     identifier: Identifier | None = Field(default=None, description="identifier the package was created for")
     identifiers: dict[str, str] = Field(default_factory=dict, description="all identifiers known from OpenAlex (doi, openalex, pmid, pmcid)")
     metadata_fetched_at: datetime | None = None
+    archive: ArchiveInfo | None = None
 
 
 class Manifest(Model):

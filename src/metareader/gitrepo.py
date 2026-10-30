@@ -7,7 +7,7 @@ import subprocess
 
 from .package import Package
 
-GITIGNORE = "jobs/\n.snakemake/\n_targets/\n__pycache__/\n.Rhistory\n.Rproj.user/\noutputs/.steps/\n"
+GITIGNORE = "jobs/\narchive/\n.snakemake/\n_targets/\n__pycache__/\n.Rhistory\n.Rproj.user/\noutputs/.steps/\n"
 
 
 def available() -> bool:

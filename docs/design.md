@@ -72,6 +72,8 @@ flowchart LR
   jobs/<id>.json, jobs/<id>/  job records; the agent's prompt (stdin.txt), stdout.log, stderr.log
   AGENT_PROMPT.md             instructions for a coding agent (written by the script step)
   .git/                       created by the first job: commits before and after every agent run
+  report.html, comparison.json  the reproduction report (PUT …/report)
+  archive/<doi>-reproduction.zip  the package as a ZIP (PUT …/archive; not itself a resource)
 ```
 
 > **Implemented in:** `package.py` (`init_package` writes the minimal package; `Package.edit()` is the only way
@@ -170,6 +172,8 @@ clients) works without special cases.
 | `DELETE …/jobs/{j}` | | 202, cancels | `job_finished` |
 | `POST …/jobs` | `{type:"run"}` | 202 job; result: results file present, output errors/warnings, commit | `script_missing`, `job_running` |
 | `GET …/comparison` | `?rounding=reported\|N&threshold=P` | per-target status, deviation, table cells; summary | `script_missing`, `results_missing` |
+| `PUT …/report` · `GET …/report` | `{rounding?, threshold?}` | 201/200 summary · the HTML | `script_missing`, `results_missing`, `job_running`, `report_missing` |
+| `PUT …/archive` · `GET …/archive` | | 201/200 archive info · the ZIP | `package_invalid`, `report_missing`, `archive_missing` |
 | `GET …/files` · `POST …/{pkg}:sync` | | files on disk with their resource · `{added, updated, removed}` | `job_running` |
 
 **LLM error classes (reconcile, target/action runs):**
@@ -405,9 +409,46 @@ MetaReader's own virtualenv, so `python3`/`Rscript` are the user's.
 > `schemas/comparison.py` (schema `comparison`), `jobs.job_env`, CLI `mr run`, `mr compare`.
 > Tested on fixtures and on the agent-written analysis of the scratch package (real run, 25 targets).
 
+## Report, provenance and archive
+
+`PUT …/report {rounding, threshold}` writes `report.html` and `comparison.json` (schema `comparison`). The report
+(template `templates/_report.html.j2`, autoescaped) has the summary, the comparison table (tables cell by
+cell, original and reproduced figures side by side), the provenance diagram, sources with their origin, the
+LLM extractions with profile/model/effort, inputs with hashes, the plan, and every file with its SHA-256.
+Images are linked by package-relative path.
+
+**Provenance** is one graph (edges from what was used to what used it), used twice:
+
+```mermaid
+flowchart TD
+  P["sources: paper identifier · data inputs"] --> F["full texts of the paper"] --> C["converted full texts"]
+  F --> X["extractions"]
+  C --> X
+  X --> Q["passages: referenced sentences, figures, tables"]
+  Q -.-> S["steps, one layer per dependency depth"]
+  P --> S
+  S --> T["targets (final nodes, coloured by status)"]
+  Q -.-> T
+```
+
+- **Diagram**: top-down, fixed width (layers wrap into rows; no sideways scrolling), nodes ordered by their
+  parents' positions; nodes that lead to no target are left out. Clicking a node highlights its whole lineage
+  (ancestors and descendants) and dims the rest.
+- **Per-target trace**: each row of the comparison table has a "Provenance" section listing the target's
+  ancestors: the passages with their text, the steps in order, the data files, extractions, full texts and
+  the paper's identifier, readable without JavaScript and in print.
+
+`PUT …/archive` zips `datapackage.json` and every resource it lists into `archive/` (a Frictionless zipped data
+package; extracted, it validates on its own). It needs a package that validates and a report; the archive's
+size and hashes are recorded in the manifest (`metareader.archive`). `GET …/archive` downloads it.
+
+> **Implemented in:** `report.py` (`write_report`, `write_archive`), `provenance.py` (`build`, `trace`, `svg`,
+> `Graph.lineage`), `templates/_report.html.j2`, `schemas/manifest.py` (`ArchiveInfo`), CLI `mr report`,
+> `mr archive`. Checked visually on the scratch package (25 targets, 15 actions).
+
 ## TODO (later phases)
 
-- Report (HTML) and ZIP. Submission to the package database.
+- Submission to the package database.
 - Figure crops for figure targets (needs PDF coordinates → image rendering).
 - Multipart upload as an alternative to server-local paths. Directory inputs. Pagination for lists, if
   packages grow large.

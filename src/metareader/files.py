@@ -18,7 +18,7 @@ from .schemas.manifest import Manifest, OtherMeta
 
 REFRESHABLE = {"script", "code", "output"}
 # Top-level folders that are bookkeeping, and folder names that are tool caches.
-SKIP_TOP = {"jobs", "llm-calls"}
+SKIP_TOP = {"jobs", "llm-calls", "archive"}
 SKIP_ANY = {"__pycache__", "_targets", "node_modules"}
 
 

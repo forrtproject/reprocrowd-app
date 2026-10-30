@@ -38,6 +38,8 @@ mr codegen phacking                              # coding agent implements the T
 mr script status phacking                        # markers left
 mr run phacking                                  # run the master script (live log), check outputs/results.json
 mr compare phacking                              # reproduced vs. expected, per target
+mr report phacking --open                        # report.html with the provenance of every target
+mr archive phacking --download phacking.zip      # the package as a ZIP (must validate)
 mr validate phacking
 ```
 

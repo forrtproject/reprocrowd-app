@@ -21,6 +21,19 @@ datapackage.json
 | `resources` | list of [Resource](#resource) |  |  |
 | `metareader` | [PackageMeta](#packagemeta) | yes |  |
 
+### ArchiveInfo
+
+The last ZIP of the package (PUT …/archive).
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `path` | string | yes | package-relative, under archive/ (not itself a resource) |
+| `bytes` | integer | yes |  |
+| `sha256` | string | yes |  |
+| `created_at` | string (date-time) | yes |  |
+| `manifest_sha256` | string | yes | hash of the datapackage.json inside the archive |
+| `files` | integer | yes |  |
+
 ### CheckResult
 
 | Field | Type | Req. | Description |
@@ -89,11 +102,12 @@ A work identifier that OpenAlex can resolve.
 ### OtherMeta
 
 metadata: OpenAlex record · curation: targets/actions · export: files derived for the agent · schema: JSON Schema
-copies · code: files created by the agent or the user · output: files under outputs/ (written by runs).
+copies · code: files created by the agent or the user · output: files under outputs/ (written by runs) ·
+report: report.html and comparison.json.
 
 | Field | Type | Req. | Description |
 |---|---|---|---|
-| `kind` | `"metadata"` \| `"curation"` \| `"export"` \| `"schema"` \| `"code"` \| `"output"` | yes |  |
+| `kind` | `"metadata"` \| `"curation"` \| `"export"` \| `"schema"` \| `"code"` \| `"output"` \| `"report"` | yes |  |
 | `added_at` | string (date-time) | yes |  |
 
 ### PackageMeta
@@ -105,6 +119,7 @@ copies · code: files created by the agent or the user · output: files under ou
 | `identifier` | [Identifier](#identifier) \| null |  | identifier the package was created for |
 | `identifiers` | map of string |  | all identifiers known from OpenAlex (doi, openalex, pmid, pmcid) |
 | `metadata_fetched_at` | string (date-time) \| null |  |  |
+| `archive` | [ArchiveInfo](#archiveinfo) \| null |  |  |
 
 ### Resource
 

@@ -269,3 +269,18 @@ class SyncReport(BaseModel):
     added: list[str]
     updated: list[str]
     removed: list[str]
+
+
+# ---------- report and archive ----------
+
+
+class ReportRequest(Req):
+    rounding: Literal["reported"] | int = Field(default="reported", description='"reported" or a number of decimals')
+    threshold: float = Field(default=5, ge=0, description="% deviation counted as within tolerance")
+
+
+class ReportResult(BaseModel):
+    path: str
+    comparison: str
+    summary: dict[str, int]
+    reproduced: str = Field(description="non-figure targets that match or are within tolerance, e.g. 12/20")

@@ -479,6 +479,30 @@ def compare_cmd(pkg: str, rounding: str = typer.Option("reported", help='"report
         typer.echo(f"results.json: {e}", err=True)
 
 
+@app.command("report")
+def report_cmd(pkg: str, rounding: str = typer.Option("reported", help='"reported" or a number of decimals'), threshold: float = 5,
+               open_: bool = typer.Option(False, "--open", help="open report.html in the browser")):
+    """Create the report (report.html, comparison.json)."""
+    r = call("PUT", f"/packages/{pkg}/report", {"rounding": rounding if rounding == "reported" else int(rounding), "threshold": threshold})
+    out(r)
+    if open_:
+        import webbrowser
+
+        webbrowser.open(Path(call("GET", f"/packages/{pkg}")["path"], r["path"]).as_uri())
+
+
+@app.command("archive")
+def archive_cmd(pkg: str, download: Optional[Path] = typer.Option(None, help="also save the ZIP here")):
+    """Create the ZIP of the package (needs a valid package with a report)."""
+    out(call("PUT", f"/packages/{pkg}/archive"))
+    if download:
+        headers = {"Authorization": f"Bearer {_state['token']}"} if _state.get("token") else {}
+        with httpx.stream("GET", f"{_state['url']}/packages/{pkg}/archive", headers=headers, timeout=None) as r, download.open("wb") as f:
+            for chunk in r.iter_bytes():
+                f.write(chunk)
+        typer.echo(f"saved {download}", err=True)
+
+
 @app.command()
 def agents():
     """Configured coding-agent profiles."""

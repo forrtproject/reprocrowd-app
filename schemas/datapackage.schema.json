@@ -3,6 +3,49 @@
   "$id": "https://metareader.example/schemas/datapackage.schema.json",
   "title": "Manifest (datapackage.json)",
   "$defs": {
+    "ArchiveInfo": {
+      "additionalProperties": false,
+      "description": "The last ZIP of the package (PUT …/archive).",
+      "properties": {
+        "path": {
+          "description": "package-relative, under archive/ (not itself a resource)",
+          "title": "Path",
+          "type": "string"
+        },
+        "bytes": {
+          "title": "Bytes",
+          "type": "integer"
+        },
+        "sha256": {
+          "title": "Sha256",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "manifest_sha256": {
+          "description": "hash of the datapackage.json inside the archive",
+          "title": "Manifest Sha256",
+          "type": "string"
+        },
+        "files": {
+          "title": "Files",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "path",
+        "bytes",
+        "sha256",
+        "created_at",
+        "manifest_sha256",
+        "files"
+      ],
+      "title": "ArchiveInfo",
+      "type": "object"
+    },
     "CheckResult": {
       "additionalProperties": false,
       "properties": {
@@ -284,7 +327,7 @@
     },
     "OtherMeta": {
       "additionalProperties": false,
-      "description": "metadata: OpenAlex record · curation: targets/actions · export: files derived for the agent · schema: JSON Schema\ncopies · code: files created by the agent or the user · output: files under outputs/ (written by runs).",
+      "description": "metadata: OpenAlex record · curation: targets/actions · export: files derived for the agent · schema: JSON Schema\ncopies · code: files created by the agent or the user · output: files under outputs/ (written by runs) ·\nreport: report.html and comparison.json.",
       "properties": {
         "kind": {
           "enum": [
@@ -293,7 +336,8 @@
             "export",
             "schema",
             "code",
-            "output"
+            "output",
+            "report"
           ],
           "title": "Kind",
           "type": "string"
@@ -357,6 +401,17 @@
           ],
           "default": null,
           "title": "Metadata Fetched At"
+        },
+        "archive": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ArchiveInfo"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         }
       },
       "required": [
@@ -431,6 +486,7 @@
               "input": "#/$defs/InputMeta",
               "metadata": "#/$defs/OtherMeta",
               "output": "#/$defs/OtherMeta",
+              "report": "#/$defs/OtherMeta",
               "schema": "#/$defs/OtherMeta",
               "script": "#/$defs/ScriptMeta"
             },
