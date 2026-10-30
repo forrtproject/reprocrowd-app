@@ -168,6 +168,8 @@ clients) works without special cases.
 | `GET …/jobs` · `GET …/jobs/{j}` · `GET …/jobs/{j}/stdout` | | jobs · job · raw output | |
 | `GET …/jobs/{j}/events` | `?after=N`; `Accept: text/event-stream`, `Last-Event-ID` | events (JSON) or live SSE ending with `end` | |
 | `DELETE …/jobs/{j}` | | 202, cancels | `job_finished` |
+| `POST …/jobs` | `{type:"run"}` | 202 job; result: results file present, output errors/warnings, commit | `script_missing`, `job_running` |
+| `GET …/comparison` | `?rounding=reported\|N&threshold=P` | per-target status, deviation, table cells; summary | `script_missing`, `results_missing` |
 | `GET …/files` · `POST …/{pkg}:sync` | | files on disk with their resource · `{added, updated, removed}` | `job_running` |
 
 **LLM error classes (reconcile, target/action runs):**
@@ -382,10 +384,29 @@ sequenceDiagram
 > `config.py` (`AgentProfile`), routes and SSE in `api/app.py`, CLI `mr codegen`, `mr job …`.
 > Tested with a fake agent (`tests/fake_agent.py`) and a real Claude Code run (Haiku) on Head et al. (2015).
 
+## Run and compare
+
+`POST …/jobs {type: "run"}` runs the master script with the template's command (`bash -c "<command>"`, from
+`template.toml`; callers can't supply one) as a job. Output and errors are merged into one log, read as `log`
+events (Python is run unbuffered so lines arrive live). Jobs get the service's environment minus
+MetaReader's own virtualenv, so `python3`/`Rscript` are the user's.
+
+- `outputs/results.json` is removed before the run: a failed run never leaves stale results (the previous
+  file stays in git). The package is committed before and after the run.
+- After the run, new outputs are registered (kind `output`; `outputs/results.json` with the `results-output`
+  schema) and `results.json` is checked against the targets of `results_schema.json` (format errors vs.
+  coverage warnings); the job result carries both.
+- `GET …/comparison?rounding=reported|N&threshold=P` compares outputs with targets (ported from the plugin):
+  numbers rounded to the reported decimals (or N), comparators honoured, deviations up to P % "within
+  tolerance"; tables cell by cell (a reproduced table may omit the header row or label column); categorical
+  by normalized text; figures "compare visually".
+
+> **Implemented in:** `run.py` (run job, `comparison`), `compare.py` (rules, `check_output`),
+> `schemas/comparison.py` (schema `comparison`), `jobs.job_env`, CLI `mr run`, `mr compare`.
+> Tested on fixtures and on the agent-written analysis of the scratch package (real run, 25 targets).
+
 ## TODO (later phases)
 
-- Run the master script (job), validate `outputs/results.json` (`results-output` schema exists), compare
-  with targets (rounding, tolerance).
 - Report (HTML) and ZIP. Submission to the package database.
 - Figure crops for figure targets (needs PDF coordinates → image rendering).
 - Multipart upload as an alternative to server-local paths. Directory inputs. Pagination for lists, if

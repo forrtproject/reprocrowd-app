@@ -86,6 +86,7 @@ class Settings(BaseModel):
     docling_argv: list[str] = Field(default_factory=lambda: ["docling", "--to", "json", "--output", "{outdir}", "{input}"],
                                     description="{input}: the PDF, {outdir}: folder for the JSON; empty = not configured")
     docling_timeout_s: int = 1800
+    run_timeout_s: int = Field(default=7200, description="limit for a run of the master script")
     agent_default_profile: str = "claude"
     agent_profiles: dict[str, AgentProfile] = Field(default_factory=_default_agents)
 
@@ -121,6 +122,8 @@ def load_settings(path: Path | None = None) -> Settings:
     for name in ("grobid", "docling"):
         for k, v in conv.get(name, {}).items():
             data[f"{name}_{k}"] = v
+    if "timeout_s" in raw.get("run", {}):
+        data["run_timeout_s"] = raw["run"]["timeout_s"]
     agent = raw.get("agent", {})
     if "default_profile" in agent:
         data["agent_default_profile"] = agent["default_profile"]

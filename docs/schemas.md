@@ -612,3 +612,51 @@ Actionable TODO(LLM): markers left in the template's files. The header line that
 |---|---|---|---|
 | `remaining` | integer | yes |  |
 | `files` | list of [TodoFile](#todofile) | yes |  |
+
+## `comparison`: comparison.json (written with the report; also GET …/comparison)
+
+File: `schemas/comparison.schema.json`
+
+### Root
+
+GET …/comparison, and comparison.json written with the report.
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `settings` | [CompareSettings](#comparesettings) | yes |  |
+| `summary` | map of integer | yes | number of targets per status |
+| `rows` | list of [CompareRow](#comparerow) | yes |  |
+| `output_errors` | list of string | yes | outputs/results.json does not have the required format |
+| `output_warnings` | list of string | yes | targets missing from the output, unknown ids |
+
+### Cell
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `expected` | string | yes |  |
+| `reproduced` | string | yes |  |
+| `status` | `"match"` \| `"within"` \| `"deviation"` \| `"missing"` \| `"figure"` \| `"unparsable"` | yes |  |
+| `deviation` | number \| null |  | % deviation of a numeric cell |
+
+### CompareRow
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `target` | string | yes |  |
+| `type` | `"number"` \| `"categorical"` \| `"table"` \| `"figure"` | yes |  |
+| `description` | string | yes |  |
+| `status` | `"match"` \| `"within"` \| `"deviation"` \| `"missing"` \| `"figure"` \| `"unparsable"` | yes |  |
+| `expected_text` | string | yes |  |
+| `reproduced_text` | string | yes |  |
+| `deviation` | number \| null |  | % deviation (numbers) |
+| `cells` | list of list of [Cell](#cell) \| null |  | table targets: cell by cell |
+| `matched` | integer \| null |  |  |
+| `total` | integer \| null |  |  |
+| `note` | string \| null |  | the reproduction's note on this result |
+
+### CompareSettings
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `rounding` | `"reported"` \| integer |  | "reported": round to the decimals printed in the paper; or a number of decimals (0–10); default `reported` |
+| `threshold` | number |  | deviation in % up to which a numeric result counts as within tolerance; default `5` |

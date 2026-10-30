@@ -248,7 +248,13 @@ class CodegenJobCreate(Req):
     instructions: str = Field(default="", description="added to the agent prompt")
 
 
-JobCreate = CodegenJobCreate  # becomes a union discriminated by "type" when more job types exist
+class RunJobCreate(Req):
+    """Run the master script with the template's command."""
+
+    type: Literal["run"]
+
+
+JobCreate = Annotated[Union[CodegenJobCreate, RunJobCreate], Field(discriminator="type")]
 
 
 class FileEntry(BaseModel):

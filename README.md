@@ -36,6 +36,8 @@ mr action generate phacking ex-europepmc-jats --section sec5
 mr script create phacking --template r
 mr codegen phacking                              # coding agent implements the TODO(LLM): markers, live progress
 mr script status phacking                        # markers left
+mr run phacking                                  # run the master script (live log), check outputs/results.json
+mr compare phacking                              # reproduced vs. expected, per target
 mr validate phacking
 ```
 

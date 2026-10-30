@@ -62,6 +62,7 @@ CATALOG: dict[str, tuple[int, str]] = {
     "nothing_to_script": (422, "At least one enabled target and one enabled action are needed"),
     "script_modified": (409, "Generated files were changed since; pass force to overwrite"),
     "script_missing": (409, "Create the master script first"),
+    "results_missing": (409, "outputs/results.json doesn't exist; run the master script first"),
     # jobs
     "job_running": (409, "Another job is running in this package"),
     "job_finished": (409, "The job is not running"),

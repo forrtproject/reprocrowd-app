@@ -20,7 +20,7 @@ from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, Str
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from .. import __version__, codegen, curation, extractions, files, fulltexts, inputs, jobs, metadata, scripts
+from .. import __version__, codegen, curation, run, extractions, files, fulltexts, inputs, jobs, metadata, scripts
 from ..config import settings
 from ..errors import ApiError, not_found
 from ..extractions import Scope
@@ -28,6 +28,7 @@ from ..identifiers import parse_identifier
 from ..package import MANIFEST, Package, Registry
 from ..events import EventReader, read_events
 from ..schemas.document import Document
+from ..schemas.comparison import Comparison, CompareSettings
 from ..schemas.jobs import Job, JobEvent
 from ..schemas.manifest import Resource
 from ..validation import ValidationReport, validate_package
@@ -46,7 +47,8 @@ TAGS = [
     {"name": "targets", "description": "Results to reproduce: added by hand or extracted by an LLM, with non-destructive edits."},
     {"name": "actions", "description": "Analysis steps described in the paper (the former analysis plan)."},
     {"name": "script", "description": "Master-script templates rendered from targets and actions."},
-    {"name": "jobs", "description": "Long-running work (the coding agent) followed asynchronously, with live progress events."},
+    {"name": "jobs", "description": "Long-running work (coding agent, pipeline run) followed asynchronously, with live progress events."},
+    {"name": "comparison", "description": "Reproduced results compared with the targets."},
 ]
 
 app = FastAPI(
@@ -529,11 +531,15 @@ def agent_profiles():
 
 @api.post("/packages/{pkg}/jobs", tags=["jobs"], status_code=202, response_model=Job, summary="Start a job",
           description="`type: codegen` runs the configured coding agent in the package folder to implement the master script's "
-                      "`TODO(LLM):` markers. The package is committed to git before and after. Returns 202 at once; follow "
-                      "the job at its `Location`, its progress at `…/events`.",
+                      "`TODO(LLM):` markers. `type: run` runs the master script with the template's command (output and "
+                      "errors as `log` events), then checks `outputs/results.json`. The package is committed to git before "
+                      "and after. Returns 202 at once; follow the job at its `Location`, its progress at `…/events`.",
           responses=errors("script_missing", "job_running", "unknown_profile", "job_start_failed"))
-def create_job(pkg: Pkg, body: M.JobCreate, response: Response):
-    job = codegen.start(pkg, profile=body.profile, allow_exec=body.allow_exec, instructions=body.instructions)
+def create_job(pkg: Pkg, body: Annotated[M.JobCreate, Body()], response: Response):
+    if isinstance(body, M.RunJobCreate):
+        job = run.start(pkg)
+    else:
+        job = codegen.start(pkg, profile=body.profile, allow_exec=body.allow_exec, instructions=body.instructions)
     response.headers["Location"] = f"/v1/packages/{pkg.id}/jobs/{job.id}"
     return job
 
@@ -596,6 +602,20 @@ def job_stdout(pkg: Pkg, job: str):
     j = jobs.load(pkg, job)
     p = pkg.path(j.stdout)
     return PlainTextResponse(p.read_text(encoding="utf-8", errors="replace") if p.exists() else "")
+
+
+# ---------- comparison ----------
+
+
+@api.get("/packages/{pkg}/comparison", tags=["comparison"], response_model=Comparison, summary="Compare reproduced results with the targets",
+         description="Reads `outputs/results.json` and compares it with the targets of `results_schema.json` (the ones the code "
+                     "was written against). Numbers are rounded to the reported decimals (`rounding=reported`) or to a fixed "
+                     "number; a deviation up to `threshold` % counts as within tolerance; tables are compared cell by cell.",
+         responses=errors("script_missing", "results_missing"))
+def get_comparison(pkg: Pkg, rounding: Annotated[str, Query(pattern=r"^(reported|\d{1,2})$")] = "reported",
+                   threshold: Annotated[float, Query(ge=0)] = 5):
+    st = CompareSettings(rounding="reported" if rounding == "reported" else int(rounding), threshold=threshold)
+    return run.comparison(pkg, st)
 
 
 # ---------- files ----------

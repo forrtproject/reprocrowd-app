@@ -4422,7 +4422,7 @@
           "jobs"
         ],
         "summary": "Start a job",
-        "description": "`type: codegen` runs the configured coding agent in the package folder to implement the master script's `TODO(LLM):` markers. The package is committed to git before and after. Returns 202 at once; follow the job at its `Location`, its progress at `…/events`.",
+        "description": "`type: codegen` runs the configured coding agent in the package folder to implement the master script's `TODO(LLM):` markers. `type: run` runs the master script with the template's command (output and errors as `log` events), then checks `outputs/results.json`. The package is committed to git before and after. Returns 202 at once; follow the job at its `Location`, its progress at `…/events`.",
         "operationId": "create_job_v1_packages__pkg__jobs_post",
         "security": [
           {
@@ -4447,7 +4447,22 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CodegenJobCreate"
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/CodegenJobCreate"
+                  },
+                  {
+                    "$ref": "#/components/schemas/RunJobCreate"
+                  }
+                ],
+                "discriminator": {
+                  "propertyName": "type",
+                  "mapping": {
+                    "codegen": "#/components/schemas/CodegenJobCreate",
+                    "run": "#/components/schemas/RunJobCreate"
+                  }
+                },
+                "title": "Body"
               }
             }
           }
@@ -4931,6 +4946,101 @@
               }
             },
             "description": "`not_found`: No such resource"
+          }
+        }
+      }
+    },
+    "/v1/packages/{pkg}/comparison": {
+      "get": {
+        "tags": [
+          "comparison"
+        ],
+        "summary": "Compare reproduced results with the targets",
+        "description": "Reads `outputs/results.json` and compares it with the targets of `results_schema.json` (the ones the code was written against). Numbers are rounded to the reported decimals (`rounding=reported`) or to a fixed number; a deviation up to `threshold` % counts as within tolerance; tables are compared cell by cell.",
+        "operationId": "get_comparison_v1_packages__pkg__comparison_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "pkg",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "package id",
+              "title": "Pkg"
+            },
+            "description": "package id"
+          },
+          {
+            "name": "rounding",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "pattern": "^(reported|\\d{1,2})$",
+              "default": "reported",
+              "title": "Rounding"
+            }
+          },
+          {
+            "name": "threshold",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "minimum": 0,
+              "default": 5,
+              "title": "Threshold"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Comparison"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "`unauthorized`: Missing or wrong bearer token"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "`request_invalid`: The request body or parameters don't match the API schema"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "`script_missing`: Create the master script first; `results_missing`: outputs/results.json doesn't exist; run the master script first"
           }
         }
       }
@@ -5599,6 +5709,50 @@
         ],
         "title": "CandidateView"
       },
+      "Cell": {
+        "properties": {
+          "expected": {
+            "type": "string",
+            "title": "Expected"
+          },
+          "reproduced": {
+            "type": "string",
+            "title": "Reproduced"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "match",
+              "within",
+              "deviation",
+              "missing",
+              "figure",
+              "unparsable"
+            ],
+            "title": "Status"
+          },
+          "deviation": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deviation",
+            "description": "% deviation of a numeric cell"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "expected",
+          "reproduced",
+          "status"
+        ],
+        "title": "Cell"
+      },
       "CheckResult": {
         "properties": {
           "passed": {
@@ -5727,6 +5881,200 @@
           "todo"
         ],
         "title": "CodegenResult"
+      },
+      "CompareRow": {
+        "properties": {
+          "target": {
+            "type": "string",
+            "title": "Target"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "number",
+              "categorical",
+              "table",
+              "figure"
+            ],
+            "title": "Type"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "match",
+              "within",
+              "deviation",
+              "missing",
+              "figure",
+              "unparsable"
+            ],
+            "title": "Status"
+          },
+          "expected_text": {
+            "type": "string",
+            "title": "Expected Text"
+          },
+          "reproduced_text": {
+            "type": "string",
+            "title": "Reproduced Text"
+          },
+          "deviation": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deviation",
+            "description": "% deviation (numbers)"
+          },
+          "cells": {
+            "anyOf": [
+              {
+                "items": {
+                  "items": {
+                    "$ref": "#/components/schemas/Cell"
+                  },
+                  "type": "array"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cells",
+            "description": "table targets: cell by cell"
+          },
+          "matched": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Matched"
+          },
+          "total": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note",
+            "description": "the reproduction's note on this result"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "target",
+          "type",
+          "description",
+          "status",
+          "expected_text",
+          "reproduced_text"
+        ],
+        "title": "CompareRow"
+      },
+      "CompareSettings": {
+        "properties": {
+          "rounding": {
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "reported"
+              },
+              {
+                "type": "integer"
+              }
+            ],
+            "title": "Rounding",
+            "description": "\"reported\": round to the decimals printed in the paper; or a number of decimals (0–10)",
+            "default": "reported"
+          },
+          "threshold": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Threshold",
+            "description": "deviation in % up to which a numeric result counts as within tolerance",
+            "default": 5
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "CompareSettings"
+      },
+      "Comparison": {
+        "properties": {
+          "settings": {
+            "$ref": "#/components/schemas/CompareSettings"
+          },
+          "summary": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Summary",
+            "description": "number of targets per status"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/CompareRow"
+            },
+            "type": "array",
+            "title": "Rows"
+          },
+          "output_errors": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Output Errors",
+            "description": "outputs/results.json does not have the required format"
+          },
+          "output_warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Output Warnings",
+            "description": "targets missing from the output, unknown ids"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "settings",
+          "summary",
+          "rows",
+          "output_errors",
+          "output_warnings"
+        ],
+        "title": "Comparison",
+        "description": "GET …/comparison, and comparison.json written with the report."
       },
       "ConvertedOrigin": {
         "properties": {
@@ -7680,6 +8028,22 @@
         ],
         "title": "RunCreate"
       },
+      "RunJobCreate": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "run",
+            "title": "Type"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "type"
+        ],
+        "title": "RunJobCreate",
+        "description": "Run the master script with the template's command."
+      },
       "RunPatch": {
         "properties": {
           "disabled": {
@@ -8840,7 +9204,11 @@
     },
     {
       "name": "jobs",
-      "description": "Long-running work (the coding agent) followed asynchronously, with live progress events."
+      "description": "Long-running work (coding agent, pipeline run) followed asynchronously, with live progress events."
+    },
+    {
+      "name": "comparison",
+      "description": "Reproduced results compared with the targets."
     }
   ]
 }

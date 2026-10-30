@@ -446,6 +446,39 @@ def codegen(pkg: str, profile: Optional[str] = typer.Option(None, help="agent pr
     summarize(follow(pkg, job["id"]) or call("GET", f"/packages/{pkg}/jobs/{job['id']}"))
 
 
+@app.command("run")
+def run_cmd(pkg: str, follow_: bool = typer.Option(True, "--follow/--detach", help="print the run log until it ends")):
+    """Run the master script with the template's command (a job), then check outputs/results.json."""
+    job = call("POST", f"/packages/{pkg}/jobs", {"type": "run"})
+    if not follow_:
+        out(job)
+        return
+    final = follow(pkg, job["id"]) or call("GET", f"/packages/{pkg}/jobs/{job['id']}")
+    summarize(final)
+    res = final.get("result") or {}
+    for e in res.get("output_errors", []):
+        typer.echo(f"results.json: {e}", err=True)
+    if final["status"] != "succeeded":
+        raise typer.Exit(1)
+
+
+@app.command("compare")
+def compare_cmd(pkg: str, rounding: str = typer.Option("reported", help='"reported" or a number of decimals'),
+                threshold: float = typer.Option(5, help="% deviation counted as within tolerance"), as_json: bool = typer.Option(False, "--json")):
+    """Compare the reproduced results with the targets."""
+    c = call("GET", f"/packages/{pkg}/comparison", params={"rounding": rounding, "threshold": threshold})
+    if as_json:
+        out(c)
+        return
+    labels = {"match": "✓", "within": "≈", "deviation": "✗", "missing": "∅", "figure": "🖼", "unparsable": "?"}
+    for r in c["rows"]:
+        dev = f"  ({r['deviation']:.1f} %)" if r.get("deviation") not in (None, 0) else ""
+        typer.echo(f"{labels[r['status']]} {r['target']:6} expected {r['expected_text']:<18} got {r['reproduced_text']}{dev}  {r['description'][:50]}")
+    typer.echo("  ".join(f"{k}: {v}" for k, v in c["summary"].items()))
+    for e in c["output_errors"] + c["output_warnings"]:
+        typer.echo(f"results.json: {e}", err=True)
+
+
 @app.command()
 def agents():
     """Configured coding-agent profiles."""
