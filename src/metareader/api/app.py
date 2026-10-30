@@ -20,7 +20,7 @@ from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, Str
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from .. import __version__, codegen, curation, report, run, extractions, files, fulltexts, inputs, jobs, metadata, scripts
+from .. import __version__, codegen, curation, database, report, run, extractions, files, fulltexts, inputs, jobs, metadata, scripts
 from ..config import settings
 from ..errors import ApiError, not_found
 from ..extractions import Scope
@@ -30,7 +30,7 @@ from ..events import EventReader, read_events
 from ..schemas.document import Document
 from ..schemas.comparison import Comparison, CompareSettings
 from ..schemas.jobs import Job, JobEvent
-from ..schemas.manifest import ArchiveInfo, Resource
+from ..schemas.manifest import ArchiveInfo, Resource, Submission
 from ..validation import ValidationReport, validate_package
 from . import models as M
 from .problems import CATALOG, STATUS_CODES, Problem, ProblemType, problem_types
@@ -50,6 +50,7 @@ TAGS = [
     {"name": "jobs", "description": "Long-running work (coding agent, pipeline run) followed asynchronously, with live progress events."},
     {"name": "comparison", "description": "Reproduced results compared with the targets."},
     {"name": "report", "description": "The reproduction report and the ZIP of the package."},
+    {"name": "database", "description": "Submission to the package database (optional)."},
 ]
 
 app = FastAPI(
@@ -509,10 +510,11 @@ def get_script(pkg: Pkg):
 @api.put("/packages/{pkg}/script", tags=["script"], response_model=M.ScriptResult, summary="Create or replace the master script",
          description="Resolves the plan (load steps for used data inputs → enabled actions → results step), writes "
                      "`analysis_plan.json`, `results_schema.json`, the template's files and README.md. Returns 201 the first "
-                     "time, 200 when replacing. Files changed since they were generated are only overwritten with `force`.",
+                     "time, 200 when replacing. Files edited since they were generated (e.g. by the agent) are "
+                     "protected: `on_modified` = refuse (409), keep (regenerate the rest) or overwrite.",
          responses={201: {"model": M.ScriptResult, "description": "created"}, **errors("unknown_template", "nothing_to_script", "script_modified")})
 def put_script(pkg: Pkg, body: M.ScriptRequest, response: Response):
-    out = scripts.write(pkg, body.template, body.force)
+    out = scripts.write(pkg, body.template, body.on_modified)
     if out["created"]:
         created(response, f"/v1/packages/{pkg.id}/script")
     return out
@@ -657,6 +659,43 @@ def put_archive(pkg: Pkg, response: Response):
 def get_archive(pkg: Pkg):
     path = report.archive_path(pkg)
     return FileResponse(path, media_type="application/zip", filename=path.name)
+
+
+# ---------- package database ----------
+
+
+@api.get("/database", tags=["database"], response_model=M.DatabaseStatus, summary="The configured package database and whether it is reachable")
+def database_status():
+    return database.status()
+
+
+@api.get("/database/packages", tags=["database"], response_model=list[dict[str, Any]], summary="Packages in the database for a DOI",
+         responses=errors("database_not_configured", "database_unreachable", "database_error"))
+def database_packages(doi: Annotated[str, Query(min_length=3)]):
+    return database.find(doi)
+
+
+@api.post("/packages/{pkg}/submissions", tags=["database"], status_code=201, response_model=Submission, summary="Submit the archive to the package database",
+          description="Uploads the archive with bibliographic metadata looked up in OpenAlex by DOI now. Needs a DOI, a last "
+                      "run that succeeded and an up-to-date archive. The submission then waits for the user to sign in and "
+                      "confirm at `finish_url`; `GET …/submissions/{id}` reports whether that happened.",
+          responses=errors("database_not_configured", "no_doi", "run_not_succeeded", "archive_missing", "archive_stale", "openalex_record_missing",
+                           "duplicate_submission", "submission_rejected", "database_unreachable", "database_error", "job_running"))
+def submit(pkg: Pkg, response: Response, body: M.SubmissionCreate = Body(default_factory=M.SubmissionCreate)):
+    sub = database.submit(pkg, body.note)
+    created(response, f"/v1/packages/{pkg.id}/submissions/{sub.id}")
+    return sub
+
+
+@api.get("/packages/{pkg}/submissions", tags=["database"], response_model=list[Submission], summary="Submissions of this package")
+def list_submissions(pkg: Pkg):
+    return pkg.load().metareader.submissions
+
+
+@api.get("/packages/{pkg}/submissions/{sub}", tags=["database"], response_model=Submission, summary="A submission, with its status refreshed from the database",
+         responses=errors("not_found", "database_unreachable", "database_error"))
+def get_submission(pkg: Pkg, sub: str):
+    return database.refresh(pkg, sub)
 
 
 # ---------- files ----------

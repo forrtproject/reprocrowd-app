@@ -20,7 +20,7 @@ from .schemas.common import now
 from . import provenance
 from .extractions import get as get_extraction
 from .schemas.comparison import STATUS_LABEL, CompareSettings
-from .schemas.exports import AnalysisPlan
+from .schemas.exports import AnalysisPlan, InputEntry, InputsList
 from .schemas.manifest import ArchiveInfo, OtherMeta
 from .scripts import current_template
 from .validation import validate_package
@@ -96,6 +96,11 @@ def write_archive(pkg: Package) -> ArchiveInfo:
     m = pkg.load()
     if not m.get("report"):
         raise conflict("report_missing", "create the report first (PUT …/report)")
+    with pkg.edit() as m:  # inputs.json: the input list in the package database's format
+        entries = [InputEntry(path=r.path, role=r.metareader.role, note=r.metareader.note, used=r.metareader.used,
+                              archive=m.get(r.metareader.archive).path if r.metareader.archive and m.get(r.metareader.archive) else None)
+                   for r in m.by_kind("input")]
+        pkg.write_json(m, "inputs-list", "inputs.json", InputsList(inputs=entries), schema="inputs", meta=OtherMeta(kind="export", added_at=now()))
     stem = slug(m.metareader.identifiers.get("doi") or m.name).replace(".", "-")
     rel = f"{ARCHIVE_DIR}/{stem}-reproduction.zip"
     out = pkg.path(rel)

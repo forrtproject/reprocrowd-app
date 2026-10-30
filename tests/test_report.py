@@ -64,7 +64,7 @@ def test_provenance_graph(client, pkg):
     client.post(P + "/actions", json={"kind": "transform", "summary": "Load and clean", "refs": [{"extraction": "ex-paper-tei", "id": "sec2.p1.s2"}],
                                       "inputs": ["in-data.csv"]})
     client.patch(P + "/actions/A01", json={"depends_on": ["A02"]})
-    assert client.put(P + "/script", json={"template": "python", "force": True}).status_code == 200
+    assert client.put(P + "/script", json={"template": "python", "on_modified": "overwrite"}).status_code == 200
     (root / "analysis.py").write_text(SCRIPT)
     wait(client, pkg, client.post(P + "/jobs", json={"type": "run"}).json()["id"])
     client.put(P + "/report", json={})

@@ -118,6 +118,23 @@ class ArchiveInfo(Model):
     files: int
 
 
+class Submission(Model):
+    """An upload of the archive to the package database."""
+
+    id: str = Field(pattern=r"^sub-[0-9a-f]+$")
+    database: str = Field(description="database URL at the time")
+    upload_id: str
+    finish_url: str = Field(description="where the user signs in and confirms the submission")
+    status_url: str
+    expires: str = Field(description="unconfirmed uploads expire")
+    status: Literal["pending", "submitted", "deleted", "gone"] = Field(description="gone: expired or discarded without confirmation")
+    submitted_at: datetime
+    checked_at: datetime | None = None
+    archive_sha256: str
+    note: str = ""
+    package_url: str | None = Field(default=None, description="the package's page once confirmed")
+
+
 class PackageMeta(Model):
     version: Literal["1.0"] = "1.0"
     created_at: datetime
@@ -125,6 +142,7 @@ class PackageMeta(Model):
     identifiers: dict[str, str] = Field(default_factory=dict, description="all identifiers known from OpenAlex (doi, openalex, pmid, pmcid)")
     metadata_fetched_at: datetime | None = None
     archive: ArchiveInfo | None = None
+    submissions: list[Submission] = Field(default_factory=list)
 
 
 class Manifest(Model):

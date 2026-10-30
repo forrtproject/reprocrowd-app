@@ -27,7 +27,7 @@ def frozen_targets(pkg: Package) -> list[Target]:
     """The targets the code was written against (results_schema.json from the script step)."""
     if not pkg.path("results_schema.json").exists():
         raise conflict("script_missing", "create the master script first (PUT …/script)")
-    return ResultsSchema.model_validate(pkg.read_json("results_schema.json")).targets
+    return ResultsSchema.model_validate(pkg.read_json("results_schema.json")).results
 
 
 def start(pkg: Package) -> Job:

@@ -293,7 +293,7 @@ def test_actions_script_validation(client, pkg):
     (root / "analysis.py").write_text("print('implemented')\n")
     e = problem(client.put(P + "/script", json={"template": "python"}), 409, "script_modified")
     assert e["files"] == ["analysis.py"]
-    assert client.put(P + "/script", json={"template": "python", "force": True}).status_code == 200
+    assert client.put(P + "/script", json={"template": "python", "on_modified": "overwrite"}).status_code == 200
 
     report = client.get(P + "/validation").json()
     assert report["valid"], report
@@ -347,3 +347,11 @@ def test_openapi_docs(client):
     spec = client.get("/openapi.json").json()
     assert spec["components"]["securitySchemes"]["HTTPBearer"]["scheme"] == "bearer"
     assert "application/problem+json" in spec["paths"]["/v1/packages/{pkg}/fulltexts"]["post"]["responses"]["422"]["content"]
+
+
+def test_outdated_schema_copies_are_refreshed(client, pkg):
+    """Packages made by an older version may have stale schema copies; writing a resource updates its schema."""
+    root = Path(client.get(f"/v1/packages/{pkg}").json()["path"])
+    (root / "schemas" / "targets.schema.json").write_text('{"type": "object", "required": ["old"]}')
+    client.post(f"/v1/packages/{pkg}/targets", json={"type": "number", "description": "x", "expected": 1, "unreferenced": True, "note": "n"})
+    assert client.get(f"/v1/packages/{pkg}/validation").json()["valid"]

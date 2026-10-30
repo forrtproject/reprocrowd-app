@@ -24,6 +24,10 @@ timeout_s = 600
 argv = ["docling", "--to", "json", "--output", "{outdir}", "{input}"]
 timeout_s = 1800
 
+# Package database for submissions (AI-Assisted Reproduction Database); empty = none.
+[database]
+url = ""                   # e.g. "http://127.0.0.1:8765"
+
 # Runs of the master script (the template's command, in the user's environment).
 [run]
 timeout_s = 7200

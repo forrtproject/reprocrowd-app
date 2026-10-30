@@ -138,9 +138,21 @@ class Package:
         r.bytes, r.hash = p.stat().st_size, f"sha256:{sha256_file(p)}"
 
     def write_json(self, m: Manifest, name: str, rel: str, data: BaseModel | Any, *, schema: str | None, meta: Any) -> Resource:
+        if schema:
+            self.ensure_schema(m, schema)
         atomic_write(self.path(rel), dump_json(data))
         return self.put(m, self.describe(name, rel, type="json", format="json", mediatype="application/json", meta=meta,
                                          json_schema=schema_path(schema) if schema else None))
+
+    def ensure_schema(self, m: Manifest, schema: str) -> None:
+        """The package's copy of a schema matches this version of MetaReader (packages made by older versions
+        may have an outdated copy, or none)."""
+        rel, text = schema_path(schema), json_schema_text(schema).encode()
+        p = self.path(rel)
+        if not p.exists() or p.read_bytes() != text or not m.get(f"schema-{schema}"):
+            atomic_write(p, text)
+            self.put(m, self.describe(f"schema-{schema}", rel, type="json", format="json", mediatype="application/schema+json",
+                                      meta=OtherMeta(kind="schema", added_at=now())))
 
     def read_json(self, rel: str) -> Any:
         return json.loads(self.path(rel).read_text(encoding="utf-8"))

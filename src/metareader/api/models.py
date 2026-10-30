@@ -206,7 +206,9 @@ ActionPatch = _patch_model("ActionPatch", ActionFields)
 
 class ScriptRequest(Req):
     template: str = Field(description="template id from GET /templates")
-    force: bool = Field(default=False, description="overwrite generated files that were changed since")
+    on_modified: Literal["refuse", "keep", "overwrite"] = Field(
+        default="refuse", description="generated files edited since (e.g. implemented by the agent): refuse (409), keep them and regenerate "
+                                      "the rest (e.g. exports after targets changed), or overwrite them")
 
 
 class ScriptResult(BaseModel):
@@ -214,7 +216,8 @@ class ScriptResult(BaseModel):
     template: str
     command: str
     master: str
-    files: list[str]
+    files: list[str] = Field(description="files written")
+    kept: list[str] = Field(description="edited files left as they are (on_modified=keep)")
 
 
 class ScriptState(BaseModel):
@@ -284,3 +287,17 @@ class ReportResult(BaseModel):
     comparison: str
     summary: dict[str, int]
     reproduced: str = Field(description="non-figure targets that match or are within tolerance, e.g. 12/20")
+
+
+# ---------- package database ----------
+
+
+class DatabaseStatus(BaseModel):
+    url: str
+    configured: bool
+    reachable: bool
+    error: str | None = None
+
+
+class SubmissionCreate(Req):
+    note: str = Field(default="", max_length=4000, description="shown with the package in the database")

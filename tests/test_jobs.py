@@ -86,8 +86,13 @@ def test_codegen_job(client, pkg):
     files = {f["path"]: f for f in client.get(f"{P}/files").json()}
     assert files["R/helpers.R"]["kind"] == "code" and files["analysis.R"]["kind"] == "script"
     assert client.get(f"{P}/validation").json()["valid"]
-    # the implemented script is protected from being regenerated
+    # the implemented script is protected from being regenerated; "keep" updates everything else
     problem(client.put(f"{P}/script", json={"template": "r"}), 409, "script_modified")
+    client.post(f"{P}/targets", json={"type": "number", "description": "new", "expected": 1, "unreferenced": True, "note": "n"})
+    r = client.put(f"{P}/script", json={"template": "r", "on_modified": "keep"}).json()
+    assert r["kept"] == ["analysis.R"] and "analysis.R" not in r["files"]
+    assert "x <- read.csv" in (root / "analysis.R").read_text()
+    assert [t["id"] for t in json.loads((root / "results_schema.json").read_text())["results"]] == ["T001", "T002"]
 
 
 def test_codegen_live_stream_cancel_and_timeout(client, pkg):

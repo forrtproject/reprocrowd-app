@@ -120,6 +120,7 @@ report: report.html and comparison.json.
 | `identifiers` | map of string |  | all identifiers known from OpenAlex (doi, openalex, pmid, pmcid) |
 | `metadata_fetched_at` | string (date-time) \| null |  |  |
 | `archive` | [ArchiveInfo](#archiveinfo) \| null |  |  |
+| `submissions` | list of [Submission](#submission) |  |  |
 
 ### Resource
 
@@ -147,6 +148,25 @@ A file written from a master-script template.
 | `added_at` | string (date-time) | yes |  |
 | `template` | string | yes | template id |
 | `generated_hash` | string | yes | hash as generated; a different current hash means the file was edited (e.g. by the agent); pattern `^sha256:[0-9a-f]{64}$` |
+
+### Submission
+
+An upload of the archive to the package database.
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `id` | string | yes | pattern `^sub-[0-9a-f]+$` |
+| `database` | string | yes | database URL at the time |
+| `upload_id` | string | yes |  |
+| `finish_url` | string | yes | where the user signs in and confirms the submission |
+| `status_url` | string | yes |  |
+| `expires` | string | yes | unconfirmed uploads expire |
+| `status` | `"pending"` \| `"submitted"` \| `"deleted"` \| `"gone"` | yes | gone: expired or discarded without confirmation |
+| `submitted_at` | string (date-time) | yes |  |
+| `checked_at` | string (date-time) \| null |  |  |
+| `archive_sha256` | string | yes |  |
+| `note` | string |  | default `` |
+| `package_url` | string \| null |  | the package's page once confirmed |
 
 ### UrlOrigin
 
@@ -489,18 +509,20 @@ File: `schemas/results-schema.schema.json`
 
 ### Root
 
-results_schema.json: the enabled targets at the time the master script was created.
+results_schema.json: the enabled targets at the time the master script was created. The list is called
+"results", as in the package database's format.
 
 | Field | Type | Req. | Description |
 |---|---|---|---|
 | `schema_version` | `"1.0"` |  | default `1.0` |
 | `paper` | [Paper](#paper) | yes |  |
-| `targets` | list of [Target](#target) | yes |  |
+| `results` | list of [Target](#target) | yes | the targets |
 
 ### Paper
 
 | Field | Type | Req. | Description |
 |---|---|---|---|
+| `doi` | string \| null |  | the paper's DOI, if known (the package database requires it) |
 | `title` | string \| null |  |  |
 | `identifier` | [Identifier](#identifier) \| null |  |  |
 | `identifiers` | map of string |  |  |
@@ -530,6 +552,28 @@ analysis_plan.json: load steps (one per used data input), the enabled actions, t
 | `inputs` | list of string |  | package-relative paths of input files |
 | `depends_on` | list of string |  |  |
 | `produces` | list of string |  | target ids |
+
+## `inputs`: inputs.json (written with the archive)
+
+File: `schemas/inputs.schema.json`
+
+### Root
+
+inputs.json: the input files (also in datapackage.json), in the package database's format.
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `inputs` | list of [InputEntry](#inputentry) | yes |  |
+
+### InputEntry
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `path` | string | yes |  |
+| `role` | string | yes |  |
+| `note` | string |  | default `` |
+| `used` | boolean |  | default `True` |
+| `archive` | string \| null |  | path of the zip archive it was unpacked from |
 
 ## `results-output`: outputs/results.json
 

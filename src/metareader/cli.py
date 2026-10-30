@@ -362,8 +362,8 @@ def script_templates():
 
 @sc.command("create")
 def script_create(pkg: str, template: str = typer.Option(..., help="template id (mr script templates)"),
-                  force: bool = typer.Option(False, help="overwrite generated files that were edited")):
-    out(call("PUT", f"/packages/{pkg}/script", {"template": template, "force": force}))
+                  on_modified: str = typer.Option("refuse", help="edited generated files (e.g. by the agent): refuse, keep (regenerate the rest), overwrite")):
+    out(call("PUT", f"/packages/{pkg}/script", {"template": template, "on_modified": on_modified}))
 
 
 @sc.command("show")
@@ -501,6 +501,24 @@ def archive_cmd(pkg: str, download: Optional[Path] = typer.Option(None, help="al
             for chunk in r.iter_bytes():
                 f.write(chunk)
         typer.echo(f"saved {download}", err=True)
+
+
+@app.command()
+def submit(pkg: str, note: str = "", open_: bool = typer.Option(True, "--open/--no-open", help="open the confirmation page in the browser")):
+    """Submit the archive to the package database; confirm it in the browser."""
+    sub = call("POST", f"/packages/{pkg}/submissions", {"note": note}, timeout=None)
+    out(sub)
+    typer.echo(f"Confirm the submission at {sub['finish_url']} (until {sub['expires']}); `mr submission {pkg} {sub['id']}` checks it.", err=True)
+    if open_:
+        import webbrowser
+
+        webbrowser.open(sub["finish_url"])
+
+
+@app.command()
+def submission(pkg: str, sub: Optional[str] = typer.Argument(None)):
+    """List submissions, or refresh one's status from the database."""
+    out(call("GET", f"/packages/{pkg}/submissions" + (f"/{sub}" if sub else "")))
 
 
 @app.command()

@@ -40,6 +40,7 @@ mr run phacking                                  # run the master script (live l
 mr compare phacking                              # reproduced vs. expected, per target
 mr report phacking --open                        # report.html with the provenance of every target
 mr archive phacking --download phacking.zip      # the package as a ZIP (must validate)
+mr submit phacking                               # upload to the package database; confirm in the browser
 mr validate phacking
 ```
 

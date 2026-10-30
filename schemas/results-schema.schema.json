@@ -34,6 +34,19 @@
     "Paper": {
       "additionalProperties": false,
       "properties": {
+        "doi": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "the paper's DOI, if known (the package database requires it)",
+          "title": "Doi"
+        },
         "title": {
           "anyOf": [
             {
@@ -231,7 +244,7 @@
     }
   },
   "additionalProperties": false,
-  "description": "results_schema.json: the enabled targets at the time the master script was created.",
+  "description": "results_schema.json: the enabled targets at the time the master script was created. The list is called\n\"results\", as in the package database's format.",
   "properties": {
     "schema_version": {
       "const": "1.0",
@@ -242,17 +255,18 @@
     "paper": {
       "$ref": "#/$defs/Paper"
     },
-    "targets": {
+    "results": {
+      "description": "the targets",
       "items": {
         "$ref": "#/$defs/Target"
       },
-      "title": "Targets",
+      "title": "Results",
       "type": "array"
     }
   },
   "required": [
     "paper",
-    "targets"
+    "results"
   ],
   "type": "object"
 }

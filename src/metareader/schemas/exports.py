@@ -10,17 +10,19 @@ from .curation import Ref, Target
 
 
 class Paper(Model):
+    doi: str | None = Field(default=None, description="the paper's DOI, if known (the package database requires it)")
     title: str | None = None
     identifier: Identifier | None = None
     identifiers: dict[str, str] = Field(default_factory=dict)
 
 
 class ResultsSchema(Model):
-    """results_schema.json: the enabled targets at the time the master script was created."""
+    """results_schema.json: the enabled targets at the time the master script was created. The list is called
+    "results", as in the package database's format."""
 
     schema_version: Literal["1.0"] = "1.0"
     paper: Paper
-    targets: list[Target]
+    results: list[Target] = Field(description="the targets")
 
 
 class PlanStep(Model):
@@ -54,3 +56,17 @@ class ReproducedOutput(Model):
     """outputs/results.json, written by the reproduction code."""
 
     results: list[OutputResult]
+
+
+class InputEntry(Model):
+    path: str
+    role: str
+    note: str = ""
+    used: bool = True
+    archive: str | None = Field(default=None, description="path of the zip archive it was unpacked from")
+
+
+class InputsList(Model):
+    """inputs.json: the input files (also in datapackage.json), in the package database's format."""
+
+    inputs: list[InputEntry]

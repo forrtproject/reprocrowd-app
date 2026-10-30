@@ -66,6 +66,16 @@ CATALOG: dict[str, tuple[int, str]] = {
     "package_invalid": (409, "The package doesn't validate"),
     "report_missing": (409, "Create the report first"),
     "archive_missing": (409, "Create the archive first"),
+    # package database
+    "database_not_configured": (409, "No package database is configured"),
+    "database_unreachable": (502, "The package database could not be reached"),
+    "database_error": (502, "The package database returned an unexpected answer"),
+    "no_doi": (409, "Only packages for a paper with a DOI can be submitted"),
+    "run_not_succeeded": (409, "The last run of the master script must have succeeded"),
+    "archive_stale": (409, "The package changed since the archive was made"),
+    "openalex_record_missing": (409, "No OpenAlex record (with a title) for the DOI"),
+    "duplicate_submission": (409, "An identical package was submitted before"),
+    "submission_rejected": (422, "The database refused the package"),
     # jobs
     "job_running": (409, "Another job is running in this package"),
     "job_finished": (409, "The job is not running"),

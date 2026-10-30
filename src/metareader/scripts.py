@@ -10,7 +10,7 @@ import re
 import tomllib
 from dataclasses import dataclass
 from importlib import resources
-from typing import Any
+from typing import Any, Literal
 
 from jinja2 import Environment, PackageLoader, StrictUndefined
 
@@ -93,7 +93,14 @@ def _ordered(actions: list) -> list:
     return out
 
 
-def write(pkg: Package, template_id: str, force: bool) -> dict[str, Any]:
+OnModified = Literal["refuse", "keep", "overwrite"]
+
+
+def write(pkg: Package, template_id: str, on_modified: OnModified = "refuse") -> dict[str, Any]:
+    """Render the template, results_schema.json and analysis_plan.json.
+
+    Files edited since they were generated (e.g. implemented by the agent): ``refuse`` (409), ``keep`` them and
+    regenerate everything else (e.g. to update the exports after targets changed), or ``overwrite`` them."""
     tpls = templates()
     tpl = tpls.get(template_id)
     if tpl is None:
@@ -105,16 +112,19 @@ def write(pkg: Package, template_id: str, force: bool) -> dict[str, Any]:
             raise invalid("nothing_to_script", "at least one enabled target and one enabled action are needed")
         m = pkg.load()
         plan = resolve_plan(pkg)
-        paper = Paper(title=m.title, identifier=m.metareader.identifier, identifiers=m.metareader.identifiers)
+        paper = Paper(doi=m.metareader.identifiers.get("doi") or (m.metareader.identifier.value if m.metareader.identifier and m.metareader.identifier.scheme == "doi" else None),
+                      title=m.title, identifier=m.metareader.identifier, identifiers=m.metareader.identifiers)
         dests = {f["dest"] for f in tpl.files} | {"README.md"}
 
         dests.add(AGENT_PROMPT)
         # Refuse to overwrite files changed since they were generated (e.g. implemented by the agent).
         modified = [r.path for r in m.by_kind("script") if pkg.path(r.path).exists() and _current_hash(pkg, r.path) != r.metareader.generated_hash]
         modified += [d for d in dests if pkg.path(d).exists() and not m.get(f"script-{_rname(d)}")]
-        if modified and not force:
-            raise conflict("script_modified", "these files changed since they were generated; pass force to overwrite",
-                           {"files": sorted(set(modified))})
+        modified = sorted(set(modified))
+        if modified and on_modified == "refuse":
+            raise conflict("script_modified", "these files changed since they were generated; keep them (on_modified=keep) or overwrite them",
+                           {"files": modified})
+        kept = modified if on_modified == "keep" else []
 
         env = _env()
         ctx = {"paper": paper, "plan": plan, "tpl": tpl, "marker": TODO_MARK, "steps_by_id": {s.id: s for s in plan.steps}}
@@ -122,20 +132,24 @@ def write(pkg: Package, template_id: str, force: bool) -> dict[str, Any]:
             created = not m.by_kind("script")
             for r in m.by_kind("script"):  # files of a previously chosen template
                 if r.path not in dests:
-                    pkg.remove(m, r.name)
+                    if r.path in kept:  # edited: stays, but is no longer a generated file
+                        r.metareader = OtherMeta(kind="code", added_at=r.metareader.added_at)
+                    else:
+                        pkg.remove(m, r.name)
             rendered = {f["dest"]: env.get_template(f"{tpl.id}/{f['src']}").render(ctx) for f in tpl.files}
             rendered["README.md"] = env.get_template("_README.md.j2").render(ctx)
             rendered[AGENT_PROMPT] = agent_prompt(pkg, tpl)
+            rendered = {d: t for d, t in rendered.items() if d not in kept}
             for dest, text in rendered.items():
                 atomic_write(pkg.path(dest), text.encode())
                 digest = _current_hash(pkg, dest)
                 pkg.put(m, pkg.describe(f"script-{_rname(dest)}", dest, type="file", format=dest.rsplit(".", 1)[-1].lower() if "." in dest else "txt",
                                         mediatype="text/plain", meta=ScriptMeta(added_at=now(), template=tpl.id, generated_hash=digest)))
             meta = OtherMeta(kind="export", added_at=now())
-            pkg.write_json(m, "results-schema", "results_schema.json", ResultsSchema(paper=paper, targets=targets), schema="results-schema", meta=meta)
+            pkg.write_json(m, "results-schema", "results_schema.json", ResultsSchema(paper=paper, results=targets), schema="results-schema", meta=meta)
             pkg.write_json(m, "analysis-plan", "analysis_plan.json", plan, schema="analysis-plan", meta=meta)
     return {"created": created, "template": tpl.id, "command": tpl.command, "master": tpl.master,
-            "files": sorted(rendered) + ["analysis_plan.json", "results_schema.json"]}
+            "files": sorted(rendered) + ["analysis_plan.json", "results_schema.json"], "kept": kept}
 
 
 def _rname(path: str) -> str:

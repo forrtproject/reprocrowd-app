@@ -412,6 +412,13 @@
             }
           ],
           "default": null
+        },
+        "submissions": {
+          "items": {
+            "$ref": "#/$defs/Submission"
+          },
+          "title": "Submissions",
+          "type": "array"
         }
       },
       "required": [
@@ -558,6 +565,104 @@
         "generated_hash"
       ],
       "title": "ScriptMeta",
+      "type": "object"
+    },
+    "Submission": {
+      "additionalProperties": false,
+      "description": "An upload of the archive to the package database.",
+      "properties": {
+        "id": {
+          "pattern": "^sub-[0-9a-f]+$",
+          "title": "Id",
+          "type": "string"
+        },
+        "database": {
+          "description": "database URL at the time",
+          "title": "Database",
+          "type": "string"
+        },
+        "upload_id": {
+          "title": "Upload Id",
+          "type": "string"
+        },
+        "finish_url": {
+          "description": "where the user signs in and confirms the submission",
+          "title": "Finish Url",
+          "type": "string"
+        },
+        "status_url": {
+          "title": "Status Url",
+          "type": "string"
+        },
+        "expires": {
+          "description": "unconfirmed uploads expire",
+          "title": "Expires",
+          "type": "string"
+        },
+        "status": {
+          "description": "gone: expired or discarded without confirmation",
+          "enum": [
+            "pending",
+            "submitted",
+            "deleted",
+            "gone"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "submitted_at": {
+          "format": "date-time",
+          "title": "Submitted At",
+          "type": "string"
+        },
+        "checked_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Checked At"
+        },
+        "archive_sha256": {
+          "title": "Archive Sha256",
+          "type": "string"
+        },
+        "note": {
+          "default": "",
+          "title": "Note",
+          "type": "string"
+        },
+        "package_url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "the package's page once confirmed",
+          "title": "Package Url"
+        }
+      },
+      "required": [
+        "id",
+        "database",
+        "upload_id",
+        "finish_url",
+        "status_url",
+        "expires",
+        "status",
+        "submitted_at",
+        "archive_sha256"
+      ],
+      "title": "Submission",
       "type": "object"
     },
     "UrlOrigin": {

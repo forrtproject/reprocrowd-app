@@ -94,7 +94,7 @@ flowchart TD
   F["POST …/inputs · PATCH / DELETE …/inputs/{in}<br/>[mr input add / edit / rm]<br/>makes: inputs/…, role / note / used"]
   G["POST …/targets (manual) · POST …/targets/runs (LLM)<br/>PATCH …/targets/{id} · DELETE …/targets/{id}/edit (restore)<br/>[mr target …]<br/>needs: refs into an extraction, or unreferenced + note"]
   H["POST …/actions · …/actions/runs<br/>[mr action …]<br/>needs: refs, inputs, the targets they produce"]
-  I["PUT …/script {template, force}<br/>[mr script create P --template r]<br/>needs: ≥1 enabled target and action<br/>makes: master script, results_schema.json, analysis_plan.json, README.md"]
+  I["PUT …/script {template, on_modified}<br/>[mr script create P --template r]<br/>needs: ≥1 enabled target and action<br/>makes: master script, results_schema.json, analysis_plan.json, README.md"]
   V["GET …/validation<br/>[mr validate P]"]
   T["TODO: code-generation job, run, compare, report, submit"]
   A --> B --> C2
@@ -164,7 +164,7 @@ clients) works without special cases.
 | `GET` / `PATCH` / `DELETE …/targets/{id}` | merge patch incl. `disabled` | `{item, origin}` · 204 | `schema_invalid`, `invalid_reference`, `manual_item`, `llm_entry`, `in_use` |
 | `DELETE …/targets/{id}/edit` | | restored LLM version | `manual_item` |
 | `…/actions…` | same as targets | | |
-| `GET` / `PUT …/script` | `{template, force?}` | template, TODO status, files · 201 / 200 `{created, files, command}` | `unknown_template`, `nothing_to_script`, `script_modified`, `job_running` |
+| `GET` / `PUT …/script` | `{template, on_modified?: refuse\|keep\|overwrite}` | template, TODO status, files · 201 / 200 `{created, files, command}` | `unknown_template`, `nothing_to_script`, `script_modified`, `job_running` |
 | `GET /v1/agent-profiles` | | agent profiles (argv, tools read-only) | |
 | `POST …/jobs` | `{type:"codegen", profile?, allow_exec?, instructions?}` | 202 job + `Location` | `script_missing`, `job_running`, `unknown_profile`, `job_start_failed` |
 | `GET …/jobs` · `GET …/jobs/{j}` · `GET …/jobs/{j}/stdout` | | jobs · job · raw output | |
@@ -174,6 +174,9 @@ clients) works without special cases.
 | `GET …/comparison` | `?rounding=reported\|N&threshold=P` | per-target status, deviation, table cells; summary | `script_missing`, `results_missing` |
 | `PUT …/report` · `GET …/report` | `{rounding?, threshold?}` | 201/200 summary · the HTML | `script_missing`, `results_missing`, `job_running`, `report_missing` |
 | `PUT …/archive` · `GET …/archive` | | 201/200 archive info · the ZIP | `package_invalid`, `report_missing`, `archive_missing` |
+| `GET /v1/database` · `GET /v1/database/packages?doi=` | | status · packages for a DOI | `database_not_configured`, `database_unreachable` |
+| `POST …/submissions` | `{note?}` | 201 submission (`finish_url` to confirm in the browser) | `no_doi`, `run_not_succeeded`, `archive_missing`, `archive_stale`, `duplicate_submission`, `submission_rejected`, … |
+| `GET …/submissions[/{id}]` | | submissions · one, status refreshed from the database | |
 | `GET …/files` · `POST …/{pkg}:sync` | | files on disk with their resource · `{added, updated, removed}` | `job_running` |
 
 **LLM error classes (reconcile, target/action runs):**
@@ -280,8 +283,9 @@ automatically. Phase 1 ships `r`, `python`, `targets` (R targets) and `snakemake
 The script step resolves the plan: one load step per used data input, then the enabled actions in id order
 (moved after their dependencies), then the results step. It writes `results_schema.json` and
 `analysis_plan.json` and renders the template. Generated files are registered with their hash. A file whose
-current hash differs from the recorded one was edited, and is only overwritten with `force`. Switching
-templates removes the previous template's unedited files.
+current hash differs from the recorded one was edited; `on_modified` decides: `refuse` (409, default), `keep`
+(regenerate everything else) or `overwrite`. Switching templates removes the previous template's unedited
+files (kept edited ones become `code`).
 
 > **Implemented in:** `scripts.py` (`templates`, `resolve_plan`, `write`), `templates/`, `schemas/exports.py`.
 
@@ -375,7 +379,7 @@ sequenceDiagram
   explains the marker ("Every TODO(LLM) block must be implemented…") is excluded. `GET …/script` lists the
   remaining markers with line numbers; every codegen result includes the count.
 - **Edits are tracked, not lost**: generated files record their `generated_hash`. After the agent edits the
-  master script, `PUT …/script` refuses to regenerate it without `force`, while the manifest's `hash` is
+  master script, `PUT …/script` refuses to regenerate it unless `on_modified` is `keep` or `overwrite`, while the manifest's `hash` is
   refreshed so integrity validation stays green. Inputs, full texts and extractions are never refreshed: if
   an agent changes them, validation reports it.
 - **One job per package** (409 `job_running`); script writes and `:sync` also wait for it. Job records
@@ -446,9 +450,47 @@ size and hashes are recorded in the manifest (`metareader.archive`). `GET …/ar
 > `Graph.lineage`), `templates/_report.html.j2`, `schemas/manifest.py` (`ArchiveInfo`), CLI `mr report`,
 > `mr archive`. Checked visually on the scratch package (25 targets, 15 actions).
 
+## Submission to the package database
+
+Optional (`[database] url`), compatible with the AI-Assisted Reproduction Database the plugin used. The
+service holds no database credentials.
+
+```mermaid
+sequenceDiagram
+  participant C as client
+  participant S as service
+  participant O as OpenAlex
+  participant D as package database
+  participant U as user (browser)
+  C->>S: POST …/submissions {note}
+  S->>S: checks: DOI · last run succeeded · archive up to date
+  S->>O: work record by DOI (title, authors, year, venue)
+  S->>D: POST /api/uploads (ZIP, X-Package-Metadata)
+  D-->>S: 201 {finish_url, status_url, expires}
+  S-->>C: 201 submission {status: pending, finish_url}
+  U->>D: sign in, confirm at finish_url
+  C->>S: GET …/submissions/{id}
+  S->>D: GET status_url
+  S-->>C: {status: submitted, package_url}
+```
+
+- Bibliographic metadata comes only from OpenAlex, looked up at submission (as in the plugin).
+- The archive must be up to date: its `datapackage.json` must list the same resources with the same hashes
+  as the package now (`archive_stale` otherwise).
+- Database answers map to problems: 409 `duplicate_submission` (identical contents submitted before, with
+  the existing record), 422 `submission_rejected` (with the database's `problems`), 502
+  `database_unreachable`. Submissions are recorded in the manifest (`metareader.submissions`).
+- For the database's format, `results_schema.json` lists the targets as `results` with `paper.doi`, and the
+  archive step writes `inputs.json` (schema `inputs`).
+- `PUT …/script {on_modified: keep}` regenerates the exports (e.g. after targets changed) without touching
+  files the agent implemented.
+
+> **Implemented in:** `database.py` (`status`, `find`, `submit`, `refresh`), `schemas/manifest.py`
+> (`Submission`), `report.write_archive` (`inputs.json`), CLI `mr submit`, `mr submission`. Tested with a mocked
+> database, and end to end against the local simulation (upload, confirmation by a signed-in user, status).
+
 ## TODO (later phases)
 
-- Submission to the package database.
 - Figure crops for figure targets (needs PDF coordinates → image rendering).
 - Multipart upload as an alternative to server-local paths. Directory inputs. Pagination for lists, if
   packages grow large.
