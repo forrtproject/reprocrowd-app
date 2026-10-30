@@ -56,6 +56,11 @@ CATALOG: dict[str, tuple[int, str]] = {
     "unknown_template": (400, "No such master-script template"),
     "nothing_to_script": (422, "At least one enabled target and one enabled action are needed"),
     "script_modified": (409, "Generated files were changed since; pass force to overwrite"),
+    "script_missing": (409, "Create the master script first"),
+    # jobs
+    "job_running": (409, "Another job is running in this package"),
+    "job_finished": (409, "The job is not running"),
+    "job_start_failed": (502, "The job's command could not be started"),
 }
 
 STATUS_CODES = {404: "not_found", 405: "method_not_allowed", 401: "unauthorized"}

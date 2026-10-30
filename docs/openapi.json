@@ -4140,7 +4140,7 @@
         "tags": [
           "script"
         ],
-        "summary": "Files written by the script step",
+        "summary": "The master script and its remaining TODO(LLM): markers",
         "operationId": "get_script_v1_packages__pkg__script_get",
         "security": [
           {
@@ -4166,11 +4166,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/Resource"
-                  },
-                  "title": "Response Get Script V1 Packages  Pkg  Script Get"
+                  "$ref": "#/components/schemas/ScriptState"
                 }
               }
             }
@@ -4298,6 +4294,716 @@
               }
             },
             "description": "`script_modified`: Generated files were changed since; pass force to overwrite"
+          }
+        }
+      }
+    },
+    "/v1/agent-profiles": {
+      "get": {
+        "tags": [
+          "service"
+        ],
+        "summary": "Configured coding-agent profiles",
+        "operationId": "agent_profiles_v1_agent_profiles_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AgentProfileView"
+                  },
+                  "type": "array",
+                  "title": "Response Agent Profiles V1 Agent Profiles Get"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthorized`: Missing or wrong bearer token",
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "`request_invalid`: The request body or parameters don't match the API schema",
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/packages/{pkg}/jobs": {
+      "post": {
+        "tags": [
+          "jobs"
+        ],
+        "summary": "Start a job",
+        "description": "`type: codegen` runs the configured coding agent in the package folder to implement the master script's `TODO(LLM):` markers. The package is committed to git before and after. Returns 202 at once; follow the job at its `Location`, its progress at `…/events`.",
+        "operationId": "create_job_v1_packages__pkg__jobs_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "pkg",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "package id",
+              "title": "Pkg"
+            },
+            "description": "package id"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CodegenJobCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Job"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "`unauthorized`: Missing or wrong bearer token"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "`request_invalid`: The request body or parameters don't match the API schema"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "`script_missing`: Create the master script first; `job_running`: Another job is running in this package"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "`unknown_profile`: No LLM profile with this name is configured"
+          },
+          "502": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "`job_start_failed`: The job's command could not be started"
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "jobs"
+        ],
+        "summary": "List jobs (oldest first)",
+        "operationId": "list_jobs_v1_packages__pkg__jobs_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "pkg",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "package id",
+              "title": "Pkg"
+            },
+            "description": "package id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Job"
+                  },
+                  "title": "Response List Jobs V1 Packages  Pkg  Jobs Get"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "`unauthorized`: Missing or wrong bearer token"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "`request_invalid`: The request body or parameters don't match the API schema"
+          }
+        }
+      }
+    },
+    "/v1/packages/{pkg}/jobs/{job}": {
+      "get": {
+        "tags": [
+          "jobs"
+        ],
+        "summary": "Get a job",
+        "operationId": "get_job_v1_packages__pkg__jobs__job__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "job",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Job"
+            }
+          },
+          {
+            "name": "pkg",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "package id",
+              "title": "Pkg"
+            },
+            "description": "package id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Job"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "`unauthorized`: Missing or wrong bearer token"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "`request_invalid`: The request body or parameters don't match the API schema"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "`not_found`: No such resource"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "jobs"
+        ],
+        "summary": "Cancel a running job",
+        "description": "Stops the whole process group (SIGTERM, then SIGKILL). The job then ends with status `cancelled`; the record is kept.",
+        "operationId": "cancel_job_v1_packages__pkg__jobs__job__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "job",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Job"
+            }
+          },
+          {
+            "name": "pkg",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "package id",
+              "title": "Pkg"
+            },
+            "description": "package id"
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Job"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "`unauthorized`: Missing or wrong bearer token"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "`request_invalid`: The request body or parameters don't match the API schema"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "`not_found`: No such resource"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "`job_finished`: The job is not running"
+          }
+        }
+      }
+    },
+    "/v1/packages/{pkg}/jobs/{job}/events": {
+      "get": {
+        "tags": [
+          "jobs"
+        ],
+        "summary": "Progress events",
+        "description": "The agent's messages, tool calls and tool results, parsed from its output. JSON (`?after=N` returns events with seq > N), or with `Accept: text/event-stream` a Server-Sent Events stream that follows the job live and ends with an `end` event carrying the final job record (`Last-Event-ID` resumes).",
+        "operationId": "job_events_v1_packages__pkg__jobs__job__events_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "job",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Job"
+            }
+          },
+          {
+            "name": "pkg",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "package id",
+              "title": "Pkg"
+            },
+            "description": "package id"
+          },
+          {
+            "name": "after",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "After"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/JobEvent"
+                  },
+                  "title": "Response Job Events V1 Packages  Pkg  Jobs  Job  Events Get"
+                }
+              },
+              "text/event-stream": {}
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "`unauthorized`: Missing or wrong bearer token"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "`request_invalid`: The request body or parameters don't match the API schema"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "`not_found`: No such resource"
+          }
+        }
+      }
+    },
+    "/v1/packages/{pkg}/jobs/{job}/stdout": {
+      "get": {
+        "tags": [
+          "jobs"
+        ],
+        "summary": "Raw stdout of the job",
+        "operationId": "job_stdout_v1_packages__pkg__jobs__job__stdout_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "job",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Job"
+            }
+          },
+          {
+            "name": "pkg",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "package id",
+              "title": "Pkg"
+            },
+            "description": "package id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {},
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "`unauthorized`: Missing or wrong bearer token"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {},
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "`request_invalid`: The request body or parameters don't match the API schema"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {},
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "`not_found`: No such resource"
+          }
+        }
+      }
+    },
+    "/v1/packages/{pkg}/files": {
+      "get": {
+        "tags": [
+          "packages"
+        ],
+        "summary": "Files on disk (most recent first)",
+        "description": "Everything in the package folder except bookkeeping (jobs/, llm-calls/, hidden files), with the resource each file belongs to. Useful to watch an agent at work.",
+        "operationId": "list_files_v1_packages__pkg__files_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "pkg",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "package id",
+              "title": "Pkg"
+            },
+            "description": "package id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/FileEntry"
+                  },
+                  "title": "Response List Files V1 Packages  Pkg  Files Get"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "`unauthorized`: Missing or wrong bearer token"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "`request_invalid`: The request body or parameters don't match the API schema"
+          }
+        }
+      }
+    },
+    "/v1/packages/{pkg}:sync": {
+      "post": {
+        "tags": [
+          "packages"
+        ],
+        "summary": "Register files changed outside the API",
+        "description": "Refreshes hashes of script, code and output resources and registers new files (outputs/ → output, elsewhere → code). Inputs, full texts and extractions are never refreshed: changes to them stay visible as integrity errors. Jobs do this automatically when they finish.",
+        "operationId": "sync_files_v1_packages__pkg__sync_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "pkg",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "package id",
+              "title": "Pkg"
+            },
+            "description": "package id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SyncReport"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "`unauthorized`: Missing or wrong bearer token"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "`request_invalid`: The request body or parameters don't match the API schema"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "`job_running`: Another job is running in this package"
           }
         }
       }
@@ -4655,6 +5361,69 @@
         "title": "ActionsFile",
         "description": "actions.json"
       },
+      "AgentProfileView": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "default": {
+            "type": "boolean",
+            "title": "Default"
+          },
+          "argv": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Argv",
+            "description": "read-only: configured in the service; {tools} is filled from tools (+ exec_tools)"
+          },
+          "tools": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Tools"
+          },
+          "exec_tools": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Exec Tools"
+          },
+          "model": {
+            "type": "string",
+            "title": "Model"
+          },
+          "effort": {
+            "type": "string",
+            "title": "Effort"
+          },
+          "timeout_s": {
+            "type": "integer",
+            "title": "Timeout S"
+          },
+          "events": {
+            "type": "string",
+            "title": "Events"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "default",
+          "argv",
+          "tools",
+          "exec_tools",
+          "model",
+          "effort",
+          "timeout_s",
+          "events"
+        ],
+        "title": "AgentProfileView"
+      },
       "Box": {
         "properties": {
           "page": {
@@ -4791,6 +5560,107 @@
           "checked_at"
         ],
         "title": "CheckResult"
+      },
+      "CodegenJobCreate": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "codegen",
+            "title": "Type"
+          },
+          "profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile",
+            "description": "agent profile; default from the service config"
+          },
+          "allow_exec": {
+            "type": "boolean",
+            "title": "Allow Exec",
+            "description": "let the agent run the analysis (the profile's exec_tools)",
+            "default": true
+          },
+          "instructions": {
+            "type": "string",
+            "title": "Instructions",
+            "description": "added to the agent prompt",
+            "default": ""
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "type"
+        ],
+        "title": "CodegenJobCreate"
+      },
+      "CodegenResult": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "codegen",
+            "title": "Type",
+            "default": "codegen"
+          },
+          "commit_before": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Commit Before",
+            "description": "package git commit before the agent ran"
+          },
+          "commit_after": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Commit After",
+            "description": "commit of the agent's changes (null: nothing changed)"
+          },
+          "changed_files": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Changed Files"
+          },
+          "todo": {
+            "$ref": "#/components/schemas/TodoStatus"
+          },
+          "git_note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Git Note",
+            "description": "why git was skipped, if it was"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "todo"
+        ],
+        "title": "CodegenResult"
       },
       "Document": {
         "properties": {
@@ -5098,6 +5968,55 @@
           "caption"
         ],
         "title": "Figure"
+      },
+      "FileEntry": {
+        "properties": {
+          "path": {
+            "type": "string",
+            "title": "Path"
+          },
+          "size": {
+            "type": "integer",
+            "title": "Size"
+          },
+          "modified": {
+            "type": "number",
+            "title": "Modified",
+            "description": "Unix time"
+          },
+          "resource": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resource",
+            "description": "resource name; null = not in the manifest yet (see :sync)"
+          },
+          "kind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Kind"
+          }
+        },
+        "type": "object",
+        "required": [
+          "path",
+          "size",
+          "modified",
+          "resource",
+          "kind"
+        ],
+        "title": "FileEntry"
       },
       "FulltextFromCandidate": {
         "properties": {
@@ -5449,6 +6368,225 @@
           "message"
         ],
         "title": "Issue"
+      },
+      "Job": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^job-[0-9a-z-]+$",
+            "title": "Id"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "codegen",
+              "run"
+            ],
+            "title": "Type"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "running",
+              "succeeded",
+              "failed",
+              "cancelled",
+              "timeout",
+              "interrupted"
+            ],
+            "title": "Status"
+          },
+          "profile": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile",
+            "description": "agent profile (codegen)"
+          },
+          "argv": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Argv",
+            "description": "the command that runs (configured, never caller-supplied)"
+          },
+          "request": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Request"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "duration_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Duration Ms"
+          },
+          "exit_code": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exit Code"
+          },
+          "stdout": {
+            "type": "string",
+            "title": "Stdout",
+            "description": "package-relative path of the raw stdout"
+          },
+          "stderr": {
+            "type": "string",
+            "title": "Stderr"
+          },
+          "events_format": {
+            "type": "string",
+            "enum": [
+              "claude-stream-json",
+              "text"
+            ],
+            "title": "Events Format"
+          },
+          "result": {
+            "anyOf": [
+              {
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/CodegenResult"
+                  },
+                  {
+                    "$ref": "#/components/schemas/RunResult"
+                  }
+                ],
+                "discriminator": {
+                  "propertyName": "type",
+                  "mapping": {
+                    "codegen": "#/components/schemas/CodegenResult",
+                    "run": "#/components/schemas/RunResult"
+                  }
+                }
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Result"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "type",
+          "status",
+          "argv",
+          "created_at",
+          "stdout",
+          "stderr",
+          "events_format"
+        ],
+        "title": "Job",
+        "description": "jobs/<id>.json"
+      },
+      "JobEvent": {
+        "properties": {
+          "seq": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Seq",
+            "description": "1-based position; use as Last-Event-ID / ?after="
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "start",
+              "text",
+              "tool_use",
+              "tool_result",
+              "result",
+              "log"
+            ],
+            "title": "Kind",
+            "description": "start: agent session started · text: agent message · tool_use: the agent calls a tool · tool_result: the tool's answer · result: final message · log: any other output line"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "tool": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tool",
+            "description": "tool name (tool_use)"
+          },
+          "is_error": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Error"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "seq",
+          "kind",
+          "text"
+        ],
+        "title": "JobEvent",
+        "description": "One step of a job's progress, read from its stdout."
       },
       "LlmCall": {
         "properties": {
@@ -5933,8 +7071,9 @@
               "metadata",
               "curation",
               "export",
-              "script",
-              "schema"
+              "schema",
+              "code",
+              "output"
             ],
             "title": "Kind"
           },
@@ -5950,7 +7089,8 @@
           "kind",
           "added_at"
         ],
-        "title": "OtherMeta"
+        "title": "OtherMeta",
+        "description": "metadata: OpenAlex record · curation: targets/actions · export: files derived for the agent · schema: JSON Schema\ncopies · code: files created by the agent or the user · output: files under outputs/ (written by runs)."
       },
       "PackageCreate": {
         "properties": {
@@ -6291,6 +7431,9 @@
                 "$ref": "#/components/schemas/InputMeta"
               },
               {
+                "$ref": "#/components/schemas/ScriptMeta"
+              },
+              {
                 "$ref": "#/components/schemas/OtherMeta"
               }
             ],
@@ -6298,14 +7441,16 @@
             "discriminator": {
               "propertyName": "kind",
               "mapping": {
+                "code": "#/components/schemas/OtherMeta",
                 "curation": "#/components/schemas/OtherMeta",
                 "export": "#/components/schemas/OtherMeta",
                 "extraction": "#/components/schemas/ExtractionMeta",
                 "fulltext": "#/components/schemas/FulltextMeta",
                 "input": "#/components/schemas/InputMeta",
                 "metadata": "#/components/schemas/OtherMeta",
+                "output": "#/components/schemas/OtherMeta",
                 "schema": "#/components/schemas/OtherMeta",
-                "script": "#/components/schemas/OtherMeta"
+                "script": "#/components/schemas/ScriptMeta"
               }
             }
           }
@@ -6386,6 +7531,65 @@
         ],
         "title": "RunPatch"
       },
+      "RunResult": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "run",
+            "title": "Type",
+            "default": "run"
+          },
+          "command": {
+            "type": "string",
+            "title": "Command"
+          },
+          "log": {
+            "type": "string",
+            "title": "Log",
+            "description": "package-relative path of the run log"
+          },
+          "results_file": {
+            "type": "boolean",
+            "title": "Results File",
+            "description": "outputs/results.json exists after the run"
+          },
+          "output_errors": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Output Errors",
+            "description": "outputs/results.json problems (format, unknown ids)"
+          },
+          "output_warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Output Warnings",
+            "description": "coverage problems (targets missing from the output)"
+          },
+          "commit_after": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Commit After"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "command",
+          "log",
+          "results_file"
+        ],
+        "title": "RunResult"
+      },
       "ScopeModel": {
         "properties": {
           "sections": {
@@ -6408,6 +7612,41 @@
         "additionalProperties": false,
         "type": "object",
         "title": "ScopeModel"
+      },
+      "ScriptMeta": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "script",
+            "title": "Kind",
+            "default": "script"
+          },
+          "added_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Added At"
+          },
+          "template": {
+            "type": "string",
+            "title": "Template",
+            "description": "template id"
+          },
+          "generated_hash": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$",
+            "title": "Generated Hash",
+            "description": "hash as generated; a different current hash means the file was edited (e.g. by the agent)"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "added_at",
+          "template",
+          "generated_hash"
+        ],
+        "title": "ScriptMeta",
+        "description": "A file written from a master-script template."
       },
       "ScriptRequest": {
         "properties": {
@@ -6465,6 +7704,84 @@
           "files"
         ],
         "title": "ScriptResult"
+      },
+      "ScriptState": {
+        "properties": {
+          "template": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Template",
+            "description": "null: no master script yet"
+          },
+          "command": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Command"
+          },
+          "master": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Master"
+          },
+          "agent_prompt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent Prompt",
+            "description": "path of the suggested prompt for a coding agent"
+          },
+          "todo": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TodoStatus"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "actionable TODO(LLM): markers left (the explanatory header line is not counted)"
+          },
+          "files": {
+            "items": {
+              "$ref": "#/components/schemas/Resource"
+            },
+            "type": "array",
+            "title": "Files"
+          }
+        },
+        "type": "object",
+        "required": [
+          "template",
+          "command",
+          "master",
+          "agent_prompt",
+          "todo",
+          "files"
+        ],
+        "title": "ScriptState"
       },
       "Section": {
         "properties": {
@@ -6534,6 +7851,38 @@
           "text"
         ],
         "title": "Sentence"
+      },
+      "SyncReport": {
+        "properties": {
+          "added": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Added"
+          },
+          "updated": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Updated"
+          },
+          "removed": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Removed"
+          }
+        },
+        "type": "object",
+        "required": [
+          "added",
+          "updated",
+          "removed"
+        ],
+        "title": "SyncReport"
       },
       "Table": {
         "properties": {
@@ -7108,6 +8457,76 @@
         ],
         "title": "TemplateView"
       },
+      "TodoFile": {
+        "properties": {
+          "path": {
+            "type": "string",
+            "title": "Path"
+          },
+          "remaining": {
+            "type": "integer",
+            "title": "Remaining"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/TodoLine"
+            },
+            "type": "array",
+            "title": "Lines"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "path",
+          "remaining",
+          "lines"
+        ],
+        "title": "TodoFile"
+      },
+      "TodoLine": {
+        "properties": {
+          "line": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Line"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "line",
+          "text"
+        ],
+        "title": "TodoLine"
+      },
+      "TodoStatus": {
+        "properties": {
+          "remaining": {
+            "type": "integer",
+            "title": "Remaining"
+          },
+          "files": {
+            "items": {
+              "$ref": "#/components/schemas/TodoFile"
+            },
+            "type": "array",
+            "title": "Files"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "remaining",
+          "files"
+        ],
+        "title": "TodoStatus",
+        "description": "Actionable TODO(LLM): markers left in the template's files. The header line that explains the marker\n(\"Every TODO(LLM) block must be implemented…\") is not counted: only the marker followed by a colon is."
+      },
       "UrlOrigin": {
         "properties": {
           "type": {
@@ -7255,6 +8674,10 @@
     {
       "name": "script",
       "description": "Master-script templates rendered from targets and actions."
+    },
+    {
+      "name": "jobs",
+      "description": "Long-running work (the coding agent) followed asynchronously, with live progress events."
     }
   ]
 }

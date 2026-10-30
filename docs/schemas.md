@@ -79,9 +79,12 @@ A work identifier that OpenAlex can resolve.
 
 ### OtherMeta
 
+metadata: OpenAlex record · curation: targets/actions · export: files derived for the agent · schema: JSON Schema
+copies · code: files created by the agent or the user · output: files under outputs/ (written by runs).
+
 | Field | Type | Req. | Description |
 |---|---|---|---|
-| `kind` | `"metadata"` \| `"curation"` \| `"export"` \| `"script"` \| `"schema"` | yes |  |
+| `kind` | `"metadata"` \| `"curation"` \| `"export"` \| `"schema"` \| `"code"` \| `"output"` | yes |  |
 | `added_at` | string (date-time) | yes |  |
 
 ### PackageMeta
@@ -108,7 +111,18 @@ One file of the package (Frictionless Data Resource).
 | `bytes` | integer | yes |  |
 | `hash` | string | yes | pattern `^sha256:[0-9a-f]{64}$` |
 | `jsonSchema` | string \| null |  | package-relative path of the JSON Schema the file must satisfy |
-| `metareader` | [FulltextMeta](#fulltextmeta) \| [ExtractionMeta](#extractionmeta) \| [InputMeta](#inputmeta) \| [OtherMeta](#othermeta) | yes |  |
+| `metareader` | [FulltextMeta](#fulltextmeta) \| [ExtractionMeta](#extractionmeta) \| [InputMeta](#inputmeta) \| [ScriptMeta](#scriptmeta) \| [OtherMeta](#othermeta) | yes |  |
+
+### ScriptMeta
+
+A file written from a master-script template.
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `kind` | `"script"` |  | default `script` |
+| `added_at` | string (date-time) | yes |  |
+| `template` | string | yes | template id |
+| `generated_hash` | string | yes | hash as generated; a different current hash means the file was edited (e.g. by the agent); pattern `^sha256:[0-9a-f]{64}$` |
 
 ### UrlOrigin
 
@@ -515,3 +529,77 @@ outputs/results.json, written by the reproduction code.
 | `file` | string \| null |  | figure targets: package-relative image path |
 | `step` | string \| null |  | plan step that produced it |
 | `note` | string \| null |  |  |
+
+## `job`: jobs/<id>.json
+
+File: `schemas/job.schema.json`
+
+### Root
+
+jobs/<id>.json
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `id` | string | yes | pattern `^job-[0-9a-z-]+$` |
+| `type` | `"codegen"` \| `"run"` | yes |  |
+| `status` | `"running"` \| `"succeeded"` \| `"failed"` \| `"cancelled"` \| `"timeout"` \| `"interrupted"` | yes |  |
+| `profile` | string \| null |  | agent profile (codegen) |
+| `argv` | list of string | yes | the command that runs (configured, never caller-supplied) |
+| `request` | object |  |  |
+| `created_at` | string (date-time) | yes |  |
+| `finished_at` | string (date-time) \| null |  |  |
+| `duration_ms` | integer \| null |  |  |
+| `exit_code` | integer \| null |  |  |
+| `stdout` | string | yes | package-relative path of the raw stdout |
+| `stderr` | string | yes |  |
+| `events_format` | `"claude-stream-json"` \| `"text"` | yes |  |
+| `result` | [CodegenResult](#codegenresult) \| [RunResult](#runresult) \| null |  |  |
+| `error` | string \| null |  |  |
+
+### CodegenResult
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `type` | `"codegen"` |  | default `codegen` |
+| `commit_before` | string \| null |  | package git commit before the agent ran |
+| `commit_after` | string \| null |  | commit of the agent's changes (null: nothing changed) |
+| `changed_files` | list of string |  |  |
+| `todo` | [TodoStatus](#todostatus) | yes |  |
+| `git_note` | string \| null |  | why git was skipped, if it was |
+
+### RunResult
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `type` | `"run"` |  | default `run` |
+| `command` | string | yes |  |
+| `log` | string | yes | package-relative path of the run log |
+| `results_file` | boolean | yes | outputs/results.json exists after the run |
+| `output_errors` | list of string |  | outputs/results.json problems (format, unknown ids) |
+| `output_warnings` | list of string |  | coverage problems (targets missing from the output) |
+| `commit_after` | string \| null |  |  |
+
+### TodoFile
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `path` | string | yes |  |
+| `remaining` | integer | yes |  |
+| `lines` | list of [TodoLine](#todoline) | yes |  |
+
+### TodoLine
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `line` | integer | yes |  |
+| `text` | string | yes |  |
+
+### TodoStatus
+
+Actionable TODO(LLM): markers left in the template's files. The header line that explains the marker
+("Every TODO(LLM) block must be implemented…") is not counted: only the marker followed by a colon is.
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `remaining` | integer | yes |  |
+| `files` | list of [TodoFile](#todofile) | yes |  |

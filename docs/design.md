@@ -69,6 +69,9 @@ flowchart LR
   <master script>, README.md
   llm-calls/<call-id>/        prompt.txt, stdout.txt, stderr.txt, call.json for every LLM call (audit
                               trail; not listed as resources)
+  jobs/<id>.json, jobs/<id>/  job records; the agent's prompt (stdin.txt), stdout.log, stderr.log
+  AGENT_PROMPT.md             instructions for a coding agent (written by the script step)
+  .git/                       created by the first job: commits before and after every agent run
 ```
 
 > **Implemented in:** `package.py` (`init_package` writes the minimal package; `Package.edit()` is the only way
@@ -122,7 +125,8 @@ clients) works without special cases.
 | Concurrency | Package-scoped responses carry an `ETag` (hash of the manifest). Unsafe requests may send `If-Match`; on mismatch the answer is 412 `precondition_failed`. Writes are serialized per package and files are written atomically. |
 | Auth | Bearer token (OpenAPI `HTTPBearer` scheme), enforced when the config sets `token`. `/v1/health` and `/v1/problems` are open. Binds to 127.0.0.1 by default. |
 | Tracing | `X-Request-ID` echoed or generated on every response, also in problem bodies. |
-| Long operations | LLM calls are synchronous for now (the profile's timeout bounds them; the CLI waits without a timeout). The code-generation agent will use the job pattern below (202 + job resource). |
+| Long operations | Jobs: `202 Accepted` + `Location` of a job resource; progress as Server-Sent Events; `DELETE` cancels. LLM extraction calls are synchronous (bounded by the profile's timeout). |
+| Custom methods | Operations that aren't CRUD on a resource use a `:verb` suffix (`POST /packages/{pkg}:sync`). |
 
 > **Implemented in:** `api/app.py` (routes, middleware for request id and ETag, `get_pkg` for If-Match, `auth`,
 > exception handlers), `api/problems.py` (catalog, `Problem` model), `api/models.py` (bodies incl. generated
@@ -156,7 +160,13 @@ clients) works without special cases.
 | `GET` / `PATCH` / `DELETE …/targets/{id}` | merge patch incl. `disabled` | `{item, origin}` · 204 | `schema_invalid`, `invalid_reference`, `manual_item`, `llm_entry`, `in_use` |
 | `DELETE …/targets/{id}/edit` | | restored LLM version | `manual_item` |
 | `…/actions…` | same as targets | | |
-| `GET` / `PUT …/script` | `{template, force?}` | files · 201 / 200 `{created, files, command}` | `unknown_template`, `nothing_to_script`, `script_modified` |
+| `GET` / `PUT …/script` | `{template, force?}` | template, TODO status, files · 201 / 200 `{created, files, command}` | `unknown_template`, `nothing_to_script`, `script_modified`, `job_running` |
+| `GET /v1/agent-profiles` | | agent profiles (argv, tools read-only) | |
+| `POST …/jobs` | `{type:"codegen", profile?, allow_exec?, instructions?}` | 202 job + `Location` | `script_missing`, `job_running`, `unknown_profile`, `job_start_failed` |
+| `GET …/jobs` · `GET …/jobs/{j}` · `GET …/jobs/{j}/stdout` | | jobs · job · raw output | |
+| `GET …/jobs/{j}/events` | `?after=N`; `Accept: text/event-stream`, `Last-Event-ID` | events (JSON) or live SSE ending with `end` | |
+| `DELETE …/jobs/{j}` | | 202, cancels | `job_finished` |
+| `GET …/files` · `POST …/{pkg}:sync` | | files on disk with their resource · `{added, updated, removed}` | `job_running` |
 
 **LLM error classes (reconcile, target/action runs):**
 - `llm_call_failed` (502): the configured command could not start or exited non-zero (stderr included).
@@ -308,36 +318,60 @@ timeout_s = 1800
 
 > **Implemented in:** `config.py`, `../../config.example.toml`.
 
-## Code-generation agent over REST?
+## Code generation (jobs)
 
-Yes, as an **asynchronous job resource**. A headless agent run takes minutes to hours, so it should not be
-held in one request:
+A headless coding agent implements the master script's `TODO(LLM):` markers. A run takes minutes to hours,
+so it is an **asynchronous job resource**, not one long request:
 
 ```mermaid
 sequenceDiagram
   participant C as client
   participant S as service
+  participant G as package git repo
   participant A as agent (profile argv, cwd = package)
-  C->>S: POST /v1/packages/{p}/jobs {type: codegen, profile, allow_exec}
-  S->>A: spawn in its own process group
-  S-->>C: 202 Accepted, Location: /v1/packages/{p}/jobs/{j}
-  loop
-    C->>S: GET …/jobs/{j}/events (Server-Sent Events: the agent's stream-json lines)
-    A-->>S: stdout events
+  C->>S: POST /v1/packages/{p}/jobs {type: codegen, profile?, allow_exec, instructions}
+  S->>G: sync manifest, commit "Before code generation (job)"
+  S->>A: spawn in its own process group, prompt on stdin
+  S-->>C: 202 Accepted, Location: …/jobs/{j}
+  loop while running
+    A-->>S: stream-json lines (jobs/{j}/stdout.log)
+    C->>S: GET …/jobs/{j}/events (Accept: text/event-stream)
+    S-->>C: events: start · text · tool_use · tool_result · result
   end
-  C->>S: DELETE …/jobs/{j} (cancel = kill process group)
-  S-->>C: job {status: succeeded|failed|cancelled, exit_code, changed files, commit}
+  opt cancel
+    C->>S: DELETE …/jobs/{j} (SIGTERM, then SIGKILL, to the process group)
+  end
+  S->>G: sync manifest (new files → code/output resources), commit the agent's changes
+  S-->>C: event: end, the job {status, exit_code, result: {todo, changed_files, commits}}
 ```
 
-Job records would live in the package (`jobs/<id>.json`), so a restarted service can report interrupted
-jobs. The agent's tool permissions (which commands it may execute) belong in the profile, like argv. The
-profile runner (`llm.py`) already handles process groups, timeouts and the audit trail. Reconcile and
-target/action runs can move to the same pattern if synchronous calls become too slow.
+- **Agent profiles** (`[agent.profiles.*]`) hold the command, model, effort, timeout, the always-allowed tools
+  and the `exec_tools` added when the caller sets `allow_exec`. Callers pick a profile by name only.
+- **Prompt**: rendered from `templates/_AGENT_PROMPT.md.j2` with the template's own rule (`agent_rule` in
+  `template.toml`) and the package's inputs. The script step also writes it to `AGENT_PROMPT.md`, so the same
+  instructions can be given to an agent in an editor. The exact prompt of each run is in `jobs/{j}/stdin.txt`.
+- **Events**: the agent's stdout is parsed per the profile's `events` format (`claude-stream-json` or
+  `text`) into numbered events. `GET …/events` returns them as JSON (`?after=N`) or as Server-Sent Events that
+  follow the job live (`Last-Event-ID` resumes) and end with an `end` event carrying the final job.
+- **TODO count**: only actionable markers count: `TODO(LLM)` followed by a colon. The header line that
+  explains the marker ("Every TODO(LLM) block must be implemented…") is excluded. `GET …/script` lists the
+  remaining markers with line numbers; every codegen result includes the count.
+- **Edits are tracked, not lost**: generated files record their `generated_hash`. After the agent edits the
+  master script, `PUT …/script` refuses to regenerate it without `force`, while the manifest's `hash` is
+  refreshed so integrity validation stays green. Inputs, full texts and extractions are never refreshed: if
+  an agent changes them, validation reports it.
+- **One job per package** (409 `job_running`); script writes and `:sync` also wait for it. Job records
+  (`jobs/<id>.json`, schema `job`) survive restarts; a job that was running when the service stopped is
+  reported as `interrupted`.
+
+> **Implemented in:** `jobs.py` (job manager: start, watch, timeout, cancel, interrupted), `events.py`
+> (stdout → events), `codegen.py` (agent job, git, finish hook), `gitrepo.py`, `files.py` (listing, sync),
+> `scripts.py` (`todo_status`, `agent_prompt`, `TODO_RE`), `templates/_AGENT_PROMPT.md.j2`, `schemas/jobs.py`,
+> `config.py` (`AgentProfile`), routes and SSE in `api/app.py`, CLI `mr codegen`, `mr job …`.
+> Tested with a fake agent (`tests/fake_agent.py`) and a real Claude Code run (Haiku) on Head et al. (2015).
 
 ## TODO (later phases)
 
-- Code-generation job (above), with `AGENT_PROMPT.md` rendered per template. Git commit of the package
-  before and after each agent run.
 - GROBID and docling conversion of PDFs as service calls (configured like the LLM profiles).
 - Run the master script (job), validate `outputs/results.json` (`results-output` schema exists), compare
   with targets (rounding, tolerance).

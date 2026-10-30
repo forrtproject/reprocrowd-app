@@ -356,7 +356,136 @@ def script_create(pkg: str, template: str = typer.Option(..., help="template id 
 
 @sc.command("show")
 def script_show(pkg: str):
+    """Template, remaining TODO(LLM): markers and generated files."""
     out(call("GET", f"/packages/{pkg}/script"))
+
+
+@sc.command("status")
+def script_status(pkg: str):
+    """Remaining actionable TODO(LLM): markers, one line each."""
+    st = call("GET", f"/packages/{pkg}/script")
+    if not st["template"]:
+        typer.echo("no master script yet")
+        raise typer.Exit(1)
+    typer.echo(f"{st['master']} ({st['template']}): {st['todo']['remaining']} TODO(LLM): marker(s) left")
+    for f in st["todo"]["files"]:
+        for line in f["lines"]:
+            typer.echo(f"  {f['path']}:{line['line']}: {line['text']}")
+
+
+# ---------- code generation and jobs ----------
+
+ICONS = {"start": "▶", "text": "💬", "tool_use": "🔧", "tool_result": "  ↳", "result": "■", "log": " "}
+
+
+_last_text: dict[str, str] = {}
+
+
+def show_event(e: dict) -> None:
+    text = e["text"] if e["kind"] in ("text", "result", "log") else e["text"].splitlines()[0][:200] if e["text"] else ""
+    if e["kind"] == "text":
+        _last_text["t"] = text
+    if e["kind"] == "result" and text == _last_text.get("t"):
+        text = "finished"  # Claude repeats its last message as the result
+    mark = "✗" if e.get("is_error") else ICONS[e["kind"]]
+    typer.echo(f"{mark} {text}")
+
+
+def follow(pkg: str, jid: str, after: int = 0) -> dict:
+    """Print the job's events live (Server-Sent Events) until it ends; returns the final job."""
+    headers = {"Accept": "text/event-stream", "Last-Event-ID": str(after)}
+    if _state.get("token"):
+        headers["Authorization"] = f"Bearer {_state['token']}"
+    final: dict = {}
+    with httpx.stream("GET", f"{_state['url']}/packages/{pkg}/jobs/{jid}/events", headers=headers, timeout=None) as r:
+        event = None
+        for line in r.iter_lines():
+            if line.startswith("event: "):
+                event = line[7:]
+            elif line.startswith("data: "):
+                data = json.loads(line[6:])
+                if event == "end":
+                    final = data
+                else:
+                    show_event(data)
+    return final
+
+
+def summarize(job: dict) -> None:
+    res = job.get("result") or {}
+    typer.echo(f"\n{job['id']}: {job['status']} (exit {job.get('exit_code')}, {(job.get('duration_ms') or 0) / 1000:.0f} s)", err=True)
+    if res.get("type") == "codegen":
+        typer.echo(f"TODO(LLM): markers left: {res['todo']['remaining']}; changed: {', '.join(res['changed_files']) or '—'}; "
+                   f"commit {res.get('commit_after') or '—'}", err=True)
+    if job.get("error"):
+        typer.echo(f"error: {job['error']}", err=True)
+
+
+@app.command()
+def codegen(pkg: str, profile: Optional[str] = typer.Option(None, help="agent profile (mr agents)"),
+            exec_: bool = typer.Option(True, "--exec/--no-exec", help="let the agent run the analysis"),
+            instructions: str = "", follow_: bool = typer.Option(True, "--follow/--detach", help="print progress until the agent ends")):
+    """Let the coding agent implement the master script's TODO(LLM): markers (a job)."""
+    job = call("POST", f"/packages/{pkg}/jobs", {"type": "codegen", "profile": profile, "allow_exec": exec_, "instructions": instructions})
+    if not follow_:
+        out(job)
+        return
+    typer.echo(f"{job['id']} started; Ctrl+C detaches (the agent keeps running; `mr job cancel` stops it)", err=True)
+    summarize(follow(pkg, job["id"]) or call("GET", f"/packages/{pkg}/jobs/{job['id']}"))
+
+
+@app.command()
+def agents():
+    """Configured coding-agent profiles."""
+    out(call("GET", "/agent-profiles"))
+
+
+job_app = typer.Typer(help="Jobs (code generation): status, progress, cancel.", no_args_is_help=True)
+app.add_typer(job_app, name="job")
+
+
+@job_app.command("list")
+def job_list(pkg: str):
+    for j in call("GET", f"/packages/{pkg}/jobs"):
+        typer.echo(f"{j['id']}  {j['type']:8} {j['status']:11} {j['created_at']}")
+
+
+@job_app.command("show")
+def job_show(pkg: str, job: str):
+    out(call("GET", f"/packages/{pkg}/jobs/{job}"))
+
+
+@job_app.command("events")
+def job_events(pkg: str, job: str, after: int = 0, follow_: bool = typer.Option(False, "--follow", "-f", help="keep printing until the job ends")):
+    if follow_:
+        summarize(follow(pkg, job, after) or call("GET", f"/packages/{pkg}/jobs/{job}"))
+    else:
+        for e in call("GET", f"/packages/{pkg}/jobs/{job}/events", params={"after": after}):
+            show_event(e)
+
+
+@job_app.command("log")
+def job_log(pkg: str, job: str):
+    """Raw stdout of the job."""
+    out(call("GET", f"/packages/{pkg}/jobs/{job}/stdout", raw=True))
+
+
+@job_app.command("cancel")
+def job_cancel(pkg: str, job: str):
+    out(call("DELETE", f"/packages/{pkg}/jobs/{job}"))
+
+
+@app.command("files")
+def files_cmd(pkg: str):
+    """Files in the package folder, most recently modified first."""
+    for f in call("GET", f"/packages/{pkg}/files"):
+        typer.echo(f"{f['kind'] or 'untracked':10} {f['size']:>10}  {f['path']}")
+
+
+@app.command()
+def sync(pkg: str):
+    """Register files created or changed outside the API (agents, manual edits)."""
+    out(call("POST", f"/packages/{pkg}:sync"))
 
 
 def main() -> None:

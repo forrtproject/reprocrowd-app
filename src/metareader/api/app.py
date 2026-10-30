@@ -5,6 +5,7 @@ Location), PUT replaces explicitly, PATCH is a JSON merge patch, DELETE returns 
 response carries the package's ETag, and unsafe requests may send If-Match (412 on mismatch).
 """
 
+import asyncio
 import hashlib
 import logging
 import re
@@ -15,17 +16,19 @@ from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Body, Depends, FastAPI, Path, Query, Request, Response, Security
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
+from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse, StreamingResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from .. import __version__, curation, extractions, fulltexts, inputs, metadata, scripts
+from .. import __version__, codegen, curation, extractions, files, fulltexts, inputs, jobs, metadata, scripts
 from ..config import settings
 from ..errors import ApiError, not_found
 from ..extractions import Scope
 from ..identifiers import parse_identifier
 from ..package import MANIFEST, Package, Registry
+from ..events import EventReader, read_events
 from ..schemas.document import Document
+from ..schemas.jobs import Job, JobEvent
 from ..schemas.manifest import Resource
 from ..validation import ValidationReport, validate_package
 from . import models as M
@@ -43,6 +46,7 @@ TAGS = [
     {"name": "targets", "description": "Results to reproduce: added by hand or extracted by an LLM, with non-destructive edits."},
     {"name": "actions", "description": "Analysis steps described in the paper (the former analysis plan)."},
     {"name": "script", "description": "Master-script templates rendered from targets and actions."},
+    {"name": "jobs", "description": "Long-running work (the coding agent) followed asynchronously, with live progress events."},
 ]
 
 app = FastAPI(
@@ -108,7 +112,7 @@ def errors(*codes: str) -> dict[int | str, dict[str, Any]]:
 
 # ---------- request id, ETag, auth ----------
 
-PKG_PATH = re.compile(r"^/v1/packages/([^/]+)")
+PKG_PATH = re.compile(r"^/v1/packages/([^/:]+)")
 
 
 def etag(pkg: Package) -> str:
@@ -480,10 +484,13 @@ curation_routes("actions", curation.ActionFields, M.ActionView, M.ActionPatch)
 # ---------- script ----------
 
 
-@api.get("/packages/{pkg}/script", tags=["script"], response_model=list[Resource], summary="Files written by the script step")
+@api.get("/packages/{pkg}/script", tags=["script"], response_model=M.ScriptState, summary="The master script and its remaining TODO(LLM): markers")
 def get_script(pkg: Pkg):
     m = pkg.load()
-    return m.by_kind("script") + m.by_kind("export")
+    tpl = scripts.current_template(pkg)
+    return M.ScriptState(template=tpl.id if tpl else None, command=tpl.command if tpl else None, master=tpl.master if tpl else None,
+                         agent_prompt=scripts.AGENT_PROMPT if tpl else None, todo=scripts.todo_status(pkg, tpl) if tpl else None,
+                         files=m.by_kind("script") + m.by_kind("export"))
 
 
 @api.put("/packages/{pkg}/script", tags=["script"], response_model=M.ScriptResult, summary="Create or replace the master script",
@@ -496,6 +503,108 @@ def put_script(pkg: Pkg, body: M.ScriptRequest, response: Response):
     if out["created"]:
         created(response, f"/v1/packages/{pkg.id}/script")
     return out
+
+
+# ---------- jobs ----------
+
+JOB_ERRORS = errors("not_found")
+
+
+@api.get("/agent-profiles", tags=["service"], response_model=list[M.AgentProfileView], summary="Configured coding-agent profiles")
+def agent_profiles():
+    cfg = settings()
+    return [M.AgentProfileView(name=n, default=n == cfg.agent_default_profile, argv=p.argv, tools=p.tools, exec_tools=p.exec_tools,
+                               model=p.model, effort=p.effort, timeout_s=p.timeout_s, events=p.events) for n, p in cfg.agent_profiles.items()]
+
+
+@api.post("/packages/{pkg}/jobs", tags=["jobs"], status_code=202, response_model=Job, summary="Start a job",
+          description="`type: codegen` runs the configured coding agent in the package folder to implement the master script's "
+                      "`TODO(LLM):` markers. The package is committed to git before and after. Returns 202 at once; follow "
+                      "the job at its `Location`, its progress at `…/events`.",
+          responses=errors("script_missing", "job_running", "unknown_profile", "job_start_failed"))
+def create_job(pkg: Pkg, body: M.JobCreate, response: Response):
+    job = codegen.start(pkg, profile=body.profile, allow_exec=body.allow_exec, instructions=body.instructions)
+    response.headers["Location"] = f"/v1/packages/{pkg.id}/jobs/{job.id}"
+    return job
+
+
+@api.get("/packages/{pkg}/jobs", tags=["jobs"], response_model=list[Job], summary="List jobs (oldest first)")
+def list_jobs(pkg: Pkg):
+    return jobs.list_jobs(pkg)
+
+
+@api.get("/packages/{pkg}/jobs/{job}", tags=["jobs"], response_model=Job, summary="Get a job", responses=JOB_ERRORS)
+def get_job(pkg: Pkg, job: str):
+    return jobs.load(pkg, job)
+
+
+@api.delete("/packages/{pkg}/jobs/{job}", tags=["jobs"], status_code=202, response_model=Job, summary="Cancel a running job",
+            description="Stops the whole process group (SIGTERM, then SIGKILL). The job then ends with status `cancelled`; "
+                        "the record is kept.", responses=errors("not_found", "job_finished"))
+def cancel_job(pkg: Pkg, job: str):
+    return jobs.cancel(pkg, job)
+
+
+@api.get("/packages/{pkg}/jobs/{job}/events", tags=["jobs"], response_model=list[JobEvent], summary="Progress events",
+         description="The agent's messages, tool calls and tool results, parsed from its output. JSON (`?after=N` returns "
+                     "events with seq > N), or with `Accept: text/event-stream` a Server-Sent Events stream that follows the "
+                     "job live and ends with an `end` event carrying the final job record (`Last-Event-ID` resumes).",
+         responses={**JOB_ERRORS, 200: {"content": {"application/json": {}, "text/event-stream": {}}}})
+def job_events(pkg: Pkg, job: str, request: Request, after: Annotated[int, Query(ge=0)] = 0):
+    j = jobs.load(pkg, job)
+    path = pkg.path(j.stdout)
+    if "text/event-stream" not in request.headers.get("accept", ""):
+        return read_events(path, j.events_format, after, final=j.status != "running")
+    last = int(request.headers.get("last-event-id") or after)
+    return StreamingResponse(_sse(pkg, job, path, j.events_format, last), media_type="text/event-stream",
+                             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
+async def _sse(pkg: Package, jid: str, path, fmt: str, last: int):
+    reader = EventReader(path, fmt)
+    idle = 0.0
+    while True:
+        finished = jobs.load(pkg, jid).status != "running"
+        for e in reader.poll(final=finished):
+            if e.seq > last:
+                yield f"id: {e.seq}\nevent: {e.kind}\ndata: {e.model_dump_json(exclude_none=True)}\n\n"
+                idle = 0.0
+        if finished:
+            final = jobs.load(pkg, jid)
+            if final.finished_at:
+                yield f"event: end\ndata: {final.model_dump_json(exclude_none=True)}\n\n"
+                return
+        await asyncio.sleep(0.3)
+        idle += 0.3
+        if idle >= 15:
+            yield ": keep-alive\n\n"
+            idle = 0.0
+
+
+@api.get("/packages/{pkg}/jobs/{job}/stdout", tags=["jobs"], response_class=PlainTextResponse, summary="Raw stdout of the job", responses=JOB_ERRORS)
+def job_stdout(pkg: Pkg, job: str):
+    j = jobs.load(pkg, job)
+    p = pkg.path(j.stdout)
+    return PlainTextResponse(p.read_text(encoding="utf-8", errors="replace") if p.exists() else "")
+
+
+# ---------- files ----------
+
+
+@api.get("/packages/{pkg}/files", tags=["packages"], response_model=list[M.FileEntry], summary="Files on disk (most recent first)",
+         description="Everything in the package folder except bookkeeping (jobs/, llm-calls/, hidden files), with the resource "
+                     "each file belongs to. Useful to watch an agent at work.")
+def list_files(pkg: Pkg):
+    return files.listing(pkg)
+
+
+@api.post("/packages/{pkg}:sync", tags=["packages"], response_model=M.SyncReport, summary="Register files changed outside the API",
+          description="Refreshes hashes of script, code and output resources and registers new files (outputs/ → output, "
+                      "elsewhere → code). Inputs, full texts and extractions are never refreshed: changes to them stay "
+                      "visible as integrity errors. Jobs do this automatically when they finish.", responses=errors("job_running"))
+def sync_files(pkg: Pkg):
+    jobs.ensure_idle(pkg)
+    return files.sync(pkg)
 
 
 app.include_router(service)

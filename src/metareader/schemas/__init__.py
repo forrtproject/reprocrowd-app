@@ -11,6 +11,7 @@ from pydantic import BaseModel
 from .curation import ActionLlmOutput, ActionsFile, TargetLlmOutput, TargetsFile
 from .document import Document, DocumentDraft
 from .exports import AnalysisPlan, ReproducedOutput, ResultsSchema
+from .jobs import Job
 from .manifest import Manifest
 
 # name → (model, file it describes)
@@ -25,6 +26,7 @@ SCHEMAS: dict[str, tuple[type[BaseModel], str]] = {
     "results-schema": (ResultsSchema, "results_schema.json"),
     "analysis-plan": (AnalysisPlan, "analysis_plan.json"),
     "results-output": (ReproducedOutput, "outputs/results.json"),
+    "job": (Job, "jobs/<id>.json"),
 }
 
 

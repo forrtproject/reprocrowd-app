@@ -33,6 +33,8 @@ mr target add phacking -f type=number -f description="Mean RT" -f expected=512.4
 mr target edit phacking T004 --set 'description="…"'      # LLM version kept; `mr target restore` undoes
 mr action generate phacking ex-europepmc-jats --section sec5
 mr script create phacking --template r
+mr codegen phacking                              # coding agent implements the TODO(LLM): markers, live progress
+mr script status phacking                        # markers left
 mr validate phacking
 ```
 

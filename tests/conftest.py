@@ -19,6 +19,9 @@ def client(tmp_path, monkeypatch):
         f'[server]\nregistry = "{tmp_path / "registry.json"}"\n\n[openalex]\napi_key = ""\n\n[llm]\ndefault_profile = "ok"\n\n'
         + "".join(_profile(m) for m in ("ok", "garbage", "badschema", "fail"))
         + _profile("sleep", timeout=1)
+        + '\n[agent]\ndefault_profile = "ok"\n'
+        + "".join(f'[agent.profiles.{name}]\nargv = ["{sys.executable}", "{HERE / "fake_agent.py"}", "{mode}", "--tools", "{{tools}}"]\nmodel = "fake-agent-1"\ntimeout_s = {t}\n'
+                  for name, mode, t in (("ok", "ok", 30), ("slow", "slow", 30), ("fail", "fail", 30), ("short", "slow", 1)))
     )
     monkeypatch.setenv("MR_CONFIG", str(cfg))
     from metareader.config import settings

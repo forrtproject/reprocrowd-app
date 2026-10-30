@@ -17,6 +17,7 @@ from pydantic import BaseModel, ValidationError
 
 from .curation import CURATIONS, Context, Curation, find_cycle
 from .errors import pydantic_errors
+from .files import untracked
 from .package import MANIFEST, Package
 from .schemas import SCHEMAS, schema_path
 from .schemas.manifest import Manifest
@@ -35,8 +36,6 @@ class ValidationReport(BaseModel):
     errors: list[Issue]
     warnings: list[Issue]
 
-
-IGNORED_DIRS = ("llm-calls/", "outputs/", ".git/")
 
 
 def validate_package(pkg: Package) -> ValidationReport:
@@ -114,10 +113,7 @@ def validate_package(pkg: Package) -> ValidationReport:
                 for i in a.inputs:
                     if i not in used_inputs:
                         warn("semantic", f"{a.id} uses input {i}, which is marked unused", kind)
-    tracked = {r.path for r in m.resources} | {MANIFEST}
-    for p in sorted(pkg.root.rglob("*")):
-        rel = p.relative_to(pkg.root).as_posix()
-        if p.is_file() and rel not in tracked and not rel.startswith(IGNORED_DIRS) and not p.name.startswith("."):
-            warn("semantic", f"untracked file {rel}")
+    for rel in untracked(pkg, m):
+        warn("semantic", f"untracked file {rel} (POST /packages/{{pkg}}:sync registers it)")
     return ValidationReport(valid=not errors, errors=errors, warnings=warnings)
 

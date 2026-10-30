@@ -63,12 +63,24 @@ class InputMeta(Model):
     origin: LocalOrigin
 
 
+class ScriptMeta(Model):
+    """A file written from a master-script template."""
+
+    kind: Literal["script"] = "script"
+    added_at: datetime
+    template: str = Field(description="template id")
+    generated_hash: str = Field(pattern=r"^sha256:[0-9a-f]{64}$", description="hash as generated; a different current hash means the file was edited (e.g. by the agent)")
+
+
 class OtherMeta(Model):
-    kind: Literal["metadata", "curation", "export", "script", "schema"]
+    """metadata: OpenAlex record · curation: targets/actions · export: files derived for the agent · schema: JSON Schema
+    copies · code: files created by the agent or the user · output: files under outputs/ (written by runs)."""
+
+    kind: Literal["metadata", "curation", "export", "schema", "code", "output"]
     added_at: datetime
 
 
-ResourceMeta = Annotated[Union[FulltextMeta, ExtractionMeta, InputMeta, OtherMeta], Field(discriminator="kind")]
+ResourceMeta = Annotated[Union[FulltextMeta, ExtractionMeta, InputMeta, ScriptMeta, OtherMeta], Field(discriminator="kind")]
 
 
 class Resource(Model):

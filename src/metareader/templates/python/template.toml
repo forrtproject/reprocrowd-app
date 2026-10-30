@@ -2,4 +2,5 @@ label = "Monolithic Python script"
 language = "Python"
 command = "python3 analysis.py"
 master = "analysis.py"
+agent_rule = "Implement each step section of analysis.py in place, in order."
 files = [{ src = "analysis.py.j2", dest = "analysis.py" }]

@@ -19,7 +19,7 @@ from importlib import resources
 from string import Template
 from typing import Any
 
-from .config import LlmProfile, settings
+from .config import LlmProfile, expand_argv, settings
 from .errors import ApiError
 from .package import Package, atomic_write, dump_json
 from .schemas.common import LlmCall, now
@@ -36,15 +36,7 @@ def profile(name: str | None) -> tuple[str, LlmProfile]:
 
 def build_argv(p: LlmProfile, read_files: bool) -> list[str]:
     """Substitute {model}/{effort}; an empty value drops the placeholder argument and the flag before it."""
-    out: list[str] = []
-    for arg in p.argv:
-        value = arg.replace("{model}", p.model).replace("{effort}", p.effort)
-        if value == "" and arg != "":
-            if out and out[-1].startswith("-"):
-                out.pop()
-            continue
-        out.append(value)
-    return out + (p.read_files_argv if read_files else [])
+    return expand_argv(p.argv, {"model": p.model, "effort": p.effort}) + (p.read_files_argv if read_files else [])
 
 
 def load_prompt(name: str) -> str:

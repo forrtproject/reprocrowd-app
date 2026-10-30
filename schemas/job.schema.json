@@ -1,0 +1,365 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://metareader.example/schemas/job.schema.json",
+  "title": "Job (jobs/<id>.json)",
+  "$defs": {
+    "CodegenResult": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "codegen",
+          "default": "codegen",
+          "title": "Type",
+          "type": "string"
+        },
+        "commit_before": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "package git commit before the agent ran",
+          "title": "Commit Before"
+        },
+        "commit_after": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "commit of the agent's changes (null: nothing changed)",
+          "title": "Commit After"
+        },
+        "changed_files": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Changed Files",
+          "type": "array"
+        },
+        "todo": {
+          "$ref": "#/$defs/TodoStatus"
+        },
+        "git_note": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "why git was skipped, if it was",
+          "title": "Git Note"
+        }
+      },
+      "required": [
+        "todo"
+      ],
+      "title": "CodegenResult",
+      "type": "object"
+    },
+    "RunResult": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "run",
+          "default": "run",
+          "title": "Type",
+          "type": "string"
+        },
+        "command": {
+          "title": "Command",
+          "type": "string"
+        },
+        "log": {
+          "description": "package-relative path of the run log",
+          "title": "Log",
+          "type": "string"
+        },
+        "results_file": {
+          "description": "outputs/results.json exists after the run",
+          "title": "Results File",
+          "type": "boolean"
+        },
+        "output_errors": {
+          "description": "outputs/results.json problems (format, unknown ids)",
+          "items": {
+            "type": "string"
+          },
+          "title": "Output Errors",
+          "type": "array"
+        },
+        "output_warnings": {
+          "description": "coverage problems (targets missing from the output)",
+          "items": {
+            "type": "string"
+          },
+          "title": "Output Warnings",
+          "type": "array"
+        },
+        "commit_after": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Commit After"
+        }
+      },
+      "required": [
+        "command",
+        "log",
+        "results_file"
+      ],
+      "title": "RunResult",
+      "type": "object"
+    },
+    "TodoFile": {
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "title": "Path",
+          "type": "string"
+        },
+        "remaining": {
+          "title": "Remaining",
+          "type": "integer"
+        },
+        "lines": {
+          "items": {
+            "$ref": "#/$defs/TodoLine"
+          },
+          "title": "Lines",
+          "type": "array"
+        }
+      },
+      "required": [
+        "path",
+        "remaining",
+        "lines"
+      ],
+      "title": "TodoFile",
+      "type": "object"
+    },
+    "TodoLine": {
+      "additionalProperties": false,
+      "properties": {
+        "line": {
+          "minimum": 1,
+          "title": "Line",
+          "type": "integer"
+        },
+        "text": {
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "line",
+        "text"
+      ],
+      "title": "TodoLine",
+      "type": "object"
+    },
+    "TodoStatus": {
+      "additionalProperties": false,
+      "description": "Actionable TODO(LLM): markers left in the template's files. The header line that explains the marker\n(\"Every TODO(LLM) block must be implemented…\") is not counted: only the marker followed by a colon is.",
+      "properties": {
+        "remaining": {
+          "title": "Remaining",
+          "type": "integer"
+        },
+        "files": {
+          "items": {
+            "$ref": "#/$defs/TodoFile"
+          },
+          "title": "Files",
+          "type": "array"
+        }
+      },
+      "required": [
+        "remaining",
+        "files"
+      ],
+      "title": "TodoStatus",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "jobs/<id>.json",
+  "properties": {
+    "id": {
+      "pattern": "^job-[0-9a-z-]+$",
+      "title": "Id",
+      "type": "string"
+    },
+    "type": {
+      "enum": [
+        "codegen",
+        "run"
+      ],
+      "title": "Type",
+      "type": "string"
+    },
+    "status": {
+      "enum": [
+        "running",
+        "succeeded",
+        "failed",
+        "cancelled",
+        "timeout",
+        "interrupted"
+      ],
+      "title": "Status",
+      "type": "string"
+    },
+    "profile": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "agent profile (codegen)",
+      "title": "Profile"
+    },
+    "argv": {
+      "description": "the command that runs (configured, never caller-supplied)",
+      "items": {
+        "type": "string"
+      },
+      "title": "Argv",
+      "type": "array"
+    },
+    "request": {
+      "additionalProperties": true,
+      "title": "Request",
+      "type": "object"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "finished_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Finished At"
+    },
+    "duration_ms": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Duration Ms"
+    },
+    "exit_code": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Exit Code"
+    },
+    "stdout": {
+      "description": "package-relative path of the raw stdout",
+      "title": "Stdout",
+      "type": "string"
+    },
+    "stderr": {
+      "title": "Stderr",
+      "type": "string"
+    },
+    "events_format": {
+      "enum": [
+        "claude-stream-json",
+        "text"
+      ],
+      "title": "Events Format",
+      "type": "string"
+    },
+    "result": {
+      "anyOf": [
+        {
+          "discriminator": {
+            "mapping": {
+              "codegen": "#/$defs/CodegenResult",
+              "run": "#/$defs/RunResult"
+            },
+            "propertyName": "type"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/CodegenResult"
+            },
+            {
+              "$ref": "#/$defs/RunResult"
+            }
+          ]
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Result"
+    },
+    "error": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Error"
+    }
+  },
+  "required": [
+    "id",
+    "type",
+    "status",
+    "argv",
+    "created_at",
+    "stdout",
+    "stderr",
+    "events_format"
+  ],
+  "type": "object"
+}

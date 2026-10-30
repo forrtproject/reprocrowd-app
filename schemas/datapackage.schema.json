@@ -247,14 +247,16 @@
     },
     "OtherMeta": {
       "additionalProperties": false,
+      "description": "metadata: OpenAlex record · curation: targets/actions · export: files derived for the agent · schema: JSON Schema\ncopies · code: files created by the agent or the user · output: files under outputs/ (written by runs).",
       "properties": {
         "kind": {
           "enum": [
             "metadata",
             "curation",
             "export",
-            "script",
-            "schema"
+            "schema",
+            "code",
+            "output"
           ],
           "title": "Kind",
           "type": "string"
@@ -384,14 +386,16 @@
         "metareader": {
           "discriminator": {
             "mapping": {
+              "code": "#/$defs/OtherMeta",
               "curation": "#/$defs/OtherMeta",
               "export": "#/$defs/OtherMeta",
               "extraction": "#/$defs/ExtractionMeta",
               "fulltext": "#/$defs/FulltextMeta",
               "input": "#/$defs/InputMeta",
               "metadata": "#/$defs/OtherMeta",
+              "output": "#/$defs/OtherMeta",
               "schema": "#/$defs/OtherMeta",
-              "script": "#/$defs/OtherMeta"
+              "script": "#/$defs/ScriptMeta"
             },
             "propertyName": "kind"
           },
@@ -404,6 +408,9 @@
             },
             {
               "$ref": "#/$defs/InputMeta"
+            },
+            {
+              "$ref": "#/$defs/ScriptMeta"
             },
             {
               "$ref": "#/$defs/OtherMeta"
@@ -423,6 +430,41 @@
         "metareader"
       ],
       "title": "Resource",
+      "type": "object"
+    },
+    "ScriptMeta": {
+      "additionalProperties": false,
+      "description": "A file written from a master-script template.",
+      "properties": {
+        "kind": {
+          "const": "script",
+          "default": "script",
+          "title": "Kind",
+          "type": "string"
+        },
+        "added_at": {
+          "format": "date-time",
+          "title": "Added At",
+          "type": "string"
+        },
+        "template": {
+          "description": "template id",
+          "title": "Template",
+          "type": "string"
+        },
+        "generated_hash": {
+          "description": "hash as generated; a different current hash means the file was edited (e.g. by the agent)",
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Generated Hash",
+          "type": "string"
+        }
+      },
+      "required": [
+        "added_at",
+        "template",
+        "generated_hash"
+      ],
+      "title": "ScriptMeta",
       "type": "object"
     },
     "UrlOrigin": {

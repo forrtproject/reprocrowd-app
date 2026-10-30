@@ -8,7 +8,8 @@ from pydantic import BaseModel, ConfigDict, Field, create_model
 
 from ..schemas.common import Identifier, Model
 from ..schemas.curation import Action, ActionFields, Target, TargetFields
-from ..schemas.manifest import Role
+from ..schemas.jobs import TodoStatus
+from ..schemas.manifest import Resource, Role
 
 
 class Req(Model):
@@ -201,3 +202,51 @@ class ScriptResult(BaseModel):
     command: str
     master: str
     files: list[str]
+
+
+class ScriptState(BaseModel):
+    template: str | None = Field(description="null: no master script yet")
+    command: str | None
+    master: str | None
+    agent_prompt: str | None = Field(description="path of the suggested prompt for a coding agent")
+    todo: TodoStatus | None = Field(description="actionable TODO(LLM): markers left (the explanatory header line is not counted)")
+    files: list[Resource]
+
+
+# ---------- jobs and files ----------
+
+
+class AgentProfileView(BaseModel):
+    name: str
+    default: bool
+    argv: list[str] = Field(description="read-only: configured in the service; {tools} is filled from tools (+ exec_tools)")
+    tools: list[str]
+    exec_tools: list[str]
+    model: str
+    effort: str
+    timeout_s: int
+    events: str
+
+
+class CodegenJobCreate(Req):
+    type: Literal["codegen"]
+    profile: str | None = Field(default=None, description="agent profile; default from the service config")
+    allow_exec: bool = Field(default=True, description="let the agent run the analysis (the profile's exec_tools)")
+    instructions: str = Field(default="", description="added to the agent prompt")
+
+
+JobCreate = CodegenJobCreate  # becomes a union discriminated by "type" when more job types exist
+
+
+class FileEntry(BaseModel):
+    path: str
+    size: int
+    modified: float = Field(description="Unix time")
+    resource: str | None = Field(description="resource name; null = not in the manifest yet (see :sync)")
+    kind: str | None
+
+
+class SyncReport(BaseModel):
+    added: list[str]
+    updated: list[str]
+    removed: list[str]

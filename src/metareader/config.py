@@ -6,6 +6,7 @@ import os
 import tomllib
 from functools import lru_cache
 from pathlib import Path
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -16,6 +17,46 @@ class LlmProfile(BaseModel):
     model: str = ""
     effort: str = ""
     timeout_s: int = 1800
+
+
+class AgentProfile(BaseModel):
+    """A headless coding agent for code generation. It runs in the package folder as a job."""
+
+    argv: list[str] = Field(description="command line; {model}, {effort} and {tools} (comma-separated allowed tools) are substituted, the prompt goes to stdin")
+    tools: list[str] = Field(default_factory=lambda: ["Read", "Write", "Edit", "Glob", "Grep"], description="always allowed")
+    exec_tools: list[str] = Field(
+        default_factory=lambda: ["Bash(Rscript:*)", "Bash(R:*)", "Bash(python:*)", "Bash(python3:*)", "Bash(snakemake:*)", "Bash(pip:*)", "Bash(ls:*)"],
+        description="added when the caller allows the agent to run the analysis (allow_exec)")
+    model: str = ""
+    effort: str = ""
+    timeout_s: int = 7200
+    events: Literal["claude-stream-json", "text"] = Field(default="claude-stream-json", description="how to read the agent's stdout as events")
+
+
+def expand_argv(argv: list[str], values: dict[str, str]) -> list[str]:
+    """Substitute {name} placeholders. An argument that becomes empty is dropped, with the flag before it."""
+    out: list[str] = []
+    for arg in argv:
+        value = arg
+        for k, v in values.items():
+            value = value.replace("{" + k + "}", v)
+        if value == "" and arg != "":
+            if out and out[-1].startswith("-"):
+                out.pop()
+            continue
+        out.append(value)
+    return out
+
+
+def _default_agents() -> dict[str, AgentProfile]:
+    return {
+        "claude": AgentProfile(
+            argv=["claude", "-p", "--output-format", "stream-json", "--verbose", "--permission-mode", "acceptEdits",
+                  "--model", "{model}", "--effort", "{effort}", "--allowedTools", "{tools}"],
+            model="sonnet",
+            effort="high",
+        )
+    }
 
 
 def _default_profiles() -> dict[str, LlmProfile]:
@@ -40,6 +81,8 @@ class Settings(BaseModel):
     max_download_mb: int = 200
     llm_default_profile: str = "claude"
     llm_profiles: dict[str, LlmProfile] = Field(default_factory=_default_profiles)
+    agent_default_profile: str = "claude"
+    agent_profiles: dict[str, AgentProfile] = Field(default_factory=_default_agents)
 
     def path_allowed(self, p: Path) -> bool:
         if not self.allowed_roots:
@@ -69,6 +112,11 @@ def load_settings(path: Path | None = None) -> Settings:
         data["llm_default_profile"] = llm["default_profile"]
     if "profiles" in llm:
         data["llm_profiles"] = llm["profiles"]
+    agent = raw.get("agent", {})
+    if "default_profile" in agent:
+        data["agent_default_profile"] = agent["default_profile"]
+    if "profiles" in agent:
+        data["agent_profiles"] = agent["profiles"]
     return Settings.model_validate(data)
 
 

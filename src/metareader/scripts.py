@@ -6,6 +6,7 @@ a template, add a folder: it is discovered automatically.
 """
 from __future__ import annotations
 
+import re
 import tomllib
 from dataclasses import dataclass
 from importlib import resources
@@ -13,12 +14,14 @@ from typing import Any
 
 from jinja2 import Environment, PackageLoader, StrictUndefined
 
+from . import jobs
 from .curation import Curation
 from .errors import ApiError, conflict, invalid
 from .package import Package, atomic_write, sha256_file, slug
 from .schemas.common import now
 from .schemas.exports import AnalysisPlan, Paper, PlanStep, ResultsSchema
-from .schemas.manifest import OtherMeta
+from .schemas.jobs import TodoFile, TodoLine, TodoStatus
+from .schemas.manifest import OtherMeta, ScriptMeta
 
 TODO_MARK = "TODO(LLM)"
 
@@ -31,6 +34,7 @@ class Template:
     command: str
     master: str
     files: list[dict[str, str]]
+    agent_rule: str = ""  # template-specific instruction in AGENT_PROMPT.md
 
 
 def templates() -> dict[str, Template]:
@@ -94,6 +98,7 @@ def write(pkg: Package, template_id: str, force: bool) -> dict[str, Any]:
     tpl = tpls.get(template_id)
     if tpl is None:
         raise ApiError(400, "unknown_template", f"no template {template_id!r}; available: {', '.join(tpls)}")
+    jobs.ensure_idle(pkg)
     with pkg.locked():
         targets = [t for t, _ in Curation(pkg, "targets").effective()]
         if not targets or not Curation(pkg, "actions").effective():
@@ -103,12 +108,9 @@ def write(pkg: Package, template_id: str, force: bool) -> dict[str, Any]:
         paper = Paper(title=m.title, identifier=m.metareader.identifier, identifiers=m.metareader.identifiers)
         dests = {f["dest"] for f in tpl.files} | {"README.md"}
 
-        # Refuse to overwrite files changed since they were generated (the manifest has their hash at that time).
-        modified = []
-        for r in m.by_kind("script"):
-            p = pkg.path(r.path)
-            if p.exists() and f"sha256:{sha256_file(p)}" != r.hash:
-                modified.append(r.path)
+        dests.add(AGENT_PROMPT)
+        # Refuse to overwrite files changed since they were generated (e.g. implemented by the agent).
+        modified = [r.path for r in m.by_kind("script") if pkg.path(r.path).exists() and _current_hash(pkg, r.path) != r.metareader.generated_hash]
         modified += [d for d in dests if pkg.path(d).exists() and not m.get(f"script-{_rname(d)}")]
         if modified and not force:
             raise conflict("script_modified", "these files changed since they were generated; pass force to overwrite",
@@ -123,10 +125,12 @@ def write(pkg: Package, template_id: str, force: bool) -> dict[str, Any]:
                     pkg.remove(m, r.name)
             rendered = {f["dest"]: env.get_template(f"{tpl.id}/{f['src']}").render(ctx) for f in tpl.files}
             rendered["README.md"] = env.get_template("_README.md.j2").render(ctx)
+            rendered[AGENT_PROMPT] = agent_prompt(pkg, tpl)
             for dest, text in rendered.items():
                 atomic_write(pkg.path(dest), text.encode())
+                digest = _current_hash(pkg, dest)
                 pkg.put(m, pkg.describe(f"script-{_rname(dest)}", dest, type="file", format=dest.rsplit(".", 1)[-1].lower() if "." in dest else "txt",
-                                        mediatype="text/plain", meta=OtherMeta(kind="script", added_at=now())))
+                                        mediatype="text/plain", meta=ScriptMeta(added_at=now(), template=tpl.id, generated_hash=digest)))
             meta = OtherMeta(kind="export", added_at=now())
             pkg.write_json(m, "results-schema", "results_schema.json", ResultsSchema(paper=paper, targets=targets), schema="results-schema", meta=meta)
             pkg.write_json(m, "analysis-plan", "analysis_plan.json", plan, schema="analysis-plan", meta=meta)
@@ -136,3 +140,42 @@ def write(pkg: Package, template_id: str, force: bool) -> dict[str, Any]:
 
 def _rname(path: str) -> str:
     return slug(path)
+
+
+def _current_hash(pkg: Package, rel: str) -> str:
+    return f"sha256:{sha256_file(pkg.path(rel))}"
+
+
+# ---------- state of the master script ----------
+
+AGENT_PROMPT = "AGENT_PROMPT.md"
+# An actionable marker is TODO(LLM) followed by a colon ("# TODO(LLM): implement A02"). The header line that
+# explains the marker ("Every TODO(LLM) block must be implemented") has no colon and is not counted.
+TODO_RE = re.compile(re.escape(TODO_MARK) + r":")
+
+
+def current_template(pkg: Package) -> Template | None:
+    scripts = pkg.load().by_kind("script")
+    return templates().get(scripts[0].metareader.template) if scripts else None
+
+
+def todo_status(pkg: Package, tpl: Template) -> TodoStatus:
+    files = []
+    for f in tpl.files:
+        p = pkg.path(f["dest"])
+        if not p.exists():
+            continue
+        lines = [TodoLine(line=i, text=line.strip()) for i, line in enumerate(p.read_text(encoding="utf-8", errors="replace").splitlines(), 1)
+                 if TODO_RE.search(line)]
+        files.append(TodoFile(path=f["dest"], remaining=len(lines), lines=lines))
+    return TodoStatus(remaining=sum(f.remaining for f in files), files=files)
+
+
+def agent_prompt(pkg: Package, tpl: Template, instructions: str = "") -> str:
+    m = pkg.load()
+    used = [r for r in m.by_kind("input") if r.metareader.used]
+    by_role = {role: [r for r in used if r.metareader.role == role] for role in ("data", "code", "other")}
+    text = _env().get_template("_AGENT_PROMPT.md.j2").render(tpl=tpl, inputs=by_role, marker=TODO_MARK, folder=str(pkg.root))
+    if instructions.strip():
+        text += f"\nAdditional instructions:\n{instructions.strip()}\n"
+    return text

@@ -2,4 +2,5 @@ label = "Monolithic R script"
 language = "R"
 command = "Rscript analysis.R"
 master = "analysis.R"
+agent_rule = "Implement each step section of analysis.R in place, in order."
 files = [{ src = "analysis.R.j2", dest = "analysis.R" }]
