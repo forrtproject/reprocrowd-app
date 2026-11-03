@@ -1,4 +1,4 @@
-# MetaReader CLI
+# ReproCrowd CLI
 
 A REST service and command-line client for building computational-reproducibility packages for scholarly
 papers. It follows the workflow of the MetaReader Zotero plugin without needing Zotero.
@@ -13,44 +13,44 @@ papers. It follows the workflow of the MetaReader Zotero plugin without needing 
 
 ```sh
 uv sync
-cp config.example.toml ~/.config/metareader/config.toml   # optional: LLM profiles, OpenAlex key, …
-uv run mr serve                                            # http://127.0.0.1:8770/docs
+cp config.example.toml ~/.config/reprocrowd/config.toml   # optional: LLM profiles, OpenAlex key, …
+uv run rc serve                                            # http://127.0.0.1:8770/docs
 ```
 
 In another terminal:
 
 ```sh
-mr package create ~/papers/phacking --id 10.1371/journal.pbio.1002106 --fetch
-mr fulltext add phacking ~/Downloads/paper.pdf
-mr fulltext candidates phacking                  # URLs found through OpenAlex / Europe PMC
-mr fulltext fetch phacking c-6226b070            # download one (integrity-checked)
-mr fulltext convert phacking ft-paper-pdf --converter grobid   # PDF → TEI (or docling → Docling JSON)
-mr extract parse phacking ft-europepmc-jats      # → ex-europepmc-jats (common document schema)
-mr extract show phacking ex-europepmc-jats --outline
-mr extract reconcile phacking ft-europepmc-jats ft-paper-pdf --profile claude
-mr input add phacking ~/Downloads/replication.zip
-mr target generate phacking ex-europepmc-jats --section sec6
-mr target add phacking -f type=number -f description="Mean RT" -f expected=512.4 --ref ex-europepmc-jats:sec3.p1.s2
-mr target edit phacking T004 --set 'description="…"'      # LLM version kept; `mr target restore` undoes
-mr action generate phacking ex-europepmc-jats --section sec5
-mr script create phacking --template r
-mr codegen phacking                              # coding agent implements the TODO(LLM): markers, live progress
-mr script status phacking                        # markers left
-mr run phacking                                  # run the master script (live log), check outputs/results.json
-mr compare phacking                              # reproduced vs. expected, per target
-mr figures phacking                              # crop the original figures of figure targets from the PDF
-mr report phacking --open                        # report.html with the provenance of every target
-mr archive phacking --download phacking.zip      # the package as a ZIP (must validate)
-mr submit phacking                               # upload to the package database; confirm in the browser
-mr validate phacking
+rc package create ~/papers/phacking --id 10.1371/journal.pbio.1002106 --fetch
+rc fulltext add phacking ~/Downloads/paper.pdf
+rc fulltext candidates phacking                  # URLs found through OpenAlex / Europe PMC
+rc fulltext fetch phacking c-6226b070            # download one (integrity-checked)
+rc fulltext convert phacking ft-paper-pdf --converter grobid   # PDF → TEI (or docling → Docling JSON)
+rc extract parse phacking ft-europepmc-jats      # → ex-europepmc-jats (common document schema)
+rc extract show phacking ex-europepmc-jats --outline
+rc extract reconcile phacking ft-europepmc-jats ft-paper-pdf --profile claude
+rc input add phacking ~/Downloads/replication.zip
+rc target generate phacking ex-europepmc-jats --section sec6
+rc target add phacking -f type=number -f description="Mean RT" -f expected=512.4 --ref ex-europepmc-jats:sec3.p1.s2
+rc target edit phacking T004 --set 'description="…"'      # LLM version kept; `rc target restore` undoes
+rc action generate phacking ex-europepmc-jats --section sec5
+rc script create phacking --template r
+rc codegen phacking                              # coding agent implements the TODO(LLM): markers, live progress
+rc script status phacking                        # markers left
+rc run phacking                                  # run the master script (live log), check outputs/results.json
+rc compare phacking                              # reproduced vs. expected, per target
+rc figures phacking                              # crop the original figures of figure targets from the PDF
+rc report phacking --open                        # report.html with the provenance of every target
+rc archive phacking --download phacking.zip      # the package as a ZIP (must validate)
+rc submit phacking                               # upload to the package database; confirm in the browser
+rc validate phacking
 ```
 
-`mr --help` lists all commands. `MR_URL` and `MR_TOKEN` point the client at another service; with a service on
-another machine, `mr fulltext add … --upload` and `mr input add … --upload` send the file's content.
+`rc --help` lists all commands. `REPROCROWD_URL` and `REPROCROWD_TOKEN` point the client at another service; with a service on
+another machine, `rc fulltext add … --upload` and `rc input add … --upload` send the file's content.
 
 ## Development
 
 ```sh
 uv run pytest                 # tests (a fake LLM CLI stands in for real profiles; OpenAlex is mocked)
-uv run mr-schemas export      # regenerate schemas/, docs/schemas.md, docs/openapi.json after model/API changes
+uv run reprocrowd-schemas export      # regenerate schemas/, docs/schemas.md, docs/openapi.json after model/API changes
 ```

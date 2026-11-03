@@ -9,7 +9,7 @@ def test_multipart_uploads(client, pkg):
     with (FIXTURES / "paper.tei.xml").open("rb") as f:
         r = client.post(P + "/fulltexts", files={"file": ("C:\\\\papers\\\\paper.tei.xml", f, "application/xml")}, data={"name": "ft-up"})
     assert r.status_code == 201, r.text
-    assert r.json()["name"] == "ft-up" and r.json()["metareader"]["origin"] == {"type": "upload", "filename": "paper.tei.xml"}
+    assert r.json()["name"] == "ft-up" and r.json()["reprocrowd"]["origin"] == {"type": "upload", "filename": "paper.tei.xml"}
     r = client.post(P + "/fulltexts", files={"file": ("bad.xml", b"<TEI><text>", "application/xml")})
     assert problem(r, 422, "integrity_check_failed")["problems"]
     problem(client.post(P + "/fulltexts", files={"file": (".hidden.pdf", b"%PDF-", "application/pdf")}), 400, "invalid_filename")
@@ -18,10 +18,10 @@ def test_multipart_uploads(client, pkg):
 
     with (FIXTURES / "replication.zip").open("rb") as f:
         r = client.post(P + "/inputs", files={"file": ("replication.zip", f, "application/zip")}, data={"note": "from the journal", "role": "other"})
-    assert r.status_code == 201 and len(r.json()) == 3 and r.json()[0]["metareader"]["origin"]["type"] == "upload", r.text
+    assert r.status_code == 201 and len(r.json()) == 3 and r.json()[0]["reprocrowd"]["origin"]["type"] == "upload", r.text
     problem(client.post(P + "/inputs", files={"file": ("x.csv", b"a")}, data={"role": "weird"}), 422, "request_invalid")
 
-    from metareader.config import settings
+    from reprocrowd.config import settings
 
     settings().max_upload_mb = 0
     problem(client.post(P + "/inputs", files={"file": ("x.csv", b"a,b\n")}), 413, "upload_too_large")
@@ -44,7 +44,7 @@ def test_directory_inputs(client, pkg, tmp_path):
     os.symlink("/etc/hostname", d / "link.txt")
     r = client.post(P + "/inputs", json={"path": str(d), "note": "replication folder"})
     assert r.status_code == 201, r.text
-    got = {x["path"]: x["metareader"]["role"] for x in r.json()}
+    got = {x["path"]: x["reprocrowd"]["role"] for x in r.json()}
     assert got == {"inputs/replication/code/model.R": "code", "inputs/replication/data.csv": "data"}
     empty = tmp_path / "empty"
     empty.mkdir()

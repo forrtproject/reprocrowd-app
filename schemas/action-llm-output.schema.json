@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://metareader.example/schemas/action-llm-output.schema.json",
+  "$id": "https://reprocrowd.example/schemas/action-llm-output.schema.json",
   "title": "ActionLlmOutput (output of the action-extraction prompt)",
   "$defs": {
     "ActionLlmItem": {

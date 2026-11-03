@@ -17,13 +17,13 @@ def test_convert_pdf(client, pkg, tmp_path):
     r = client.post(P + "/fulltexts", json={"source": "ft-paper-pdf", "converter": "grobid"})
     assert r.status_code == 201, r.text
     res = r.json()
-    assert res["metareader"]["flavor"] == "tei" and res["path"] == "fulltext/paper.grobid.tei.xml"
-    assert res["metareader"]["origin"] == {"type": "conversion", "source": "ft-paper-pdf", "converter": "grobid", "detail": "http://grobid.test"}
+    assert res["reprocrowd"]["flavor"] == "tei" and res["path"] == "fulltext/paper.grobid.tei.xml"
+    assert res["reprocrowd"]["origin"] == {"type": "conversion", "source": "ft-paper-pdf", "converter": "grobid", "detail": "http://grobid.test"}
     sent = grobid.calls.last.request.content
     assert b'name="segmentSentences"' in sent and b'name="teiCoordinates"' in sent and b"%PDF-" in sent
 
     r = client.post(P + "/fulltexts", json={"source": "ft-paper-pdf", "converter": "docling"})
-    assert r.status_code == 201 and r.json()["metareader"]["flavor"] == "docling", r.text
+    assert r.status_code == 201 and r.json()["reprocrowd"]["flavor"] == "docling", r.text
     assert client.post(P + "/extractions", json={"method": "parse", "fulltext": r.json()["name"]}).status_code == 201
 
     problem(client.post(P + "/fulltexts", json={"source": "ft-paper-jats", "converter": "grobid"}), 422, "not_convertible")
@@ -35,7 +35,7 @@ def test_convert_pdf(client, pkg, tmp_path):
 
 
 def test_converter_not_configured(client, pkg):
-    from metareader.config import settings
+    from reprocrowd.config import settings
 
     settings().grobid_url = ""
     client.post(f"/v1/packages/{pkg}/fulltexts", json={"path": str(FIXTURES / "paper.pdf")})

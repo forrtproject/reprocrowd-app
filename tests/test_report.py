@@ -37,7 +37,7 @@ def test_report_and_archive(client, pkg, tmp_path):
     manifest = client.get(P + "/manifest").json()
     assert names == {"datapackage.json"} | {res["path"] for res in manifest["resources"]}
     assert "report.html" in names and "outputs/results.json" in names and not any(n.startswith(("jobs/", "archive/", ".git")) for n in names)
-    assert manifest["metareader"]["archive"]["sha256"] == info["sha256"]
+    assert manifest["reprocrowd"]["archive"]["sha256"] == info["sha256"]
     extracted = tmp_path / "unzipped"
     zipfile.ZipFile(z).extractall(extracted)
     assert validate(str(extracted / "datapackage.json")).valid  # a self-contained Frictionless package

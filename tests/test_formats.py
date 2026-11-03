@@ -1,9 +1,9 @@
 from pathlib import Path
 
-from metareader import formats
-from metareader.formats.builder import build_document
-from metareader.formats.segment import split_sentences
-from metareader.schemas.document import DocumentSource
+from reprocrowd import formats
+from reprocrowd.formats.builder import build_document
+from reprocrowd.formats.segment import split_sentences
+from reprocrowd.schemas.document import DocumentSource
 
 from conftest import FIXTURES
 

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://metareader.example/schemas/datapackage.schema.json",
+  "$id": "https://reprocrowd.example/schemas/datapackage.schema.json",
   "title": "Manifest (datapackage.json)",
   "$defs": {
     "ArchiveInfo": {
@@ -502,7 +502,7 @@
           "description": "package-relative path of the JSON Schema the file must satisfy",
           "title": "Jsonschema"
         },
-        "metareader": {
+        "reprocrowd": {
           "discriminator": {
             "mapping": {
               "code": "#/$defs/OtherMeta",
@@ -537,7 +537,7 @@
               "$ref": "#/$defs/OtherMeta"
             }
           ],
-          "title": "Metareader"
+          "title": "Reprocrowd"
         }
       },
       "required": [
@@ -548,7 +548,7 @@
         "mediatype",
         "bytes",
         "hash",
-        "metareader"
+        "reprocrowd"
       ],
       "title": "Resource",
       "type": "object"
@@ -768,13 +768,13 @@
       "title": "Resources",
       "type": "array"
     },
-    "metareader": {
+    "reprocrowd": {
       "$ref": "#/$defs/PackageMeta"
     }
   },
   "required": [
     "name",
-    "metareader"
+    "reprocrowd"
   ],
   "type": "object"
 }

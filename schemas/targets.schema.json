@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://metareader.example/schemas/targets.schema.json",
+  "$id": "https://reprocrowd.example/schemas/targets.schema.json",
   "title": "TargetsFile (targets.json)",
   "$defs": {
     "LlmCall": {

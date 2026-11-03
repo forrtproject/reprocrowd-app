@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://metareader.example/schemas/target-llm-output.schema.json",
+  "$id": "https://reprocrowd.example/schemas/target-llm-output.schema.json",
   "title": "TargetLlmOutput (output of the target-extraction prompt)",
   "$defs": {
     "TargetLlmItem": {

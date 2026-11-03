@@ -1,0 +1,34 @@
+You are working in a computational reproduction package at:
+{{ folder }}
+
+Goal: implement the analysis so that running `{{ tpl.command }}` from the package root reproduces the paper's results.
+
+Read first:
+- {{ tpl.master }}: master {{ tpl.language }} script with one section per analysis step. Each section has the step summary and the verbatim quote from the paper it implements.
+- analysis_plan.json: the same steps as structured data (ids, inputs, dependencies, target ids each step produces).
+- results_schema.json: the reproduction targets, in "results" (ids, descriptions, quotes, expected values).
+- schemas/results-output.schema.json: the required format of outputs/results.json.
+- datapackage.json: every file of the package. Input files are the resources with "reprocrowd": {"kind": "input"}; their "role" (data / code / other) and "note" describe them. Never modify files in inputs/, and ignore inputs with "used": false.
+- Data files:
+{% for r in inputs.data %}  - {{ r.path }}{% if r.reprocrowd.note %}: {{ r.reprocrowd.note }}{% endif %}
+
+{% else %}  (none)
+{% endfor %}
+{% if inputs.code %}- The original authors' code (prefer reusing their logic; cite the file you took it from in a comment):
+{% for r in inputs.code %}  - {{ r.path }}{% if r.reprocrowd.note %}: {{ r.reprocrowd.note }}{% endif %}
+
+{% endfor %}{% endif %}
+{% if inputs.other %}- Other material:
+{% for r in inputs.other %}  - {{ r.path }}{% if r.reprocrowd.note %}: {{ r.reprocrowd.note }}{% endif %}
+
+{% endfor %}{% endif %}
+
+Rules:
+1. {{ tpl.agent_rule }}
+2. Replace every `{{ marker }}:` marker with working code and delete the marker. Keep the step header comments (ids, summaries, quotes) intact and in order.
+3. Use paths relative to the package root.
+4. Compute every result from the data. NEVER copy expected values from results_schema.json into the output; the point is to test whether they reproduce.
+5. outputs/results.json: {"results": [{"id": "<target id>", "value": <unrounded number or string>, "step": "<step id>"}, ...]}. Use "table" (array of rows, same layout as expected, header row included) for table targets, and "file" for figure targets (save figures as outputs/figures/<target id>.png). If a result cannot be computed, emit it with "value": null and a "note" explaining why.
+6. List required packages in {{ "install.R (install.packages(...) calls)" if tpl.language == "R" else "requirements.txt" }}.
+7. If something in the paper is ambiguous, pick the most plausible reading and document it in a comment starting with "# ASSUMPTION:".
+8. When finished, run the pipeline once if you can and fix errors.

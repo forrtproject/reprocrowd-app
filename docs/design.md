@@ -1,4 +1,4 @@
-# MetaReader CLI: design
+# ReproCrowd CLI: design
 
 A local REST service and a thin CLI client for building computational-reproducibility packages for a
 paper, without Zotero. The workflow follows the MetaReader Zotero plugin. The service owns all file and
@@ -8,7 +8,7 @@ Status: phase 1 (everything up to master-script templates) is implemented and te
 listed under [TODO](#todo-later-phases).
 
 > **Implemented in** notes (like this one) say which files implement each component. Paths are relative to
-> `src/metareader/`.
+> `src/reprocrowd/`.
 
 ## Principles
 
@@ -30,7 +30,7 @@ listed under [TODO](#todo-later-phases).
 
 ```mermaid
 flowchart LR
-  CLI["mr (Typer CLI)"] -- HTTP/JSON --> API["FastAPI app /v1"]
+  CLI["rc (Typer CLI)"] -- HTTP/JSON --> API["FastAPI app /v1"]
   other["other clients"] -- HTTP/JSON --> API
   API --> PKG["package: manifest + resources + registry"]
   API --> OA["openalex: metadata, candidates, downloads"]
@@ -56,7 +56,7 @@ flowchart LR
 ```
 <package>/
   datapackage.json            Frictionless manifest: every file below is a resource (path, bytes, sha256,
-                              jsonSchema, metareader: {kind, …})
+                              jsonSchema, reprocrowd: {kind, …})
   schemas/*.schema.json       copies of the JSON Schemas the resources refer to (jsonSchema)
   metadata/openalex.json      OpenAlex work record
   fulltext/<file>             added full texts (pdf / TEI / JATS / Docling JSON), unchanged
@@ -86,17 +86,17 @@ Each box is one call: **requires → produces**. The CLI command is shown in bra
 
 ```mermaid
 flowchart TD
-  A["POST /v1/packages<br/>[mr package create PATH --id ID --fetch]<br/>needs: new or empty folder<br/>makes: datapackage.json, schemas/, empty targets/actions, registry entry"]
-  B["POST /v1/packages/{p}/metadata · PUT to replace<br/>[mr metadata fetch P --overwrite]<br/>needs: identifier · POST gives 409 if present<br/>makes: metadata/openalex.json, identifiers, title"]
-  C1["POST /v1/packages/{p}/fulltexts {path}<br/>[mr fulltext add P FILE]<br/>needs: pdf / xml / json passing the integrity check<br/>makes: fulltext/…, resource ft-*"]
-  C2["GET …/fulltexts/candidates · POST …/fulltexts {candidate}<br/>[mr fulltext candidates / fetch]<br/>needs: metadata · download passes the check"]
-  D["POST …/extractions {method: parse} · PUT …/extractions/{x} to replace<br/>[mr extract parse P FT]<br/>needs: tei / jats / docling full text<br/>makes: extractions/ex-*.json"]
-  E["POST …/extractions {method: reconcile}<br/>[mr extract reconcile P FT… --prompt-file --profile]<br/>needs: ≥1 full text, LLM profile<br/>makes: validated extraction, or 422 llm_output_invalid / 502 llm_call_failed / 504 llm_timeout"]
-  F["POST …/inputs · PATCH / DELETE …/inputs/{in}<br/>[mr input add / edit / rm]<br/>makes: inputs/…, role / note / used"]
-  G["POST …/targets (manual) · POST …/targets/runs (LLM)<br/>PATCH …/targets/{id} · DELETE …/targets/{id}/edit (restore)<br/>[mr target …]<br/>needs: refs into an extraction, or unreferenced + note"]
-  H["POST …/actions · …/actions/runs<br/>[mr action …]<br/>needs: refs, inputs, the targets they produce"]
-  I["PUT …/script {template, on_modified}<br/>[mr script create P --template r]<br/>needs: ≥1 enabled target and action<br/>makes: master script, results_schema.json, analysis_plan.json, README.md"]
-  V["GET …/validation<br/>[mr validate P]"]
+  A["POST /v1/packages<br/>[rc package create PATH --id ID --fetch]<br/>needs: new or empty folder<br/>makes: datapackage.json, schemas/, empty targets/actions, registry entry"]
+  B["POST /v1/packages/{p}/metadata · PUT to replace<br/>[rc metadata fetch P --overwrite]<br/>needs: identifier · POST gives 409 if present<br/>makes: metadata/openalex.json, identifiers, title"]
+  C1["POST /v1/packages/{p}/fulltexts {path}<br/>[rc fulltext add P FILE]<br/>needs: pdf / xml / json passing the integrity check<br/>makes: fulltext/…, resource ft-*"]
+  C2["GET …/fulltexts/candidates · POST …/fulltexts {candidate}<br/>[rc fulltext candidates / fetch]<br/>needs: metadata · download passes the check"]
+  D["POST …/extractions {method: parse} · PUT …/extractions/{x} to replace<br/>[rc extract parse P FT]<br/>needs: tei / jats / docling full text<br/>makes: extractions/ex-*.json"]
+  E["POST …/extractions {method: reconcile}<br/>[rc extract reconcile P FT… --prompt-file --profile]<br/>needs: ≥1 full text, LLM profile<br/>makes: validated extraction, or 422 llm_output_invalid / 502 llm_call_failed / 504 llm_timeout"]
+  F["POST …/inputs · PATCH / DELETE …/inputs/{in}<br/>[rc input add / edit / rm]<br/>makes: inputs/…, role / note / used"]
+  G["POST …/targets (manual) · POST …/targets/runs (LLM)<br/>PATCH …/targets/{id} · DELETE …/targets/{id}/edit (restore)<br/>[rc target …]<br/>needs: refs into an extraction, or unreferenced + note"]
+  H["POST …/actions · …/actions/runs<br/>[rc action …]<br/>needs: refs, inputs, the targets they produce"]
+  I["PUT …/script {template, on_modified}<br/>[rc script create P --template r]<br/>needs: ≥1 enabled target and action<br/>makes: master script, results_schema.json, analysis_plan.json, README.md"]
+  V["GET …/validation<br/>[rc validate P]"]
   T["TODO: code-generation job, run, compare, report, submit"]
   A --> B --> C2
   A --> C1
@@ -301,10 +301,10 @@ integrity in one pass. It does not fit the *content* schemas: Table Schema is ta
 targets and LLM runs are nested. frictionless-py 5.21 also ignores the Data Package v2 `jsonSchema`
 property on JSON resources (we tested this). So:
 
-1. **Pydantic models are the single source of truth** (`schemas/`). `mr-schemas export` generates
+1. **Pydantic models are the single source of truth** (`schemas/`). `reprocrowd-schemas export` generates
    `schemas/*.schema.json`, `docs/schemas.md` and `docs/openapi.json`, and a test checks all three are current.
 2. **`datapackage.json` is a Frictionless Data Package.** It is modelled by the same Pydantic `Manifest`;
-   MetaReader properties live under `metareader` on the package and on each resource, discriminated by
+   ReproCrowd properties live under `reprocrowd` on the package and on each resource, discriminated by
    `kind`. Each JSON resource names its schema in `jsonSchema`.
 3. **`GET /validation`** runs everything in one go, and each issue says which stage found it:
    - `manifest`: the `Manifest` model;
@@ -329,7 +329,7 @@ property on JSON resources (we tested this). So:
 
 ## Configuration
 
-`$MR_CONFIG` or `~/.config/metareader/config.toml` (see `config.example.toml`): server host and port,
+`$REPROCROWD_CONFIG` or `~/.config/reprocrowd/config.toml` (see `config.example.toml`): server host and port,
 optional bearer token, `allowed_roots`, registry path, OpenAlex key and mailto, download size limit, and
 LLM profiles:
 
@@ -395,7 +395,7 @@ sequenceDiagram
 > **Implemented in:** `jobs.py` (job manager: start, watch, timeout, cancel, interrupted), `events.py`
 > (stdout → events), `codegen.py` (agent job, git, finish hook), `gitrepo.py`, `files.py` (listing, sync),
 > `scripts.py` (`todo_status`, `agent_prompt`, `TODO_RE`), `templates/_AGENT_PROMPT.md.j2`, `schemas/jobs.py`,
-> `config.py` (`AgentProfile`), routes and SSE in `api/app.py`, CLI `mr codegen`, `mr job …`.
+> `config.py` (`AgentProfile`), routes and SSE in `api/app.py`, CLI `rc codegen`, `rc job …`.
 > Tested with a fake agent (`tests/fake_agent.py`) and a real Claude Code run (Haiku) on Head et al. (2015).
 
 ## Run and compare
@@ -403,7 +403,7 @@ sequenceDiagram
 `POST …/jobs {type: "run"}` runs the master script with the template's command (`bash -c "<command>"`, from
 `template.toml`; callers can't supply one) as a job. Output and errors are merged into one log, read as `log`
 events (Python is run unbuffered so lines arrive live). Jobs get the service's environment minus
-MetaReader's own virtualenv, so `python3`/`Rscript` are the user's.
+ReproCrowd's own virtualenv, so `python3`/`Rscript` are the user's.
 
 - `outputs/results.json` is removed before the run: a failed run never leaves stale results (the previous
   file stays in git). The package is committed before and after the run.
@@ -416,7 +416,7 @@ MetaReader's own virtualenv, so `python3`/`Rscript` are the user's.
   by normalized text; figures "compare visually".
 
 > **Implemented in:** `run.py` (run job, `comparison`), `compare.py` (rules, `check_output`),
-> `schemas/comparison.py` (schema `comparison`), `jobs.job_env`, CLI `mr run`, `mr compare`.
+> `schemas/comparison.py` (schema `comparison`), `jobs.job_env`, CLI `rc run`, `rc compare`.
 > Tested on fixtures and on the agent-written analysis of the scratch package (real run, 25 targets).
 
 ## Report, provenance and archive
@@ -450,11 +450,11 @@ flowchart TD
 
 `PUT …/archive` zips `datapackage.json` and every resource it lists into `archive/` (a Frictionless zipped data
 package; extracted, it validates on its own). It needs a package that validates and a report; the archive's
-size and hashes are recorded in the manifest (`metareader.archive`). `GET …/archive` downloads it.
+size and hashes are recorded in the manifest (`reprocrowd.archive`). `GET …/archive` downloads it.
 
 > **Implemented in:** `report.py` (`write_report`, `write_archive`), `provenance.py` (`build`, `trace`, `svg`,
-> `Graph.lineage`), `templates/_report.html.j2`, `schemas/manifest.py` (`ArchiveInfo`), CLI `mr report`,
-> `mr archive`. Checked visually on the scratch package (25 targets, 15 actions).
+> `Graph.lineage`), `templates/_report.html.j2`, `schemas/manifest.py` (`ArchiveInfo`), CLI `rc report`,
+> `rc archive`. Checked visually on the scratch package (25 targets, 15 actions).
 
 ## Figure crops
 
@@ -471,12 +471,12 @@ target to `targets/figures/<target>.png` (kind `figure`), which the report shows
   named explicitly (`pdf`) for a TEI added from a local file (`pdf_unknown` otherwise).
 
 > **Implemented in:** `figures.py` (`crop`, `crop_all`), `extractions.mentions`/`float_number`, PDFium
-> (pypdfium2) for rendering; CLI `mr figures`. Tested on a fixture page (exact crop size) and on Head et al.
+> (pypdfium2) for rendering; CLI `rc figures`. Tested on a fixture page (exact crop size) and on Head et al.
 > (2015): Figure 3 from the real PDF.
 
 ## Submission to the package database
 
-Optional (`[database] url`), compatible with the AI-Assisted Reproduction Database the plugin used. The
+Optional (`[database] url`), compatible with the ReproCrowd Database the plugin used. The
 service holds no database credentials.
 
 ```mermaid
@@ -499,7 +499,7 @@ sequenceDiagram
 ```
 
 - Bibliographic metadata comes only from OpenAlex, looked up at submission (as in the plugin).
-- **With the user's database token** (`database_token`, which a client such as the Repro AI Zotero plugin gets
+- **With the user's database token** (`database_token`, which a client such as the ReproCrowd Zotero plugin gets
   from the database's browser sign-in, `/auth/client` with PKCE), the upload carries `Authorization: Bearer`
   and the database publishes it at once (`status: submitted`, `package_url`). The service forwards the token
   and never stores it. The database answering 401 becomes 403 `database_token_invalid` (sign in again), a
@@ -508,14 +508,14 @@ sequenceDiagram
   as the package now (`archive_stale` otherwise).
 - Database answers map to problems: 409 `duplicate_submission` (identical contents submitted before, with
   the existing record), 422 `submission_rejected` (with the database's `problems`), 502
-  `database_unreachable`. Submissions are recorded in the manifest (`metareader.submissions`).
+  `database_unreachable`. Submissions are recorded in the manifest (`reprocrowd.submissions`).
 - For the database's format, `results_schema.json` lists the targets as `results` with `paper.doi`, and the
   archive step writes `inputs.json` (schema `inputs`).
 - `PUT …/script {on_modified: keep}` regenerates the exports (e.g. after targets changed) without touching
   files the agent implemented.
 
 > **Implemented in:** `database.py` (`status`, `find`, `submit`, `refresh`), `schemas/manifest.py`
-> (`Submission`), `report.write_archive` (`inputs.json`), CLI `mr submit`, `mr submission`. Tested with a mocked
+> (`Submission`), `report.write_archive` (`inputs.json`), CLI `rc submit`, `rc submission`. Tested with a mocked
 > database, and end to end against the local simulation (upload, confirmation by a signed-in user, status).
 
 ## Uploads, directories, pagination

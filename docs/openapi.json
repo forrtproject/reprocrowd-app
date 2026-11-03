@@ -1,9 +1,9 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "MetaReader API",
+    "title": "ReproCrowd API",
     "summary": "Build computational-reproducibility packages for scholarly papers.",
-    "description": "The HTTP API. Run with ``mr serve``; interactive docs at /docs (Swagger UI) and /redoc.\n\nConventions: versioned under /v1; JSON bodies; errors are RFC 9457 problem details; POST creates (201 +\nLocation), PUT replaces explicitly, PATCH is a JSON merge patch, DELETE returns 204; every package-scoped\nresponse carries the package's ETag, and unsafe requests may send If-Match (412 on mismatch).\n",
+    "description": "The HTTP API. Run with ``rc serve``; interactive docs at /docs (Swagger UI) and /redoc.\n\nConventions: versioned under /v1; JSON bodies; errors are RFC 9457 problem details; POST creates (201 +\nLocation), PUT replaces explicitly, PATCH is a JSON merge patch, DELETE returns 204; every package-scoped\nresponse carries the package's ETag, and unsafe requests may send If-Match (412 on mismatch).\n",
     "version": "0.1.0"
   },
   "paths": {
@@ -9393,7 +9393,7 @@
           "code"
         ],
         "title": "Problem",
-        "description": "RFC 9457 problem details, with MetaReader extension members."
+        "description": "RFC 9457 problem details, with ReproCrowd extension members."
       },
       "ProblemType": {
         "properties": {
@@ -9574,7 +9574,7 @@
             "title": "Jsonschema",
             "description": "package-relative path of the JSON Schema the file must satisfy"
           },
-          "metareader": {
+          "reprocrowd": {
             "oneOf": [
               {
                 "$ref": "#/components/schemas/FulltextMeta"
@@ -9592,7 +9592,7 @@
                 "$ref": "#/components/schemas/OtherMeta"
               }
             ],
-            "title": "Metareader",
+            "title": "Reprocrowd",
             "discriminator": {
               "propertyName": "kind",
               "mapping": {
@@ -9622,7 +9622,7 @@
           "mediatype",
           "bytes",
           "hash",
-          "metareader"
+          "reprocrowd"
         ],
         "title": "Resource",
         "description": "One file of the package (Frictionless Data Resource)."

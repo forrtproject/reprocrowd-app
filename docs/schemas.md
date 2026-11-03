@@ -1,10 +1,10 @@
 # Schemas
 
-Generated from the Pydantic models in `src/metareader/schemas/` by `mr-schemas export`; do not edit.
+Generated from the Pydantic models in `src/reprocrowd/schemas/` by `reprocrowd-schemas export`; do not edit.
 The JSON Schemas are in `schemas/`; every package gets a copy in its own `schemas/` folder.
 
 Validation beyond what JSON Schema expresses (references resolve, ids unique, no dependency cycles) is
-done by `GET /packages/{p}/validation` (src/metareader/validation.py).
+done by `GET /packages/{p}/validation` (src/reprocrowd/validation.py).
 
 ## `datapackage`: datapackage.json
 
@@ -19,7 +19,7 @@ datapackage.json
 | `name` | string | yes | pattern `^[a-z0-9][a-z0-9._-]*$` |
 | `title` | string \| null |  |  |
 | `resources` | list of [Resource](#resource) |  |  |
-| `metareader` | [PackageMeta](#packagemeta) | yes |  |
+| `reprocrowd` | [PackageMeta](#packagemeta) | yes |  |
 
 ### ArchiveInfo
 
@@ -136,7 +136,7 @@ One file of the package (Frictionless Data Resource).
 | `bytes` | integer | yes |  |
 | `hash` | string | yes | pattern `^sha256:[0-9a-f]{64}$` |
 | `jsonSchema` | string \| null |  | package-relative path of the JSON Schema the file must satisfy |
-| `metareader` | [FulltextMeta](#fulltextmeta) \| [ExtractionMeta](#extractionmeta) \| [InputMeta](#inputmeta) \| [ScriptMeta](#scriptmeta) \| [OtherMeta](#othermeta) | yes |  |
+| `reprocrowd` | [FulltextMeta](#fulltextmeta) \| [ExtractionMeta](#extractionmeta) \| [InputMeta](#inputmeta) \| [ScriptMeta](#scriptmeta) \| [OtherMeta](#othermeta) | yes |  |
 
 ### ScriptMeta
 

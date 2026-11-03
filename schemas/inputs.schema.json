@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://metareader.example/schemas/inputs.schema.json",
+  "$id": "https://reprocrowd.example/schemas/inputs.schema.json",
   "title": "InputsList (inputs.json (written with the archive))",
   "$defs": {
     "InputEntry": {

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://metareader.example/schemas/results-schema.schema.json",
+  "$id": "https://reprocrowd.example/schemas/results-schema.schema.json",
   "title": "ResultsSchema (results_schema.json)",
   "$defs": {
     "Identifier": {

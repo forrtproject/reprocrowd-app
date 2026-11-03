@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://metareader.example/schemas/document-draft.schema.json",
+  "$id": "https://reprocrowd.example/schemas/document-draft.schema.json",
   "title": "DocumentDraft (parser / reconcile-LLM output, before ids are assigned)",
   "$defs": {
     "Box": {

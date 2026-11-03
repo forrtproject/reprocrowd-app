@@ -28,11 +28,11 @@ def client(tmp_path, monkeypatch):
         + "".join(f'[agent.profiles.{name}]\nargv = ["{sys.executable}", "{HERE / "fake_agent.py"}", "{mode}", "--tools", "{{tools}}"]\nmodel = "fake-agent-1"\ntimeout_s = {t}\n'
                   for name, mode, t in (("ok", "ok", 30), ("slow", "slow", 30), ("fail", "fail", 30), ("short", "slow", 1)))
     )
-    monkeypatch.setenv("MR_CONFIG", str(cfg))
-    from metareader.config import settings
+    monkeypatch.setenv("REPROCROWD_CONFIG", str(cfg))
+    from reprocrowd.config import settings
 
     settings.cache_clear()
-    from metareader.api.app import app
+    from reprocrowd.api.app import app
 
     with TestClient(app) as c:
         yield c

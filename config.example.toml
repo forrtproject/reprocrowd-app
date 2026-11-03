@@ -1,11 +1,11 @@
-# MetaReader service configuration. Location: $MR_CONFIG, else ~/.config/metareader/config.toml.
+# ReproCrowd backend configuration. Location: $REPROCROWD_CONFIG, else ~/.config/reprocrowd/config.toml.
 # Everything executable is configured here; API callers can only choose a profile by name.
 
 [server]
 host = "127.0.0.1"
 port = 8770
 token = ""                 # if set, requests need "Authorization: Bearer <token>"
-registry = "~/.local/share/metareader/registry.json"
+registry = "~/.local/share/reprocrowd/registry.json"
 allowed_roots = []         # e.g. ["~/papers"]: local paths the service may read or create packages under
 
 [openalex]
@@ -25,7 +25,7 @@ timeout_s = 600
 argv = ["docling", "--to", "json", "--output", "{outdir}", "{input}"]
 timeout_s = 1800
 
-# Package database for submissions (AI-Assisted Reproduction Database); empty = none.
+# Package database for submissions (ReproCrowd Database); empty = none.
 [database]
 url = ""                   # e.g. "http://127.0.0.1:8765"
 

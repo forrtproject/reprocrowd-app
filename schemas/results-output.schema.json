@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://metareader.example/schemas/results-output.schema.json",
+  "$id": "https://reprocrowd.example/schemas/results-output.schema.json",
   "title": "ReproducedOutput (outputs/results.json)",
   "$defs": {
     "OutputResult": {

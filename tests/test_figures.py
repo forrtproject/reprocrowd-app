@@ -53,8 +53,8 @@ def test_crop_needs_coordinates_and_a_pdf(client, pkg, tmp_path):
 
 
 def test_figure_found_by_mention(client, pkg, tmp_path):
-    from metareader.extractions import Scope, get, listing
-    from metareader.package import Registry
+    from reprocrowd.extractions import Scope, get, listing
+    from reprocrowd.package import Registry
 
     P = f"/v1/packages/{pkg}"
     client.post(P + "/fulltexts", json={"path": str(FIXTURES / "paper.pdf")})

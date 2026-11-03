@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://metareader.example/schemas/analysis-plan.schema.json",
+  "$id": "https://reprocrowd.example/schemas/analysis-plan.schema.json",
   "title": "AnalysisPlan (analysis_plan.json)",
   "$defs": {
     "PlanStep": {

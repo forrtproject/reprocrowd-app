@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://metareader.example/schemas/document.schema.json",
+  "$id": "https://reprocrowd.example/schemas/document.schema.json",
   "title": "Document (extractions/<id>.json)",
   "$defs": {
     "Box": {

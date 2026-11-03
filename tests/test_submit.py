@@ -70,7 +70,7 @@ def test_database_lookup(client):
 
 
 def test_database_not_configured(client, pkg):
-    from metareader.config import settings
+    from reprocrowd.config import settings
 
     settings().database_url = ""
     problem(client.post(f"/v1/packages/{pkg}/submissions", json={}), 409, "database_not_configured")

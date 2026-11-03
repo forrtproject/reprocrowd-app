@@ -83,7 +83,7 @@ def test_fulltexts(client, pkg, tmp_path):
     names = [r["name"] for r in client.get(f"/v1/packages/{pkg}/fulltexts").json()]
     assert names == ["ft-paper-tei", "ft-paper-jats", "ft-paper-docling", "ft-paper-pdf"]
     res = client.get(f"/v1/packages/{pkg}/fulltexts/ft-paper-tei").json()
-    assert res["metareader"]["flavor"] == "tei" and res["hash"].startswith("sha256:") and res["metareader"]["check"]["passed"]
+    assert res["reprocrowd"]["flavor"] == "tei" and res["hash"].startswith("sha256:") and res["reprocrowd"]["check"]["passed"]
 
     problem(client.post(f"/v1/packages/{pkg}/fulltexts", json={"path": str(FIXTURES / "paper.pdf")}), 409, "duplicate_fulltext")
     bad = tmp_path / "bad.xml"
@@ -106,7 +106,7 @@ def test_fulltexts(client, pkg, tmp_path):
     problem(client.post(f"/v1/packages/{pkg}/fulltexts", json={"candidate": jats}), 409, "duplicate_fulltext")
     client.delete(f"/v1/packages/{pkg}/fulltexts/ft-paper-jats")
     r = client.post(f"/v1/packages/{pkg}/fulltexts", json={"candidate": jats})
-    assert r.status_code == 201 and r.json()["metareader"]["origin"]["type"] == "url"
+    assert r.status_code == 201 and r.json()["reprocrowd"]["origin"]["type"] == "url"
     assert client.get(f"/v1/packages/{pkg}/fulltexts/{r.json()['name']}/content").content.startswith(b"<?xml")
 
 
@@ -135,7 +135,7 @@ def test_parse_and_reconcile(client, pkg):
     body = {"method": "reconcile", "sources": ["ft-paper-tei", "ft-paper-pdf"]}
     r = client.post(f"/v1/packages/{pkg}/extractions", json=body)
     assert r.status_code == 201, r.text
-    meta = r.json()["metareader"]
+    meta = r.json()["reprocrowd"]
     assert meta["method"] == "reconcile" and meta["fulltexts"] == ["ft-paper-tei", "ft-paper-pdf"]
     root = Path(client.get(f"/v1/packages/{pkg}").json()["path"])
     call = json.loads((root / "llm-calls" / meta["llm_call"] / "call.json").read_text())
@@ -147,7 +147,7 @@ def test_parse_and_reconcile(client, pkg):
     # custom prompt without placeholders: files and schema are appended
     r = client.post(f"/v1/packages/{pkg}/extractions", json=body | {"prompt": "You are reconciling. Be careful.", "name": "ex-custom"})
     assert r.status_code == 201
-    call = json.loads((root / "llm-calls" / r.json()["metareader"]["llm_call"] / "call.json").read_text())
+    call = json.loads((root / "llm-calls" / r.json()["reprocrowd"]["llm_call"] / "call.json").read_text())
     assert call["template"] == "custom" and "## files" in call["prompt"]
 
     # error classes
@@ -167,16 +167,16 @@ def test_parse_and_reconcile(client, pkg):
 
 def test_inputs(client, pkg):
     r = client.post(f"/v1/packages/{pkg}/inputs", json={"path": str(FIXTURES / "data.csv"), "note": "raw RTs"})
-    assert r.status_code == 201 and r.json()[0]["metareader"]["role"] == "data"
+    assert r.status_code == 201 and r.json()[0]["reprocrowd"]["role"] == "data"
     r = client.post(f"/v1/packages/{pkg}/inputs", json={"path": str(FIXTURES / "replication.zip")})
     rs = r.json()
     assert [x["path"] for x in rs] == ["inputs/replication.zip", "inputs/replication/replication/analysis.R", "inputs/replication/replication/data/raw.csv"]
-    assert [x["metareader"]["role"] for x in rs] == ["other", "code", "data"]
+    assert [x["reprocrowd"]["role"] for x in rs] == ["other", "code", "data"]
     member = rs[1]["name"]
     problem(client.delete(f"/v1/packages/{pkg}/inputs/{member}"), 409, "archive_member")
     r = client.patch(f"/v1/packages/{pkg}/inputs/{member}", json={"used": False, "note": "not needed"},
                      headers={"Content-Type": "application/merge-patch+json"})
-    assert r.status_code == 200 and r.json()["metareader"]["used"] is False
+    assert r.status_code == 200 and r.json()["reprocrowd"]["used"] is False
     problem(client.patch(f"/v1/packages/{pkg}/inputs/{member}", json={"path": "x"}), 422, "request_invalid")
     assert client.delete(f"/v1/packages/{pkg}/inputs/{rs[0]['name']}").status_code == 204
     left = [x["path"] for x in client.get(f"/v1/packages/{pkg}/inputs").json()]
@@ -315,7 +315,7 @@ def test_etag_and_auth(client, pkg, tmp_path, monkeypatch):
     assert r.status_code == 201 and r.headers["etag"] != tag
     problem(client.post(f"/v1/packages/{pkg}/targets", json=body, headers={"If-Match": tag}), 412, "precondition_failed")
 
-    from metareader.config import settings
+    from reprocrowd.config import settings
 
     settings().token = "s3cret"
     try:
@@ -330,9 +330,9 @@ def test_problem_catalog_complete(client):
     """Every code raised in the code base is documented in the catalog."""
     import re
 
-    from metareader.api.problems import CATALOG
+    from reprocrowd.api.problems import CATALOG
 
-    src = Path(__file__).parent.parent / "src" / "metareader"
+    src = Path(__file__).parent.parent / "src" / "reprocrowd"
     codes = set()
     for p in src.rglob("*.py"):
         text = p.read_text()

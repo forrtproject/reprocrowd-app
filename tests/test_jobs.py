@@ -139,7 +139,7 @@ def test_sync_registers_outside_changes(client, pkg):
     r = client.post(f"/v1/packages/{pkg}:sync").json()
     assert sorted(r["added"]) == ["notes.R", "outputs/results.json"]
     res = {x["path"]: x for x in client.get(f"/v1/packages/{pkg}/manifest").json()["resources"]}
-    assert res["outputs/results.json"]["metareader"]["kind"] == "output" and res["outputs/results.json"]["jsonSchema"]
+    assert res["outputs/results.json"]["reprocrowd"]["kind"] == "output" and res["outputs/results.json"]["jsonSchema"]
     assert client.get(f"/v1/packages/{pkg}/validation").json()["valid"]
     (root / "outputs" / "results.json").write_text('{"results": [{"value": 2.3}]}')  # invalid output, then synced
     client.post(f"/v1/packages/{pkg}:sync")

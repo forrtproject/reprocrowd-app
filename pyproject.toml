@@ -1,5 +1,5 @@
 [project]
-name = "metareader"
+name = "reprocrowd"
 version = "0.1.0"
 description = "REST service and CLI for building computational-reproducibility packages for papers"
 readme = "README.md"
@@ -24,8 +24,9 @@ dependencies = [
 ]
 
 [project.scripts]
-mr = "metareader.cli:main"
-mr-schemas = "metareader.schemas.export:main"
+rc = "reprocrowd.cli:main"
+reprocrowd = "reprocrowd.cli:main"
+reprocrowd-schemas = "reprocrowd.schemas.export:main"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

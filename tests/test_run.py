@@ -5,10 +5,10 @@ from conftest import FIXTURES
 from test_api import problem
 from test_jobs import wait
 
-from metareader.compare import compare_target, decimals_of, parse_num
-from metareader.schemas.comparison import CompareSettings
-from metareader.schemas.curation import Target
-from metareader.schemas.exports import OutputResult
+from reprocrowd.compare import compare_target, decimals_of, parse_num
+from reprocrowd.schemas.comparison import CompareSettings
+from reprocrowd.schemas.curation import Target
+from reprocrowd.schemas.exports import OutputResult
 
 REF = [{"extraction": "ex-paper-tei", "id": "sec3.p1.s1"}]
 SCRIPT = """import json, os, sys
@@ -101,7 +101,7 @@ def test_compare_rules():
 def test_jobs_do_not_inherit_the_service_virtualenv(monkeypatch):
     import sys
 
-    from metareader.jobs import job_env
+    from reprocrowd.jobs import job_env
 
     monkeypatch.setenv("PATH", f"{sys.prefix}/bin:/usr/local/bin:/usr/bin")
     monkeypatch.setenv("VIRTUAL_ENV", sys.prefix)
