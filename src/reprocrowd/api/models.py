@@ -33,6 +33,17 @@ class LlmProfileView(BaseModel):
     timeout_s: int
 
 
+class PromptPreview(BaseModel):
+    """What a call would send. Nothing was run or stored."""
+
+    prompt: str = Field(description="the full prompt, as it would go to the command's stdin")
+    argv: list[str] = Field(description="the exact command line")
+    profile: str = Field(description="the profile used: the requested one, or the default")
+    model: str
+    effort: str
+    output_schema: str | None = Field(default=None, description="JSON Schema the CLI is told to constrain its output to, if the profile supports that")
+
+
 class TemplateView(BaseModel):
     id: str
     label: str

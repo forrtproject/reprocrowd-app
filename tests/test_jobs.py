@@ -95,6 +95,26 @@ def test_codegen_job(client, pkg):
     assert [t["id"] for t in json.loads((root / "results_schema.json").read_text())["results"]] == ["T001", "T002"]
 
 
+def test_codegen_preview(client, pkg):
+    P = f"/v1/packages/{pkg}"
+    problem(client.post(P + "/jobs:preview", json={"type": "codegen"}), 409, "script_missing")
+    root = ready_package(client, pkg)
+    problem(client.post(P + "/jobs:preview", json={"type": "codegen", "profile": "nope"}), 400, "unknown_profile")
+    body = {"type": "codegen", "allow_exec": False, "instructions": "Use base R only."}
+    r = client.post(P + "/jobs:preview", json=body)
+    assert r.status_code == 200, r.text
+    preview = r.json()
+    assert preview["profile"] == "ok" and preview["model"] == "fake-agent-1" and preview["output_schema"] is None
+    assert "inputs/data.csv: reaction times" in preview["prompt"] and preview["prompt"].rstrip().endswith("Use base R only.")
+    assert client.get(P + "/jobs").json() == []  # nothing started
+    assert "--tools" in preview["argv"] and "Bash(Rscript:*)" not in preview["argv"][-1]
+    assert "Bash(Rscript:*)" in client.post(P + "/jobs:preview", json={"type": "codegen"}).json()["argv"][-1]
+
+    job = client.post(P + "/jobs", json=body).json()
+    assert job["argv"] == preview["argv"]
+    wait(client, pkg, job["id"])
+
+
 def test_codegen_live_stream_cancel_and_timeout(client, pkg):
     ready_package(client, pkg)
     P = f"/v1/packages/{pkg}"

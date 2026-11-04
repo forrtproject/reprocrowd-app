@@ -6,12 +6,14 @@ markers are counted.
 """
 from __future__ import annotations
 
+from typing import NamedTuple
+
 from . import files, gitrepo, jobs
 from .config import AgentProfile, expand_argv, settings
 from .errors import ApiError, conflict
 from .package import Package
 from .schemas.jobs import CodegenResult, Job
-from .scripts import agent_prompt, current_template, todo_status
+from .scripts import Template, agent_prompt, current_template, todo_status
 
 
 def agent_profile(name: str | None) -> tuple[str, AgentProfile]:
@@ -23,16 +25,30 @@ def agent_profile(name: str | None) -> tuple[str, AgentProfile]:
     return name, p
 
 
-def start(pkg: Package, *, profile: str | None, allow_exec: bool, instructions: str) -> Job:
+class Plan(NamedTuple):
+    name: str
+    profile: AgentProfile
+    template: Template
+    tools: list[str]
+    argv: list[str]
+    prompt: str
+
+
+def plan(pkg: Package, *, profile: str | None, allow_exec: bool, instructions: str) -> Plan:
+    """What a code-generation job would run; nothing is written."""
     name, prof = agent_profile(profile)
     tpl = current_template(pkg)
     if tpl is None:
         raise conflict("script_missing", "create the master script first (PUT …/script)")
-    jobs.ensure_idle(pkg)
-    jid = jobs.new_id()
-    prompt = agent_prompt(pkg, tpl, instructions)
     tools = prof.tools + (prof.exec_tools if allow_exec else [])
     argv = expand_argv(prof.argv, {"model": prof.model, "effort": prof.effort, "tools": ",".join(tools)})
+    return Plan(name, prof, tpl, tools, argv, agent_prompt(pkg, tpl, instructions))
+
+
+def start(pkg: Package, *, profile: str | None, allow_exec: bool, instructions: str) -> Job:
+    name, prof, tpl, tools, argv, prompt = plan(pkg, profile=profile, allow_exec=allow_exec, instructions=instructions)
+    jobs.ensure_idle(pkg)
+    jid = jobs.new_id()
 
     git_note, before = None, None
     if gitrepo.available():

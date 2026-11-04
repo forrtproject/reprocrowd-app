@@ -54,14 +54,20 @@ def render(template: str, values: dict[str, str], required: tuple[str, ...] = ()
     return text
 
 
-def run(pkg: Package, task: str, prompt: str, *, profile_name: str | None, template: str, instructions: str, read_files: bool = False,
-        schema: str | None = None) -> LlmCall:
-    """``schema``: name of the output's JSON Schema; passed to the CLI if the profile supports structured output."""
+def command(profile_name: str | None, *, read_files: bool = False, schema: str | None = None) -> tuple[str, LlmProfile, list[str], str | None]:
+    """The profile's name, the profile, the exact command line, and the output schema if the CLI gets one.
+    ``schema``: name of the output's JSON Schema; passed to the CLI if the profile supports structured output."""
     name, p = profile(profile_name)
     argv = build_argv(p, read_files)
     structured = schema if schema and p.json_schema_argv else None
     if structured:
         argv += expand_argv(p.json_schema_argv, {"schema": cli_schema(structured)})
+    return name, p, argv, structured
+
+
+def run(pkg: Package, task: str, prompt: str, *, profile_name: str | None, template: str, instructions: str, read_files: bool = False,
+        schema: str | None = None) -> LlmCall:
+    name, p, argv, structured = command(profile_name, read_files=read_files, schema=schema)
     call_id = f"{task}-{time.strftime('%Y%m%dT%H%M%S')}-{secrets.token_hex(2)}"
     folder = pkg.path(f"llm-calls/{call_id}")
     folder.mkdir(parents=True)

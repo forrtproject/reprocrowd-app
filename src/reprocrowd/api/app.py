@@ -23,7 +23,7 @@ from starlette.concurrency import run_in_threadpool
 from starlette.datastructures import UploadFile as StarletteUploadFile
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from .. import __version__, codegen, curation, database, figures, report, run, extractions, files, fulltexts, inputs, jobs, metadata, scripts
+from .. import __version__, codegen, curation, database, figures, report, run, extractions, files, fulltexts, inputs, jobs, llm, metadata, scripts
 from ..config import settings
 from ..errors import ApiError, not_found
 from ..extractions import Scope
@@ -434,6 +434,11 @@ EXTRACTION_ERRORS = errors("not_found", "not_parseable", "parse_failed", "extrac
                            "llm_call_failed", "llm_timeout", "llm_output_invalid")
 
 
+def _llm_preview(prompt: str, profile: str | None, *, read_files: bool = False, schema: str) -> M.PromptPreview:
+    name, p, argv, structured = llm.command(profile, read_files=read_files, schema=schema)
+    return M.PromptPreview(prompt=prompt, argv=argv, profile=name, model=p.model, effort=p.effort, output_schema=structured)
+
+
 def _make_extraction(pkg: Package, body, name: str | None, replace: bool) -> Resource:
     if isinstance(body, M.ExtractionParse):
         return extractions.parse(pkg, body.fulltext, name, replace)
@@ -454,6 +459,14 @@ def create_extraction(pkg: Pkg, body: Annotated[M.ExtractionCreate, Body()], res
     r = _make_extraction(pkg, body, body.name, replace=False)
     created(response, f"/v1/packages/{pkg.id}/extractions/{r.name}")
     return r
+
+
+@api.post("/packages/{pkg}/extractions:preview", tags=["extractions"], response_model=M.PromptPreview, summary="Show the prompt of a reconcile call",
+          description="Takes the body of `POST …/extractions` with `method: reconcile` and returns what would be sent. Runs nothing and stores nothing.",
+          responses=errors("not_found", "no_sources", "unknown_profile"))
+def preview_reconcile(pkg: Pkg, body: M.ExtractionReconcile):
+    _, text = extractions.reconcile_prompt(pkg, body.sources, prompt=body.prompt, instructions=body.instructions)
+    return _llm_preview(text, body.profile, read_files=True, schema=extractions.RECONCILE_SCHEMA)
 
 
 @api.put("/packages/{pkg}/extractions/{name}", tags=["extractions"], response_model=Resource, summary="Create or replace an extraction",
@@ -560,6 +573,14 @@ def curation_routes(kind: str, fields: type, view: type, patch_model: type) -> N
         created(response, f"/v1/packages/{pkg.id}/{kind}/runs/{run.id}")
         return run
 
+    @api.post(base + "/runs:preview", tags=[kind], response_model=M.PromptPreview, summary=f"Show the prompt of a {noun} extraction",
+              description=f"Takes the body of `POST …/{kind}/runs` and returns what would be sent. Runs nothing and stores nothing.",
+              responses=errors("not_found", "unknown_ids", "unknown_profile"))
+    def preview_run(pkg: Pkg, body: M.RunCreate):
+        c = curation.Curation(pkg, kind)
+        text = c.render_prompt(body.extraction, Scope(body.scope.sections, body.scope.items), instructions=body.instructions, prompt=body.prompt)
+        return _llm_preview(text, body.profile, schema=c.output_schema)
+
     @api.get(base + "/runs/{run}", tags=[kind], response_model=LlmRunModel, summary="Get an LLM run", responses=errors("not_found"))
     def get_run(pkg: Pkg, run: str):
         return curation.Curation(pkg, kind).get_run(run)
@@ -649,6 +670,14 @@ def create_job(pkg: Pkg, body: Annotated[M.JobCreate, Body()], response: Respons
         job = codegen.start(pkg, profile=body.profile, allow_exec=body.allow_exec, instructions=body.instructions)
     response.headers["Location"] = f"/v1/packages/{pkg.id}/jobs/{job.id}"
     return job
+
+
+@api.post("/packages/{pkg}/jobs:preview", tags=["jobs"], response_model=M.PromptPreview, summary="Show the prompt of a code-generation job",
+          description="Takes the body of `POST …/jobs` with `type: codegen` and returns what would be sent. Runs nothing and stores nothing.",
+          responses=errors("script_missing", "unknown_profile"))
+def preview_codegen(pkg: Pkg, body: M.CodegenJobCreate):
+    p = codegen.plan(pkg, profile=body.profile, allow_exec=body.allow_exec, instructions=body.instructions)
+    return M.PromptPreview(prompt=p.prompt, argv=p.argv, profile=p.name, model=p.profile.model, effort=p.profile.effort)
 
 
 @api.get("/packages/{pkg}/jobs", tags=["jobs"], response_model=list[Job], summary="List jobs (oldest first)")

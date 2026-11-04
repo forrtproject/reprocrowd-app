@@ -118,6 +118,49 @@ def add_fulltexts(client, pkg):
         assert client.post(f"/v1/packages/{pkg}/fulltexts", json={"path": str(FIXTURES / name)}).status_code == 201
 
 
+def package_files(pkg_root: Path) -> dict[str, bytes]:
+    return {str(p): p.read_bytes() for p in pkg_root.rglob("*") if p.is_file() and ".git" not in p.parts}
+
+
+def test_previews_show_what_a_call_sends_and_store_nothing(client, pkg):
+    add_fulltexts(client, pkg)
+    P = f"/v1/packages/{pkg}"
+    client.post(P + "/extractions", json={"method": "parse", "fulltext": "ft-paper-tei"})
+    root = Path(client.get(P).json()["path"])
+    before = package_files(root)
+
+    body = {"extraction": "ex-paper-tei", "scope": {"sections": ["sec3"]}, "instructions": "only the main test", "profile": "structured"}
+    r = client.post(P + "/targets/runs:preview", json=body)
+    assert r.status_code == 200, r.text
+    target_preview = r.json()
+    assert target_preview["profile"] == "structured" and target_preview["model"] == "fake-1" and target_preview["effort"] == "low"
+    assert target_preview["output_schema"] == "target-llm-output"
+    assert "[sec3.p1.s1]" in target_preview["prompt"] and "[sec2.p1.s1]" not in target_preview["prompt"] and "only the main test" in target_preview["prompt"]
+
+    reconcile = {"method": "reconcile", "sources": ["ft-paper-tei", "ft-paper-pdf"], "profile": "structured"}
+    r = client.post(P + "/extractions:preview", json=reconcile)
+    assert r.status_code == 200, r.text
+    reconcile_preview = r.json()
+    path = client.get(P + "/fulltexts/ft-paper-tei").json()["path"]
+    assert f"- {path} (" in reconcile_preview["prompt"] and reconcile_preview["output_schema"] == "document-draft"
+
+    action_preview = client.post(P + "/actions/runs:preview", json={"extraction": "ex-paper-tei"}).json()
+    assert action_preview["profile"] == "ok" and action_preview["output_schema"] is None  # the default profile, without structured output
+
+    assert package_files(root) == before  # no llm-calls/ folder, no run, no change to the manifest
+
+    call = client.post(P + "/targets/runs", json=body).json()["call"]
+    assert (call["prompt"], call["argv"]) == (target_preview["prompt"], target_preview["argv"])
+    assert client.post(P + "/extractions", json=reconcile).status_code == 201
+    calls = [json.loads(p.read_text()) for p in (root / "llm-calls").glob("reconcile-*/call.json")]
+    assert [(c["prompt"], c["argv"]) for c in calls] == [(reconcile_preview["prompt"], reconcile_preview["argv"])]
+
+    problem(client.post(P + "/targets/runs:preview", json={**body, "scope": {"items": ["sec7.p1.s1"]}}), 422, "unknown_ids")
+    problem(client.post(P + "/targets/runs:preview", json={**body, "extraction": "ex-none"}), 404, "not_found")
+    problem(client.post(P + "/targets/runs:preview", json={**body, "profile": "none"}), 400, "unknown_profile")
+    problem(client.post(P + "/extractions:preview", json={**reconcile, "sources": ["ft-none"]}), 404, "not_found")
+
+
 def test_parse_and_reconcile(client, pkg):
     add_fulltexts(client, pkg)
     r = client.post(f"/v1/packages/{pkg}/extractions", json={"method": "parse", "fulltext": "ft-paper-tei"})

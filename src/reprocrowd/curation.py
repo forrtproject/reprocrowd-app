@@ -288,20 +288,28 @@ class Curation:
             self._save(f)
             return run
 
-    def generate(self, extraction: str, scope: Scope, *, instructions: str, prompt: str | None, profile: str | None) -> LlmRun:
+    @property
+    def output_schema(self) -> str:
+        return f"{self.spec.kind[:-1]}-llm-output"
+
+    def render_prompt(self, extraction: str, scope: Scope, *, instructions: str, prompt: str | None) -> str:
+        """The full prompt of a run; nothing is written."""
         _, doc = get_extraction(self.pkg, extraction)
         check_scope(doc, scope)
         values = {
             "document": listing(doc, scope),
-            "schema": json.dumps(json_schema(f"{self.spec.kind[:-1]}-llm-output"), indent=1),
+            "schema": json.dumps(json_schema(self.output_schema), indent=1),
             "instructions": f"\nAdditional instructions:\n{instructions.strip()}\n" if instructions.strip() else "",
         }
         if self.spec.kind == "actions":
             values |= {"inputs": self._inputs_listing(), "targets": self._targets_listing()}
         required = ("document", "schema") + (("inputs", "targets") if self.spec.kind == "actions" else ())
-        text = llm.render(prompt if prompt is not None else llm.load_prompt(self.spec.kind), values, required=required)
+        return llm.render(prompt if prompt is not None else llm.load_prompt(self.spec.kind), values, required=required)
+
+    def generate(self, extraction: str, scope: Scope, *, instructions: str, prompt: str | None, profile: str | None) -> LlmRun:
+        text = self.render_prompt(extraction, scope, instructions=instructions, prompt=prompt)
         call = llm.run(self.pkg, self.spec.kind, text, profile_name=profile, template="custom" if prompt is not None else "default",
-                       instructions=instructions, schema=f"{self.spec.kind[:-1]}-llm-output")
+                       instructions=instructions, schema=self.output_schema)
         # The call succeeded; problems from here on are the output's fault.
         try:
             raw = llm.output_json(call)

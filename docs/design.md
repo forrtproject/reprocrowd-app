@@ -169,6 +169,7 @@ clients) works without special cases.
 | `…/actions…` | same as targets | | |
 | `GET` / `PUT …/script` | `{template, on_modified?: refuse\|keep\|overwrite}` | template, TODO status, files · 201 / 200 `{created, files, command}` | `unknown_template`, `nothing_to_script`, `script_modified`, `job_running` |
 | `GET /v1/agent-profiles` | | agent profiles (argv, tools read-only) | |
+| `POST …/extractions:preview` · `POST …/targets/runs:preview` · `POST …/jobs:preview` | the body of the call they preview | `{prompt, argv, profile, model, effort, output_schema}`; runs and stores nothing | the call's input errors |
 | `POST …/jobs` | `{type:"codegen", profile?, allow_exec?, instructions?}` | 202 job + `Location` | `script_missing`, `job_running`, `unknown_profile`, `job_start_failed` |
 | `GET …/jobs` · `GET …/jobs/{j}` · `GET …/jobs/{j}/stdout` | | jobs · job · raw output | |
 | `GET …/jobs/{j}/events` | `?after=N`; `Accept: text/event-stream`, `Last-Event-ID` | events (JSON) or live SSE ending with `end` | |

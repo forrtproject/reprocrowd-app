@@ -47,20 +47,28 @@ def parse(pkg: Package, fulltext: str, name: str | None = None, replace: bool = 
     return _store(pkg, name, doc, meta, replace)
 
 
-def reconcile(pkg: Package, sources: list[str], *, prompt: str | None, instructions: str, profile: str | None,
-              name: str | None = None, replace: bool = False) -> Resource:
+RECONCILE_SCHEMA = "document-draft"
+
+
+def reconcile_prompt(pkg: Package, sources: list[str], *, prompt: str | None, instructions: str) -> tuple[list[Resource], str]:
+    """The full texts and the full prompt of a reconcile call; nothing is written."""
     if not sources:
         raise ApiError(400, "no_sources", "list at least one full text")
     fts = [get_fulltext(pkg, s) for s in sources]
     files = "\n".join(f"- {r.path} ({formats.BY_NAME[r.reprocrowd.flavor].description})" for r in fts)
     values = {
         "files": files,
-        "schema": json.dumps(json_schema("document-draft"), indent=1),
+        "schema": json.dumps(json_schema(RECONCILE_SCHEMA), indent=1),
         "instructions": f"\nAdditional instructions:\n{instructions.strip()}\n" if instructions.strip() else "",
     }
-    text = llm.render(prompt if prompt is not None else llm.load_prompt("reconcile"), values, required=("files", "schema"))
+    return fts, llm.render(prompt if prompt is not None else llm.load_prompt("reconcile"), values, required=("files", "schema"))
+
+
+def reconcile(pkg: Package, sources: list[str], *, prompt: str | None, instructions: str, profile: str | None,
+              name: str | None = None, replace: bool = False) -> Resource:
+    fts, text = reconcile_prompt(pkg, sources, prompt=prompt, instructions=instructions)
     call = llm.run(pkg, "reconcile", text, profile_name=profile, template="custom" if prompt is not None else "default",
-                   instructions=instructions, read_files=True, schema="document-draft")
+                   instructions=instructions, read_files=True, schema=RECONCILE_SCHEMA)
     # From here on the call succeeded; anything wrong is the output's fault (llm_output_invalid).
     try:
         raw = llm.output_json(call)
