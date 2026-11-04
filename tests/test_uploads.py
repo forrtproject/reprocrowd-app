@@ -1,5 +1,8 @@
+import io
 import os
+import zipfile
 
+import pytest
 from conftest import FIXTURES
 from test_api import problem
 
@@ -30,6 +33,32 @@ def test_multipart_uploads(client, pkg):
     assert not (Path(client.get(P).json()["path"]) / "inputs" / "x.csv").exists()  # no partial file left
     settings().max_upload_mb = 500
     assert client.get(P + "/validation").json()["valid"]
+
+
+def _zip_bytes() -> bytes:
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as z:
+        z.writestr("xl/worksheets/sheet1.xml", "<worksheet/>")
+    return buf.getvalue()
+
+
+@pytest.mark.parametrize(("filename", "role"), [("data.xlsx", "data"), ("arrays.npz", "data"), ("data.ods", "data"), ("appendix.docx", "other")])
+def test_zip_based_formats_stay_whole(client, pkg, tmp_path, filename, role):
+    P = f"/v1/packages/{pkg}"
+    r = client.post(P + "/inputs", files={"file": (filename, _zip_bytes())})
+    assert r.status_code == 201, r.text
+    assert [(x["path"], x["reprocrowd"]["role"]) for x in r.json()] == [(f"inputs/{filename}", role)]
+
+    local = tmp_path / f"local-{filename}"  # a local path takes the same route
+    local.write_bytes(_zip_bytes())
+    r = client.post(P + "/inputs", json={"path": str(local)})
+    assert [x["path"] for x in r.json()] == [f"inputs/{local.name}"]
+    assert len(client.get(P + "/inputs").json()) == 2
+
+
+def test_zip_extension_is_case_insensitive(client, pkg):
+    r = client.post(f"/v1/packages/{pkg}/inputs", files={"file": ("PACKAGE.ZIP", _zip_bytes())})
+    assert [x["path"] for x in r.json()] == ["inputs/PACKAGE.ZIP", "inputs/PACKAGE/xl/worksheets/sheet1.xml"]
 
 
 def test_directory_inputs(client, pkg, tmp_path):

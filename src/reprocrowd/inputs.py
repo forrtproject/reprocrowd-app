@@ -21,6 +21,9 @@ DATA_EXT = {"csv", "tsv", "tab", "txt", "dat", "json", "jsonl", "ndjson", "xml",
 CODE_EXT = {"r", "rmd", "qmd", "py", "ipynb", "do", "ado", "sas", "sps", "m", "jl", "stan", "sh", "bash", "sql", "c", "cpp",
             "h", "js", "ts", "java", "scala", "go", "rs", "f90", "pl", "rb", "smk", "nf", "wdl", "mk"}
 CODE_NAMES = {"snakefile", "makefile", "dockerfile", "_targets.r", "description", "requirements.txt", "environment.yml", "renv.lock"}
+# What gets unpacked is decided by file type, not content: xlsx, docx, ods, npz, jar... are zip files inside too, but
+# they are single files that stay whole.
+ARCHIVE_SUFFIXES = {".zip"}
 
 
 def guess_role(path: str) -> Role:
@@ -76,7 +79,7 @@ def _add_file(pkg: Package, filename: str, write: Callable[[Path], None], origin
         except BaseException:
             dest.unlink(missing_ok=True)
             raise
-        is_zip = unpack and zipfile.is_zipfile(dest)
+        is_zip = unpack and dest.suffix.lower() in ARCHIVE_SUFFIXES and zipfile.is_zipfile(dest)
         archive = _register(pkg, m, rel, InputMeta(added_at=now(), role=role or ("other" if is_zip else guess_role(rel)), note=note, origin=origin))
         if not is_zip:
             return [archive]
