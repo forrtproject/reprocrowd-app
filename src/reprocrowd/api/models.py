@@ -335,7 +335,7 @@ class SubmissionCreate(Req):
 
 
 class CropRequest(Req):
-    pdf: str | None = Field(default=None, description="PDF full text the coordinates refer to; default: found through provenance")
+    pdf: str | None = Field(default=None, description="PDF full text to use; default: the one the coordinates were measured on, by hash or provenance")
     scale: float = Field(default=2.0, gt=0, le=8, description="pixels per point")
 
 
@@ -346,6 +346,31 @@ class CropResult(BaseModel):
     pdf: str
     page: int
     size: list[int] = Field(description="width, height in pixels")
+    method: Literal["crop", "page"] = Field(description="crop: the figure's area · page: the whole page, as no full text locates the figure")
+    source: str | None = Field(default=None, description="full text the coordinates of a crop come from")
+
+
+class FigureOriginal(BaseModel):
+    target: str
+    path: str
+    method: Literal["crop", "page"]
+    page: int | None = None
+
+
+class CoordinateReport(BaseModel):
+    """What one full text says about where things are on the page. Figures and tables count only when the coordinates
+    really mark one: formats also box running text and logos. `has_coordinates: false` is conclusive; few located
+    items in a format that has coordinates only mean that it missed them."""
+
+    fulltext: str
+    format: str
+    has_coordinates: bool
+    figures: int
+    tables: int
+    pdf: str | None = Field(default=None, description="PDF the coordinates refer to")
+    pdf_match: Literal["verified", "provenance", "mismatch", "unknown"] | None = Field(
+        default=None, description="verified: the hash recorded in the file matches · provenance: converted from it, hash not confirmed · "
+                                  "mismatch: no PDF of the package has the recorded hash · unknown: no hash, no conversion record")
 
 
 class CropOutcome(BaseModel):
@@ -353,5 +378,6 @@ class CropOutcome(BaseModel):
     ok: bool
     path: str | None = None
     page: int | None = None
+    method: Literal["crop", "page"] | None = None
     error: str | None = None
     code: str | None = None

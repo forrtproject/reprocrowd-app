@@ -23,7 +23,7 @@ from starlette.concurrency import run_in_threadpool
 from starlette.datastructures import UploadFile as StarletteUploadFile
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from .. import __version__, codegen, curation, database, figures, report, run, extractions, files, fulltexts, inputs, jobs, llm, metadata, scripts
+from .. import __version__, codegen, coordinates, curation, database, figures, report, run, extractions, files, fulltexts, inputs, jobs, llm, metadata, scripts
 from ..config import settings
 from ..errors import ApiError, not_found
 from ..extractions import Scope
@@ -759,9 +759,18 @@ def get_comparison(pkg: Pkg, rounding: Annotated[str, Query(pattern=r"^(reported
 CROP_ERRORS = errors("not_found", "not_a_figure_target", "no_figure_reference", "no_coordinates", "pdf_unknown", "not_convertible")
 
 
+@api.get("/packages/{pkg}/coordinates", tags=["report"], response_model=list[M.CoordinateReport], summary="What each full text locates on the PDF",
+         description="Read from the full-text files: which can carry coordinates, how many real figures and tables they locate, "
+                     "and on which PDF, confirmed by the hash GROBID and Docling record where possible.")
+def get_coordinates(pkg: Pkg):
+    return coordinates.report(pkg)
+
+
 @api.put("/packages/{pkg}/figures/{target}", tags=["report"], response_model=M.CropResult, summary="Crop the original figure of a figure target",
-         description="Renders the figure's area (from the extraction's coordinates) from the PDF to `targets/figures/<target>.png`. "
-                     "The report shows it next to the reproduced figure. 201 the first time, 200 when replacing.",
+         description="Renders the figure's area to `targets/figures/<target>.png`, from a full text that locates it (matched by caption "
+                     "when the target refers to an extraction without coordinates, such as JATS or a reconciled one). If none does, renders "
+                     "the whole page with the figure's caption, and says so in `method`. The report shows it next to the reproduced figure. "
+                     "201 the first time, 200 when replacing.",
          responses={201: {"model": M.CropResult, "description": "created"}, **CROP_ERRORS})
 def put_figure(pkg: Pkg, target: str, response: Response, body: M.CropRequest = Body(default_factory=M.CropRequest)):
     first = pkg.load().get(f"figure-{target.lower()}") is None
@@ -775,6 +784,11 @@ def put_figure(pkg: Pkg, target: str, response: Response, body: M.CropRequest = 
          description="Like `PUT …/figures/{target}` for every enabled figure target; problems are reported per target.")
 def put_figures(pkg: Pkg, body: M.CropRequest = Body(default_factory=M.CropRequest)):
     return figures.crop_all(pkg, body.pdf, body.scale)
+
+
+@api.get("/packages/{pkg}/figures", tags=["report"], response_model=list[M.FigureOriginal], summary="The originals made so far")
+def list_figures(pkg: Pkg):
+    return figures.listing(pkg)
 
 
 @api.get("/packages/{pkg}/figures/{target}", tags=["report"], response_class=FileResponse, summary="The crop (PNG)", responses=errors("not_found"))

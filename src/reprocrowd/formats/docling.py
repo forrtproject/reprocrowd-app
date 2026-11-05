@@ -5,6 +5,7 @@ as a tree of JSON references from ``body``. Each text item has a ``label``; LABE
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 from pathlib import Path
@@ -12,7 +13,7 @@ from typing import Any, Literal
 
 from ..schemas.common import Box
 from ..schemas.document import DocumentDraft, DraftFigure, DraftSection, DraftTable
-from .base import CheckReport, Format
+from .base import CheckReport, Format, Located
 from .builder import paragraph_from_text, sentences_from_text
 from .segment import clean
 
@@ -119,6 +120,29 @@ def parse(path: Path) -> DocumentDraft:
     return DocumentDraft(title=title, sections=sections, figures=loose)
 
 
+def locate(path: Path) -> list[Located]:
+    """Tables, and pictures with a caption: the ones without are logos and icons (or, rarely, a figure whose caption
+    Docling didn't link). A table keeps its box when its caption wasn't linked."""
+    doc = json.loads(path.read_text(encoding="utf-8"))
+    texts = {t.get("self_ref"): t.get("text", "") for t in doc.get("texts") or []}
+    out = []
+    for key, kind in (("pictures", "figure"), ("tables", "table")):
+        for item in doc.get(key) or []:
+            caption = clean(" ".join(texts.get(r.get("$ref") or r.get("cref"), "") for r in item.get("captions") or []))
+            boxes = _boxes(item)
+            if boxes and (caption or kind == "table"):
+                out.append(Located(kind, caption, boxes))
+    return out
+
+
+def made_from(path: Path, pdf: Path) -> bool | None:
+    """origin.binary_hash is the last 8 bytes of the PDF's SHA-256, as an unsigned big-endian integer."""
+    recorded = (json.loads(path.read_text(encoding="utf-8")).get("origin") or {}).get("binary_hash")
+    if recorded is None:
+        return None
+    return int(recorded) == int.from_bytes(hashlib.sha256(pdf.read_bytes()).digest()[-8:], "big")
+
+
 def check(path: Path) -> CheckReport:
     r = CheckReport()
     try:
@@ -148,4 +172,6 @@ FORMAT = Format(
     sniff=lambda head: head.lstrip().startswith(b"{") and b"DoclingDocument" in head,
     check=check,
     parse=parse,
+    locate=locate,
+    made_from=made_from,
 )

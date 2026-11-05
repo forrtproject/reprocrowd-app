@@ -346,7 +346,7 @@
     },
     "OtherMeta": {
       "additionalProperties": false,
-      "description": "metadata: OpenAlex record · curation: targets/actions · export: files derived for the agent · schema: JSON Schema\ncopies · code: files created by the agent or the user · output: files under outputs/ (written by runs) ·\nreport: report.html and comparison.json · figure: crops of the original figures (targets/figures/).",
+      "description": "metadata: OpenAlex record · curation: targets/actions · export: files derived for the agent · schema: JSON Schema\ncopies · code: files created by the agent or the user · output: files under outputs/ (written by runs) ·\nreport: report.html and comparison.json · figure: originals of figure targets (targets/figures/).",
       "properties": {
         "kind": {
           "enum": [
@@ -366,6 +366,37 @@
           "format": "date-time",
           "title": "Added At",
           "type": "string"
+        },
+        "method": {
+          "anyOf": [
+            {
+              "enum": [
+                "crop",
+                "page"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "figure: an exact crop, or the whole page the figure is on",
+          "title": "Method"
+        },
+        "page": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "figure: page of the PDF",
+          "title": "Page"
         }
       },
       "required": [

@@ -48,7 +48,7 @@ Pipeline: {{ tpl.label }}, <code>{{ tpl.command }}</code>{% if run %}, last run 
 {% for row in r.cells %}<tr>{% for c in row %}<td class="st-{{ c.status }}" title="expected {{ c.expected }}{% if c.deviation is not none %}, deviation {{ "%.2f"|format(c.deviation) }} %{% endif %}">{{ c.reproduced }}<br><small>{{ c.expected }}</small></td>{% endfor %}</tr>{% endfor %}
 </table></details></td></tr>{% endif %}
 {% if r.target in figures %}{% set f = figures[r.target] %}<tr><td colspan="6"><div class="figs">
-<figure><figcaption>Original</figcaption>{% if f.original %}<img src="{{ f.original }}" alt="original {{ r.target }}">{% else %}<em>not available</em>{% endif %}</figure>
+<figure><figcaption>Original{% if f.page %} (full page {{ f.page }}, no exact crop){% endif %}</figcaption>{% if f.original %}<img src="{{ f.original }}" alt="original {{ r.target }}">{% else %}<em>not available</em>{% endif %}</figure>
 <figure><figcaption>Reproduced</figcaption>{% if f.reproduced %}<img src="{{ f.reproduced }}" alt="reproduced {{ r.target }}">{% else %}<em>not produced</em>{% endif %}</figure>
 </div></td></tr>{% endif %}
 {% endfor %}</table>

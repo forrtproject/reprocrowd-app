@@ -14,6 +14,7 @@ from jinja2 import Environment, PackageLoader, StrictUndefined
 
 from . import jobs
 from .errors import conflict
+from .figures import listing as figure_listing
 from .package import MANIFEST, Package, atomic_write, sha256_file, slug
 from .run import RESULTS, comparison, frozen_targets
 from .schemas.common import now
@@ -47,7 +48,8 @@ def write_report(pkg: Package, st: CompareSettings) -> dict[str, Any]:
     outputs = {r.get("id"): r.get("step") for r in raw_out.get("results", []) if isinstance(r, dict)}
     files = {r.path for r in m.resources}
     # original crops (targets/figures/, see figures.py) and the reproduction's files, linked by relative path
-    figures = {t.id: {"original": f"targets/figures/{t.id}.png" if f"targets/figures/{t.id}.png" in files else None, "reproduced": None}
+    pages = {f["target"]: f["page"] for f in figure_listing(pkg) if f["method"] == "page"}
+    figures = {t.id: {"original": f"targets/figures/{t.id}.png" if f"targets/figures/{t.id}.png" in files else None, "reproduced": None, "page": pages.get(t.id)}
                for t in targets if t.type == "figure"}
     for row in cmp.rows:
         if row.target in figures and row.status == "figure":

@@ -73,7 +73,7 @@ CATALOG: dict[str, tuple[int, str]] = {
     # figure crops
     "not_a_figure_target": (422, "Crops are made for figure targets"),
     "no_figure_reference": (422, "The target doesn't reference a figure"),
-    "no_coordinates": (422, "The figure has no usable coordinates"),
+    "no_coordinates": (422, "The figure can't be located in the PDF"),
     "pdf_unknown": (409, "Can't tell which PDF the coordinates refer to; name it"),
     # package database
     "database_not_configured": (409, "No package database is configured"),

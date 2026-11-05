@@ -103,12 +103,14 @@ A work identifier that OpenAlex can resolve.
 
 metadata: OpenAlex record · curation: targets/actions · export: files derived for the agent · schema: JSON Schema
 copies · code: files created by the agent or the user · output: files under outputs/ (written by runs) ·
-report: report.html and comparison.json · figure: crops of the original figures (targets/figures/).
+report: report.html and comparison.json · figure: originals of figure targets (targets/figures/).
 
 | Field | Type | Req. | Description |
 |---|---|---|---|
 | `kind` | `"metadata"` \| `"curation"` \| `"export"` \| `"schema"` \| `"code"` \| `"output"` \| `"report"` \| `"figure"` | yes |  |
 | `added_at` | string (date-time) | yes |  |
+| `method` | `"crop"` \| `"page"` \| null |  | figure: an exact crop, or the whole page the figure is on |
+| `page` | integer \| null |  | figure: page of the PDF |
 
 ### PackageMeta
 

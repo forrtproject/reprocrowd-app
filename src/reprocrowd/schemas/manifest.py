@@ -87,10 +87,12 @@ class ScriptMeta(Model):
 class OtherMeta(Model):
     """metadata: OpenAlex record · curation: targets/actions · export: files derived for the agent · schema: JSON Schema
     copies · code: files created by the agent or the user · output: files under outputs/ (written by runs) ·
-    report: report.html and comparison.json · figure: crops of the original figures (targets/figures/)."""
+    report: report.html and comparison.json · figure: originals of figure targets (targets/figures/)."""
 
     kind: Literal["metadata", "curation", "export", "schema", "code", "output", "report", "figure"]
     added_at: datetime
+    method: Literal["crop", "page"] | None = Field(default=None, description="figure: an exact crop, or the whole page the figure is on")
+    page: int | None = Field(default=None, ge=1, description="figure: page of the PDF")
 
 
 ResourceMeta = Annotated[Union[FulltextMeta, ExtractionMeta, InputMeta, ScriptMeta, OtherMeta], Field(discriminator="kind")]

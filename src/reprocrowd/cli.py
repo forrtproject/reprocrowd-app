@@ -498,10 +498,16 @@ def compare_cmd(pkg: str, rounding: str = typer.Option("reported", help='"report
 
 @app.command("figures")
 def figures_cmd(pkg: str, target: Optional[str] = typer.Argument(None, help="one figure target; default: all"),
-                pdf: Optional[str] = typer.Option(None, help="PDF full text the coordinates refer to (default: from provenance)"), scale: float = 2.0):
-    """Crop the original figures of figure targets from the PDF (shown in the report)."""
+                pdf: Optional[str] = typer.Option(None, help="PDF full text to use (default: found by hash or provenance)"), scale: float = 2.0):
+    """Crop the original figures of figure targets from the PDF, or render their page (shown in the report)."""
     body = {"pdf": pdf, "scale": scale}
     out(call("PUT", f"/packages/{pkg}/figures" + (f"/{target}" if target else ""), body))
+
+
+@app.command("coordinates")
+def coordinates_cmd(pkg: str):
+    """What each full text locates on the PDF: real figures and tables, and whether the PDF is confirmed."""
+    out(call("GET", f"/packages/{pkg}/coordinates"))
 
 
 @app.command("report")

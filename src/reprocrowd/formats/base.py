@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, Literal
 
+from ..schemas.common import Box
 from ..schemas.document import DocumentDraft
 
 
@@ -19,6 +20,16 @@ class CheckReport:
 
 
 @dataclass(frozen=True)
+class Located:
+    """A figure or table of a full text whose coordinates really mark it. Formats also carry coordinates for things
+    that aren't one (GROBID tags paragraphs that quote a caption as figures, Docling boxes logos as pictures)."""
+
+    kind: Literal["figure", "table"]
+    caption: str
+    boxes: list[Box]
+
+
+@dataclass(frozen=True)
 class Format:
     name: str  # also the "flavor" stored in the manifest
     description: str
@@ -29,3 +40,5 @@ class Format:
     sniff: Callable[[bytes], bool]  # cheap test on the first 64 KiB
     check: Callable[[Path], CheckReport]  # integrity check of the whole file
     parse: Callable[[Path], DocumentDraft] | None = None  # None: not convertible to the document schema
+    locate: Callable[[Path], list[Located]] | None = None  # None: the format has no coordinates
+    made_from: Callable[[Path, Path], bool | None] | None = None  # (full text, PDF): its recorded hash matches? None: no hash

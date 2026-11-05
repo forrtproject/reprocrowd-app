@@ -38,7 +38,8 @@ rc codegen phacking                              # coding agent implements the T
 rc script status phacking                        # markers left
 rc run phacking                                  # run the master script (live log), check outputs/results.json
 rc compare phacking                              # reproduced vs. expected, per target
-rc figures phacking                              # crop the original figures of figure targets from the PDF
+rc coordinates phacking                          # what each full text locates on the PDF
+rc figures phacking                              # crop the original figures, or render their page if not located
 rc report phacking --open                        # report.html with the provenance of every target
 rc archive phacking --download phacking.zip      # the package as a ZIP (must validate)
 rc submit phacking                               # upload to the package database; confirm in the browser
