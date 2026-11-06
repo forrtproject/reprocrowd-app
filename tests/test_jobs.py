@@ -2,8 +2,10 @@ import json
 import subprocess
 import time
 from pathlib import Path
+from types import SimpleNamespace
 
 from conftest import FIXTURES
+from reprocrowd import jobs
 from test_api import problem
 
 
@@ -149,6 +151,29 @@ def test_codegen_needs_script_and_interrupted_jobs(client, pkg, tmp_path):
            "stdout": "jobs/job-old-1/stdout.log", "stderr": "jobs/job-old-1/stderr.log", "events_format": "text"}
     (root / "jobs" / "job-old-1.json").write_text(json.dumps(rec))
     assert client.get(f"/v1/packages/{pkg}/jobs/job-old-1").json()["status"] == "interrupted"
+
+
+def test_poll_overlapping_the_end_of_a_job_keeps_its_outcome(tmp_path, monkeypatch):
+    """A poll holding a "running" copy while the job ends must not report it interrupted, or save that over the outcome."""
+    pkg = SimpleNamespace(root=tmp_path, path=lambda rel: tmp_path / rel)
+    jid = jobs.new_id()
+    key = jobs._key(pkg, jid)
+    read = jobs.Job.model_validate_json
+
+    def read_then_job_ends(data):
+        job = read(data)
+        end = time.monotonic() + 30
+        while job.status == "running" and key in jobs._procs and time.monotonic() < end:
+            time.sleep(0.01)
+        return job
+
+    monkeypatch.setattr(jobs.Job, "model_validate_json", read_then_job_ends)
+    jobs.start(pkg, jid=jid, type="run", argv=["/bin/sh", "-c", "exit 0"], stdin="", timeout_s=30, events_format="text",
+               profile=None, request={}, finish=lambda job: None)
+    polled = jobs.load(pkg, jid)
+    monkeypatch.undo()
+    assert polled.status == "succeeded" and polled.exit_code == 0
+    assert jobs.load(pkg, jid).status == "succeeded"
 
 
 def test_sync_registers_outside_changes(client, pkg):

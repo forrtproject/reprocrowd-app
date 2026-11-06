@@ -56,9 +56,13 @@ def load(pkg: Package, jid: str) -> Job:
     if not jid.startswith("job-") or not p.exists():
         raise not_found("job", jid)
     job = Job.model_validate_json(p.read_bytes())
-    if job.status == "running" and _key(pkg, jid) not in _procs:
-        job.status, job.finished_at = "interrupted", now()  # the service stopped while it ran
-        save(pkg, job)
+    if job.status == "running":
+        with _guard:
+            if _key(pkg, jid) not in _procs:
+                job = Job.model_validate_json(p.read_bytes())  # it may have just ended: the watcher saves before it deregisters
+                if job.status == "running":
+                    job.status, job.finished_at = "interrupted", now()  # the service stopped while it ran
+                    save(pkg, job)
     return job
 
 
