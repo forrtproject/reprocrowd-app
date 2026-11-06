@@ -29,10 +29,11 @@ MAPPING = XmlMapping(
 
 def graphics(path: Path) -> list[Graphic]:
     """<fig> elements with a label and one image. A <fig> with several images (panels) has no single file to show, but
-    <alternatives> can list one image in several formats, so what counts is the file name without its extension."""
+    <alternatives> can list one image in several formats, so what counts is the file name without its extension. Images
+    of a <fig> nested in this one (eLife's figure supplements) are that one's."""
     out = []
     for el in load(path).iter("fig"):
-        files = [g.get("href") or "" for g in el.iter("graphic")]
+        files = [g.get("href") or "" for g in el.iter("graphic") if next(g.iterancestors("fig")) is el]
         stems = {f.rsplit("/", 1)[-1].rsplit(".", 1)[0] for f in files if f}
         label = text_of(next((c for c in el if c.tag == "label"), None))
         if label and len(stems) == 1:

@@ -473,7 +473,8 @@ says for each whether it is the `published` image, an exact `crop` or a full `pa
   full-text file, like coordinates, so stored extractions don't change. A figure is connected to its `<fig>` by
   caption and label, which must not disagree. Names are compared without extension: `<alternatives>` lists one image
   in several formats, and archives add small GIFs, used only if the full text names one. A `<fig>` with several
-  different images (panels) has no single file and goes on to the PDF. The archive is untrusted: only the named image
+  different images (panels) has no single file and goes on to the PDF; images of a `<fig>` nested in it (eLife's
+  figure supplements) don't count as its own. The archive is untrusted: only the named image
   is read, nothing is unpacked, and the PNG's resource records its URL in `source`. Any failure (no PMCID, HTTP error,
   no archive, unreadable image) falls through to the PDF and is reported in `note`. Naming a `pdf` skips this step.
 - **Where, exactly**: a full text that *locates* the figure (`coordinates.py`, formats' `locate`). Targets

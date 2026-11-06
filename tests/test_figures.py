@@ -331,6 +331,15 @@ def test_which_file_of_the_archive(client, pkg, tmp_path, graphics, files, size)
     assert out["method"] == "published" and out["size"] == size
 
 
+@respx.mock
+def test_a_nested_figure_supplement_is_not_a_panel(client, pkg, tmp_path):
+    P = f"/v1/packages/{pkg}"
+    t = published(client, P, tmp_path, graphics='<graphic xlink:href="pub.g001.jpg"/><fig id="s1"><label>Figure 1—figure supplement 1.</label>'
+                                                '<caption><p>More reaction times.</p></caption><graphic xlink:href="pub.g001-s1.jpg"/></fig>')
+    respx.get(ARCHIVE).mock(return_value=httpx.Response(200, content=archive({"pub.g001.jpg": image((30, 20)), "pub.g001-s1.jpg": image((40, 20))})))
+    assert client.put(f"{P}/figures/{t}", json={}).json()["size"] == [30, 20]
+
+
 @respx.mock  # no route: asking Europe PMC would fail the test
 def test_panels_have_no_single_image_to_fetch(client, pkg, tmp_path):
     P = f"/v1/packages/{pkg}"
