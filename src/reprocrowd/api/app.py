@@ -766,10 +766,12 @@ def get_coordinates(pkg: Pkg):
     return coordinates.report(pkg)
 
 
-@api.put("/packages/{pkg}/figures/{target}", tags=["report"], response_model=M.CropResult, summary="Crop the original figure of a figure target",
-         description="Renders the figure's area to `targets/figures/<target>.png`, from a full text that locates it (matched by caption "
-                     "when the target refers to an extraction without coordinates, such as JATS or a reconciled one). If none does, renders "
-                     "the whole page with the figure's caption, and says so in `method`. The report shows it next to the reproduced figure. "
+@api.put("/packages/{pkg}/figures/{target}", tags=["report"], response_model=M.CropResult, summary="Get the original figure of a figure target",
+         description="Writes `targets/figures/<target>.png`, best first: the image as published, when a JATS full text names it and Europe PMC "
+                     "has it; the figure's area, from a full text that locates it (matched by caption when the target refers to an extraction "
+                     "without coordinates, such as JATS or a reconciled one); the whole page with the figure's caption. `method` says which, and "
+                     "`note` why the published image wasn't available if that failed. Naming a `pdf` skips the published image. "
+                     "The report shows the original next to the reproduced figure. "
                      "201 the first time, 200 when replacing.",
          responses={201: {"model": M.CropResult, "description": "created"}, **CROP_ERRORS})
 def put_figure(pkg: Pkg, target: str, response: Response, body: M.CropRequest = Body(default_factory=M.CropRequest)):
@@ -780,7 +782,7 @@ def put_figure(pkg: Pkg, target: str, response: Response, body: M.CropRequest = 
     return out
 
 
-@api.put("/packages/{pkg}/figures", tags=["report"], response_model=list[M.CropOutcome], summary="Crop the figures of all figure targets",
+@api.put("/packages/{pkg}/figures", tags=["report"], response_model=list[M.CropOutcome], summary="Get the original figures of all figure targets",
          description="Like `PUT …/figures/{target}` for every enabled figure target; problems are reported per target.")
 def put_figures(pkg: Pkg, body: M.CropRequest = Body(default_factory=M.CropRequest)):
     return figures.crop_all(pkg, body.pdf, body.scale)

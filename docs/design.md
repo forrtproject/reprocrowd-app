@@ -72,7 +72,7 @@ flowchart LR
   jobs/<id>.json, jobs/<id>/  job records; the agent's prompt (stdin.txt), stdout.log, stderr.log
   AGENT_PROMPT.md             instructions for a coding agent (written by the script step)
   .git/                       created by the first job: commits before and after every agent run
-  targets/figures/<id>.png    originals: crops, or full pages (PUT …/figures)
+  targets/figures/<id>.png    originals: published images, crops, or full pages (PUT …/figures)
   report.html, comparison.json  the reproduction report (PUT …/report)
   archive/<doi>-reproduction.zip  the package as a ZIP (PUT …/archive; not itself a resource)
 ```
@@ -176,7 +176,7 @@ clients) works without special cases.
 | `DELETE …/jobs/{j}` | | 202, cancels | `job_finished` |
 | `POST …/jobs` | `{type:"run"}` | 202 job; result: results file present, output errors/warnings, commit | `script_missing`, `job_running` |
 | `GET …/comparison` | `?rounding=reported\|N&threshold=P` | per-target status, deviation, table cells; summary | `script_missing`, `results_missing` |
-| `PUT …/figures/{target}` · `PUT …/figures` · `GET …/figures` · `GET …/figures/{target}` | `{pdf?, scale?}` | crop or full page · per-target outcomes · the originals · the PNG | `not_a_figure_target`, `no_figure_reference`, `no_coordinates`, `pdf_unknown` |
+| `PUT …/figures/{target}` · `PUT …/figures` · `GET …/figures` · `GET …/figures/{target}` | `{pdf?, scale?}` | published image, crop or full page · per-target outcomes · the originals · the PNG | `not_a_figure_target`, `no_figure_reference`, `no_coordinates`, `pdf_unknown` |
 | `GET …/coordinates` | | what each full text locates, on which PDF | |
 | `PUT …/report` · `GET …/report` | `{rounding?, threshold?}` | 201/200 summary · the HTML | `script_missing`, `results_missing`, `job_running`, `report_missing` |
 | `PUT …/archive` · `GET …/archive` | | 201/200 archive info · the ZIP | `package_invalid`, `report_missing`, `archive_missing` |
@@ -458,16 +458,24 @@ size and hashes are recorded in the manifest (`reprocrowd.archive`). `GET …/ar
 > `Graph.lineage`), `templates/_report.html.j2`, `schemas/manifest.py` (`ArchiveInfo`), CLI `rc report`,
 > `rc archive`. Checked visually on the scratch package (25 targets, 15 actions).
 
-## Figure crops
+## Original figures
 
-`PUT …/figures/{target}` (or `PUT …/figures` for all figure targets) renders the original of a figure target to
+`PUT …/figures/{target}` (or `PUT …/figures` for all figure targets) writes the original of a figure target to
 `targets/figures/<target>.png` (kind `figure`), which the report shows next to the reproduced one. `GET …/figures`
-says for each whether it is an exact `crop` or a full `page`.
+says for each whether it is the `published` image, an exact `crop` or a full `page`.
 
 - **Which figure**: one the target references (the figure or a caption sentence); otherwise one its
   description, quote or referenced sentences mention ("Fig 3"); the result says which way it was found.
   The prompt listing for a scope also includes the figures and tables its text mentions, so the extraction
   LLM can cite them.
+- **As published, first**: JATS has no coordinates, but its `<graphic>` names the figure's image file, and Europe
+  PMC's `/{pmcid}/supplementaryFiles` archive usually holds it (`published.py`, formats' `graphics`). Read from the
+  full-text file, like coordinates, so stored extractions don't change. A figure is connected to its `<fig>` by
+  caption and label, which must not disagree. Names are compared without extension: `<alternatives>` lists one image
+  in several formats, and archives add small GIFs, used only if the full text names one. A `<fig>` with several
+  different images (panels) has no single file and goes on to the PDF. The archive is untrusted: only the named image
+  is read, nothing is unpacked, and the PNG's resource records its URL in `source`. Any failure (no PMCID, HTTP error,
+  no archive, unreadable image) falls through to the PDF and is reported in `note`. Naming a `pdf` skips this step.
 - **Where, exactly**: a full text that *locates* the figure (`coordinates.py`, formats' `locate`). Targets
   usually refer to extractions without boxes (JATS, reconciled), so the figure is matched by caption, Docling
   first. Boxes on their own prove little: GROBID tags paragraphs quoting a caption as `<figure>` with `coords`

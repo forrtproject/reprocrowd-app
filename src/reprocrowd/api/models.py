@@ -335,7 +335,7 @@ class SubmissionCreate(Req):
 
 
 class CropRequest(Req):
-    pdf: str | None = Field(default=None, description="PDF full text to use; default: the one the coordinates were measured on, by hash or provenance")
+    pdf: str | None = Field(default=None, description="PDF full text to render from, skipping the published image; default: the one the coordinates were measured on, by hash or provenance")
     scale: float = Field(default=2.0, gt=0, le=8, description="pixels per point")
 
 
@@ -343,18 +343,21 @@ class CropResult(BaseModel):
     resource: Resource
     target: str
     figure: str = Field(description="extraction and figure id")
-    pdf: str
-    page: int
+    pdf: str | None = Field(default=None, description="PDF the image was rendered from; none for a published image")
+    page: int | None = None
     size: list[int] = Field(description="width, height in pixels")
-    method: Literal["crop", "page"] = Field(description="crop: the figure's area · page: the whole page, as no full text locates the figure")
-    source: str | None = Field(default=None, description="full text the coordinates of a crop come from")
+    method: Literal["published", "crop", "page"] = Field(description="published: the image file of the article · crop: the figure's area on the PDF · "
+                                                                      "page: the whole page, as no full text locates the figure")
+    source: str | None = Field(default=None, description="crop: the full text with the coordinates · published: the URL of the image")
+    note: str | None = Field(default=None, description="why a better kind of original wasn't available, if something went wrong")
 
 
 class FigureOriginal(BaseModel):
     target: str
     path: str
-    method: Literal["crop", "page"]
+    method: Literal["published", "crop", "page"]
     page: int | None = None
+    source: str | None = Field(default=None, description="published: the URL of the image")
 
 
 class CoordinateReport(BaseModel):
@@ -378,6 +381,7 @@ class CropOutcome(BaseModel):
     ok: bool
     path: str | None = None
     page: int | None = None
-    method: Literal["crop", "page"] | None = None
+    method: Literal["published", "crop", "page"] | None = None
+    note: str | None = None
     error: str | None = None
     code: str | None = None

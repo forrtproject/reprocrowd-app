@@ -371,6 +371,7 @@
           "anyOf": [
             {
               "enum": [
+                "published",
                 "crop",
                 "page"
               ],
@@ -381,7 +382,7 @@
             }
           ],
           "default": null,
-          "description": "figure: an exact crop, or the whole page the figure is on",
+          "description": "figure: the image as published, an exact crop, or the whole page the figure is on",
           "title": "Method"
         },
         "page": {
@@ -397,6 +398,19 @@
           "default": null,
           "description": "figure: page of the PDF",
           "title": "Page"
+        },
+        "source": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "figure: where a published image was downloaded from",
+          "title": "Source"
         }
       },
       "required": [

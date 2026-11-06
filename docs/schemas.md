@@ -109,8 +109,9 @@ report: report.html and comparison.json · figure: originals of figure targets (
 |---|---|---|---|
 | `kind` | `"metadata"` \| `"curation"` \| `"export"` \| `"schema"` \| `"code"` \| `"output"` \| `"report"` \| `"figure"` | yes |  |
 | `added_at` | string (date-time) | yes |  |
-| `method` | `"crop"` \| `"page"` \| null |  | figure: an exact crop, or the whole page the figure is on |
+| `method` | `"published"` \| `"crop"` \| `"page"` \| null |  | figure: the image as published, an exact crop, or the whole page the figure is on |
 | `page` | integer \| null |  | figure: page of the PDF |
+| `source` | string \| null |  | figure: where a published image was downloaded from |
 
 ### PackageMeta
 

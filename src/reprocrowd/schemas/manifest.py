@@ -91,8 +91,9 @@ class OtherMeta(Model):
 
     kind: Literal["metadata", "curation", "export", "schema", "code", "output", "report", "figure"]
     added_at: datetime
-    method: Literal["crop", "page"] | None = Field(default=None, description="figure: an exact crop, or the whole page the figure is on")
+    method: Literal["published", "crop", "page"] | None = Field(default=None, description="figure: the image as published, an exact crop, or the whole page the figure is on")
     page: int | None = Field(default=None, ge=1, description="figure: page of the PDF")
+    source: str | None = Field(default=None, description="figure: where a published image was downloaded from")
 
 
 ResourceMeta = Annotated[Union[FulltextMeta, ExtractionMeta, InputMeta, ScriptMeta, OtherMeta], Field(discriminator="kind")]

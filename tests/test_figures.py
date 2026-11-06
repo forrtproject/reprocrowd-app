@@ -1,8 +1,12 @@
 import hashlib
+import io
 import json
+import zipfile
 
 import httpx
+import pytest
 import respx
+from PIL import Image
 
 from conftest import FIXTURES
 from test_api import problem
@@ -33,7 +37,7 @@ def test_crop_from_converted_tei(client, pkg):
     assert client.put(f"{P}/figures/{fig}", json={}).status_code == 200
     problem(client.put(f"{P}/figures/{num}", json={}), 422, "not_a_figure_target")
     assert client.put(f"{P}/figures", json={}).json() == [{"target": fig, "ok": True, "path": f"targets/figures/{fig}.png", "page": 1,
-                                                            "method": "crop", "error": None, "code": None}]
+                                                            "method": "crop", "note": None, "error": None, "code": None}]
     assert client.get(P + "/validation").json()["valid"]
 
 
@@ -143,7 +147,7 @@ def test_crop_by_caption_from_a_full_text_of_the_same_pdf(client, pkg, tmp_path)
     add(client, P, tmp_path, "dl.docling.json", docling([{"caption": f"Fig 1. {CAPTION}.", "page": 2}, {"page": 1}], docling_hash(pdf)))
     r = client.put(f"{P}/figures/{t}", json={}).json()
     assert (r["method"], r["page"], r["source"], r["pdf"]) == ("crop", 2, "ft-dl-docling", "ft-paper-pdf"), r
-    assert client.get(f"{P}/figures").json() == [{"target": t, "path": f"targets/figures/{t}.png", "method": "crop", "page": 2}]
+    assert client.get(f"{P}/figures").json() == [{"target": t, "path": f"targets/figures/{t}.png", "method": "crop", "page": 2, "source": None}]
     report = {x["format"]: x for x in client.get(f"{P}/coordinates").json()}
     assert report["jats"] == {"fulltext": "ft-pub-jats", "format": "jats", "has_coordinates": False, "figures": 0, "tables": 0, "pdf": None, "pdf_match": None}
     assert report["docling"] == {"fulltext": "ft-dl-docling", "format": "docling", "has_coordinates": True, "figures": 1, "tables": 0,
@@ -223,3 +227,135 @@ def test_a_hash_of_another_pdf_is_reported_and_not_cropped_from(client, pkg, tmp
     assert (r["method"], r["page"]) == ("page", 1), r
     report = next(x for x in client.get(f"{P}/coordinates").json() if x["format"] == "tei")
     assert (report["pdf"], report["pdf_match"]) == (None, "mismatch")
+
+
+ARCHIVE = "https://www.ebi.ac.uk/europepmc/webservices/rest/PMC123/supplementaryFiles"
+
+
+def image(size: tuple[int, int] = (30, 20), format: str = "JPEG", mode: str = "RGB") -> bytes:
+    out = io.BytesIO()
+    Image.new(mode, size, "white").save(out, format=format)
+    return out.getvalue()
+
+
+def archive(files: dict[str, bytes]) -> bytes:
+    out = io.BytesIO()
+    with zipfile.ZipFile(out, "w") as z:
+        for name, data in files.items():
+            z.writestr(name, data)
+    return out.getvalue()
+
+
+def published(client, P, tmp_path, graphics: str = '<graphic xlink:href="pub.g001.jpg"/>', pmcid: str | None = "PMC123", caption: str = "Reaction times.", label: str = "Figure 1") -> str:
+    """A JATS full text that names the figure's image, and a target on its figure."""
+    xml = (FIXTURES / "paper.jats.xml").read_text()
+    xml = xml.replace("<label>Figure 1</label><caption><p>Reaction times.</p></caption>", f"<label>{label}</label><caption><p>{caption}</p></caption>{graphics}")
+    if pmcid:
+        xml = xml.replace("<article-meta>", f'<article-meta><article-id pub-id-type="pmcid">{pmcid}</article-id>', 1)
+    add(client, P, tmp_path, "pub.jats.xml", xml)
+    ex = client.post(P + "/extractions", json={"method": "parse", "fulltext": "ft-pub-jats"}).json()["name"]
+    return client.post(P + "/targets", json={"type": "figure", "description": "plot", "refs": [{"extraction": ex, "id": "fig1"}]}).json()["id"]
+
+
+@respx.mock
+def test_the_published_image_comes_first(client, pkg, tmp_path):
+    P = f"/v1/packages/{pkg}"
+    t1 = published(client, P, tmp_path, caption=CAPTION)
+    t2 = client.post(P + "/targets", json={"type": "figure", "description": "the same", "refs": [{"extraction": "ex-pub-jats", "id": "fig1"}]}).json()["id"]
+    add(client, P, tmp_path, "paper.pdf", pdf_with("no figure here", CAPTION))
+    add(client, P, tmp_path, "paper.tei.xml", tei(f'<figure xml:id="fig_0" coords="1,20,30,100,50"><graphic coords="1,20,30,100,50" type="bitmap"/><figDesc>{CAPTION}</figDesc></figure>'))
+    route = respx.get(ARCHIVE).mock(return_value=httpx.Response(200, content=archive({"pub.g001.jpg": image(), "pub.g001.gif": image((5, 5), "GIF", "P")})))
+
+    r = client.put(f"{P}/figures/{t1}", json={})
+    assert r.status_code == 201, r.text
+    out = r.json()
+    assert out["method"] == "published" and out["pdf"] is None and out["page"] is None and out["size"] == [30, 20]
+    assert out["source"] == f"{ARCHIVE}#pub.g001.jpg" and out["resource"]["reprocrowd"]["source"] == out["source"]
+    assert client.get(f"{P}/figures/{t1}").headers["content-type"] == "image/png"
+
+    calls = route.call_count
+    outcomes = client.put(P + "/figures", json={}).json()
+    assert [o["method"] for o in outcomes] == ["published", "published"] and route.call_count == calls + 1  # one download for all
+    listed = {f["target"]: f for f in client.get(P + "/figures").json()}
+    assert listed[t1]["method"] == "published" and listed[t1]["source"] == out["source"]
+    assert client.get(P + "/validation").json()["valid"]
+
+    calls = route.call_count
+    named = client.put(f"{P}/figures/{t1}", json={"pdf": "ft-paper-pdf"}).json()
+    assert named["method"] == "crop" and named["note"] is None and route.call_count == calls  # that PDF was asked for
+
+
+@respx.mock
+@pytest.mark.parametrize("response, pmcid, reason", [
+    (httpx.Response(404), "PMC123", "HTTP 404"),
+    (httpx.Response(200, text='{"error": "not available"}'), "PMC123", "no archive of files"),
+    (httpx.Response(200, content=archive({"other.jpg": image()})), "PMC123", "isn't in the archive"),
+    (httpx.Response(200, content=archive({"pub.g001.jpg": b"not an image"})), "PMC123", "can't be read"),
+    (httpx.Response(200, content=archive({"pub.g001.gif": image((5, 5), "GIF", "P")})), "PMC123", "isn't in the archive"),  # only a thumbnail
+    (None, None, "no PMCID"),
+])
+def test_without_a_published_image_the_pdf_provides_the_figure(client, pkg, tmp_path, response, pmcid, reason):
+    P = f"/v1/packages/{pkg}"
+    t = published(client, P, tmp_path, pmcid=pmcid, caption=CAPTION)
+    add(client, P, tmp_path, "paper.pdf", pdf_with("no figure here", CAPTION))
+    if response:
+        respx.get(ARCHIVE).mock(return_value=response)
+    out = client.put(f"{P}/figures/{t}", json={}).json()
+    assert out["method"] == "page" and out["page"] == 2 and reason in out["note"]
+    assert client.get(P + "/figures").json()[0]["source"] is None
+    assert reason in client.put(P + "/figures", json={}).json()[0]["note"]
+
+
+@respx.mock
+def test_no_original_at_all_says_why(client, pkg, tmp_path):
+    P = f"/v1/packages/{pkg}"
+    t = published(client, P, tmp_path)
+    respx.get(ARCHIVE).mock(return_value=httpx.Response(503))
+    r = problem(client.put(f"{P}/figures/{t}", json={}), 422, "no_coordinates")
+    assert "HTTP 503" in r["detail"]
+
+
+@respx.mock
+@pytest.mark.parametrize("graphics, files, size", [
+    ('<graphic xlink:href="pub.g001.jpg"/>', {"pub.g001.jpg": image((30, 20)), "pub.g001.tif": image((90, 60), "TIFF")}, [90, 60]),  # the better format
+    ('<graphic xlink:href="pub.g001"/>', {"folder/pub.g001.png": image((30, 20), "PNG")}, [30, 20]),  # no extension, in a folder
+    ('<alternatives><graphic xlink:href="pub.g001.tif"/><graphic xlink:href="pub.g001.jpg"/></alternatives>', {"pub.g001.jpg": image()}, [30, 20]),  # one image, two formats
+    ('<graphic xlink:href="pub.g001.gif"/>', {"pub.g001.gif": image((5, 5), "GIF", "P")}, [5, 5]),  # what the full text names
+    ('<graphic xlink:href="pub.g001.jpg"/>', {"PUB.G001.JPG": image((30, 20), "JPEG", "CMYK")}, [30, 20]),  # case, and a mode PNG can't hold
+])
+def test_which_file_of_the_archive(client, pkg, tmp_path, graphics, files, size):
+    P = f"/v1/packages/{pkg}"
+    t = published(client, P, tmp_path, graphics=graphics)
+    respx.get(ARCHIVE).mock(return_value=httpx.Response(200, content=archive(files)))
+    out = client.put(f"{P}/figures/{t}", json={}).json()
+    assert out["method"] == "published" and out["size"] == size
+
+
+@respx.mock  # no route: asking Europe PMC would fail the test
+def test_panels_have_no_single_image_to_fetch(client, pkg, tmp_path):
+    P = f"/v1/packages/{pkg}"
+    t = published(client, P, tmp_path, graphics='<graphic xlink:href="pub.g001a.jpg"/><graphic xlink:href="pub.g001b.jpg"/>', caption=CAPTION)
+    add(client, P, tmp_path, "paper.pdf", pdf_with(CAPTION))
+    out = client.put(f"{P}/figures/{t}", json={}).json()
+    assert out["method"] == "page" and out["note"] is None
+
+
+def fig(label: str, caption: str):
+    from reprocrowd.schemas.document import Figure, Sentence
+
+    return Figure(id="fig1", label=label, caption=[Sentence(id="fig1.s1", text=caption)] if caption else [])
+
+
+def test_which_fig_a_figure_is():
+    from reprocrowd.formats.base import Graphic
+    from reprocrowd.published import Gallery
+
+    one, other = "Reaction times of the participants by group", "Accuracy of the participants over all sessions"
+    gallery = Gallery.__new__(Gallery)
+    gallery.graphics = {"a": Graphic("Fig 1", one, "a"), "b": Graphic("Fig 2", other, "b"), "s": Graphic("S1 Fig", "Sessions of the pilot study", "s")}
+    file = lambda label, caption: getattr(gallery.find(fig(label, caption)), "file", None)
+    assert file("Figure 1.", one) == "a"
+    assert file("Figure 1", "A caption rewritten completely") == "a"  # label alone
+    assert file("unnumbered", other) == "b"  # caption alone
+    assert file("S1 Figure", "") == "s" and file("Fig 3", "") is None
+    assert file("Fig 1", other) is None  # they disagree: don't guess

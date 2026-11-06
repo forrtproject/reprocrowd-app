@@ -30,6 +30,15 @@ class Located:
 
 
 @dataclass(frozen=True)
+class Graphic:
+    """A figure of a full text that names its one published image file."""
+
+    label: str
+    caption: str
+    file: str
+
+
+@dataclass(frozen=True)
 class Format:
     name: str  # also the "flavor" stored in the manifest
     description: str
@@ -42,3 +51,5 @@ class Format:
     parse: Callable[[Path], DocumentDraft] | None = None  # None: not convertible to the document schema
     locate: Callable[[Path], list[Located]] | None = None  # None: the format has no coordinates
     made_from: Callable[[Path, Path], bool | None] | None = None  # (full text, PDF): its recorded hash matches? None: no hash
+    graphics: Callable[[Path], list[Graphic]] | None = None  # None: the format doesn't name image files
+    pmcid: Callable[[Path], str | None] | None = None  # None: the format doesn't record it

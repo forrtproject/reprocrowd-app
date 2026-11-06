@@ -1,8 +1,10 @@
 """JATS (e.g. PubMed Central / Europe PMC full-text XML): mapping onto the document schema."""
 from __future__ import annotations
 
-from .base import Format
-from .xmlmap import FloatRule, Region, XmlMapping, check_with_mapping, parse_with_mapping, root_name
+from pathlib import Path
+
+from .base import Format, Graphic
+from .xmlmap import FloatRule, Region, XmlMapping, check_with_mapping, load, parse_with_mapping, root_name, text_of
 
 MAPPING = XmlMapping(
     roots=("article",),
@@ -24,6 +26,26 @@ MAPPING = XmlMapping(
     required=("body", ".//front/article-meta/abstract"),
 )
 
+
+def graphics(path: Path) -> list[Graphic]:
+    """<fig> elements with a label and one image. A <fig> with several images (panels) has no single file to show, but
+    <alternatives> can list one image in several formats, so what counts is the file name without its extension."""
+    out = []
+    for el in load(path).iter("fig"):
+        files = [g.get("href") or "" for g in el.iter("graphic")]
+        stems = {f.rsplit("/", 1)[-1].rsplit(".", 1)[0] for f in files if f}
+        label = text_of(next((c for c in el if c.tag == "label"), None))
+        if label and len(stems) == 1:
+            out.append(Graphic(label, text_of(next((c for c in el if c.tag == "caption"), None)), next(f for f in files if f)))
+    return out
+
+
+def pmcid(path: Path) -> str | None:
+    ids = load(path).xpath(".//front/article-meta/article-id[@pub-id-type='pmc' or @pub-id-type='pmcid']/text()")
+    digits = next((i.strip().upper().removeprefix("PMC") for i in ids if i.strip().upper().removeprefix("PMC").isdigit()), None)
+    return f"PMC{digits}" if digits else None
+
+
 FORMAT = Format(
     name="jats",
     description="JATS XML (PubMed Central / Europe PMC full text)",
@@ -34,4 +56,6 @@ FORMAT = Format(
     sniff=lambda head: root_name(head) in MAPPING.roots,
     check=lambda path: check_with_mapping(path, MAPPING),
     parse=lambda path: parse_with_mapping(path, MAPPING),
+    graphics=graphics,
+    pmcid=pmcid,
 )

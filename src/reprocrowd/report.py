@@ -48,8 +48,9 @@ def write_report(pkg: Package, st: CompareSettings) -> dict[str, Any]:
     outputs = {r.get("id"): r.get("step") for r in raw_out.get("results", []) if isinstance(r, dict)}
     files = {r.path for r in m.resources}
     # original crops (targets/figures/, see figures.py) and the reproduction's files, linked by relative path
-    pages = {f["target"]: f["page"] for f in figure_listing(pkg) if f["method"] == "page"}
-    figures = {t.id: {"original": f"targets/figures/{t.id}.png" if f"targets/figures/{t.id}.png" in files else None, "reproduced": None, "page": pages.get(t.id)}
+    originals = {f["target"]: f for f in figure_listing(pkg)}
+    figures = {t.id: {"original": f"targets/figures/{t.id}.png" if f"targets/figures/{t.id}.png" in files else None, "reproduced": None,
+                      "method": originals.get(t.id, {}).get("method"), "page": originals.get(t.id, {}).get("page")}
                for t in targets if t.type == "figure"}
     for row in cmp.rows:
         if row.target in figures and row.status == "figure":

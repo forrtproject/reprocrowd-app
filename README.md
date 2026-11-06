@@ -39,7 +39,7 @@ rc script status phacking                        # markers left
 rc run phacking                                  # run the master script (live log), check outputs/results.json
 rc compare phacking                              # reproduced vs. expected, per target
 rc coordinates phacking                          # what each full text locates on the PDF
-rc figures phacking                              # crop the original figures, or render their page if not located
+rc figures phacking                              # the original figures: as published, cropped, or their page
 rc report phacking --open                        # report.html with the provenance of every target
 rc archive phacking --download phacking.zip      # the package as a ZIP (must validate)
 rc submit phacking                               # upload to the package database; confirm in the browser

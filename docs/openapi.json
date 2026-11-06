@@ -5857,8 +5857,8 @@
         "tags": [
           "report"
         ],
-        "summary": "Crop the original figure of a figure target",
-        "description": "Renders the figure's area to `targets/figures/<target>.png`, from a full text that locates it (matched by caption when the target refers to an extraction without coordinates, such as JATS or a reconciled one). If none does, renders the whole page with the figure's caption, and says so in `method`. The report shows it next to the reproduced figure. 201 the first time, 200 when replacing.",
+        "summary": "Get the original figure of a figure target",
+        "description": "Writes `targets/figures/<target>.png`, best first: the image as published, when a JATS full text names it and Europe PMC has it; the figure's area, from a full text that locates it (matched by caption when the target refers to an extraction without coordinates, such as JATS or a reconciled one); the whole page with the figure's caption. `method` says which, and `note` why the published image wasn't available if that failed. Naming a `pdf` skips the published image. The report shows the original next to the reproduced figure. 201 the first time, 200 when replacing.",
         "operationId": "put_figure_v1_packages__pkg__figures__target__put",
         "security": [
           {
@@ -6041,7 +6041,7 @@
         "tags": [
           "report"
         ],
-        "summary": "Crop the figures of all figure targets",
+        "summary": "Get the original figures of all figure targets",
         "description": "Like `PUT …/figures/{target}` for every enabled figure target; problems are reported per target.",
         "operationId": "put_figures_v1_packages__pkg__figures_put",
         "security": [
@@ -8247,6 +8247,7 @@
               {
                 "type": "string",
                 "enum": [
+                  "published",
                   "crop",
                   "page"
                 ]
@@ -8256,6 +8257,17 @@
               }
             ],
             "title": "Method"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
           },
           "error": {
             "anyOf": [
@@ -8299,7 +8311,7 @@
               }
             ],
             "title": "Pdf",
-            "description": "PDF full text to use; default: the one the coordinates were measured on, by hash or provenance"
+            "description": "PDF full text to render from, skipping the published image; default: the one the coordinates were measured on, by hash or provenance"
           },
           "scale": {
             "type": "number",
@@ -8329,11 +8341,26 @@
             "description": "extraction and figure id"
           },
           "pdf": {
-            "type": "string",
-            "title": "Pdf"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pdf",
+            "description": "PDF the image was rendered from; none for a published image"
           },
           "page": {
-            "type": "integer",
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Page"
           },
           "size": {
@@ -8347,11 +8374,12 @@
           "method": {
             "type": "string",
             "enum": [
+              "published",
               "crop",
               "page"
             ],
             "title": "Method",
-            "description": "crop: the figure's area · page: the whole page, as no full text locates the figure"
+            "description": "published: the image file of the article · crop: the figure's area on the PDF · page: the whole page, as no full text locates the figure"
           },
           "source": {
             "anyOf": [
@@ -8363,7 +8391,19 @@
               }
             ],
             "title": "Source",
-            "description": "full text the coordinates of a crop come from"
+            "description": "crop: the full text with the coordinates · published: the URL of the image"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note",
+            "description": "why a better kind of original wasn't available, if something went wrong"
           }
         },
         "type": "object",
@@ -8371,8 +8411,6 @@
           "resource",
           "target",
           "figure",
-          "pdf",
-          "page",
           "size",
           "method"
         ],
@@ -8732,6 +8770,7 @@
           "method": {
             "type": "string",
             "enum": [
+              "published",
               "crop",
               "page"
             ],
@@ -8747,6 +8786,18 @@
               }
             ],
             "title": "Page"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source",
+            "description": "published: the URL of the image"
           }
         },
         "type": "object",
@@ -9826,6 +9877,7 @@
               {
                 "type": "string",
                 "enum": [
+                  "published",
                   "crop",
                   "page"
                 ]
@@ -9835,7 +9887,7 @@
               }
             ],
             "title": "Method",
-            "description": "figure: an exact crop, or the whole page the figure is on"
+            "description": "figure: the image as published, an exact crop, or the whole page the figure is on"
           },
           "page": {
             "anyOf": [
@@ -9849,6 +9901,18 @@
             ],
             "title": "Page",
             "description": "figure: page of the PDF"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source",
+            "description": "figure: where a published image was downloaded from"
           }
         },
         "additionalProperties": false,

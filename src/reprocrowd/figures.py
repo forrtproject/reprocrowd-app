@@ -1,8 +1,9 @@
 """Originals of figure targets, for comparing with the reproduced ones (targets/figures/<target id>.png).
 
-The exact crop comes from a full text that locates the figure (coordinates.py). A target usually refers to an extraction
-without usable boxes (JATS, reconciled), so the figure is looked up there by its caption. Otherwise the whole page is
-rendered, found by the caption's text in the PDF. Which of the two a file is, is recorded with its resource.
+Best first: the image as published, when a JATS full text names it and Europe PMC has it (published.py). Then an exact crop,
+from a full text that locates the figure (coordinates.py). A target usually refers to an extraction without usable boxes
+(JATS, reconciled), so the figure is looked up there by its caption. Otherwise the whole page is rendered, found by the
+caption's text in the PDF. Which of the three a file is, is recorded with its resource.
 """
 from __future__ import annotations
 
@@ -18,6 +19,7 @@ from .extractions import float_number, mentions
 from .extractions import get as get_extraction
 from .formats.base import Located
 from .package import Package
+from .published import Gallery, Unavailable
 from .schemas.common import Box, now
 from .schemas.document import Figure
 from .schemas.manifest import OtherMeta, Resource
@@ -66,6 +68,16 @@ def _on_pdf(pkg: Package, name: str) -> Resource:
     return src
 
 
+def _save(pkg: Package, target_id: str, image: Any) -> str:
+    rel = f"targets/figures/{target_id}.png"
+    p = pkg.path(rel)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    tmp = p.with_name(p.name + ".part")
+    image.save(tmp, format="PNG")
+    tmp.replace(p)
+    return rel
+
+
 def _render(pkg: Package, target_id: str, pdf: str, page_no: int, boxes: list[Box] | None, scale: float) -> tuple[str, Any]:
     src = _on_pdf(pkg, pdf)
     doc = pdfium.PdfDocument(str(pkg.path(src.path)))
@@ -77,13 +89,7 @@ def _render(pkg: Package, target_id: str, pdf: str, page_no: int, boxes: list[Bo
         image = page.render(scale=scale, crop=_crop_margins(boxes, w, h) if boxes else (0, 0, 0, 0)).to_pil()
     finally:
         doc.close()
-    rel = f"targets/figures/{target_id}.png"
-    p = pkg.path(rel)
-    p.parent.mkdir(parents=True, exist_ok=True)
-    tmp = p.with_name(p.name + ".part")
-    image.save(tmp, format="PNG")
-    tmp.replace(p)
-    return rel, image
+    return _save(pkg, target_id, image), image
 
 
 def _keys(boxes: list[Box] | None) -> set[tuple]:
@@ -116,16 +122,37 @@ def _page_of_caption(pkg: Package, fig: Figure, pdf: str | None) -> tuple[str, i
     return None if i is None else pages[i][:2]
 
 
-def crop(pkg: Package, target_id: str, pdf: str | None = None, scale: float = 2.0, known: list[Source] | None = None) -> dict[str, Any]:
+def _store(pkg: Package, target_id: str, rel: str, method: str, page: int | None = None, source: str | None = None) -> Resource:
+    with pkg.edit() as m:
+        return pkg.put(m, pkg.describe(f"figure-{target_id.lower()}", rel, type="file", format="png", mediatype="image/png",
+                                       meta=OtherMeta(kind="figure", added_at=now(), method=method, page=page, source=source)))
+
+
+def crop(pkg: Package, target_id: str, pdf: str | None = None, scale: float = 2.0) -> dict[str, Any]:
+    with Gallery(pkg) as gallery:
+        return _original(pkg, target_id, pdf, scale, sources(pkg), gallery)
+
+
+def _original(pkg: Package, target_id: str, pdf: str | None, scale: float, known: list[Source], gallery: Gallery) -> dict[str, Any]:
+    """A named PDF means that one is wanted: the published image is skipped."""
     target = next((t for t, _ in Curation(pkg, "targets").effective(include_disabled=True) if t.id == target_id), None)
     if target is None:
         raise not_found("target", target_id)
     if target.type != "figure":
         raise invalid("not_a_figure_target", f"{target_id} is a {target.type} target")
     extraction, fig, how = _figure_of(pkg, target)
+    note = None
     if pdf:
         _on_pdf(pkg, pdf)
-    known = sources(pkg) if known is None else known
+    else:
+        try:
+            if published := gallery.image(fig):
+                image, url = published
+                res = _store(pkg, target_id, _save(pkg, target_id, image), "published", source=url)
+                return {"resource": res, "target": target_id, "figure": f"{extraction} {fig.id} ({how})", "pdf": None, "page": None,
+                        "size": list(image.size), "method": "published", "source": url, "note": None}
+        except Unavailable as e:
+            note = f"no published image: {e}"
     hits = [(s, item) for s in known if (item := _matches(fig, s))]
     usable = next(((s, item) for s, item in hits if pdf or s.pdf), None)
     if usable:
@@ -142,32 +169,32 @@ def crop(pkg: Package, target_id: str, pdf: str | None = None, scale: float = 2.
             if hits:
                 raise conflict("pdf_unknown", f"can't tell which PDF {hits[0][0].fulltext.name} was made from; name it (pdf)")
             raise invalid("no_coordinates", f"no full text locates {fig.id} of {extraction}, and its caption isn't on one page of "
-                                            f"{pdf or 'the PDF'}; crops need a GROBID or Docling conversion of the PDF")
+                                            f"{pdf or 'the PDF'}; crops need a GROBID or Docling conversion of the PDF" + (f" ({note})" if note else ""))
         pdf_name, page_no = found
         boxes, method, origin = None, "page", None
     rel, image = _render(pkg, target_id, pdf_name, page_no, boxes, scale)
-    with pkg.edit() as m:
-        res = pkg.put(m, pkg.describe(f"figure-{target_id.lower()}", rel, type="file", format="png", mediatype="image/png",
-                                      meta=OtherMeta(kind="figure", added_at=now(), method=method, page=page_no)))
+    res = _store(pkg, target_id, rel, method, page_no)
     return {"resource": res, "target": target_id, "figure": f"{extraction} {fig.id} ({how})", "pdf": pdf_name, "page": page_no,
-            "size": list(image.size), "method": method, "source": origin}
+            "size": list(image.size), "method": method, "source": origin, "note": note}
 
 
 def listing(pkg: Package) -> list[dict[str, Any]]:
     """The originals made so far. Crops from before full pages existed say nothing: they are crops."""
-    return [{"target": r.path.rsplit("/", 1)[-1].removesuffix(".png"), "path": r.path, "method": r.reprocrowd.method or "crop", "page": r.reprocrowd.page}
+    return [{"target": r.path.rsplit("/", 1)[-1].removesuffix(".png"), "path": r.path, "method": r.reprocrowd.method or "crop", "page": r.reprocrowd.page,
+             "source": r.reprocrowd.source}
             for r in pkg.load().resources if r.reprocrowd.kind == "figure"]
 
 
 def crop_all(pkg: Package, pdf: str | None = None, scale: float = 2.0) -> list[dict[str, Any]]:
     out = []
     known = sources(pkg)
-    for t, _ in Curation(pkg, "targets").effective():
-        if t.type != "figure":
-            continue
-        try:
-            r = crop(pkg, t.id, pdf, scale, known)
-            out.append({"target": t.id, "ok": True, "path": r["resource"].path, "page": r["page"], "method": r["method"]})
-        except Exception as e:  # report per target; ApiError carries a readable message
-            out.append({"target": t.id, "ok": False, "error": getattr(e, "message", str(e)), "code": getattr(e, "code", "internal_error")})
+    with Gallery(pkg) as gallery:
+        for t, _ in Curation(pkg, "targets").effective():
+            if t.type != "figure":
+                continue
+            try:
+                r = _original(pkg, t.id, pdf, scale, known, gallery)
+                out.append({"target": t.id, "ok": True, "path": r["resource"].path, "page": r["page"], "method": r["method"], "note": r["note"]})
+            except Exception as e:  # report per target; ApiError carries a readable message
+                out.append({"target": t.id, "ok": False, "error": getattr(e, "message", str(e)), "code": getattr(e, "code", "internal_error")})
     return out
