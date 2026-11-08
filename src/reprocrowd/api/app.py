@@ -672,6 +672,22 @@ def create_job(pkg: Pkg, body: Annotated[M.JobCreate, Body()], response: Respons
     return job
 
 
+@api.get("/jobs", tags=["jobs"], response_model=list[M.RunningJob], summary="Jobs running now, in all packages",
+         description="Only jobs that are running in this service, oldest first (finished jobs are listed per package). "
+                     "Clients use it to warn before stopping the service, which ends them as `interrupted`.")
+def running_jobs(page: Paged):
+    ids = {p.root.resolve(): p.id for p in Registry().list()}
+    out = []
+    for root, jid in jobs.running():
+        pid = ids.get(root.resolve())
+        if pid is None:
+            continue  # the package was unregistered while its job runs
+        job = jobs.load(Package(pid, root), jid)
+        if job.status == "running":
+            out.append(M.RunningJob(package=pid, job=job))
+    return page(sorted(out, key=lambda r: r.job.created_at))
+
+
 @api.post("/packages/{pkg}/jobs:preview", tags=["jobs"], response_model=M.PromptPreview, summary="Show the prompt of a code-generation job",
           description="Takes the body of `POST …/jobs` with `type: codegen` and returns what would be sent. Runs nothing and stores nothing.",
           responses=errors("script_missing", "unknown_profile"))

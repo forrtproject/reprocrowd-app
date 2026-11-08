@@ -130,9 +130,12 @@ def test_codegen_live_stream_cancel_and_timeout(client, pkg):
     while len(client.get(f"{P}/jobs/{job['id']}/events").json()) < 3 and time.monotonic() < deadline:
         time.sleep(0.05)
     assert client.get(f"{P}/jobs/{job['id']}").json()["status"] == "running"
+    running = client.get("/v1/jobs").json()
+    assert [(r["package"], r["job"]["id"], r["job"]["status"]) for r in running] == [(pkg, job["id"], "running")]
     assert client.delete(f"{P}/jobs/{job['id']}").status_code == 202
     job = wait(client, pkg, job["id"])
     assert job["status"] == "cancelled"
+    assert client.get("/v1/jobs").json() == []
     problem(client.delete(f"{P}/jobs/{job['id']}"), 409, "job_finished")
 
     job = wait(client, pkg, client.post(P + "/jobs", json={"type": "codegen", "profile": "short"}).json()["id"])

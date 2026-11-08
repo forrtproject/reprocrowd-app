@@ -8,7 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field, SecretStr, create_model
 
 from ..schemas.common import Identifier, Model
 from ..schemas.curation import Action, ActionFields, Target, TargetFields
-from ..schemas.jobs import TodoStatus
+from ..schemas.jobs import Job, TodoStatus
 from ..schemas.manifest import Resource, Role
 
 
@@ -42,6 +42,13 @@ class PromptPreview(BaseModel):
     model: str
     effort: str
     output_schema: str | None = Field(default=None, description="JSON Schema the CLI is told to constrain its output to, if the profile supports that")
+
+
+class RunningJob(BaseModel):
+    """A job running now, and the package it runs in."""
+
+    package: str = Field(description="package id")
+    job: Job
 
 
 class TemplateView(BaseModel):

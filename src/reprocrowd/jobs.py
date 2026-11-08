@@ -79,6 +79,13 @@ def active(pkg: Package) -> Job | None:
     return load(pkg, keys[0].split("::", 1)[1]) if keys else None
 
 
+def running() -> list[tuple[Path, str]]:
+    """(package folder, job id) of every job running in this service now."""
+    with _guard:
+        keys = list(_procs)
+    return [(Path(root), jid) for root, jid in (k.rsplit("::", 1) for k in keys)]
+
+
 def ensure_idle(pkg: Package) -> None:
     if job := active(pkg):
         raise conflict("job_running", f"{job.id} ({job.type}) is running in this package; wait for it or cancel it", {"job": job.id})

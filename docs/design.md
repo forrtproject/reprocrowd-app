@@ -172,6 +172,7 @@ clients) works without special cases.
 | `POST …/extractions:preview` · `POST …/targets/runs:preview` · `POST …/jobs:preview` | the body of the call they preview | `{prompt, argv, profile, model, effort, output_schema}`; runs and stores nothing | the call's input errors |
 | `POST …/jobs` | `{type:"codegen", profile?, allow_exec?, instructions?}` | 202 job + `Location` | `script_missing`, `job_running`, `unknown_profile`, `job_start_failed` |
 | `GET …/jobs` · `GET …/jobs/{j}` · `GET …/jobs/{j}/stdout` | | jobs · job · raw output | |
+| `GET /v1/jobs` | | `[{package, job}]`: the jobs running now in all packages (to warn before stopping the service) | |
 | `GET …/jobs/{j}/events` | `?after=N`; `Accept: text/event-stream`, `Last-Event-ID` | events (JSON) or live SSE ending with `end` | |
 | `DELETE …/jobs/{j}` | | 202, cancels | `job_finished` |
 | `POST …/jobs` | `{type:"run"}` | 202 job; result: results file present, output errors/warnings, commit | `script_missing`, `job_running` |
