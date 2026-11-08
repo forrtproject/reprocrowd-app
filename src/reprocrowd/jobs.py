@@ -4,8 +4,8 @@ A job is a configured command run in the package folder in its own process group
 written to jobs/<id>/. Its record (jobs/<id>.json, schema "job") is written when it starts and when it ends.
 A ``finish`` hook (sync files, git commit, count TODOs, check outputs) produces the job's result.
 
-At most one job runs per package: jobs change the package's files. If the service stops while a job runs,
-the record is reported as "interrupted" afterwards.
+At most one job runs per package: jobs change the package's files. When the service shuts down it ends its
+running jobs (stop_all), which are recorded as "interrupted"; so is a job whose service died without that.
 """
 from __future__ import annotations
 
@@ -31,6 +31,7 @@ from .schemas.jobs import Job, JobType
 log = logging.getLogger("reprocrowd.jobs")
 _procs: dict[str, subprocess.Popen] = {}  # "<package root>::<job id>" → process
 _cancelled: set[str] = set()
+_interrupted: set[str] = set()  # ended by stop_all
 _guard = threading.Lock()
 KILL_GRACE_S = 5
 
@@ -141,7 +142,7 @@ def _watch(pkg: Package, job: Job, proc: subprocess.Popen, stdin: str, timeout_s
             pass  # the process exited early; its exit code says why
         try:
             code = proc.wait(timeout=timeout_s)
-            status = "cancelled" if key in _cancelled else ("succeeded" if code == 0 else "failed")
+            status = "interrupted" if key in _interrupted else "cancelled" if key in _cancelled else ("succeeded" if code == 0 else "failed")
         except subprocess.TimeoutExpired:
             _kill(proc)
             code, status = proc.wait(), "timeout"
@@ -165,6 +166,7 @@ def _watch(pkg: Package, job: Job, proc: subprocess.Popen, stdin: str, timeout_s
             with _guard:
                 _procs.pop(key, None)
                 _cancelled.discard(key)
+                _interrupted.discard(key)
 
 
 def _kill(proc: subprocess.Popen) -> None:
@@ -181,6 +183,38 @@ def _kill(proc: subprocess.Popen) -> None:
                 pass
 
     threading.Timer(KILL_GRACE_S, hard).start()
+
+
+def stop_all(grace: float = KILL_GRACE_S, settle: float = 3) -> None:
+    """Service shutdown: end every running job, so none outlives the service (jobs run in their own process
+    group, so they wouldn't get the service's signal). SIGTERM to each process group, SIGKILL after `grace`
+    seconds; then up to `settle` seconds for the watchers to record them as interrupted."""
+    with _guard:
+        procs = dict(_procs)
+        _interrupted.update(procs)
+    if not procs:
+        return
+    log.info("stopping %d running job(s)", len(procs))
+    for proc in procs.values():
+        try:
+            os.killpg(proc.pid, signal.SIGTERM)
+        except ProcessLookupError:
+            pass
+    end = time.monotonic() + grace
+    for proc in procs.values():
+        try:
+            proc.wait(timeout=max(0.0, end - time.monotonic()))
+        except subprocess.TimeoutExpired:
+            try:
+                os.killpg(proc.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+    end = time.monotonic() + settle
+    while time.monotonic() < end:
+        with _guard:
+            if not any(k in _procs for k in procs):
+                return
+        time.sleep(0.05)
 
 
 def cancel(pkg: Package, jid: str) -> Job:

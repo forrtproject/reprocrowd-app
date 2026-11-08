@@ -392,8 +392,10 @@ sequenceDiagram
   refreshed so integrity validation stays green. Inputs, full texts and extractions are never refreshed: if
   an agent changes them, validation reports it.
 - **One job per package** (409 `job_running`); script writes and `:sync` also wait for it. Job records
-  (`jobs/<id>.json`, schema `job`) survive restarts; a job that was running when the service stopped is
-  reported as `interrupted`.
+  (`jobs/<id>.json`, schema `job`) survive restarts. When the service shuts down it ends its running jobs
+  (SIGTERM to each process group, SIGKILL after 5 s), so no agent keeps changing a package unobserved; they
+  are recorded as `interrupted`, as is a job whose service died without shutting down. `GET /v1/jobs` lists
+  the jobs running now, so clients can warn first.
 
 > **Implemented in:** `jobs.py` (job manager: start, watch, timeout, cancel, interrupted), `events.py`
 > (stdout → events), `codegen.py` (agent job, git, finish hook), `gitrepo.py`, `files.py` (listing, sync),

@@ -6,6 +6,7 @@ response carries the package's ETag, and unsafe requests may send If-Match (412 
 """
 
 import asyncio
+from contextlib import asynccontextmanager
 import hashlib
 import logging
 import re
@@ -56,7 +57,14 @@ TAGS = [
     {"name": "database", "description": "Submission to the package database (optional)."},
 ]
 
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    yield
+    await run_in_threadpool(jobs.stop_all)  # no job outlives the service
+
+
 app = FastAPI(
+    lifespan=lifespan,
     title="ReproCrowd API",
     version=__version__,
     summary="Build computational-reproducibility packages for scholarly papers.",

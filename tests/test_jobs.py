@@ -32,6 +32,19 @@ def wait(client, pkg, jid, timeout=30):
     raise TimeoutError(jid)
 
 
+def test_service_shutdown_ends_running_jobs(client, pkg):
+    ready_package(client, pkg)
+    P = f"/v1/packages/{pkg}"
+    job = client.post(P + "/jobs", json={"type": "codegen", "profile": "slow"}).json()
+    with jobs._guard:
+        proc = next(p for k, p in jobs._procs.items() if k.endswith(job["id"]))
+    jobs.stop_all(grace=2)
+    assert proc.poll() is not None  # the agent's process group is gone, not orphaned
+    done = client.get(f"{P}/jobs/{job['id']}").json()
+    assert done["status"] == "interrupted" and done["finished_at"], done
+    assert client.get("/v1/jobs").json() == []
+
+
 def test_todo_count_skips_header(client, pkg):
     root = ready_package(client, pkg)
     script = (root / "analysis.R").read_text()
