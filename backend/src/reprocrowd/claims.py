@@ -188,12 +188,12 @@ def results(pkg: Package, cmp: Comparison) -> list[ClaimResult]:
     return sorted(out, key=lambda r: int(r.claim[1:]))
 
 
-def _comparison(pkg: Package) -> Comparison | None:
+def _comparison(pkg: Package, st: CompareSettings | None = None) -> Comparison | None:
     from . import run
     from .errors import ApiError
 
     try:
-        return run.comparison(pkg, CompareSettings())
+        return run.comparison(pkg, st or CompareSettings())
     except ApiError:
         return None  # no script or no results file yet
 
@@ -216,7 +216,7 @@ def record_run(pkg: Package, job_id: str) -> None:
         cur._save(f)
 
 
-def statuses(pkg: Package) -> list[ClaimStatus]:
+def statuses(pkg: Package, st: CompareSettings | None = None) -> list[ClaimStatus]:
     """The state of every effective claim, decided in this order: not testable; running (its codegen job, or any run job
     for a ticked claim); the verdict when it ran and is unchanged; ready (ticked) or review. A changed claim is stale and
     keeps its last result."""
@@ -234,7 +234,7 @@ def statuses(pkg: Package) -> list[ClaimStatus]:
             running = {c.id for c in scope.claims} if scope else set()
         elif job.request.get("claim"):
             running = {job.request["claim"]}
-    cmp = _comparison(pkg)
+    cmp = _comparison(pkg, st)  # the live result of a current claim; None: the default settings
     live = {r.claim: r for r in results(pkg, cmp)} if cmp else {}
     out = []
     for c in claims:
@@ -316,7 +316,7 @@ def mode(pkg: Package) -> bool:
     return bool(Curation(pkg, "claims").effective())
 
 
-def trace(pkg: Package) -> ClaimsTrace:
+def trace(pkg: Package, st: CompareSettings | None = None) -> ClaimsTrace:
     """Every effective claim in the trace format, with its state and (last) result. No `tolerance`: values are compared
     with the package-wide rule."""
     from .curation import Curation
@@ -338,7 +338,7 @@ def trace(pkg: Package) -> ClaimsTrace:
                     docs[r.extraction] = get_extraction(pkg, r.extraction)[1]
                 except Exception:  # unreadable or removed extraction: the ref id is the location
                     docs[r.extraction] = None
-    state = {s.claim: s for s in statuses(pkg)}
+    state = {s.claim: s for s in statuses(pkg, st)}
 
     def ev(ids: list[str]) -> list[TraceEvidence]:
         return [TraceEvidence(id=t.id, label=t.description, value=t.expected, comparator=t.comparator or "=", unit=t.unit,

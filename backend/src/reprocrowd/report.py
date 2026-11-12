@@ -36,11 +36,12 @@ def _last_run(pkg: Package):
     return runs[-1] if runs else None
 
 
-def _claims_trace(pkg: Package):
-    """The claims trace in claims mode, else None (packages without claims get no claims_trace.json)."""
+def _claims_trace(pkg: Package, st: CompareSettings | None):
+    """The claims trace in claims mode, compared with the report's settings, else None (packages without claims get no
+    claims_trace.json)."""
     from . import claims
 
-    return claims.trace(pkg) if claims.mode(pkg) else None
+    return claims.trace(pkg, st) if claims.mode(pkg) else None
 
 
 def _write_trace(pkg: Package, m, trace) -> None:
@@ -86,7 +87,7 @@ def write_report(pkg: Package, st: CompareSettings) -> dict[str, Any]:
     traces = {t.id: provenance.trace(graph, t.id) for t in targets}
     validation = validate_package(pkg)
     numeric = [r for r in cmp.rows if r.type != "figure"]
-    trace = _claims_trace(pkg)
+    trace = _claims_trace(pkg, st)
     from .claims import VERDICT_LABEL, status_words
 
     env = Environment(loader=PackageLoader("reprocrowd", "templates"), undefined=StrictUndefined, autoescape=True, trim_blocks=True, lstrip_blocks=True)
@@ -117,7 +118,9 @@ def write_archive(pkg: Package) -> ArchiveInfo:
     m = pkg.load()
     if not m.get("report"):
         raise conflict("report_missing", "create the report first (PUT …/report)")
-    trace = _claims_trace(pkg)  # refreshed, so the archive's trace covers every claim run so far
+    # refreshed, so the archive's trace covers every claim run so far; compared with the report's settings
+    st = CompareSettings.model_validate(pkg.read_json(COMPARISON)["settings"]) if m.get("comparison") else None
+    trace = _claims_trace(pkg, st)
     with pkg.edit() as m:  # inputs.json: the input list in the package database's format
         entries = [InputEntry(path=r.path, role=r.reprocrowd.role, note=r.reprocrowd.note, used=r.reprocrowd.used,
                               archive=m.get(r.reprocrowd.archive).path if r.reprocrowd.archive and m.get(r.reprocrowd.archive) else None)

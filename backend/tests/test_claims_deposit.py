@@ -145,3 +145,30 @@ def test_no_claims_report_unchanged(client, pkg):
     assert "<h2>Claims</h2>" not in (root / "report.html").read_text()
     assert not (root / "claims_trace.json").exists()
     assert client.get(f"/v1/packages/{pkg}/claims:trace").json()["claims"] == []
+
+
+def test_report_claims_use_report_settings(client, pkg):
+    """The Claims section and claims_trace.json compare with the report's threshold, like its comparison table."""
+    P, root, claims_, _ = _claims(client, pkg, tick=("C1",))
+    assert client.put(P + "/script", json={"template": "python"}).status_code == 200
+    (root / "prepare.py").write_text("")
+    targets = {i["item"]["id"]: i["item"] for i in client.get(P + "/targets").json()}
+    lines = [f"record({t!r}, {targets[t]['expected'] * 1.07!r}, 'A')" for t in claims_["C1"]["evidence"]]  # 7 % off
+    (root / "claims" / "C1.py").write_text("\n".join(lines) + "\n")
+    _run(client, P, pkg)
+
+    def section():
+        html = (root / "report.html").read_text()
+        return html[html.index("<h2>Claims</h2>"):html.index("<h2>Results comparison</h2>")]
+
+    assert client.put(P + "/report", json={"threshold": 10}).status_code in (200, 201)
+    n = len(claims_["C1"]["evidence"])
+    html = (root / "report.html").read_text()
+    assert f"Reproduced {n}/{n}" in section() and "st-within" in html
+    trace = json.loads((root / "claims_trace.json").read_text())
+    assert trace["claims"][0]["result"]["verdict"] == "reproduced"
+    assert client.put(P + "/archive").status_code == 201  # the archive's trace keeps the report's settings
+    assert json.loads((root / "claims_trace.json").read_text())["claims"][0]["result"]["verdict"] == "reproduced"
+
+    assert client.put(P + "/report", json={}).status_code == 200
+    assert f"Not reproduced 0/{n}" in section()
