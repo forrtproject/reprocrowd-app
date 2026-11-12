@@ -9,8 +9,30 @@ import hashlib
 import json
 from typing import Literal
 
+from pydantic import ValidationError
+
+from . import llm
+from .errors import pydantic_errors
+from .extractions import Scope, check_scope, listing
+from .extractions import get as get_extraction
 from .package import Package
-from .schemas.curation import Claim
+from .schemas import json_schema
+from .schemas.curation import (
+    Action,
+    Claim,
+    ClaimLlmItem,
+    LlmEntry,
+    LlmRun,
+    MethodLlmItem,
+    PrepLlmItem,
+    Ref,
+    Rejected,
+    SkippedLlmItem,
+    SkippedSentence,
+    SubClaim,
+    Target,
+    TargetLlmItem,
+)
 
 RESET_FIELDS = {"text", "mode", "original_quote", "testable", "method", "evidence", "sub_claims"}
 
@@ -54,3 +76,196 @@ def uncheck_users(pkg: Package, kind: Literal["targets", "actions"], item_id: st
             if c.checked:
                 claims.patch(c.id, {"checked": False})
     return hit
+
+
+# ---------- extraction: one LLM call writes claims, targets and actions ----------
+
+OUTPUT_SCHEMA = "claim-llm-output"
+
+
+def render_prompt(pkg: Package, extraction: str, scope: Scope, *, instructions: str, prompt: str | None) -> str:
+    """The full prompt of a claims run; nothing is written."""
+    _, doc = get_extraction(pkg, extraction)
+    check_scope(doc, scope)
+    values = {
+        "document": listing(doc, scope),
+        "schema": json.dumps(json_schema(OUTPUT_SCHEMA), indent=1),
+        "instructions": f"\nAdditional instructions:\n{instructions.strip()}\n" if instructions.strip() else "",
+    }
+    return llm.render(prompt if prompt is not None else llm.load_prompt("claims"), values, required=("document", "schema"))
+
+
+def _refs(extraction: str, ids: list[str]) -> list[dict]:
+    return [{"extraction": extraction, "id": i} for i in ids]
+
+
+def _target(raw: dict, tid: str, extraction: str) -> Target:
+    from .curation import _normalize_target
+
+    it = TargetLlmItem.model_validate(raw)
+    return Target.model_validate(_normalize_target(it.model_dump(exclude={"refs"}) | {"id": tid, "refs": _refs(extraction, it.refs)}))
+
+
+def _validated(model, raw):
+    """(item, errors) of one LLM item; a bad item must not sink the rest of the output."""
+    try:
+        return model.model_validate(raw), []
+    except ValidationError as e:
+        return None, pydantic_errors(e)
+
+
+def generate(pkg: Package, extraction: str, scope: Scope, *, instructions: str, prompt: str | None, profile: str | None) -> LlmRun[Claim]:
+    """Extract claims with their evidence (targets) and methods and preparation (actions) in one call.
+
+    Writes a run to each of claims.json, targets.json and actions.json under one lock. Evidence that fails validation is
+    rejected and left out of its claim; a claim whose own references fail is rejected as a whole.
+    """
+    from .curation import Context, Curation
+
+    text = render_prompt(pkg, extraction, scope, instructions=instructions, prompt=prompt)
+    call = llm.run(pkg, "claims", text, profile_name=profile, template="custom" if prompt is not None else "default",
+                   instructions=instructions, schema=OUTPUT_SCHEMA)
+    try:
+        raw = llm.output_json(call)
+    except ValueError as e:
+        raise llm.output_invalid(call, "json", [str(e)])
+    if not isinstance(raw, dict) or not isinstance(raw.get("claims"), list):
+        raise llm.output_invalid(call, "schema", ["expected an object with a 'claims' list"])
+    lists = {k: raw.get(k) if isinstance(raw.get(k), list) else [] for k in ("methods", "preparation", "skipped")}
+
+    with pkg.locked():
+        claims_c, targets_c, actions_c = (Curation(pkg, k) for k in ("claims", "targets", "actions"))
+        cf, tf, af = claims_c.load(), targets_c.load(), actions_c.load()
+        ctx = Context(pkg)
+        disabled = any(not r.disabled for r in cf.llm_runs)  # "A new run's claims arrive switched off"
+        run_no = lambda f: max((int(r.id[3:]) for r in f.llm_runs), default=0) + 1  # noqa: E731
+        claims_run_id = f"run{run_no(cf)}"
+        request = {"via": "claims", "claims_run": claims_run_id, "extraction": extraction}
+        actions_rejected: list[Rejected] = []
+        targets_rejected: list[Rejected] = []
+        claims_rejected: list[Rejected] = []
+
+        # 1. methods and preparation steps; those with bad references are rejected
+        def valid_steps(model, items):
+            out = {}
+            for r in items:
+                it, errors = _validated(model, r)
+                if it is not None:
+                    errors = ctx.ref_errors([Ref(extraction=extraction, id=i) for i in it.refs])
+                if errors:
+                    actions_rejected.append(Rejected(item=r, errors=errors))
+                elif it.key in out:
+                    actions_rejected.append(Rejected(item=r, errors=[f"key: {it.key!r} is used twice"]))
+                else:
+                    out[it.key] = it
+            return out
+
+        preps = valid_steps(PrepLlmItem, lists["preparation"])
+        methods = valid_steps(MethodLlmItem, lists["methods"])
+
+        # 2. claims: validate everything that belongs to the claim itself (not its evidence), so that a rejected claim
+        # leaves no targets behind
+        accepted: list[tuple[int, dict, ClaimLlmItem]] = []
+        for pos, r in enumerate(raw["claims"], 1):
+            shell = dict(r) if isinstance(r, dict) else r
+            evidence_raw: list = []
+            if isinstance(shell, dict):
+                evidence_raw = shell.get("evidence") if isinstance(shell.get("evidence"), list) else []
+                shell["evidence"] = []
+                if isinstance(shell.get("sub_claims"), list):
+                    shell["sub_claims"] = [{**sc, "evidence": []} if isinstance(sc, dict) else sc for sc in shell["sub_claims"]]
+            it, errors = _validated(ClaimLlmItem, shell)
+            if it is not None:
+                it_full = it.model_copy(deep=True)
+                sub_evidence = [sc.get("evidence") if isinstance(sc.get("evidence"), list) else [] for sc in r.get("sub_claims", [])]
+                owners = [it, *it.sub_claims]
+                errors = ctx.ref_errors([Ref(extraction=extraction, id=i) for o in owners for i in o.refs])
+                errors += [f"method: no method {o.method!r}" for o in owners if o.method is not None and o.method not in methods]
+                if not errors:  # the model's own rules (untestable claims, sub-claims, paraphrases), on a probe
+                    probe = {"id": "C1", "text": it.text, "mode": it.mode, "original_quote": it.original_quote, "testable": it.testable,
+                             "refs": [{"extraction": extraction, "id": i} for i in it.refs],
+                             "method": "A1" if it.method else None, "evidence": ["T001"] if evidence_raw else [],
+                             "sub_claims": [{"id": f"C1.{n}", "text": sc.text, "refs": _refs(extraction, sc.refs)} for n, sc in enumerate(it.sub_claims, 1)]}
+                    _, errors = _validated(Claim, probe)
+                if not errors:
+                    accepted.append((pos, {"evidence": evidence_raw, "sub_evidence": sub_evidence}, it_full))
+                    continue
+            claims_rejected.append(Rejected(item=r, errors=errors))
+
+        # 3. evidence becomes targets; a bad item is rejected and dropped from its claim
+        n_evidence = sum(len(x["evidence"]) + sum(map(len, x["sub_evidence"])) for _, x, _ in accepted)
+        tids = iter(targets_c._next_ids(tf, n_evidence))
+        target_entries: list[LlmEntry[Target]] = []
+        by_method: dict[str, list[str]] = {}
+
+        def make_evidence(raws: list, method: str | None) -> list[str]:
+            out = []
+            for r in raws:
+                it, errors = _validated(TargetLlmItem, r)
+                if it is not None:
+                    errors = ctx.ref_errors([Ref(extraction=extraction, id=i) for i in it.refs])
+                    if not errors:
+                        try:
+                            t = _target(r, next(tids), extraction)
+                        except ValidationError as e:
+                            errors = pydantic_errors(e)
+                if errors:
+                    targets_rejected.append(Rejected(item=r, errors=errors))
+                    continue
+                target_entries.append(LlmEntry[Target](base=t))
+                out.append(t.id)
+                if method:
+                    by_method.setdefault(method, []).append(t.id)
+            return out
+
+        built: list[tuple[int, ClaimLlmItem, list[str], list[list[str]]]] = []
+        for pos, x, it in accepted:
+            own = make_evidence(x["evidence"], it.method)
+            subs = [make_evidence(ev, sc.method) for sc, ev in zip(it.sub_claims, x["sub_evidence"])]
+            built.append((pos, it, own, subs))
+        t_run = LlmRun[Target](id=f"run{run_no(tf)}", disabled=disabled, request=request, call=call, entries=target_entries, rejected=targets_rejected)
+        tf.llm_runs.append(t_run)
+        targets_c._save(tf)
+
+        # 4. actions: preparation first, then each method (created once), producing its evidence
+        aids = iter(actions_c._next_ids(af, len(preps) + len(methods)))
+        action_entries: list[LlmEntry[Action]] = []
+        key_to_id: dict[str, str] = {}
+        for key, p in preps.items():
+            key_to_id[key] = next(aids)
+            action_entries.append(LlmEntry[Action](base=Action(id=key_to_id[key], kind="transform", summary=p.summary, quote=p.quote,
+                                                               refs=_refs(extraction, p.refs))))
+        for key, m in methods.items():
+            key_to_id[key] = next(aids)
+            action_entries.append(LlmEntry[Action](base=Action(
+                id=key_to_id[key], kind="analysis", summary=m.summary, quote=m.quote, refs=_refs(extraction, m.refs),
+                depends_on=[key_to_id[k] for k in preps], produces=by_method.get(key, []))))
+        a_run = LlmRun[Action](id=f"run{run_no(af)}", disabled=disabled, request=request, call=call, entries=action_entries, rejected=actions_rejected)
+        af.llm_runs.append(a_run)
+        actions_c._save(af)
+
+        # 5. claims, with ids; positions in depends_on / traced_under point at accepted claims only
+        cids = iter(claims_c._next_ids(cf, len(built)))
+        new_id = {pos: next(cids) for pos, *_ in built}
+        entries: list[LlmEntry[Claim]] = []
+        for pos, it, own, subs in built:
+            cid = new_id[pos]
+            sub_claims = [SubClaim(id=f"{cid}.{n}", text=sc.text, refs=_refs(extraction, sc.refs),
+                                   method=key_to_id[sc.method] if sc.method else None, evidence=ev)
+                          for n, (sc, ev) in enumerate(zip(it.sub_claims, subs), 1)]
+            entries.append(LlmEntry[Claim](base=Claim(
+                id=cid, text=it.text, mode=it.mode, original_quote=it.original_quote, testable=it.testable, refs=_refs(extraction, it.refs),
+                method=key_to_id[it.method] if it.method else None, evidence=own, sub_claims=sub_claims,
+                depends_on=[new_id[p] for p in it.depends_on if p in new_id and p != pos],
+                traced_under=[new_id[p] for p in it.traced_under if p in new_id and p != pos])))
+        c_run = LlmRun[Claim](id=claims_run_id, disabled=disabled, request=request | {"scope": {"sections": scope.sections, "items": scope.items}},
+                              call=call, entries=entries, rejected=claims_rejected)
+        cf.llm_runs.append(c_run)
+        skipped = []
+        for r in lists["skipped"]:
+            s, _ = _validated(SkippedLlmItem, r)
+            if s is not None and not ctx.ref_errors([Ref(extraction=extraction, id=s.ref)]):
+                skipped.append(SkippedSentence(ref=Ref(extraction=extraction, id=s.ref), reason=s.reason))
+        cf.skipped[claims_run_id] = skipped
+        claims_c._save(cf)
+        return c_run

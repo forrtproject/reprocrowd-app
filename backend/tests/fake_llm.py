@@ -27,6 +27,25 @@ if "reconciling" in prompt:
          "tables": [{"label": "Table 1", "caption": ["Descriptives."], "rows": [["Group", "M"], ["A", "512.4"]]}]}]}
     if mode == "badschema":
         out = {"sections": [{"title": "x", "paragraphs": [{"sentences": []}]}]}
+elif "CLAIMS" in prompt:
+    R = "sec3.p1.s1"
+    ev = lambda d, v, refs=(R,): {"type": "number", "description": d, "expected": v, "refs": list(refs)}
+    out = {
+        "claims": [
+            {"text": "The effect was significant.", "original_quote": "", "refs": [R], "method": "M1",
+             "evidence": [ev("t statistic", 2.31), ev("bogus", 1, ["sec9.p1.s1"])]},
+            {"text": "Both outcomes differed.", "mode": "paraphrase", "original_quote": "Both outcomes differed between groups.",
+             "refs": ["sec2.p1.s1"], "sub_claims": [
+                 {"text": "Outcome one differed.", "refs": [R], "method": "M1", "evidence": [ev("p value", 0.026)]},
+                 {"text": "Outcome two differed.", "refs": ["sec2.p1.s1"], "method": "M1", "evidence": [ev("df", 38)]}]},
+            {"text": "Clinicians should adopt this.", "refs": ["sec2.p1.s2"], "testable": False, "depends_on": [1, 2]},
+        ],
+        "methods": [{"key": "M1", "summary": "Run the t-test", "refs": ["sec2.p1.s1"]}],
+        "preparation": [{"key": "P1", "summary": "Exclude incomplete records", "refs": ["sec2.p1.s2"]}],
+        "skipped": [{"ref": "sec2.p1.s2", "reason": "study_design"}],
+    }
+    if mode == "badschema":
+        out = {"results": []}
 elif "RESULTS" in prompt:
     out = {"targets": [
         {"type": "number", "description": "t statistic", "quote": "t(38) = 2.31", "expected": "2.31", "refs": ["sec3.p1.s1"]},

@@ -385,7 +385,7 @@ Everything needed to understand (and repeat) one LLM call.
 | Field | Type | Req. | Description |
 |---|---|---|---|
 | `id` | string | yes | also the folder llm-calls/<id>/ holding prompt.txt, stdout.txt, stderr.txt |
-| `task` | `"reconcile"` \| `"targets"` \| `"actions"` | yes |  |
+| `task` | `"reconcile"` \| `"targets"` \| `"actions"` \| `"claims"` | yes |  |
 | `profile` | string | yes | name of the LLM profile in the service config |
 | `argv` | list of string | yes | the exact command line that was run (prompt goes to stdin) |
 | `model` | string | yes | model passed to the CLI; "" = the CLI default |
@@ -638,6 +638,70 @@ Output format of the action-extraction prompt.
 | `inputs` | list of string |  | input names (in-…) used directly |
 | `depends_on` | list of string |  | keys of earlier actions |
 | `produces` | list of string |  | target ids computed by this action |
+
+## `claim-llm-output`: output of the claims-extraction prompt
+
+File: `schemas/claim-llm-output.schema.json`
+
+### Root
+
+Output format of the claims-extraction prompt.
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `claims` | list of [ClaimLlmItem](#claimllmitem) | yes |  |
+| `methods` | list of [MethodLlmItem](#methodllmitem) |  |  |
+| `preparation` | list of [PrepLlmItem](#prepllmitem) |  |  |
+| `skipped` | list of [SkippedLlmItem](#skippedllmitem) |  |  |
+
+### ClaimLlmItem
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `text` | string | yes |  |
+| `mode` | `"quote"` \| `"paraphrase"` |  | default `quote` |
+| `original_quote` | string |  | default `` |
+| `refs` | list of string | yes |  |
+| `testable` | boolean |  | default `True` |
+| `method` | string \| null |  | key of a method |
+| `evidence` | list of [TargetLlmItem](#targetllmitem) |  |  |
+| `sub_claims` | list of [SubClaimLlmItem](#subclaimllmitem) |  |  |
+| `depends_on` | list of integer |  | 1-based positions in the output's claims list |
+| `traced_under` | list of integer |  | 1-based positions in the output's claims list |
+
+### MethodLlmItem
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `key` | string | yes | M1, M2, … ; claims and sub-claims name it in method; pattern `^M\d+$` |
+| `summary` | string | yes |  |
+| `quote` | string |  | default `` |
+| `refs` | list of string | yes |  |
+
+### PrepLlmItem
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `key` | string | yes | P1, P2, …; pattern `^P\d+$` |
+| `summary` | string | yes |  |
+| `quote` | string |  | default `` |
+| `refs` | list of string | yes |  |
+
+### SkippedLlmItem
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `ref` | string | yes |  |
+| `reason` | `"background"` \| `"study_design"` \| `"other"` | yes |  |
+
+### SubClaimLlmItem
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `text` | string | yes |  |
+| `refs` | list of string | yes |  |
+| `method` | string \| null |  | key of a method |
+| `evidence` | list of [TargetLlmItem](#targetllmitem) |  |  |
 
 ## `results-schema`: results_schema.json
 

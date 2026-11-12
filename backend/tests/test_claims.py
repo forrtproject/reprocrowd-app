@@ -193,3 +193,82 @@ def test_malformed_sub_claims_reach_model_as_schema_invalid(client, pkg):
         else:
             raise AssertionError("expected ApiError")
     assert Curation(p, "claims").effective()[0][0].checked is True
+
+
+def _extract(client, pkg):
+    package_with_targets(client, pkg)
+    P = f"/v1/packages/{pkg}"
+    r = client.post(P + "/claims/runs", json={"extraction": "ex-paper-tei"})
+    assert r.status_code == 201, r.text
+    return P, r.json()
+
+
+def test_extract_claims(client, pkg):
+    P, run = _extract(client, pkg)
+    claims = {i["item"]["id"]: i["item"] for i in client.get(P + "/claims").json()}
+    assert list(claims) == ["C1", "C2", "C3"]
+    subs = claims["C2"]["sub_claims"]
+    assert [s["id"] for s in subs] == ["C2.1", "C2.2"] and subs[0]["method"] == subs[1]["method"] is not None
+    assert claims["C3"]["testable"] is False and claims["C3"]["depends_on"] == ["C1", "C2"]
+    actions = [i["item"] for i in client.get(P + "/actions").json()]
+    prep = [a for a in actions if a["kind"] == "transform"]
+    assert len(prep) == 1 and prep[0]["summary"] == "Exclude incomplete records"
+    llm_analysis = [a for a in actions if a["kind"] == "analysis" and a["summary"] == "Run the t-test"]
+    assert len(llm_analysis) == 1 and llm_analysis[0]["depends_on"] == [prep[0]["id"]]
+    assert claims["C1"]["method"] == subs[0]["method"] == llm_analysis[0]["id"]
+    assert len(llm_analysis[0]["produces"]) == 3
+    raw = client.get(P + "/claims?view=raw").json()
+    assert raw["skipped"]["run1"] == [{"ref": {"extraction": "ex-paper-tei", "id": "sec2.p1.s2"}, "reason": "study_design"}]
+
+
+def test_extract_keeps_good_parts(client, pkg):
+    P, _ = _extract(client, pkg)
+    runs = client.get(P + "/targets/runs").json()
+    tr = [r for r in runs if r["request"].get("via") == "claims"][0]
+    assert tr["request"]["claims_run"] == "run1"
+    assert len(tr["rejected"]) == 1 and any("sec9.p1.s1" in e for e in tr["rejected"][0]["errors"])
+    c1 = client.get(P + "/claims/C1").json()["item"]
+    assert len(c1["evidence"]) == 1
+
+
+def test_extract_rejects_claim_with_bad_refs(client, pkg, monkeypatch):
+    package_with_targets(client, pkg)
+    from reprocrowd import claims as cl
+    orig = cl.llm.output_json
+
+    def fake(call):
+        out = orig(call)
+        out["claims"][0]["refs"] = ["sec9.p9.s9"]
+        return out
+
+    monkeypatch.setattr(cl.llm, "output_json", fake)
+    P = f"/v1/packages/{pkg}"
+    run = client.post(P + "/claims/runs", json={"extraction": "ex-paper-tei"}).json()
+    assert len(run["rejected"]) == 1 and len(run["entries"]) == 2
+
+
+def test_extract_output_invalid(client, pkg):
+    package_with_targets(client, pkg)
+    r = client.post(f"/v1/packages/{pkg}/claims/runs", json={"extraction": "ex-paper-tei", "profile": "badschema"})
+    problem(r, 422, "llm_output_invalid")
+
+
+def test_reextract_arrives_disabled(client, pkg):
+    P, _ = _extract(client, pkg)
+    before = {i["item"]["id"]: i["item"] for i in client.get(P + "/claims").json()}
+    r = client.post(P + "/claims/runs", json={"extraction": "ex-paper-tei"})
+    assert r.status_code == 201 and r.json()["id"] == "run2" and r.json()["disabled"] is True
+    for kind in ("targets", "actions"):
+        mine = [x for x in client.get(f"{P}/{kind}/runs").json() if x["request"].get("via") == "claims"]
+        assert [x["disabled"] for x in mine] == [False, True]
+    after = {i["item"]["id"]: i["item"] for i in client.get(P + "/claims").json()}
+    assert after == before
+    ids = [i["item"]["id"] for i in client.get(P + "/claims?include_disabled=true").json()]
+    assert ids == ["C1", "C2", "C3", "C4", "C5", "C6"]
+
+
+def test_claims_prompt_preview(client, pkg):
+    package_with_targets(client, pkg)
+    r = client.post(f"/v1/packages/{pkg}/claims/runs:preview", json={"extraction": "ex-paper-tei"})
+    assert r.status_code == 200
+    assert "CLAIMS" in r.json()["prompt"] and "sec3.p1.s1" in r.json()["prompt"]

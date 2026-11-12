@@ -42,7 +42,7 @@ class LlmCall(Model):
     """Everything needed to understand (and repeat) one LLM call."""
 
     id: str = Field(description="also the folder llm-calls/<id>/ holding prompt.txt, stdout.txt, stderr.txt")
-    task: Literal["reconcile", "targets", "actions"]
+    task: Literal["reconcile", "targets", "actions", "claims"]
     profile: str = Field(description="name of the LLM profile in the service config")
     argv: list[str] = Field(description="the exact command line that was run (prompt goes to stdin)")
     model: str = Field(description='model passed to the CLI; "" = the CLI default')

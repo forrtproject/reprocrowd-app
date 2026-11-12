@@ -12356,7 +12356,8 @@
             "enum": [
               "reconcile",
               "targets",
-              "actions"
+              "actions",
+              "claims"
             ],
             "title": "Task"
           },

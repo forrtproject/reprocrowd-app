@@ -8,7 +8,7 @@ from typing import Any
 
 from pydantic import BaseModel
 
-from .curation import ActionLlmOutput, ActionsFile, ClaimsFile, TargetLlmOutput, TargetsFile
+from .curation import ActionLlmOutput, ClaimLlmOutput, ActionsFile, ClaimsFile, TargetLlmOutput, TargetsFile
 from .document import Document, DocumentDraft
 from .exports import AnalysisPlan, InputsList, ReproducedOutput, ResultsSchema
 from .comparison import Comparison
@@ -25,6 +25,7 @@ SCHEMAS: dict[str, tuple[type[BaseModel], str]] = {
     "claims": (ClaimsFile, "claims.json"),
     "target-llm-output": (TargetLlmOutput, "output of the target-extraction prompt"),
     "action-llm-output": (ActionLlmOutput, "output of the action-extraction prompt"),
+    "claim-llm-output": (ClaimLlmOutput, "output of the claims-extraction prompt"),
     "results-schema": (ResultsSchema, "results_schema.json"),
     "analysis-plan": (AnalysisPlan, "analysis_plan.json"),
     "inputs": (InputsList, "inputs.json (written with the archive)"),

@@ -1,0 +1,369 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://reprocrowd.example/schemas/claim-llm-output.schema.json",
+  "title": "ClaimLlmOutput (output of the claims-extraction prompt)",
+  "$defs": {
+    "ClaimLlmItem": {
+      "properties": {
+        "text": {
+          "title": "Text",
+          "type": "string"
+        },
+        "mode": {
+          "default": "quote",
+          "enum": [
+            "quote",
+            "paraphrase"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "original_quote": {
+          "default": "",
+          "title": "Original Quote",
+          "type": "string"
+        },
+        "refs": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Refs",
+          "type": "array"
+        },
+        "testable": {
+          "default": true,
+          "title": "Testable",
+          "type": "boolean"
+        },
+        "method": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "key of a method",
+          "title": "Method"
+        },
+        "evidence": {
+          "items": {
+            "$ref": "#/$defs/TargetLlmItem"
+          },
+          "title": "Evidence",
+          "type": "array"
+        },
+        "sub_claims": {
+          "items": {
+            "$ref": "#/$defs/SubClaimLlmItem"
+          },
+          "title": "Sub Claims",
+          "type": "array"
+        },
+        "depends_on": {
+          "description": "1-based positions in the output's claims list",
+          "items": {
+            "type": "integer"
+          },
+          "title": "Depends On",
+          "type": "array"
+        },
+        "traced_under": {
+          "description": "1-based positions in the output's claims list",
+          "items": {
+            "type": "integer"
+          },
+          "title": "Traced Under",
+          "type": "array"
+        }
+      },
+      "required": [
+        "text",
+        "refs"
+      ],
+      "title": "ClaimLlmItem",
+      "type": "object"
+    },
+    "MethodLlmItem": {
+      "properties": {
+        "key": {
+          "description": "M1, M2, … ; claims and sub-claims name it in method",
+          "pattern": "^M\\d+$",
+          "title": "Key",
+          "type": "string"
+        },
+        "summary": {
+          "title": "Summary",
+          "type": "string"
+        },
+        "quote": {
+          "default": "",
+          "title": "Quote",
+          "type": "string"
+        },
+        "refs": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Refs",
+          "type": "array"
+        }
+      },
+      "required": [
+        "key",
+        "summary",
+        "refs"
+      ],
+      "title": "MethodLlmItem",
+      "type": "object"
+    },
+    "PrepLlmItem": {
+      "properties": {
+        "key": {
+          "description": "P1, P2, …",
+          "pattern": "^P\\d+$",
+          "title": "Key",
+          "type": "string"
+        },
+        "summary": {
+          "title": "Summary",
+          "type": "string"
+        },
+        "quote": {
+          "default": "",
+          "title": "Quote",
+          "type": "string"
+        },
+        "refs": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Refs",
+          "type": "array"
+        }
+      },
+      "required": [
+        "key",
+        "summary",
+        "refs"
+      ],
+      "title": "PrepLlmItem",
+      "type": "object"
+    },
+    "SkippedLlmItem": {
+      "properties": {
+        "ref": {
+          "title": "Ref",
+          "type": "string"
+        },
+        "reason": {
+          "enum": [
+            "background",
+            "study_design",
+            "other"
+          ],
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "ref",
+        "reason"
+      ],
+      "title": "SkippedLlmItem",
+      "type": "object"
+    },
+    "SubClaimLlmItem": {
+      "properties": {
+        "text": {
+          "title": "Text",
+          "type": "string"
+        },
+        "refs": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Refs",
+          "type": "array"
+        },
+        "method": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "key of a method",
+          "title": "Method"
+        },
+        "evidence": {
+          "items": {
+            "$ref": "#/$defs/TargetLlmItem"
+          },
+          "title": "Evidence",
+          "type": "array"
+        }
+      },
+      "required": [
+        "text",
+        "refs"
+      ],
+      "title": "SubClaimLlmItem",
+      "type": "object"
+    },
+    "TargetLlmItem": {
+      "properties": {
+        "type": {
+          "enum": [
+            "number",
+            "categorical",
+            "table",
+            "figure"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "quote": {
+          "default": "",
+          "title": "Quote",
+          "type": "string"
+        },
+        "expected": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "items": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Expected"
+        },
+        "comparator": {
+          "anyOf": [
+            {
+              "enum": [
+                "=",
+                "<",
+                "<=",
+                ">",
+                ">=",
+                "~"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Comparator"
+        },
+        "decimals": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Decimals"
+        },
+        "unit": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Unit"
+        },
+        "refs": {
+          "description": "ids in brackets the result comes from",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Refs",
+          "type": "array"
+        }
+      },
+      "required": [
+        "type",
+        "description",
+        "refs"
+      ],
+      "title": "TargetLlmItem",
+      "type": "object"
+    }
+  },
+  "description": "Output format of the claims-extraction prompt.",
+  "properties": {
+    "claims": {
+      "items": {
+        "$ref": "#/$defs/ClaimLlmItem"
+      },
+      "title": "Claims",
+      "type": "array"
+    },
+    "methods": {
+      "items": {
+        "$ref": "#/$defs/MethodLlmItem"
+      },
+      "title": "Methods",
+      "type": "array"
+    },
+    "preparation": {
+      "items": {
+        "$ref": "#/$defs/PrepLlmItem"
+      },
+      "title": "Preparation",
+      "type": "array"
+    },
+    "skipped": {
+      "items": {
+        "$ref": "#/$defs/SkippedLlmItem"
+      },
+      "title": "Skipped",
+      "type": "array"
+    }
+  },
+  "required": [
+    "claims"
+  ],
+  "type": "object"
+}

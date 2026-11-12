@@ -24,7 +24,7 @@ from starlette.concurrency import run_in_threadpool
 from starlette.datastructures import UploadFile as StarletteUploadFile
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from .. import __version__, openalex, zenodo, codegen, coordinates, curation, database, figures, report, run, extractions, files, fulltexts, inputs, jobs, llm, metadata, scripts
+from .. import __version__, openalex, zenodo, claims, codegen, coordinates, curation, database, figures, report, run, extractions, files, fulltexts, inputs, jobs, llm, metadata, scripts
 from ..config import settings
 from ..errors import ApiError, not_found
 from ..extractions import Scope
@@ -588,8 +588,13 @@ def curation_routes(kind: str, fields: type, view: type, patch_model: type) -> N
                           "Items that fail validation are kept in the run's `rejected` list; the call itself fails only if the "
                           "output has no usable JSON (`llm_output_invalid`).", responses=run_errors)
     def create_run(pkg: Pkg, body: M.RunCreate, response: Response):
-        run = curation.Curation(pkg, kind).generate(body.extraction, Scope(body.scope.sections, body.scope.items),
-                                                    instructions=body.instructions, prompt=body.prompt, profile=body.profile)
+        gen = claims.generate if kind == "claims" else curation.Curation(pkg, kind).generate
+        if kind == "claims":
+            run = gen(pkg, body.extraction, Scope(body.scope.sections, body.scope.items),
+                      instructions=body.instructions, prompt=body.prompt, profile=body.profile)
+        else:
+            run = gen(body.extraction, Scope(body.scope.sections, body.scope.items),
+                      instructions=body.instructions, prompt=body.prompt, profile=body.profile)
         created(response, f"/v1/packages/{pkg.id}/{kind}/runs/{run.id}")
         return run
 
@@ -598,7 +603,11 @@ def curation_routes(kind: str, fields: type, view: type, patch_model: type) -> N
               responses=errors("not_found", "unknown_ids", "unknown_profile"))
     def preview_run(pkg: Pkg, body: M.RunCreate):
         c = curation.Curation(pkg, kind)
-        text = c.render_prompt(body.extraction, Scope(body.scope.sections, body.scope.items), instructions=body.instructions, prompt=body.prompt)
+        scope = Scope(body.scope.sections, body.scope.items)
+        if kind == "claims":
+            text = claims.render_prompt(pkg, body.extraction, scope, instructions=body.instructions, prompt=body.prompt)
+        else:
+            text = c.render_prompt(body.extraction, scope, instructions=body.instructions, prompt=body.prompt)
         return _llm_preview(text, body.profile, schema=c.output_schema)
 
     @api.get(base + "/runs/{run}", tags=[kind], response_model=LlmRunModel, summary="Get an LLM run", responses=errors("not_found"))

@@ -281,6 +281,34 @@ class ActionLlmItem(_LlmItem):
     produces: list[str] = Field(default_factory=list, description="target ids computed by this action")
 
 
+class MethodLlmItem(_LlmItem):
+    key: str = Field(pattern=r"^M\d+$", description="M1, M2, … ; claims and sub-claims name it in method")
+    summary: str
+    quote: str = ""
+    refs: list[str] = Field(min_length=1)
+
+
+class PrepLlmItem(_LlmItem):
+    key: str = Field(pattern=r"^P\d+$", description="P1, P2, …")
+    summary: str
+    quote: str = ""
+    refs: list[str] = Field(min_length=1)
+
+
+class SkippedLlmItem(_LlmItem):
+    ref: str
+    reason: Literal["background", "study_design", "other"]
+
+
+class ClaimLlmOutput(_LlmItem):
+    """Output format of the claims-extraction prompt."""
+
+    claims: list[ClaimLlmItem]
+    methods: list[MethodLlmItem] = Field(default_factory=list)
+    preparation: list[PrepLlmItem] = Field(default_factory=list)
+    skipped: list[SkippedLlmItem] = Field(default_factory=list)
+
+
 class ActionLlmOutput(_LlmItem):
     """Output format of the action-extraction prompt."""
 
