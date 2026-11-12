@@ -7,6 +7,7 @@ A curated file (targets.json, actions.json) holds
 """
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any, Generic, Literal, TypeVar
 
 from pydantic import ConfigDict, Field, field_validator, model_validator
@@ -105,9 +106,75 @@ class Action(ActionFields):
     id: str = Field(pattern=r"^A\d{2,}$")
 
 
+# ---------- claims (broad claim → sub-claims → evidence + method) ----------
+
+ClaimMode = Literal["quote", "paraphrase"]
+
+
+class SubClaim(Referenced):
+    """One narrower, testable piece of a broad claim."""
+
+    id: str = Field(pattern=r"^C\d+\.\d+$")
+    text: str = Field(min_length=1)
+    method: str | None = Field(default=None, description="id of the action that implements the test")
+    evidence: list[str] = Field(default_factory=list, description="ids of targets that report the result")
+
+
+class ClaimFields(Referenced):
+    """A claim of the paper (claim without id)."""
+
+    text: str = Field(min_length=1)
+    mode: ClaimMode = "quote"
+    original_quote: str = Field(default="", description="verbatim text of the paper; required when mode is paraphrase")
+    testable: bool = True
+    method: str | None = Field(default=None, description="id of the action that implements the test (atomic claims)")
+    evidence: list[str] = Field(default_factory=list, description="ids of targets that report the result (atomic claims)")
+    sub_claims: list[SubClaim] = Field(default_factory=list)
+    depends_on: list[str] = Field(default_factory=list, description="ids of claims this one builds on")
+    traced_under: list[str] = Field(default_factory=list, description="ids of claims this one was traced under")
+    checked: bool = False
+    notes: str = ""
+
+    @model_validator(mode="after")
+    def _rules(self):
+        if self.mode == "paraphrase" and not self.original_quote.strip():
+            raise ValueError("a paraphrased claim needs original_quote")
+        if self.sub_claims and (self.method is not None or self.evidence):
+            raise ValueError("a claim with sub-claims has no method or evidence of its own; they belong to the sub-claims")
+        if not self.testable and (self.method is not None or self.evidence or self.sub_claims):
+            raise ValueError("an untestable claim has no method, evidence or sub-claims")
+        return self
+
+
+class Claim(ClaimFields):
+    id: str = Field(pattern=r"^C\d+$")
+
+    @model_validator(mode="after")
+    def _sub_ids(self):
+        for s in self.sub_claims:
+            if not s.id.startswith(f"{self.id}."):
+                raise ValueError(f"sub-claim {s.id} must start with {self.id}.")
+        return self
+
+
+class SkippedSentence(Model):
+    """A sentence the LLM considered and did not turn into a claim."""
+
+    ref: Ref
+    reason: Literal["background", "study_design", "other"]
+
+
+class ClaimRunRecord(Model):
+    """When a claim's breakdown (evidence and method) was last generated, and for which text."""
+
+    job: str
+    at: datetime
+    content_hash: str
+
+
 # ---------- generic curated collection ----------
 
-T = TypeVar("T", Target, Action)
+T = TypeVar("T", Target, Action, Claim)
 
 
 class LlmEntry(Model, Generic[T]):
@@ -148,6 +215,17 @@ class ActionsFile(Model):
     llm_runs: list[LlmRun[Action]] = Field(default_factory=list)
 
 
+class ClaimsFile(Model):
+    """claims.json"""
+
+    schema_version: Literal["1.0"] = "1.0"
+    kind: Literal["claims"] = "claims"
+    manual: list[Claim] = Field(default_factory=list)
+    llm_runs: list[LlmRun[Claim]] = Field(default_factory=list)
+    skipped: dict[str, list[SkippedSentence]] = Field(default_factory=dict, description="sentences passed over, keyed by run id")
+    ran: dict[str, ClaimRunRecord] = Field(default_factory=dict, description="breakdown runs, keyed by claim id")
+
+
 # ---------- what the LLM is asked to return ----------
 
 
@@ -164,6 +242,26 @@ class TargetLlmItem(_LlmItem):
     decimals: int | None = None
     unit: str | None = None
     refs: list[str] = Field(min_length=1, description="ids in brackets the result comes from")
+
+
+class SubClaimLlmItem(_LlmItem):
+    text: str
+    refs: list[str] = Field(min_length=1)
+    method: str | None = Field(default=None, description="key of a method")
+    evidence: list[TargetLlmItem] = Field(default_factory=list)
+
+
+class ClaimLlmItem(_LlmItem):
+    text: str
+    mode: ClaimMode = "quote"
+    original_quote: str = ""
+    refs: list[str] = Field(min_length=1)
+    testable: bool = True
+    method: str | None = Field(default=None, description="key of a method")
+    evidence: list[TargetLlmItem] = Field(default_factory=list)
+    sub_claims: list[SubClaimLlmItem] = Field(default_factory=list)
+    depends_on: list[int] = Field(default_factory=list, description="1-based positions in the output's claims list")
+    traced_under: list[int] = Field(default_factory=list, description="1-based positions in the output's claims list")
 
 
 class TargetLlmOutput(_LlmItem):

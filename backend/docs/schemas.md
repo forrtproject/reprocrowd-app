@@ -500,6 +500,95 @@ actions.json
 | `entries` | list of [LlmEntry_Action_](#llmentry_action_) | yes |  |
 | `rejected` | list of [Rejected](#rejected) |  | items of the output that failed validation |
 
+## `claims`: claims.json
+
+File: `schemas/claims.schema.json`
+
+### Root
+
+claims.json
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `schema_version` | `"1.0"` |  | default `1.0` |
+| `kind` | `"claims"` |  | default `claims` |
+| `manual` | list of [Claim](#claim) |  |  |
+| `llm_runs` | list of [LlmRun_Claim_](#llmrun_claim_) |  |  |
+| `skipped` | map of list of [SkippedSentence](#skippedsentence) |  | sentences passed over, keyed by run id |
+| `ran` | map of [ClaimRunRecord](#claimrunrecord) |  | breakdown runs, keyed by claim id |
+
+### Claim
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `refs` | list of [Ref](#ref) |  |  |
+| `unreferenced` | boolean |  | set to allow an empty refs list; then note is required; default `False` |
+| `note` | string \| null |  |  |
+| `text` | string | yes |  |
+| `mode` | `"quote"` \| `"paraphrase"` |  | default `quote` |
+| `original_quote` | string |  | verbatim text of the paper; required when mode is paraphrase; default `` |
+| `testable` | boolean |  | default `True` |
+| `method` | string \| null |  | id of the action that implements the test (atomic claims) |
+| `evidence` | list of string |  | ids of targets that report the result (atomic claims) |
+| `sub_claims` | list of [SubClaim](#subclaim) |  |  |
+| `depends_on` | list of string |  | ids of claims this one builds on |
+| `traced_under` | list of string |  | ids of claims this one was traced under |
+| `checked` | boolean |  | default `False` |
+| `notes` | string |  | default `` |
+| `id` | string | yes | pattern `^C\d+$` |
+
+### ClaimRunRecord
+
+When a claim's breakdown (evidence and method) was last generated, and for which text.
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `job` | string | yes |  |
+| `at` | string (date-time) | yes |  |
+| `content_hash` | string | yes |  |
+
+### LlmEntry_Claim_
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `base` | [Claim](#claim) | yes | the item as extracted from the LLM output (never changed) |
+| `edit` | object \| null |  | user changes: fields of the item that override base |
+| `disabled` | boolean |  | default `False` |
+
+### LlmRun_Claim_
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `id` | string | yes | pattern `^run\d+$` |
+| `disabled` | boolean |  | true: none of the run's entries are effective; default `False` |
+| `request` | object | yes | what was asked: extraction, scope, … |
+| `call` | [LlmCall](#llmcall) | yes |  |
+| `entries` | list of [LlmEntry_Claim_](#llmentry_claim_) | yes |  |
+| `rejected` | list of [Rejected](#rejected) |  | items of the output that failed validation |
+
+### SkippedSentence
+
+A sentence the LLM considered and did not turn into a claim.
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `ref` | [Ref](#ref) | yes |  |
+| `reason` | `"background"` \| `"study_design"` \| `"other"` | yes |  |
+
+### SubClaim
+
+One narrower, testable piece of a broad claim.
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `refs` | list of [Ref](#ref) |  |  |
+| `unreferenced` | boolean |  | set to allow an empty refs list; then note is required; default `False` |
+| `note` | string \| null |  |  |
+| `id` | string | yes | pattern `^C\d+\.\d+$` |
+| `text` | string | yes |  |
+| `method` | string \| null |  | id of the action that implements the test |
+| `evidence` | list of string |  | ids of targets that report the result |
+
 ## `target-llm-output`: output of the target-extraction prompt
 
 File: `schemas/target-llm-output.schema.json`

@@ -22,7 +22,7 @@ from .config import settings
 from .errors import ApiError, conflict, not_found
 from .schemas import SCHEMAS, json_schema_text, schema_path
 from .schemas.common import Identifier, now
-from .schemas.curation import ActionsFile, TargetsFile
+from .schemas.curation import ActionsFile, ClaimsFile, TargetsFile
 from .schemas.manifest import Manifest, OtherMeta, PackageMeta, Resource
 
 MANIFEST = "datapackage.json"
@@ -190,6 +190,7 @@ def init_package(root: Path, name: str, identifier: Identifier | None) -> None:
                                 meta=OtherMeta(kind="schema", added_at=now())))
     pkg.write_json(m, "targets", "targets.json", TargetsFile(), schema="targets", meta=OtherMeta(kind="curation", added_at=now()))
     pkg.write_json(m, "actions", "actions.json", ActionsFile(), schema="actions", meta=OtherMeta(kind="curation", added_at=now()))
+    pkg.write_json(m, "claims", "claims.json", ClaimsFile(), schema="claims", meta=OtherMeta(kind="curation", added_at=now()))
     pkg.save(m)
 
 

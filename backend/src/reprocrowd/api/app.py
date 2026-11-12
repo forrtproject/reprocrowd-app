@@ -552,7 +552,7 @@ def delete_input(pkg: Pkg, name: str):
     inputs.delete(pkg, name)
 
 
-# ---------- targets and actions (same routes, different models) ----------
+# ---------- targets, actions and claims (same routes, different models) ----------
 
 
 def curation_routes(kind: str, fields: type, view: type, patch_model: type) -> None:
@@ -638,6 +638,7 @@ def curation_routes(kind: str, fields: type, view: type, patch_model: type) -> N
 
 curation_routes("targets", curation.TargetFields, M.TargetView, M.TargetPatch)
 curation_routes("actions", curation.ActionFields, M.ActionView, M.ActionPatch)
+curation_routes("claims", curation.ClaimFields, M.ClaimView, M.ClaimPatch)
 
 
 # ---------- script ----------

@@ -7,7 +7,7 @@ from typing import Annotated, Any, Literal, Optional, Union
 from pydantic import BaseModel, ConfigDict, Field, SecretStr, create_model
 
 from ..schemas.common import Identifier, Model
-from ..schemas.curation import Action, ActionFields, Target, TargetFields
+from ..schemas.curation import Action, ActionFields, Claim, ClaimFields, Target, TargetFields
 from ..schemas.jobs import Job, TodoStatus
 from ..schemas.manifest import ZenodoCreator, Resource, Role
 
@@ -205,6 +205,11 @@ class ActionView(BaseModel):
     origin: Origin
 
 
+class ClaimView(BaseModel):
+    item: Claim
+    origin: Origin
+
+
 class ScopeModel(Req):
     sections: list[str] = Field(default_factory=list, description="section ids (all their sentences, figures and tables)")
     items: list[str] = Field(default_factory=list, description="single sentence, figure or table ids")
@@ -231,6 +236,7 @@ def _patch_model(name: str, fields: type[BaseModel]) -> type[BaseModel]:
 
 TargetPatch = _patch_model("TargetPatch", TargetFields)
 ActionPatch = _patch_model("ActionPatch", ActionFields)
+ClaimPatch = _patch_model("ClaimPatch", ClaimFields)
 
 
 # ---------- scripts ----------

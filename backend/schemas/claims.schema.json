@@ -1,0 +1,547 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://reprocrowd.example/schemas/claims.schema.json",
+  "title": "ClaimsFile (claims.json)",
+  "$defs": {
+    "Claim": {
+      "additionalProperties": false,
+      "properties": {
+        "refs": {
+          "items": {
+            "$ref": "#/$defs/Ref"
+          },
+          "title": "Refs",
+          "type": "array"
+        },
+        "unreferenced": {
+          "default": false,
+          "description": "set to allow an empty refs list; then note is required",
+          "title": "Unreferenced",
+          "type": "boolean"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Note"
+        },
+        "text": {
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "mode": {
+          "default": "quote",
+          "enum": [
+            "quote",
+            "paraphrase"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "original_quote": {
+          "default": "",
+          "description": "verbatim text of the paper; required when mode is paraphrase",
+          "title": "Original Quote",
+          "type": "string"
+        },
+        "testable": {
+          "default": true,
+          "title": "Testable",
+          "type": "boolean"
+        },
+        "method": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "id of the action that implements the test (atomic claims)",
+          "title": "Method"
+        },
+        "evidence": {
+          "description": "ids of targets that report the result (atomic claims)",
+          "items": {
+            "type": "string"
+          },
+          "title": "Evidence",
+          "type": "array"
+        },
+        "sub_claims": {
+          "items": {
+            "$ref": "#/$defs/SubClaim"
+          },
+          "title": "Sub Claims",
+          "type": "array"
+        },
+        "depends_on": {
+          "description": "ids of claims this one builds on",
+          "items": {
+            "type": "string"
+          },
+          "title": "Depends On",
+          "type": "array"
+        },
+        "traced_under": {
+          "description": "ids of claims this one was traced under",
+          "items": {
+            "type": "string"
+          },
+          "title": "Traced Under",
+          "type": "array"
+        },
+        "checked": {
+          "default": false,
+          "title": "Checked",
+          "type": "boolean"
+        },
+        "notes": {
+          "default": "",
+          "title": "Notes",
+          "type": "string"
+        },
+        "id": {
+          "pattern": "^C\\d+$",
+          "title": "Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "text",
+        "id"
+      ],
+      "title": "Claim",
+      "type": "object"
+    },
+    "ClaimRunRecord": {
+      "additionalProperties": false,
+      "description": "When a claim's breakdown (evidence and method) was last generated, and for which text.",
+      "properties": {
+        "job": {
+          "title": "Job",
+          "type": "string"
+        },
+        "at": {
+          "format": "date-time",
+          "title": "At",
+          "type": "string"
+        },
+        "content_hash": {
+          "title": "Content Hash",
+          "type": "string"
+        }
+      },
+      "required": [
+        "job",
+        "at",
+        "content_hash"
+      ],
+      "title": "ClaimRunRecord",
+      "type": "object"
+    },
+    "LlmCall": {
+      "additionalProperties": false,
+      "description": "Everything needed to understand (and repeat) one LLM call.",
+      "properties": {
+        "id": {
+          "description": "also the folder llm-calls/<id>/ holding prompt.txt, stdout.txt, stderr.txt",
+          "title": "Id",
+          "type": "string"
+        },
+        "task": {
+          "enum": [
+            "reconcile",
+            "targets",
+            "actions"
+          ],
+          "title": "Task",
+          "type": "string"
+        },
+        "profile": {
+          "description": "name of the LLM profile in the service config",
+          "title": "Profile",
+          "type": "string"
+        },
+        "argv": {
+          "description": "the exact command line that was run (prompt goes to stdin)",
+          "items": {
+            "type": "string"
+          },
+          "title": "Argv",
+          "type": "array"
+        },
+        "model": {
+          "description": "model passed to the CLI; \"\" = the CLI default",
+          "title": "Model",
+          "type": "string"
+        },
+        "effort": {
+          "description": "effort level passed to the CLI; \"\" = the CLI default",
+          "title": "Effort",
+          "type": "string"
+        },
+        "template": {
+          "description": "whether the built-in prompt template or a caller-supplied one was used",
+          "enum": [
+            "default",
+            "custom"
+          ],
+          "title": "Template",
+          "type": "string"
+        },
+        "instructions": {
+          "default": "",
+          "description": "extra instructions appended to the template",
+          "title": "Instructions",
+          "type": "string"
+        },
+        "prompt": {
+          "description": "the full prompt sent",
+          "title": "Prompt",
+          "type": "string"
+        },
+        "output": {
+          "description": "raw stdout of the call",
+          "title": "Output",
+          "type": "string"
+        },
+        "output_format": {
+          "default": "text",
+          "description": "how stdout was read",
+          "enum": [
+            "text",
+            "claude-json"
+          ],
+          "title": "Output Format",
+          "type": "string"
+        },
+        "output_schema": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "name of the JSON Schema the CLI was asked to constrain its output to (structured output)",
+          "title": "Output Schema"
+        },
+        "started_at": {
+          "format": "date-time",
+          "title": "Started At",
+          "type": "string"
+        },
+        "duration_ms": {
+          "title": "Duration Ms",
+          "type": "integer"
+        },
+        "exit_code": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Exit Code"
+        }
+      },
+      "required": [
+        "id",
+        "task",
+        "profile",
+        "argv",
+        "model",
+        "effort",
+        "template",
+        "prompt",
+        "output",
+        "started_at",
+        "duration_ms"
+      ],
+      "title": "LlmCall",
+      "type": "object"
+    },
+    "LlmEntry_Claim_": {
+      "additionalProperties": false,
+      "properties": {
+        "base": {
+          "$ref": "#/$defs/Claim",
+          "description": "the item as extracted from the LLM output (never changed)"
+        },
+        "edit": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "user changes: fields of the item that override base",
+          "title": "Edit"
+        },
+        "disabled": {
+          "default": false,
+          "title": "Disabled",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "base"
+      ],
+      "title": "LlmEntry[Claim]",
+      "type": "object"
+    },
+    "LlmRun_Claim_": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^run\\d+$",
+          "title": "Id",
+          "type": "string"
+        },
+        "disabled": {
+          "default": false,
+          "description": "true: none of the run's entries are effective",
+          "title": "Disabled",
+          "type": "boolean"
+        },
+        "request": {
+          "additionalProperties": true,
+          "description": "what was asked: extraction, scope, …",
+          "title": "Request",
+          "type": "object"
+        },
+        "call": {
+          "$ref": "#/$defs/LlmCall"
+        },
+        "entries": {
+          "items": {
+            "$ref": "#/$defs/LlmEntry_Claim_"
+          },
+          "title": "Entries",
+          "type": "array"
+        },
+        "rejected": {
+          "description": "items of the output that failed validation",
+          "items": {
+            "$ref": "#/$defs/Rejected"
+          },
+          "title": "Rejected",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "request",
+        "call",
+        "entries"
+      ],
+      "title": "LlmRun[Claim]",
+      "type": "object"
+    },
+    "Ref": {
+      "additionalProperties": false,
+      "description": "Points at one sentence, figure or table of an extraction.",
+      "properties": {
+        "extraction": {
+          "description": "resource name of the extraction, e.g. ex-grobid",
+          "title": "Extraction",
+          "type": "string"
+        },
+        "id": {
+          "description": "sentence (sec3.p2.s1, fig1.s1), figure (fig1) or table (tab1) id in that extraction",
+          "title": "Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "extraction",
+        "id"
+      ],
+      "title": "Ref",
+      "type": "object"
+    },
+    "Rejected": {
+      "additionalProperties": false,
+      "properties": {
+        "item": {
+          "description": "the LLM's item as returned",
+          "title": "Item"
+        },
+        "errors": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Errors",
+          "type": "array"
+        }
+      },
+      "required": [
+        "item",
+        "errors"
+      ],
+      "title": "Rejected",
+      "type": "object"
+    },
+    "SkippedSentence": {
+      "additionalProperties": false,
+      "description": "A sentence the LLM considered and did not turn into a claim.",
+      "properties": {
+        "ref": {
+          "$ref": "#/$defs/Ref"
+        },
+        "reason": {
+          "enum": [
+            "background",
+            "study_design",
+            "other"
+          ],
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "ref",
+        "reason"
+      ],
+      "title": "SkippedSentence",
+      "type": "object"
+    },
+    "SubClaim": {
+      "additionalProperties": false,
+      "description": "One narrower, testable piece of a broad claim.",
+      "properties": {
+        "refs": {
+          "items": {
+            "$ref": "#/$defs/Ref"
+          },
+          "title": "Refs",
+          "type": "array"
+        },
+        "unreferenced": {
+          "default": false,
+          "description": "set to allow an empty refs list; then note is required",
+          "title": "Unreferenced",
+          "type": "boolean"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Note"
+        },
+        "id": {
+          "pattern": "^C\\d+\\.\\d+$",
+          "title": "Id",
+          "type": "string"
+        },
+        "text": {
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "method": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "id of the action that implements the test",
+          "title": "Method"
+        },
+        "evidence": {
+          "description": "ids of targets that report the result",
+          "items": {
+            "type": "string"
+          },
+          "title": "Evidence",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "text"
+      ],
+      "title": "SubClaim",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "claims.json",
+  "properties": {
+    "schema_version": {
+      "const": "1.0",
+      "default": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "kind": {
+      "const": "claims",
+      "default": "claims",
+      "title": "Kind",
+      "type": "string"
+    },
+    "manual": {
+      "items": {
+        "$ref": "#/$defs/Claim"
+      },
+      "title": "Manual",
+      "type": "array"
+    },
+    "llm_runs": {
+      "items": {
+        "$ref": "#/$defs/LlmRun_Claim_"
+      },
+      "title": "Llm Runs",
+      "type": "array"
+    },
+    "skipped": {
+      "additionalProperties": {
+        "items": {
+          "$ref": "#/$defs/SkippedSentence"
+        },
+        "type": "array"
+      },
+      "description": "sentences passed over, keyed by run id",
+      "title": "Skipped",
+      "type": "object"
+    },
+    "ran": {
+      "additionalProperties": {
+        "$ref": "#/$defs/ClaimRunRecord"
+      },
+      "description": "breakdown runs, keyed by claim id",
+      "title": "Ran",
+      "type": "object"
+    }
+  },
+  "type": "object"
+}

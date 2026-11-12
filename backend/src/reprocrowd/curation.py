@@ -24,6 +24,10 @@ from .schemas.curation import (
     ActionFields,
     ActionLlmItem,
     ActionsFile,
+    Claim,
+    ClaimFields,
+    ClaimLlmItem,
+    ClaimsFile,
     LlmEntry,
     LlmRun,
     Ref,
@@ -33,9 +37,11 @@ from .schemas.curation import (
     TargetLlmItem,
     TargetsFile,
 )
+from .schemas.common import now
 from .schemas.document import Document
+from .schemas.manifest import OtherMeta
 
-Kind = Literal["targets", "actions"]
+Kind = Literal["targets", "actions", "claims"]
 
 
 @dataclass(frozen=True)
@@ -53,6 +59,7 @@ class Spec:
 CURATIONS: dict[str, Spec] = {
     "targets": Spec("targets", TargetsFile, Target, TargetFields, TargetLlmItem, "targets", "T", 3),
     "actions": Spec("actions", ActionsFile, Action, ActionFields, ActionLlmItem, "actions", "A", 2),
+    "claims": Spec("claims", ClaimsFile, Claim, ClaimFields, ClaimLlmItem, "claims", "C", 1),
 }
 
 
@@ -96,6 +103,19 @@ class Context:
             if actions is not None:
                 ids = {a.id for a in actions}
                 errors += [f"depends_on: no action {d!r}" for d in item.depends_on if d not in ids]
+        elif spec.kind == "claims":
+            target_ids = {t.id for t, _ in Curation(self.pkg, "targets").effective(include_disabled=True)}
+            action_ids = {a.id for a, _ in Curation(self.pkg, "actions").effective(include_disabled=True)}
+            for owner in [item, *item.sub_claims]:
+                if owner is not item:
+                    errors += self.ref_errors(owner.refs)
+                errors += [f"evidence: no target {t!r}" for t in owner.evidence if t not in target_ids]
+                if owner.method is not None and owner.method not in action_ids:
+                    errors.append(f"method: no action {owner.method!r}")
+            if actions is not None:  # here: all claims
+                ids = {c.id for c in actions}
+                errors += [f"depends_on: no claim {d!r}" for d in item.depends_on if d not in ids]
+                errors += [f"traced_under: no claim {d!r}" for d in item.traced_under if d not in ids]
         return errors
 
 
@@ -136,11 +156,14 @@ class Curation:
         return f"{self.spec.kind}.json"
 
     def load(self) -> Any:
+        if self.spec.kind == "claims" and not self.pkg.path(self.rel).exists():
+            return self.spec.file_model()  # packages made before claims existed
         return self.spec.file_model.model_validate(self.pkg.read_json(self.rel))
 
     def _save(self, f: BaseModel) -> None:
         with self.pkg.edit() as m:
-            meta = m.get(self.spec.kind).reprocrowd
+            r = m.get(self.spec.kind)
+            meta = r.reprocrowd if r else OtherMeta(kind="curation", added_at=now())  # claims.json is created on first save
             self.pkg.write_json(m, self.spec.kind, self.rel, f, schema=self.spec.kind, meta=meta)
 
     # ----- views -----
@@ -181,7 +204,7 @@ class Curation:
     def _check(self, f, item: BaseModel, ctx: Context | None = None) -> None:
         ctx = ctx or Context(self.pkg)
         actions = None
-        if self.spec.kind == "actions":
+        if self.spec.kind in ("actions", "claims"):
             actions = [a for a, _ in self._effective_of(f, include_disabled=True)]
         errors = ctx.item_errors(self.spec, item, actions)
         if not errors and self.spec.kind == "actions":
@@ -223,6 +246,8 @@ class Curation:
         actions = [a for a, _ in Curation(self.pkg, "actions").effective(include_disabled=True)]
         if self.spec.kind == "targets":
             return [a.id for a in actions if item_id in a.produces]
+        if self.spec.kind == "claims":
+            return [c.id for c, _ in self.effective(include_disabled=True) if item_id in c.depends_on or item_id in c.traced_under]
         return [a.id for a in actions if item_id in a.depends_on]
 
     # ----- edits (JSON merge patch) -----
