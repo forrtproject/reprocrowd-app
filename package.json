@@ -12,7 +12,7 @@
     "build": "scripts/build.sh",
     "start": "npm run build && electron .",
     "bundle-backend": "scripts/bundle-backend.sh",
-    "dist": "npm run build && npm run bundle-backend && electron-builder --linux",
+    "dist": "npm run build && npm run bundle-backend && electron-builder",
     "test:e2e": "node test/e2e.mjs"
   },
   "devDependencies": {
