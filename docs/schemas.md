@@ -124,6 +124,7 @@ report: report.html and comparison.json · figure: originals of figure targets (
 | `metadata_fetched_at` | string (date-time) \| null |  |  |
 | `archive` | [ArchiveInfo](#archiveinfo) \| null |  |  |
 | `submissions` | list of [Submission](#submission) |  |  |
+| `deposits` | list of [ZenodoDeposit](#zenododeposit) |  | Zenodo deposits |
 
 ### Resource
 
@@ -186,6 +187,40 @@ An upload of the archive to the package database.
 | `url` | string | yes | download URL (secrets such as API keys removed) |
 | `candidate` | string | yes | candidate id it was chosen as |
 | `label` | string | yes | where the candidate came from, e.g. "OpenAlex best OA location" |
+
+### ZenodoCreator
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `name` | string | yes | "Family, Given" |
+| `orcid` | string \| null |  |  |
+| `affiliation` | string \| null |  |  |
+
+### ZenodoDeposit
+
+A deposit of the package on Zenodo: a draft until it is published (then it has its DOI for good).
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `id` | string | yes | pattern `^zen-[0-9a-f]+$` |
+| `server` | string | yes | Zenodo base URL at the time |
+| `sandbox` | boolean | yes | deposited to Zenodo's test instance |
+| `deposition_id` | integer | yes |  |
+| `status` | `"draft"` \| `"published"` \| `"discarded"` \| `"gone"` | yes | gone: deleted on Zenodo (only drafts can be) |
+| `title` | string | yes |  |
+| `doi` | string \| null |  | reserved while a draft, registered once published |
+| `url` | string | yes | the draft's edit page, or the published record |
+| `file` | string | yes | name of the uploaded ZIP |
+| `sha256` | string | yes | hash of the uploaded ZIP |
+| `archive_sha256` | string | yes | hash of the package archive it was made from |
+| `exclude` | list of `"paper"` \| `"inputs"` |  | groups of files left out of the upload |
+| `excluded` | list of string |  | the resources that were left out |
+| `community` | string \| null |  |  |
+| `creators` | list of [ZenodoCreator](#zenodocreator) | yes |  |
+| `note` | string |  | default `` |
+| `created_at` | string (date-time) | yes |  |
+| `published_at` | string (date-time) \| null |  |  |
+| `checked_at` | string (date-time) \| null |  |  |
 
 ## `document`: extractions/<id>.json
 

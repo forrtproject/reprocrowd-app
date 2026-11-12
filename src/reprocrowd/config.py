@@ -94,6 +94,14 @@ class Settings(BaseModel):
                                     description="{input}: the PDF, {outdir}: folder for the JSON; empty = not configured")
     docling_timeout_s: int = 1800
     database_url: str = Field(default="", description="package database, e.g. http://127.0.0.1:8765; empty = none")
+    zenodo_url: str = Field(default="https://zenodo.org", description="Zenodo for deposits")
+    zenodo_sandbox_url: str = Field(default="https://sandbox.zenodo.org", description="Zenodo's test instance (separate accounts and tokens)")
+    zenodo_sandbox: bool = Field(default=False, description="use the sandbox unless a request says otherwise")
+    zenodo_token: str = Field(default="", description="personal access token (scopes deposit:write, deposit:actions) used when a request "
+                                                      "brings none; clients usually send the user's own")
+    zenodo_community: str = Field(default="", description="Zenodo community the deposits are submitted to; empty = none")
+    zenodo_creators: list[dict[str, str]] = Field(default_factory=list, description="creators when a request names none: [{name, orcid?, affiliation?}]")
+    zenodo_license: str = Field(default="cc-by-4.0", description="license id of the deposits")
     run_timeout_s: int = Field(default=7200, description="limit for a run of the master script")
     agent_default_profile: str = "claude"
     agent_profiles: dict[str, AgentProfile] = Field(default_factory=_default_agents)
@@ -133,6 +141,8 @@ def load_settings(path: Path | None = None) -> Settings:
             data[f"{name}_{k}"] = v
     if "url" in raw.get("database", {}):
         data["database_url"] = raw["database"]["url"]
+    for k, v in raw.get("zenodo", {}).items():
+        data[f"zenodo_{k}"] = v
     if "timeout_s" in raw.get("run", {}):
         data["run_timeout_s"] = raw["run"]["timeout_s"]
     agent = raw.get("agent", {})

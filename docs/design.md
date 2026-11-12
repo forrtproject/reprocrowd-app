@@ -184,6 +184,9 @@ clients) works without special cases.
 | `GET /v1/database` · `GET /v1/database/packages?doi=` | | status · packages for a DOI | `database_not_configured`, `database_unreachable` |
 | `POST …/submissions` | `{note?, database_token?}` | 201 submission (`finish_url` to confirm in the browser; published at once with a token) | `no_doi`, `run_not_succeeded`, `archive_missing`, `archive_stale`, `duplicate_submission`, `submission_rejected`, `database_token_invalid`, `database_forbidden`, … |
 | `GET …/submissions[/{id}]` | | submissions · one, status refreshed from the database | |
+| `GET /v1/zenodo` · `POST /v1/zenodo:verify-token` · `GET /v1/zenodo/records?doi=` | `?sandbox` · `{zenodo_token, sandbox?}` | server status · token accepted · published ReproCrowd records for a DOI | `zenodo_token_invalid`, `zenodo_unreachable` |
+| `POST …/deposits:preview` · `POST …/deposits` | `{note?, exclude?, creators?, community?}` + `{zenodo_token?, sandbox?, publish?}` | metadata and file groups · 201 deposit (a draft with a reserved DOI, or published) | the submission preconditions, `duplicate_submission`, `zenodo_token_missing`, `zenodo_creators_missing`, `zenodo_rejected`, … |
+| `GET …/deposits[/{id}]` · `POST …/deposits/{id}:refresh` · `:publish` · `:discard` | `{zenodo_token?}` | deposits · status from Zenodo · publish a draft · delete a draft | `deposit_not_draft` |
 | `GET …/files` · `GET …/files/{path}` · `POST …/{pkg}:sync` | | files on disk with their resource · one file's content · `{added, updated, removed}` | `not_found`, `job_running` |
 
 **LLM error classes (reconcile, target/action runs):**
@@ -548,6 +551,46 @@ sequenceDiagram
 > **Implemented in:** `database.py` (`status`, `find`, `submit`, `refresh`), `schemas/manifest.py`
 > (`Submission`), `report.write_archive` (`inputs.json`), CLI `rc submit`, `rc submission`. Tested with a mocked
 > database, and end to end against the local simulation (upload, confirmation by a signed-in user, status).
+
+## Deposits on Zenodo
+
+The successor of the package database for public submissions (the ReproCrowd app uses only this). Same
+preconditions and the same OpenAlex-only bibliographic metadata (`database.Prepared`).
+
+```mermaid
+sequenceDiagram
+  participant C as client
+  participant S as service
+  participant Z as Zenodo
+  C->>S: POST …/deposits {zenodo_token, creators, exclude?, note}
+  S->>S: checks · publication copy of the archive (without excluded groups)
+  S->>Z: POST /api/deposit/depositions {metadata, prereserve_doi}
+  S->>Z: PUT {bucket}/<stem>-reproduction.zip
+  S-->>C: 201 deposit {status: draft, doi (reserved), url}
+  C->>S: POST …/deposits/{id}:publish {zenodo_token}
+  S->>Z: POST …/actions/publish
+  S-->>C: {status: published, doi, url}
+```
+
+- **Drafts first.** A published record and its DOI are permanent, so a deposit is a draft unless the request
+  says `publish: true`; the user can check it on Zenodo, and publish there (`:refresh` notices) or through the API.
+  `:discard` deletes a draft. A failed file upload deletes the new draft again.
+- **Token**: the user's personal access token (scopes `deposit:write`, `deposit:actions`), sent with each request
+  and never stored; `[zenodo] token` is a fallback for local CLI use. zenodo.org and the sandbox have separate
+  accounts and tokens; `sandbox` picks one per request (default `[zenodo] sandbox`).
+- **What is uploaded.** A Zenodo record is public, so two groups of files can be left out (`exclude`):
+  `paper` (full texts, extractions, original figures; by default left out unless OpenAlex reports a CC or
+  public-domain license for the paper) and `inputs` (the authors' data and code; included by default). The
+  copy's `datapackage.json` lists only what it contains, and `excluded-files.json` lists the rest with hashes.
+- **Metadata**: title "Computational reproduction of: …", creators from the request (or `[zenodo] creators`),
+  `publication`/`report`, the configured license (`cc-by-4.0`), keywords incl. `ReproCrowd`, the paper's DOI
+  as related identifier with relation `reviews`, a description with the result counts, template and note,
+  and `[zenodo] community` if set. `GET /v1/zenodo/records?doi=` finds published records by that DOI and keyword.
+- Deposits are recorded in the manifest (`reprocrowd.deposits`); the same archive and exclusions on the same
+  server again is `duplicate_submission`.
+
+> **Implemented in:** `zenodo.py`, `schemas/manifest.py` (`ZenodoDeposit`), CLI `rc zenodo …`. Tested with a
+> mocked Zenodo (`tests/test_zenodo.py`); not yet against the real sandbox (needs a token).
 
 ## Uploads, directories, pagination
 

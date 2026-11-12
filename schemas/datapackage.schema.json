@@ -484,6 +484,14 @@
           },
           "title": "Submissions",
           "type": "array"
+        },
+        "deposits": {
+          "description": "Zenodo deposits",
+          "items": {
+            "$ref": "#/$defs/ZenodoDeposit"
+          },
+          "title": "Deposits",
+          "type": "array"
         }
       },
       "required": [
@@ -783,6 +791,211 @@
         "label"
       ],
       "title": "UrlOrigin",
+      "type": "object"
+    },
+    "ZenodoCreator": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "description": "\"Family, Given\"",
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "orcid": {
+          "anyOf": [
+            {
+              "pattern": "^\\d{4}-\\d{4}-\\d{4}-\\d{3}[\\dX]$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Orcid"
+        },
+        "affiliation": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Affiliation"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "title": "ZenodoCreator",
+      "type": "object"
+    },
+    "ZenodoDeposit": {
+      "additionalProperties": false,
+      "description": "A deposit of the package on Zenodo: a draft until it is published (then it has its DOI for good).",
+      "properties": {
+        "id": {
+          "pattern": "^zen-[0-9a-f]+$",
+          "title": "Id",
+          "type": "string"
+        },
+        "server": {
+          "description": "Zenodo base URL at the time",
+          "title": "Server",
+          "type": "string"
+        },
+        "sandbox": {
+          "description": "deposited to Zenodo's test instance",
+          "title": "Sandbox",
+          "type": "boolean"
+        },
+        "deposition_id": {
+          "title": "Deposition Id",
+          "type": "integer"
+        },
+        "status": {
+          "description": "gone: deleted on Zenodo (only drafts can be)",
+          "enum": [
+            "draft",
+            "published",
+            "discarded",
+            "gone"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "doi": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "reserved while a draft, registered once published",
+          "title": "Doi"
+        },
+        "url": {
+          "description": "the draft's edit page, or the published record",
+          "title": "Url",
+          "type": "string"
+        },
+        "file": {
+          "description": "name of the uploaded ZIP",
+          "title": "File",
+          "type": "string"
+        },
+        "sha256": {
+          "description": "hash of the uploaded ZIP",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "archive_sha256": {
+          "description": "hash of the package archive it was made from",
+          "title": "Archive Sha256",
+          "type": "string"
+        },
+        "exclude": {
+          "description": "groups of files left out of the upload",
+          "items": {
+            "enum": [
+              "paper",
+              "inputs"
+            ],
+            "type": "string"
+          },
+          "title": "Exclude",
+          "type": "array"
+        },
+        "excluded": {
+          "description": "the resources that were left out",
+          "items": {
+            "type": "string"
+          },
+          "title": "Excluded",
+          "type": "array"
+        },
+        "community": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Community"
+        },
+        "creators": {
+          "items": {
+            "$ref": "#/$defs/ZenodoCreator"
+          },
+          "title": "Creators",
+          "type": "array"
+        },
+        "note": {
+          "default": "",
+          "title": "Note",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "published_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Published At"
+        },
+        "checked_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Checked At"
+        }
+      },
+      "required": [
+        "id",
+        "server",
+        "sandbox",
+        "deposition_id",
+        "status",
+        "title",
+        "url",
+        "file",
+        "sha256",
+        "archive_sha256",
+        "creators",
+        "created_at"
+      ],
+      "title": "ZenodoDeposit",
       "type": "object"
     }
   },

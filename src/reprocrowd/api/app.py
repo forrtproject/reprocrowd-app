@@ -24,7 +24,7 @@ from starlette.concurrency import run_in_threadpool
 from starlette.datastructures import UploadFile as StarletteUploadFile
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from .. import __version__, codegen, coordinates, curation, database, figures, report, run, extractions, files, fulltexts, inputs, jobs, llm, metadata, scripts
+from .. import __version__, zenodo, codegen, coordinates, curation, database, figures, report, run, extractions, files, fulltexts, inputs, jobs, llm, metadata, scripts
 from ..config import settings
 from ..errors import ApiError, not_found
 from ..extractions import Scope
@@ -34,7 +34,7 @@ from ..events import EventReader, read_events
 from ..schemas.document import Document
 from ..schemas.comparison import Comparison, CompareSettings
 from ..schemas.jobs import Job, JobEvent
-from ..schemas.manifest import ArchiveInfo, Resource, Submission
+from ..schemas.manifest import ArchiveInfo, Resource, Submission, ZenodoDeposit
 from ..validation import ValidationReport, validate_package
 from . import models as M
 from .problems import CATALOG, STATUS_CODES, Problem, ProblemType, problem_types
@@ -55,6 +55,7 @@ TAGS = [
     {"name": "comparison", "description": "Reproduced results compared with the targets."},
     {"name": "report", "description": "The reproduction report and the ZIP of the package."},
     {"name": "database", "description": "Submission to the package database (optional)."},
+    {"name": "zenodo", "description": "Deposits on Zenodo: a draft with the package ZIP and a reserved DOI, published in a separate step."},
 ]
 
 @asynccontextmanager
@@ -902,6 +903,83 @@ def list_submissions(pkg: Pkg, page: Paged):
          responses=errors("not_found", "database_unreachable", "database_error"))
 def get_submission(pkg: Pkg, sub: str):
     return database.refresh(pkg, sub)
+
+
+# ---------- Zenodo ----------
+
+DEPOSIT_PRECONDITIONS = ("no_doi", "run_not_succeeded", "archive_missing", "archive_stale", "openalex_record_missing", "job_running")
+
+
+def _tok(body: M.ZenodoAuth) -> str | None:
+    return body.zenodo_token.get_secret_value() if body.zenodo_token else None
+
+
+@api.get("/zenodo", tags=["zenodo"], response_model=M.ZenodoStatus, summary="The Zenodo server deposits go to, and whether it is reachable")
+def zenodo_status(sandbox: bool | None = None):
+    return zenodo.status(sandbox)
+
+
+@api.post("/zenodo:verify-token", tags=["zenodo"], response_model=M.ZenodoTokenResult, summary="Check a Zenodo access token",
+          responses=errors("zenodo_token_missing", "zenodo_token_invalid", "zenodo_unreachable", "zenodo_error"))
+def zenodo_verify(body: M.ZenodoTokenCheck = Body(default_factory=M.ZenodoTokenCheck)):
+    return zenodo.verify_token(_tok(body), body.sandbox)
+
+
+@api.get("/zenodo/records", tags=["zenodo"], response_model=list[M.ZenodoRecord], summary="Published ReproCrowd records for a paper",
+         description="Public records on Zenodo with the keyword ReproCrowd that relate to the DOI.", responses=errors("zenodo_unreachable", "zenodo_error"))
+def zenodo_records(doi: Annotated[str, Query(min_length=3)], sandbox: bool | None = None):
+    return zenodo.find(doi, sandbox)
+
+
+@api.get("/packages/{pkg}/deposits", tags=["zenodo"], response_model=list[ZenodoDeposit], summary="Zenodo deposits of this package")
+def list_deposits(pkg: Pkg, page: Paged):
+    return page(pkg.load().reprocrowd.deposits)
+
+
+@api.post("/packages/{pkg}/deposits:preview", tags=["zenodo"], response_model=M.DepositPreview, summary="Show what a deposit would send",
+          description="The metadata and the groups of files, without contacting Zenodo.", responses=errors(*DEPOSIT_PRECONDITIONS))
+def preview_deposit(pkg: Pkg, body: M.DepositOptions = Body(default_factory=M.DepositOptions)):
+    return zenodo.preview(pkg, body.exclude, body.note, body.creators, body.community)
+
+
+@api.post("/packages/{pkg}/deposits", tags=["zenodo"], status_code=201, response_model=ZenodoDeposit, summary="Deposit the package on Zenodo",
+          description="Creates a draft on Zenodo with the metadata (from OpenAlex, looked up now) and the package ZIP, without the excluded "
+                      "groups of files, and reserves a DOI. With `publish: true` it is published at once; otherwise publish it on Zenodo "
+                      "or with `…/deposits/{id}:publish`. Same preconditions as a database submission.",
+          responses=errors(*DEPOSIT_PRECONDITIONS, "duplicate_submission", "zenodo_token_missing", "zenodo_token_invalid",
+                           "zenodo_creators_missing", "zenodo_rejected", "zenodo_unreachable", "zenodo_error"))
+def create_deposit(pkg: Pkg, response: Response, body: M.DepositCreate = Body(default_factory=M.DepositCreate)):
+    d = zenodo.create(pkg, token=_tok(body), sandbox=body.sandbox, exclude=body.exclude, note=body.note, creators=body.creators,
+                      community=body.community, publish=body.publish)
+    created(response, f"/v1/packages/{pkg.id}/deposits/{d.id}")
+    return d
+
+
+@api.get("/packages/{pkg}/deposits/{dep}", tags=["zenodo"], response_model=ZenodoDeposit, summary="A deposit, as recorded",
+         responses=errors("not_found"))
+def get_deposit(pkg: Pkg, dep: str):
+    return zenodo._find(pkg, dep)
+
+
+@api.post("/packages/{pkg}/deposits/{dep}:refresh", tags=["zenodo"], response_model=ZenodoDeposit, summary="Update a deposit's status from Zenodo",
+          description="A draft may have been published or deleted on the website.",
+          responses=errors("not_found", "zenodo_token_missing", "zenodo_token_invalid", "zenodo_unreachable", "zenodo_error"))
+def refresh_deposit(pkg: Pkg, dep: str, body: M.ZenodoAuth = Body(default_factory=M.ZenodoAuth)):
+    return zenodo.refresh(pkg, dep, _tok(body))
+
+
+@api.post("/packages/{pkg}/deposits/{dep}:publish", tags=["zenodo"], response_model=ZenodoDeposit, summary="Publish a draft deposit",
+          description="Registers the DOI. A published record can't be deleted, only versioned.",
+          responses=errors("not_found", "deposit_not_draft", "zenodo_token_missing", "zenodo_token_invalid", "zenodo_rejected",
+                           "zenodo_unreachable", "zenodo_error"))
+def publish_deposit(pkg: Pkg, dep: str, body: M.ZenodoAuth = Body(default_factory=M.ZenodoAuth)):
+    return zenodo.publish_deposit(pkg, dep, _tok(body))
+
+
+@api.post("/packages/{pkg}/deposits/{dep}:discard", tags=["zenodo"], response_model=ZenodoDeposit, summary="Delete a draft deposit on Zenodo",
+          responses=errors("not_found", "deposit_not_draft", "zenodo_token_missing", "zenodo_token_invalid", "zenodo_unreachable", "zenodo_error"))
+def discard_deposit(pkg: Pkg, dep: str, body: M.ZenodoAuth = Body(default_factory=M.ZenodoAuth)):
+    return zenodo.discard(pkg, dep, _tok(body))
 
 
 # ---------- files ----------

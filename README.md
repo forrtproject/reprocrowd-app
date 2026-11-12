@@ -43,6 +43,7 @@ rc figures phacking                              # the original figures: as publ
 rc report phacking --open                        # report.html with the provenance of every target
 rc archive phacking --download phacking.zip      # the package as a ZIP (must validate)
 rc submit phacking                               # upload to the package database; confirm in the browser
+REPROCROWD_ZENODO_TOKEN=… rc zenodo deposit phacking --sandbox --creator "Doe, Jane"   # or: a draft on Zenodo
 rc validate phacking
 ```
 

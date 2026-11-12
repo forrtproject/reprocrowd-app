@@ -558,6 +558,105 @@ def agents():
     out(call("GET", "/agent-profiles"))
 
 
+zen = typer.Typer(help="Deposits on Zenodo. The token comes from $REPROCROWD_ZENODO_TOKEN, else the service's [zenodo] token.",
+                  no_args_is_help=True)
+app.add_typer(zen, name="zenodo")
+
+
+def _zauth(body: dict | None = None) -> dict:
+    body = dict(body or {})
+    if os.environ.get("REPROCROWD_ZENODO_TOKEN"):
+        body["zenodo_token"] = os.environ["REPROCROWD_ZENODO_TOKEN"]
+    return body
+
+
+@zen.command("status")
+def zen_status(sandbox: Optional[bool] = typer.Option(None, "--sandbox/--production")):
+    """The Zenodo server deposits go to, and whether it is reachable."""
+    out(call("GET", "/zenodo", params={} if sandbox is None else {"sandbox": sandbox}))
+
+
+@zen.command("verify")
+def zen_verify(sandbox: Optional[bool] = typer.Option(None, "--sandbox/--production")):
+    """Check the Zenodo access token."""
+    out(call("POST", "/zenodo:verify-token", _zauth({"sandbox": sandbox})))
+
+
+@zen.command("records")
+def zen_records(doi: str, sandbox: Optional[bool] = typer.Option(None, "--sandbox/--production")):
+    """Published ReproCrowd records for a paper."""
+    out(call("GET", "/zenodo/records", params={"doi": doi, **({} if sandbox is None else {"sandbox": sandbox})}))
+
+
+def _deposit_options(note: str, exclude: Optional[list[str]], include_all: bool, creator: Optional[list[str]], orcid: Optional[list[str]],
+                     affiliation: Optional[list[str]], community: Optional[str]) -> dict:
+    body: dict[str, Any] = {"note": note}
+    if include_all:
+        body["exclude"] = []
+    elif exclude:
+        body["exclude"] = exclude
+    if creator:
+        body["creators"] = [{"name": n, **({"orcid": orcid[i]} if orcid and i < len(orcid) and orcid[i] else {}),
+                             **({"affiliation": affiliation[i]} if affiliation and i < len(affiliation) and affiliation[i] else {})}
+                            for i, n in enumerate(creator)]
+    if community is not None:
+        body["community"] = community
+    return body
+
+
+_EXCLUDE = typer.Option(None, "--exclude", help="leave out a group of files: paper, inputs (repeatable); default: paper unless openly licensed")
+_ALL = typer.Option(False, "--include-all", help="upload everything")
+_CREATOR = typer.Option(None, "--creator", help='"Family, Given" (repeatable; default: [zenodo] creators)')
+_ORCID = typer.Option(None, "--orcid", help="ORCID of the creator at the same position")
+_AFFIL = typer.Option(None, "--affiliation", help="affiliation of the creator at the same position")
+
+
+@zen.command("preview")
+def zen_preview(pkg: str, note: str = "", exclude: Optional[list[str]] = _EXCLUDE, include_all: bool = _ALL, creator: Optional[list[str]] = _CREATOR,
+                orcid: Optional[list[str]] = _ORCID, affiliation: Optional[list[str]] = _AFFIL, community: Optional[str] = None):
+    """Show the metadata and files a deposit would send."""
+    out(call("POST", f"/packages/{pkg}/deposits:preview", _deposit_options(note, exclude, include_all, creator, orcid, affiliation, community), timeout=None))
+
+
+@zen.command("deposit")
+def zen_deposit(pkg: str, note: str = "", exclude: Optional[list[str]] = _EXCLUDE, include_all: bool = _ALL, creator: Optional[list[str]] = _CREATOR,
+                orcid: Optional[list[str]] = _ORCID, affiliation: Optional[list[str]] = _AFFIL, community: Optional[str] = None,
+                sandbox: Optional[bool] = typer.Option(None, "--sandbox/--production"),
+                publish: bool = typer.Option(False, help="publish at once (registers the DOI for good)")):
+    """Upload the package to Zenodo as a draft (or publish it with --publish)."""
+    body = _zauth(_deposit_options(note, exclude, include_all, creator, orcid, affiliation, community)) | {"sandbox": sandbox, "publish": publish}
+    d = call("POST", f"/packages/{pkg}/deposits", body, timeout=None)
+    out(d)
+    if d["status"] == "draft":
+        typer.echo(f"Draft at {d['url']} (reserved DOI {d.get('doi')}); publish it there or with `rc zenodo publish {pkg} {d['id']}`.", err=True)
+
+
+@zen.command("list")
+def zen_list(pkg: str):
+    """Deposits of a package."""
+    out(call("GET", f"/packages/{pkg}/deposits"))
+
+
+@zen.command("refresh")
+def zen_refresh(pkg: str, dep: str):
+    """Update a deposit's status from Zenodo."""
+    out(call("POST", f"/packages/{pkg}/deposits/{dep}:refresh", _zauth()))
+
+
+@zen.command("publish")
+def zen_publish(pkg: str, dep: str, yes: bool = typer.Option(False, "--yes", help="don't ask")):
+    """Publish a draft deposit (registers the DOI; it can't be deleted afterwards)."""
+    if not yes:
+        typer.confirm("Publishing registers the DOI, and the record can't be deleted afterwards. Publish?", abort=True)
+    out(call("POST", f"/packages/{pkg}/deposits/{dep}:publish", _zauth(), timeout=None))
+
+
+@zen.command("discard")
+def zen_discard(pkg: str, dep: str):
+    """Delete a draft deposit on Zenodo."""
+    out(call("POST", f"/packages/{pkg}/deposits/{dep}:discard", _zauth()))
+
+
 job_app = typer.Typer(help="Jobs (code generation): status, progress, cancel.", no_args_is_help=True)
 app.add_typer(job_app, name="job")
 

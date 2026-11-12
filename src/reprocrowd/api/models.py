@@ -9,7 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field, SecretStr, create_model
 from ..schemas.common import Identifier, Model
 from ..schemas.curation import Action, ActionFields, Target, TargetFields
 from ..schemas.jobs import Job, TodoStatus
-from ..schemas.manifest import Resource, Role
+from ..schemas.manifest import ZenodoCreator, Resource, Role
 
 
 class Req(Model):
@@ -336,6 +336,63 @@ class SubmissionCreate(Req):
     database_token: SecretStr | None = Field(
         default=None, description="the user's token for the package database (from its /auth/client sign-in). With it the package is "
                                   "published at once under that user; without it the user confirms at finish_url. Passed on, never stored")
+
+
+# ---------- Zenodo ----------
+
+
+class ZenodoStatus(BaseModel):
+    url: str
+    sandbox: bool
+    token_configured: bool = Field(description="the service has a fallback token ([zenodo] token)")
+    community: str | None
+    reachable: bool
+    error: str | None = None
+
+
+class ZenodoAuth(Req):
+    zenodo_token: SecretStr | None = Field(default=None, description="the user's Zenodo personal access token (scopes deposit:write, "
+                                                                     "deposit:actions); passed on, never stored. Default: [zenodo] token")
+
+
+class ZenodoTokenCheck(ZenodoAuth):
+    sandbox: bool | None = Field(default=None, description="check against the sandbox; default from the config")
+
+
+class ZenodoTokenResult(BaseModel):
+    ok: bool
+    url: str
+    sandbox: bool
+
+
+class ZenodoRecord(BaseModel):
+    id: int | str | None
+    doi: str | None
+    title: str | None
+    creators: list[str]
+    published: str | None
+    url: str
+
+
+class DepositOptions(Req):
+    note: str = Field(default="", max_length=4000, description="shown in the record's description")
+    exclude: list[Literal["paper", "inputs"]] | None = Field(
+        default=None, description="groups of files to leave out of the upload. paper: full texts, extractions, original figures; inputs: "
+                                  "input files. Default: paper, unless OpenAlex reports an open license for it")
+    creators: list[ZenodoCreator] | None = Field(default=None, description="the record's creators (the person submitting). Default: [zenodo] creators")
+    community: str | None = Field(default=None, description="Zenodo community to submit to; default from the config, \"\" for none")
+
+
+class DepositCreate(DepositOptions, ZenodoAuth):
+    sandbox: bool | None = Field(default=None, description="deposit to Zenodo's sandbox; default from the config")
+    publish: bool = Field(default=False, description="publish at once (registers the DOI; the record can't be deleted afterwards). "
+                                                     "Default: leave a draft to look at on Zenodo first")
+
+
+class DepositPreview(BaseModel):
+    metadata: dict[str, Any] = Field(description="the Zenodo metadata that would be sent")
+    contents: dict[str, Any] = Field(description="groups of files that can be left out, the paper's license and the default")
+    exclude: list[str]
 
 
 # ---------- figure crops ----------

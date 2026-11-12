@@ -19,6 +19,7 @@ def client(tmp_path, monkeypatch):
         f'[server]\nregistry = "{tmp_path / "registry.json"}"\n\n[openalex]\napi_key = ""\n\n'
         f'[converters.grobid]\nurl = "http://grobid.test"\n\n'
         '[database]\nurl = "http://db.test"\n\n'
+        '[zenodo]\nurl = "http://zenodo.test"\nsandbox_url = "http://sandbox.zenodo.test"\n\n'
         f'[converters.docling]\nargv = ["{sys.executable}", "{HERE / "fake_docling.py"}", "--to", "json", "--output", "{{outdir}}", "{{input}}"]\n\n'
         '[llm]\ndefault_profile = "ok"\n\n'
         + "".join(_profile(m) for m in ("ok", "garbage", "badschema", "fail"))

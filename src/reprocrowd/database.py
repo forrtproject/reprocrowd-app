@@ -76,36 +76,49 @@ def _check_archive(pkg: Package) -> None:
         raise conflict("archive_stale", "the package changed since the archive was made; create it again (PUT …/archive)")
 
 
+class Prepared:
+    """What every submission needs, checked: a DOI, a last run that succeeded, an up-to-date archive and the work's
+    OpenAlex record (bibliographic metadata comes only from there, looked up now)."""
+
+    def __init__(self, pkg: Package):
+        jobs.ensure_idle(pkg)
+        m = pkg.load()
+        doi = m.reprocrowd.identifiers.get("doi") or (m.reprocrowd.identifier.value if m.reprocrowd.identifier and m.reprocrowd.identifier.scheme == "doi" else None)
+        if not doi:
+            raise conflict("no_doi", "only packages for a paper with a DOI can be submitted")
+        runs = [j for j in jobs.list_jobs(pkg) if j.type == "run"]
+        if not runs or runs[-1].status != "succeeded":
+            raise conflict("run_not_succeeded", "the last run of the master script must have succeeded (POST …/jobs {type: run})")
+        _check_archive(pkg)
+        self.cmp = comparison(pkg, CompareSettings())
+        try:
+            work = openalex.fetch_work(Identifier(scheme="doi", value=doi))
+        except ApiError as e:
+            raise conflict("openalex_record_missing", f"can't submit without the OpenAlex record for doi:{doi}: {e.message}")
+        if not work.get("title"):
+            raise conflict("openalex_record_missing", f"the OpenAlex record for doi:{doi} has no title")
+        template = next((r.reprocrowd.template for r in m.by_kind("script")), None)
+        from .scripts import templates
+
+        self.m, self.doi, self.work = m, doi, work
+        self.template = templates().get(template or "")
+        self.authors = [a["author"].get("display_name", "") for a in work.get("authorships") or [] if a.get("author")]
+        self.year = work.get("publication_year") if isinstance(work.get("publication_year"), int) else None
+        self.venue = ((work.get("primary_location") or {}).get("source") or {}).get("display_name")
+
+
 def submit(pkg: Package, note: str = "", token: str | None = None) -> Submission:
     url = base()
-    jobs.ensure_idle(pkg)
-    m = pkg.load()
-    doi = m.reprocrowd.identifiers.get("doi") or (m.reprocrowd.identifier.value if m.reprocrowd.identifier and m.reprocrowd.identifier.scheme == "doi" else None)
-    if not doi:
-        raise conflict("no_doi", "only packages for a paper with a DOI can be submitted")
-    runs = [j for j in jobs.list_jobs(pkg) if j.type == "run"]
-    if not runs or runs[-1].status != "succeeded":
-        raise conflict("run_not_succeeded", "the last run of the master script must have succeeded (POST …/jobs {type: run})")
-    _check_archive(pkg)
-    cmp = comparison(pkg, CompareSettings())
-    try:  # bibliographic metadata only from OpenAlex, looked up now
-        work = openalex.fetch_work(Identifier(scheme="doi", value=doi))
-    except ApiError as e:
-        raise conflict("openalex_record_missing", f"can't submit without the OpenAlex record for doi:{doi}: {e.message}")
-    if not work.get("title"):
-        raise conflict("openalex_record_missing", f"the OpenAlex record for doi:{doi} has no title")
-    template = next((r.reprocrowd.template for r in m.by_kind("script")), None)
-    from .scripts import templates
-
-    tpl = templates().get(template or "")
+    p = Prepared(pkg)
+    m, doi, work, tpl = p.m, p.doi, p.work, p.template
     metadata = {
         "doi": doi,
         "openalex_id": work.get("id"),
         "title": work["title"],
-        "authors": ", ".join(a.get("author", {}).get("display_name", "") for a in work.get("authorships") or [] if a.get("author")),
-        "year": work.get("publication_year") if isinstance(work.get("publication_year"), int) else None,
-        "venue": ((work.get("primary_location") or {}).get("source") or {}).get("display_name"),
-        "summary": {"statuses": cmp.summary},
+        "authors": ", ".join(p.authors),
+        "year": p.year,
+        "venue": p.venue,
+        "summary": {"statuses": p.cmp.summary},
         "template": tpl.label if tpl else None,
         "command": tpl.command if tpl else None,
         "note": note or None,

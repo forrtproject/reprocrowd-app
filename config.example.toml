@@ -29,6 +29,16 @@ timeout_s = 1800
 [database]
 url = ""                   # e.g. "http://127.0.0.1:8765"
 
+# Zenodo deposits (POST …/deposits). Deposits are drafts until published; published records can't be deleted.
+[zenodo]
+url = "https://zenodo.org"
+sandbox_url = "https://sandbox.zenodo.org"
+sandbox = false            # true: deposit to the sandbox unless a request says otherwise
+token = ""                 # personal access token (deposit:write, deposit:actions); clients usually send the user's own
+community = ""             # e.g. "reprocrowd": deposits are submitted to this community
+license = "cc-by-4.0"
+creators = []              # used when a request names none, e.g. [{name = "Doe, Jane", orcid = "0000-0002-1825-0097"}]
+
 # Runs of the master script (the template's command, in the user's environment).
 [run]
 timeout_s = 7200

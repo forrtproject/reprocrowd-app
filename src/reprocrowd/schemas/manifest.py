@@ -144,6 +144,36 @@ class Submission(Model):
     package_url: str | None = Field(default=None, description="the package's page once confirmed")
 
 
+class ZenodoCreator(Model):
+    name: str = Field(min_length=1, description='"Family, Given"')
+    orcid: str | None = Field(default=None, pattern=r"^\d{4}-\d{4}-\d{4}-\d{3}[\dX]$")
+    affiliation: str | None = None
+
+
+class ZenodoDeposit(Model):
+    """A deposit of the package on Zenodo: a draft until it is published (then it has its DOI for good)."""
+
+    id: str = Field(pattern=r"^zen-[0-9a-f]+$")
+    server: str = Field(description="Zenodo base URL at the time")
+    sandbox: bool = Field(description="deposited to Zenodo's test instance")
+    deposition_id: int
+    status: Literal["draft", "published", "discarded", "gone"] = Field(description="gone: deleted on Zenodo (only drafts can be)")
+    title: str
+    doi: str | None = Field(default=None, description="reserved while a draft, registered once published")
+    url: str = Field(description="the draft's edit page, or the published record")
+    file: str = Field(description="name of the uploaded ZIP")
+    sha256: str = Field(description="hash of the uploaded ZIP")
+    archive_sha256: str = Field(description="hash of the package archive it was made from")
+    exclude: list[Literal["paper", "inputs"]] = Field(default_factory=list, description="groups of files left out of the upload")
+    excluded: list[str] = Field(default_factory=list, description="the resources that were left out")
+    community: str | None = None
+    creators: list[ZenodoCreator]
+    note: str = ""
+    created_at: datetime
+    published_at: datetime | None = None
+    checked_at: datetime | None = None
+
+
 class PackageMeta(Model):
     version: Literal["1.0"] = "1.0"
     created_at: datetime
@@ -152,6 +182,7 @@ class PackageMeta(Model):
     metadata_fetched_at: datetime | None = None
     archive: ArchiveInfo | None = None
     submissions: list[Submission] = Field(default_factory=list)
+    deposits: list[ZenodoDeposit] = Field(default_factory=list, description="Zenodo deposits")
 
 
 class Manifest(Model):

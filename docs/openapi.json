@@ -6991,6 +6991,1021 @@
         }
       }
     },
+    "/v1/zenodo": {
+      "get": {
+        "tags": [
+          "zenodo"
+        ],
+        "summary": "The Zenodo server deposits go to, and whether it is reachable",
+        "operationId": "zenodo_status_v1_zenodo_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "sandbox",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sandbox"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ZenodoStatus"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "`unauthorized`: Missing or wrong bearer token"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "`request_invalid`: The request body or parameters don't match the API schema"
+          }
+        }
+      }
+    },
+    "/v1/zenodo:verify-token": {
+      "post": {
+        "tags": [
+          "zenodo"
+        ],
+        "summary": "Check a Zenodo access token",
+        "operationId": "zenodo_verify_v1_zenodo_verify_token_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ZenodoTokenCheck"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ZenodoTokenResult"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`unauthorized`: Missing or wrong bearer token",
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "`request_invalid`: The request body or parameters don't match the API schema",
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`zenodo_token_missing`: A Zenodo access token is needed",
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`zenodo_token_invalid`: Zenodo didn't accept the access token (scopes deposit:write and deposit:actions, on this server)",
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "`zenodo_unreachable`: Zenodo could not be reached; `zenodo_error`: Zenodo returned an unexpected answer",
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/zenodo/records": {
+      "get": {
+        "tags": [
+          "zenodo"
+        ],
+        "summary": "Published ReproCrowd records for a paper",
+        "description": "Public records on Zenodo with the keyword ReproCrowd that relate to the DOI.",
+        "operationId": "zenodo_records_v1_zenodo_records_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "doi",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 3,
+              "title": "Doi"
+            }
+          },
+          {
+            "name": "sandbox",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sandbox"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ZenodoRecord"
+                  },
+                  "title": "Response Zenodo Records V1 Zenodo Records Get"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "`unauthorized`: Missing or wrong bearer token"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "`request_invalid`: The request body or parameters don't match the API schema"
+          },
+          "502": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "`zenodo_unreachable`: Zenodo could not be reached; `zenodo_error`: Zenodo returned an unexpected answer"
+          }
+        }
+      }
+    },
+    "/v1/packages/{pkg}/deposits": {
+      "get": {
+        "tags": [
+          "zenodo"
+        ],
+        "summary": "Zenodo deposits of this package",
+        "operationId": "list_deposits_v1_packages__pkg__deposits_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "pkg",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "package id",
+              "title": "Pkg"
+            },
+            "description": "package id"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "maximum": 1000,
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "page size; omit for the whole list",
+              "title": "Limit"
+            },
+            "description": "page size; omit for the whole list"
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "items to skip",
+              "default": 0,
+              "title": "Offset"
+            },
+            "description": "items to skip"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ZenodoDeposit"
+                  },
+                  "title": "Response List Deposits V1 Packages  Pkg  Deposits Get"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "`unauthorized`: Missing or wrong bearer token"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "`request_invalid`: The request body or parameters don't match the API schema"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "zenodo"
+        ],
+        "summary": "Deposit the package on Zenodo",
+        "description": "Creates a draft on Zenodo with the metadata (from OpenAlex, looked up now) and the package ZIP, without the excluded groups of files, and reserves a DOI. With `publish: true` it is published at once; otherwise publish it on Zenodo or with `…/deposits/{id}:publish`. Same preconditions as a database submission.",
+        "operationId": "create_deposit_v1_packages__pkg__deposits_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "pkg",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "package id",
+              "title": "Pkg"
+            },
+            "description": "package id"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DepositCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ZenodoDeposit"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "`unauthorized`: Missing or wrong bearer token"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "`zenodo_creators_missing`: The deposit needs at least one creator; `zenodo_rejected`: Zenodo refused the deposit's metadata"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "`no_doi`: Only packages for a paper with a DOI can be submitted; `run_not_succeeded`: The last run of the master script must have succeeded; `archive_missing`: Create the archive first; `archive_stale`: The package changed since the archive was made; `openalex_record_missing`: No OpenAlex record (with a title) for the DOI; `job_running`: Another job is running in this package; `duplicate_submission`: An identical package was submitted before"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "`zenodo_token_missing`: A Zenodo access token is needed"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "`zenodo_token_invalid`: Zenodo didn't accept the access token (scopes deposit:write and deposit:actions, on this server)"
+          },
+          "502": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "`zenodo_unreachable`: Zenodo could not be reached; `zenodo_error`: Zenodo returned an unexpected answer"
+          }
+        }
+      }
+    },
+    "/v1/packages/{pkg}/deposits:preview": {
+      "post": {
+        "tags": [
+          "zenodo"
+        ],
+        "summary": "Show what a deposit would send",
+        "description": "The metadata and the groups of files, without contacting Zenodo.",
+        "operationId": "preview_deposit_v1_packages__pkg__deposits_preview_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "pkg",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "package id",
+              "title": "Pkg"
+            },
+            "description": "package id"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DepositOptions"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DepositPreview"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "`unauthorized`: Missing or wrong bearer token"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "`request_invalid`: The request body or parameters don't match the API schema"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "`no_doi`: Only packages for a paper with a DOI can be submitted; `run_not_succeeded`: The last run of the master script must have succeeded; `archive_missing`: Create the archive first; `archive_stale`: The package changed since the archive was made; `openalex_record_missing`: No OpenAlex record (with a title) for the DOI; `job_running`: Another job is running in this package"
+          }
+        }
+      }
+    },
+    "/v1/packages/{pkg}/deposits/{dep}": {
+      "get": {
+        "tags": [
+          "zenodo"
+        ],
+        "summary": "A deposit, as recorded",
+        "operationId": "get_deposit_v1_packages__pkg__deposits__dep__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "dep",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Dep"
+            }
+          },
+          {
+            "name": "pkg",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "package id",
+              "title": "Pkg"
+            },
+            "description": "package id"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ZenodoDeposit"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "`unauthorized`: Missing or wrong bearer token"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "`request_invalid`: The request body or parameters don't match the API schema"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "`not_found`: No such resource"
+          }
+        }
+      }
+    },
+    "/v1/packages/{pkg}/deposits/{dep}:refresh": {
+      "post": {
+        "tags": [
+          "zenodo"
+        ],
+        "summary": "Update a deposit's status from Zenodo",
+        "description": "A draft may have been published or deleted on the website.",
+        "operationId": "refresh_deposit_v1_packages__pkg__deposits__dep__refresh_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "dep",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Dep"
+            }
+          },
+          {
+            "name": "pkg",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "package id",
+              "title": "Pkg"
+            },
+            "description": "package id"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ZenodoAuth"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ZenodoDeposit"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "`unauthorized`: Missing or wrong bearer token"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "`request_invalid`: The request body or parameters don't match the API schema"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "`not_found`: No such resource"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "`zenodo_token_missing`: A Zenodo access token is needed"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "`zenodo_token_invalid`: Zenodo didn't accept the access token (scopes deposit:write and deposit:actions, on this server)"
+          },
+          "502": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "`zenodo_unreachable`: Zenodo could not be reached; `zenodo_error`: Zenodo returned an unexpected answer"
+          }
+        }
+      }
+    },
+    "/v1/packages/{pkg}/deposits/{dep}:publish": {
+      "post": {
+        "tags": [
+          "zenodo"
+        ],
+        "summary": "Publish a draft deposit",
+        "description": "Registers the DOI. A published record can't be deleted, only versioned.",
+        "operationId": "publish_deposit_v1_packages__pkg__deposits__dep__publish_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "dep",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Dep"
+            }
+          },
+          {
+            "name": "pkg",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "package id",
+              "title": "Pkg"
+            },
+            "description": "package id"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ZenodoAuth"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ZenodoDeposit"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "`unauthorized`: Missing or wrong bearer token"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "`zenodo_rejected`: Zenodo refused the deposit's metadata"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "`not_found`: No such resource"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "`deposit_not_draft`: Only a draft deposit can be published or discarded"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "`zenodo_token_missing`: A Zenodo access token is needed"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "`zenodo_token_invalid`: Zenodo didn't accept the access token (scopes deposit:write and deposit:actions, on this server)"
+          },
+          "502": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "`zenodo_unreachable`: Zenodo could not be reached; `zenodo_error`: Zenodo returned an unexpected answer"
+          }
+        }
+      }
+    },
+    "/v1/packages/{pkg}/deposits/{dep}:discard": {
+      "post": {
+        "tags": [
+          "zenodo"
+        ],
+        "summary": "Delete a draft deposit on Zenodo",
+        "operationId": "discard_deposit_v1_packages__pkg__deposits__dep__discard_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "dep",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Dep"
+            }
+          },
+          {
+            "name": "pkg",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "package id",
+              "title": "Pkg"
+            },
+            "description": "package id"
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ZenodoAuth"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ZenodoDeposit"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "`unauthorized`: Missing or wrong bearer token"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "`request_invalid`: The request body or parameters don't match the API schema"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "`not_found`: No such resource"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "`deposit_not_draft`: Only a draft deposit can be published or discarded"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "`zenodo_token_missing`: A Zenodo access token is needed"
+          },
+          "403": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "`zenodo_token_invalid`: Zenodo didn't accept the access token (scopes deposit:write and deposit:actions, on this server)"
+          },
+          "502": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "`zenodo_unreachable`: Zenodo could not be reached; `zenodo_error`: Zenodo returned an unexpected answer"
+          }
+        }
+      }
+    },
     "/v1/packages/{pkg}/files": {
       "get": {
         "tags": [
@@ -8537,6 +9552,188 @@
           "reachable"
         ],
         "title": "DatabaseStatus"
+      },
+      "DepositCreate": {
+        "properties": {
+          "zenodo_token": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "password",
+                "writeOnly": true
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Zenodo Token",
+            "description": "the user's Zenodo personal access token (scopes deposit:write, deposit:actions); passed on, never stored. Default: [zenodo] token"
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 4000,
+            "title": "Note",
+            "description": "shown in the record's description",
+            "default": ""
+          },
+          "exclude": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "paper",
+                    "inputs"
+                  ]
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exclude",
+            "description": "groups of files to leave out of the upload. paper: full texts, extractions, original figures; inputs: input files. Default: paper, unless OpenAlex reports an open license for it"
+          },
+          "creators": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ZenodoCreator"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Creators",
+            "description": "the record's creators (the person submitting). Default: [zenodo] creators"
+          },
+          "community": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Community",
+            "description": "Zenodo community to submit to; default from the config, \"\" for none"
+          },
+          "sandbox": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sandbox",
+            "description": "deposit to Zenodo's sandbox; default from the config"
+          },
+          "publish": {
+            "type": "boolean",
+            "title": "Publish",
+            "description": "publish at once (registers the DOI; the record can't be deleted afterwards). Default: leave a draft to look at on Zenodo first",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "DepositCreate"
+      },
+      "DepositOptions": {
+        "properties": {
+          "note": {
+            "type": "string",
+            "maxLength": 4000,
+            "title": "Note",
+            "description": "shown in the record's description",
+            "default": ""
+          },
+          "exclude": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "paper",
+                    "inputs"
+                  ]
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exclude",
+            "description": "groups of files to leave out of the upload. paper: full texts, extractions, original figures; inputs: input files. Default: paper, unless OpenAlex reports an open license for it"
+          },
+          "creators": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/ZenodoCreator"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Creators",
+            "description": "the record's creators (the person submitting). Default: [zenodo] creators"
+          },
+          "community": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Community",
+            "description": "Zenodo community to submit to; default from the config, \"\" for none"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "DepositOptions"
+      },
+      "DepositPreview": {
+        "properties": {
+          "metadata": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Metadata",
+            "description": "the Zenodo metadata that would be sent"
+          },
+          "contents": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Contents",
+            "description": "groups of files that can be left out, the paper's license and the default"
+          },
+          "exclude": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Exclude"
+          }
+        },
+        "type": "object",
+        "required": [
+          "metadata",
+          "contents",
+          "exclude"
+        ],
+        "title": "DepositPreview"
       },
       "Document": {
         "properties": {
@@ -11858,6 +13055,406 @@
         ],
         "title": "ValidationReport"
       },
+      "ZenodoAuth": {
+        "properties": {
+          "zenodo_token": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "password",
+                "writeOnly": true
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Zenodo Token",
+            "description": "the user's Zenodo personal access token (scopes deposit:write, deposit:actions); passed on, never stored. Default: [zenodo] token"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "ZenodoAuth"
+      },
+      "ZenodoCreator": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Name",
+            "description": "\"Family, Given\""
+          },
+          "orcid": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^\\d{4}-\\d{4}-\\d{4}-\\d{3}[\\dX]$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Orcid"
+          },
+          "affiliation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Affiliation"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "ZenodoCreator"
+      },
+      "ZenodoDeposit": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^zen-[0-9a-f]+$",
+            "title": "Id"
+          },
+          "server": {
+            "type": "string",
+            "title": "Server",
+            "description": "Zenodo base URL at the time"
+          },
+          "sandbox": {
+            "type": "boolean",
+            "title": "Sandbox",
+            "description": "deposited to Zenodo's test instance"
+          },
+          "deposition_id": {
+            "type": "integer",
+            "title": "Deposition Id"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "published",
+              "discarded",
+              "gone"
+            ],
+            "title": "Status",
+            "description": "gone: deleted on Zenodo (only drafts can be)"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "doi": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Doi",
+            "description": "reserved while a draft, registered once published"
+          },
+          "url": {
+            "type": "string",
+            "title": "Url",
+            "description": "the draft's edit page, or the published record"
+          },
+          "file": {
+            "type": "string",
+            "title": "File",
+            "description": "name of the uploaded ZIP"
+          },
+          "sha256": {
+            "type": "string",
+            "title": "Sha256",
+            "description": "hash of the uploaded ZIP"
+          },
+          "archive_sha256": {
+            "type": "string",
+            "title": "Archive Sha256",
+            "description": "hash of the package archive it was made from"
+          },
+          "exclude": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "paper",
+                "inputs"
+              ]
+            },
+            "type": "array",
+            "title": "Exclude",
+            "description": "groups of files left out of the upload"
+          },
+          "excluded": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Excluded",
+            "description": "the resources that were left out"
+          },
+          "community": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Community"
+          },
+          "creators": {
+            "items": {
+              "$ref": "#/components/schemas/ZenodoCreator"
+            },
+            "type": "array",
+            "title": "Creators"
+          },
+          "note": {
+            "type": "string",
+            "title": "Note",
+            "default": ""
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "published_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published At"
+          },
+          "checked_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checked At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "server",
+          "sandbox",
+          "deposition_id",
+          "status",
+          "title",
+          "url",
+          "file",
+          "sha256",
+          "archive_sha256",
+          "creators",
+          "created_at"
+        ],
+        "title": "ZenodoDeposit",
+        "description": "A deposit of the package on Zenodo: a draft until it is published (then it has its DOI for good)."
+      },
+      "ZenodoRecord": {
+        "properties": {
+          "id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "doi": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Doi"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "creators": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Creators"
+          },
+          "published": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published"
+          },
+          "url": {
+            "type": "string",
+            "title": "Url"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "doi",
+          "title",
+          "creators",
+          "published",
+          "url"
+        ],
+        "title": "ZenodoRecord"
+      },
+      "ZenodoStatus": {
+        "properties": {
+          "url": {
+            "type": "string",
+            "title": "Url"
+          },
+          "sandbox": {
+            "type": "boolean",
+            "title": "Sandbox"
+          },
+          "token_configured": {
+            "type": "boolean",
+            "title": "Token Configured",
+            "description": "the service has a fallback token ([zenodo] token)"
+          },
+          "community": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Community"
+          },
+          "reachable": {
+            "type": "boolean",
+            "title": "Reachable"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          }
+        },
+        "type": "object",
+        "required": [
+          "url",
+          "sandbox",
+          "token_configured",
+          "community",
+          "reachable"
+        ],
+        "title": "ZenodoStatus"
+      },
+      "ZenodoTokenCheck": {
+        "properties": {
+          "zenodo_token": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "password",
+                "writeOnly": true
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Zenodo Token",
+            "description": "the user's Zenodo personal access token (scopes deposit:write, deposit:actions); passed on, never stored. Default: [zenodo] token"
+          },
+          "sandbox": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sandbox",
+            "description": "check against the sandbox; default from the config"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "ZenodoTokenCheck"
+      },
+      "ZenodoTokenResult": {
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "title": "Ok"
+          },
+          "url": {
+            "type": "string",
+            "title": "Url"
+          },
+          "sandbox": {
+            "type": "boolean",
+            "title": "Sandbox"
+          }
+        },
+        "type": "object",
+        "required": [
+          "ok",
+          "url",
+          "sandbox"
+        ],
+        "title": "ZenodoTokenResult"
+      },
       "FulltextFromCandidate": {
         "additionalProperties": false,
         "properties": {
@@ -12135,6 +13732,10 @@
     {
       "name": "database",
       "description": "Submission to the package database (optional)."
+    },
+    {
+      "name": "zenodo",
+      "description": "Deposits on Zenodo: a draft with the package ZIP and a reserved DOI, published in a separate step."
     }
   ]
 }

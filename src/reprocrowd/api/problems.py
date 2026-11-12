@@ -87,6 +87,14 @@ CATALOG: dict[str, tuple[int, str]] = {
     "submission_rejected": (422, "The database refused the package"),
     "database_token_invalid": (403, "The package database didn't accept the database token; sign in to it again"),
     "database_forbidden": (403, "The package database refused this account (e.g. suspended)"),
+    # Zenodo
+    "zenodo_token_missing": (400, "A Zenodo access token is needed"),
+    "zenodo_token_invalid": (403, "Zenodo didn't accept the access token (scopes deposit:write and deposit:actions, on this server)"),
+    "zenodo_creators_missing": (422, "The deposit needs at least one creator"),
+    "zenodo_rejected": (422, "Zenodo refused the deposit's metadata"),
+    "zenodo_unreachable": (502, "Zenodo could not be reached"),
+    "zenodo_error": (502, "Zenodo returned an unexpected answer"),
+    "deposit_not_draft": (409, "Only a draft deposit can be published or discarded"),
     # jobs
     "job_running": (409, "Another job is running in this package"),
     "job_finished": (409, "The job is not running"),
