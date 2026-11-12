@@ -1,17 +1,19 @@
 """Automatic data & code acquisition from repository links in the manuscript (metacheck-style).
 
 Scans a manuscript's text for links to research data/code repositories (Zenodo, OSF, GitHub, GitLab,
-Figshare, Dryad, Dataverse), classifies each link as data or code, and downloads the files into the
-package as inputs (under ``inputs/``), so users don't have to upload anything by hand.
+Figshare), classifies each link as data or code, and downloads the files into the package as inputs
+(under ``inputs/``), so users don't have to upload anything by hand.
 
-Each repository is an adapter with ``detect(text)`` (returns candidate links) and ``fetch(pkg, link)``
-(downloads the files and registers them as inputs). ``acquire()`` runs every adapter over a manuscript's
-text and fetches every link it finds, subject to the configured download budget.
+Each repository is an adapter with ``detect(text)`` (returns candidate links) and ``fetch(job)`` (lists the
+record's files and hands each to ``job.add``). ``acquire()`` runs every adapter over a manuscript's text and
+fetches every link it finds, subject to the configured download budget. Failures are contained: a file that
+can't be downloaded is reported and skipped, a repository that can't be read is reported, and neither stops
+the rest. Messages are written for the user (host, what went wrong, what to do).
 """
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, Iterable
 
@@ -43,40 +45,79 @@ def _client() -> httpx.Client:
     return httpx.Client(timeout=60, follow_redirects=True, headers={"User-Agent": USER_AGENT})
 
 
-def _get_json(url: str | None, **kw) -> dict | list:
+def _host(url: str) -> str:
+    return httpx.URL(url).host or url
+
+
+def _network_error(url: str, e: Exception) -> ApiError:
+    """A transport failure (DNS, refused connection, timeout, dropped stream) as a message for the user."""
+    host = _host(url)
+    if isinstance(e, httpx.TimeoutException):
+        msg = f"{host} did not answer in time; try again later"
+    elif isinstance(e, httpx.ConnectError):
+        msg = f"could not connect to {host}; check the internet connection or try again later"
+    elif isinstance(e, (httpx.RemoteProtocolError, httpx.ReadError)):
+        msg = f"the connection to {host} broke off; try again later"
+    elif isinstance(e, (httpx.InvalidURL, httpx.UnsupportedProtocol)):
+        msg = f"the repository returned an unusable address ({url})"
+    else:
+        msg = f"network error talking to {host} ({type(e).__name__}: {e})"
+    return ApiError(502, "acquire_failed", msg)
+
+
+def _status_error(r: httpx.Response, what: str) -> ApiError:
+    """A non-200 answer as a message for the user. ``what`` is "record" or "file"."""
+    host, s = _host(str(r.request.url)), r.status_code
+    if s == 404 or s == 410:
+        return ApiError(404, "acquire_not_found", f"{host} has no such {what} (it may have been removed or be private)")
+    if s in (401, 403) and r.headers.get("x-ratelimit-remaining") == "0":
+        return ApiError(502, "acquire_failed", f"{host}'s rate limit for anonymous requests is used up; try again in an hour")
+    if s in (401, 403):
+        return ApiError(502, "acquire_failed", f"{host} refused access to the {what} (it may be restricted or under embargo)")
+    if s == 429:
+        return ApiError(502, "acquire_failed", f"{host} received too many requests; try again in a few minutes")
+    if s >= 500:
+        return ApiError(502, "acquire_failed", f"{host} had a server error (HTTP {s}); try again later")
+    return ApiError(502, "acquire_failed", f"{host} answered HTTP {s}")
+
+
+def _get_json(url: str | None, expect: type = dict) -> dict | list:
+    """GET a JSON document of type ``expect``; every failure is an ApiError with a readable message."""
     if not url:
         raise ApiError(502, "acquire_failed", "the repository returned an empty URL")
     try:
         with _client() as c:
-            r = c.get(url, **kw)
-    except httpx.HTTPError as e:
-        raise ApiError(502, "acquire_failed", f"could not reach {url}: {e}")
-    if r.status_code == 404:
-        raise ApiError(404, "acquire_not_found", f"no such record at {url}")
+            r = c.get(url)
+    except (httpx.HTTPError, httpx.InvalidURL) as e:
+        raise _network_error(url, e) from e
     if r.status_code != 200:
-        raise ApiError(502, "acquire_failed", f"{url} answered {r.status_code}")
+        raise _status_error(r, "record")
     try:
-        return r.json()
-    except ValueError as e:
-        raise ApiError(502, "acquire_failed", f"{url} returned no JSON: {e}")
+        data = r.json()
+    except ValueError:
+        data = None
+    if not isinstance(data, expect):
+        raise ApiError(502, "acquire_failed", f"{_host(url)} gave an unexpected answer (not the JSON its API documents)")
+    return data
 
 
 def _download(url: str | None, dest: Path, max_bytes: int) -> None:
     """Stream ``url`` to ``dest``, aborting once ``max_bytes`` have arrived."""
     if not url:
         raise ApiError(502, "acquire_failed", "the repository returned an empty download URL")
-    with _client() as c, c.stream("GET", url) as r:
-        if r.status_code == 404:
-            raise ApiError(404, "acquire_not_found", f"no such file at {url}")
-        if r.status_code != 200:
-            raise ApiError(502, "acquire_failed", f"{url} answered {r.status_code}")
-        written = 0
-        with dest.open("wb") as f:
-            for chunk in r.iter_bytes(1 << 20):
-                written += len(chunk)
-                if written > max_bytes:
-                    raise ApiError(413, "acquire_too_large", f"{url} exceeds the download budget")
-                f.write(chunk)
+    try:
+        with _client() as c, c.stream("GET", url) as r:
+            if r.status_code != 200:
+                raise _status_error(r, "file")
+            written = 0
+            with dest.open("wb") as f:
+                for chunk in r.iter_bytes(1 << 20):
+                    written += len(chunk)
+                    if written > max_bytes:
+                        raise ApiError(413, "acquire_too_large", "larger than what is left of the download limit")
+                    f.write(chunk)
+    except (httpx.HTTPError, httpx.InvalidURL) as e:
+        raise _network_error(url, e) from e
 
 
 def _guess_kind(name: str) -> str:
@@ -105,18 +146,43 @@ def _origin(url: str, repo: str, link: Link) -> FetchedOrigin:
     return FetchedOrigin(url=url, repo=repo, id=link.id, label=f"fetched from {link.label}")
 
 
-def _add_file(pkg: Package, filename: str, download_url: str, link: Link, repo: str,
-              role: str | None, note: str, unpack: bool, budget: _Budget, size: int = 0) -> list[Resource]:
-    if not budget.allow(size):
-        return []
+@dataclass
+class _Job:
+    """One link being fetched: where files go, how they are registered, and what happened to each.
 
-    def write(dest: Path) -> None:
-        _download(download_url, dest, budget.remaining())
+    Adapters list a repository's files and call :meth:`add` for each; a file that fails is recorded in
+    ``failures`` and the adapter carries on with the next one, so one bad file doesn't lose the others.
+    """
 
-    r = inputs._add_file(pkg, filename, write, _origin(download_url, repo, link),
-                         role, note, unpack)
-    budget.spend(sum(x.bytes for x in r))
-    return r
+    pkg: Package
+    link: Link
+    role: str | None = None
+    note: str = ""
+    unpack: bool = True
+    budget: _Budget | None = None
+    resources: list[Resource] = field(default_factory=list)
+    failures: list[dict[str, str]] = field(default_factory=list)
+    error: str = ""  # set when the repository itself couldn't be read (listing, API record, ...)
+
+    def add(self, filename: str, download_url: str, size: int = 0) -> None:
+        budget = self.budget = self.budget or _Budget(settings().max_download_mb * 2**20)
+        if not budget.allow(size):
+            return
+
+        def write(dest: Path) -> None:
+            _download(download_url, dest, budget.remaining())
+
+        try:
+            r = inputs._add_file(self.pkg, filename, write, _origin(download_url, self.link.repo, self.link),
+                                 self.role, self.note, self.unpack)
+        except ApiError as e:
+            self.failures.append({"file": filename, "url": download_url, "error": e.message})
+            return
+        except Exception as e:  # noqa: BLE001 - one file's bug must not lose the rest of the repository
+            self.failures.append({"file": filename, "url": download_url, "error": f"unexpected error: {e}"})
+            return
+        budget.spend(sum(x.bytes for x in r))
+        self.resources += r
 
 
 # --------------------------------------------------------------------------- adapters
@@ -140,19 +206,15 @@ def zenodo_detect(text: str) -> list[Link]:
                  label=f"Zenodo record {i}", title=f"Zenodo record {i}") for i in ids]
 
 
-def zenodo_fetch(pkg: Package, link: Link, role: str | None, note: str, unpack: bool,
-                 budget: _Budget) -> list[Resource]:
-    data = _get_json(f"https://zenodo.org/api/records/{link.id}")
-    title = (data.get("metadata") or {}).get("title", "")
-    out: list[Resource] = []
+def zenodo_fetch(job: _Job) -> None:
+    data = _get_json(f"https://zenodo.org/api/records/{job.link.id}")
     for f in data.get("files") or []:
         name = f.get("key") or f.get("filename") or "file"
         url = (f.get("links") or {}).get("self")
         if not url:
             continue
         size = int(f["size"]) if f.get("size") else 0
-        out += _add_file(pkg, name, url, link, "zenodo", role, note, unpack, budget, size)
-    return out
+        job.add(name, url, size)
 
 
 def _github_id(text: str) -> list[tuple[str, str, str]]:
@@ -183,14 +245,11 @@ def _github_default_branch(owner: str, repo: str) -> str:
     return data.get("default_branch", "main")
 
 
-def github_fetch(pkg: Package, link: Link, role: str | None, note: str, unpack: bool,
-                 budget: _Budget) -> list[Resource]:
-    owner, _, repo = link.id.partition("/")
+def github_fetch(job: _Job) -> None:
+    owner, _, repo = job.link.id.partition("/")
     branch = _github_default_branch(owner, repo)
     data = _get_json(f"https://api.github.com/repos/{owner}/{repo}/git/trees/{branch}?recursive=1")
-    tree = data.get("tree") or []
-    out: list[Resource] = []
-    for entry in tree:
+    for entry in data.get("tree") or []:
         if entry.get("type") != "blob":
             continue
         path = entry.get("path")
@@ -199,8 +258,7 @@ def github_fetch(pkg: Package, link: Link, role: str | None, note: str, unpack: 
         name = Path(path).name
         raw = f"https://raw.githubusercontent.com/{owner}/{repo}/{branch}/{path}"
         size = int(entry["size"]) if entry.get("size") else 0
-        out += _add_file(pkg, name, raw, link, "github", role, note, unpack, budget, size)
-    return out
+        job.add(name, raw, size)
 
 
 def _gitlab_id(text: str) -> list[tuple[str, str, str]]:
@@ -226,18 +284,17 @@ def gitlab_detect(text: str) -> list[Link]:
     return out
 
 
-def gitlab_fetch(pkg: Package, link: Link, role: str | None, note: str, unpack: bool,
-                 budget: _Budget) -> list[Resource]:
+def gitlab_fetch(job: _Job) -> None:
     import urllib.parse
-    project = urllib.parse.quote(link.id, safe="")
+    project = urllib.parse.quote(job.link.id, safe="")
     # Default branch, then the tree.
     try:
         proj = _get_json(f"https://gitlab.com/api/v4/projects/{project}")
         branch = proj.get("default_branch", "main")
     except ApiError:
         branch = "main"
-    data = _get_json(f"https://gitlab.com/api/v4/projects/{project}/repository/tree?recursive=true&ref={branch}")
-    out: list[Resource] = []
+    data = _get_json(f"https://gitlab.com/api/v4/projects/{project}/repository/tree?recursive=true&ref={branch}",
+                     expect=list)
     for entry in data:
         if entry.get("type") != "blob":
             continue
@@ -245,10 +302,9 @@ def gitlab_fetch(pkg: Package, link: Link, role: str | None, note: str, unpack: 
         if not path:
             continue
         name = Path(path).name
-        raw = f"https://gitlab.com/{link.id}/-/raw/{branch}/{path}"
+        raw = f"https://gitlab.com/{job.link.id}/-/raw/{branch}/{path}"
         size = int(entry["size"]) if entry.get("size") else 0
-        out += _add_file(pkg, name, raw, link, "gitlab", role, note, unpack, budget, size)
-    return out
+        job.add(name, raw, size)
 
 
 def _osf_id(text: str) -> list[str]:
@@ -279,29 +335,33 @@ def _osf_folder_url(item: dict) -> str | None:
     return related.get("href") or (item.get("links") or {}).get("self")
 
 
-def osf_fetch(pkg: Package, link: Link, role: str | None, note: str, unpack: bool,
-              budget: _Budget) -> list[Resource]:
-    def walk(folder_url: str | None, out: list[Resource]) -> None:
-        data = _get_json(folder_url)
+def osf_fetch(job: _Job) -> None:
+    # Iterative, and each listing page once: a page whose "next" points back to itself (or a folder
+    # cycle) must not loop forever.
+    todo = [f"https://api.osf.io/v2/nodes/{job.link.id}/files/"]
+    seen: set[str] = set()
+    while todo:
+        url = todo.pop(0)
+        if url in seen:
+            continue
+        seen.add(url)
+        data = _get_json(url)
         for item in data.get("data") or []:
             attrs = item.get("attributes") or {}
             if attrs.get("kind") == "folder":
                 sub = _osf_folder_url(item)
                 if sub:
-                    walk(sub, out)
+                    todo.append(sub)
             else:
                 name = attrs.get("name") or "file"
                 dl = (item.get("links") or {}).get("download") or (item.get("links") or {}).get("self")
                 if not dl:
                     continue
                 size = int(attrs["size"]) if attrs.get("size") else 0
-                out += _add_file(pkg, name, dl, link, "osf", role, note, unpack, budget, size)
+                job.add(name, dl, size)
         next_url = (data.get("links") or {}).get("next")
         if next_url:
-            walk(next_url, out)
-    out: list[Resource] = []
-    walk(f"https://api.osf.io/v2/nodes/{link.id}/files/", out)
-    return out
+            todo.append(next_url)
 
 
 def _figshare_id(text: str) -> list[str]:
@@ -322,19 +382,15 @@ def figshare_detect(text: str) -> list[Link]:
                  label=f"Figshare article {i}", title=f"Figshare article {i}") for i in ids]
 
 
-def figshare_fetch(pkg: Package, link: Link, role: str | None, note: str, unpack: bool,
-                   budget: _Budget) -> list[Resource]:
-    data = _get_json(f"https://api.figshare.com/v2/articles/{link.id}")
-    title = data.get("title", "")
-    out: list[Resource] = []
+def figshare_fetch(job: _Job) -> None:
+    data = _get_json(f"https://api.figshare.com/v2/articles/{job.link.id}")
     for f in data.get("files") or []:
         name = f.get("name") or "file"
         dl = f.get("download_url")
         if not dl:
             continue
         size = int(f["size"]) if f.get("size") else 0
-        out += _add_file(pkg, name, dl, link, "figshare", role, note, unpack, budget, size)
-    return out
+        job.add(name, dl, size)
 
 
 ADAPTERS: dict[str, tuple[Callable[[str], list[Link]], Callable]] = {
@@ -356,14 +412,30 @@ def detect(text: str, repos: Iterable[str] | None = None) -> list[Link]:
     return out
 
 
+def _run(pkg: Package, link: Link, role: str | None, note: str, unpack: bool) -> _Job:
+    """Fetch one link. Never raises: a failure to read the repository itself goes to ``job.error``,
+    single files that fail go to ``job.failures``, and files added before either are kept."""
+    job = _Job(pkg, link, role, note, unpack, _Budget(settings().max_download_mb * 2**20))
+    if link.repo not in ADAPTERS:
+        job.error = f"no adapter for repository {link.repo!r}"
+        return job
+    _, fetch_fn = ADAPTERS[link.repo]
+    try:
+        fetch_fn(job)
+    except ApiError as e:
+        job.error = e.message
+    except Exception as e:  # noqa: BLE001 - an adapter bug must not 500 the whole request
+        job.error = f"unexpected error: {e}"
+    return job
+
+
 def fetch(pkg: Package, link: Link, role: str | None = None, note: str = "",
           unpack: bool = True) -> list[Resource]:
-    """Download the files of one detected link into the package as inputs."""
-    if link.repo not in ADAPTERS:
-        raise ApiError(400, "unknown_repository", f"no adapter for repository {link.repo!r}")
-    _, fetch_fn = ADAPTERS[link.repo]
-    budget = _Budget(settings().max_download_mb * 2**20)
-    return fetch_fn(pkg, link, role, note, unpack, budget)
+    """Download the files of one detected link into the package as inputs; raises if nothing could be added."""
+    job = _run(pkg, link, role, note, unpack)
+    if job.error and not job.resources:
+        raise ApiError(502, "acquire_failed", job.error)
+    return job.resources
 
 
 def manuscript_text(pkg: Package, fulltext: str | None = None) -> str:
@@ -383,17 +455,18 @@ def manuscript_text(pkg: Package, fulltext: str | None = None) -> str:
 def acquire(pkg: Package, fulltext: str | None = None, role: str | None = None,
             note: str = "", unpack: bool = True, repos: Iterable[str] | None = None) -> dict:
     """Detect repository links in a manuscript and fetch them. Returns the links found, the resources added,
-    and any per-repository failures."""
+    and the failures: one per link whose repository couldn't be read (no ``file``), and one per file that
+    couldn't be downloaded (with ``file`` and ``file_url``). A failure never stops the other links or files."""
     text = manuscript_text(pkg, fulltext)
     links = detect(text, repos)
     resources: list[Resource] = []
     failures: list[dict[str, str]] = []
     for link in links:
-        try:
-            resources.extend(fetch(pkg, link, role, note, unpack))
-        except ApiError as e:
-            # One failing repository must not abort the whole run; it is reported instead.
-            failures.append({"repo": link.repo, "id": link.id, "url": link.url, "error": e.message})
-        except Exception as e:  # an adapter bug must not 500 the whole request
-            failures.append({"repo": link.repo, "id": link.id, "url": link.url, "error": f"unexpected error: {e}"})
+        job = _run(pkg, link, role, note, unpack)
+        resources += job.resources
+        where = {"repo": link.repo, "id": link.id, "url": link.url}
+        if job.error:
+            failures.append({**where, "error": job.error})
+        for f in job.failures:
+            failures.append({**where, "file": f["file"], "file_url": f["url"], "error": f["error"]})
     return {"links": [l.__dict__ for l in links], "resources": resources, "failures": failures}

@@ -8544,7 +8544,7 @@
             },
             "type": "array",
             "title": "Failures",
-            "description": "per-repository failures: repo, id, url, error"
+            "description": "what could not be fetched: per link (repo, id, url, error) when the repository itself couldn't be read, or per file (the same plus file and file_url) when one file couldn't be downloaded; the link's other files are still added"
           }
         },
         "type": "object",

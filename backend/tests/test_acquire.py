@@ -1,9 +1,11 @@
 from pathlib import Path
 
 import httpx
+import pytest
 import respx
 
 from reprocrowd import acquire
+from reprocrowd.errors import ApiError
 from reprocrowd.package import Package, init_package
 
 
@@ -207,4 +209,94 @@ def test_acquire_reports_failure(tmp_path, monkeypatch):
     assert out["links"][0]["repo"] == "zenodo"
     assert out["resources"] == []
     assert out["failures"] == [{"repo": "zenodo", "id": "999", "url": "https://zenodo.org/records/999",
-                                "error": "no such record at https://zenodo.org/api/records/999"}]
+                                "error": "zenodo.org has no such record (it may have been removed or be private)"}]
+
+
+ZENODO_TEXT = "Data at https://doi.org/10.5281/zenodo.1"
+
+
+def _zenodo_files(*names):
+    return httpx.Response(200, json={"files": [{"key": n, "links": {"self": f"https://zenodo.org/api/files/1/{n}"}} for n in names]})
+
+
+@respx.mock
+def test_one_failing_file_keeps_the_others(tmp_path, monkeypatch):
+    """A file that fails is reported on its own; the files before and after it are still added and returned."""
+    monkeypatch.setattr(acquire, "manuscript_text", lambda pkg, fulltext=None: ZENODO_TEXT)
+    respx.get("https://zenodo.org/api/records/1").mock(return_value=_zenodo_files("a.csv", "b.csv", "c.csv"))
+    respx.get("https://zenodo.org/api/files/1/a.csv").mock(return_value=httpx.Response(200, content=b"a"))
+    respx.get("https://zenodo.org/api/files/1/b.csv").mock(return_value=httpx.Response(503))
+    respx.get("https://zenodo.org/api/files/1/c.csv").mock(return_value=httpx.Response(200, content=b"c"))
+    pkg = _make_pkg(tmp_path)
+    out = acquire.acquire(pkg)
+    assert [r.name for r in out["resources"]] == ["in-a.csv", "in-c.csv"]
+    assert out["failures"] == [{"repo": "zenodo", "id": "1", "url": "https://zenodo.org/records/1", "file": "b.csv",
+                                "file_url": "https://zenodo.org/api/files/1/b.csv",
+                                "error": "zenodo.org had a server error (HTTP 503); try again later"}]
+    assert sorted(r.name for r in pkg.load().by_kind("input")) == ["in-a.csv", "in-c.csv"]
+    assert not pkg.path("inputs/b.csv").exists()
+
+
+@respx.mock
+def test_download_network_errors_are_readable(tmp_path, monkeypatch):
+    """Transport errors while downloading become plain messages, and leave no partial file behind."""
+    monkeypatch.setattr(acquire, "manuscript_text", lambda pkg, fulltext=None: ZENODO_TEXT)
+    respx.get("https://zenodo.org/api/records/1").mock(return_value=_zenodo_files("a.csv", "b.csv"))
+    respx.get("https://zenodo.org/api/files/1/a.csv").mock(side_effect=httpx.ConnectError("refused"))
+
+    def stalled():
+        yield b"x" * 10
+        raise httpx.ReadTimeout("stalled")
+    respx.get("https://zenodo.org/api/files/1/b.csv").mock(return_value=httpx.Response(200, content=stalled()))
+    pkg = _make_pkg(tmp_path)
+    out = acquire.acquire(pkg)
+    assert out["resources"] == []
+    assert [(f["file"], f["error"]) for f in out["failures"]] == [
+        ("a.csv", "could not connect to zenodo.org; check the internet connection or try again later"),
+        ("b.csv", "zenodo.org did not answer in time; try again later"),
+    ]
+    assert not (pkg.root / "inputs").exists() or not any((pkg.root / "inputs").iterdir())
+
+
+@respx.mock
+def test_listing_error_keeps_files_already_added(tmp_path, monkeypatch):
+    """If a later page of a listing fails, the files from earlier pages are still returned."""
+    monkeypatch.setattr(acquire, "manuscript_text", lambda pkg, fulltext=None: "see https://osf.io/ab3cd")
+    respx.get("https://api.osf.io/v2/nodes/ab3cd/files/", params={"page": "2"}).mock(side_effect=httpx.ConnectError("down"))
+    respx.get("https://api.osf.io/v2/nodes/ab3cd/files/").mock(return_value=httpx.Response(200, json={
+        "data": [{"attributes": {"kind": "file", "name": "raw.csv"}, "links": {"download": "https://osf.io/download/1/"}}],
+        "links": {"next": "https://api.osf.io/v2/nodes/ab3cd/files/?page=2"}}))
+    respx.get("https://osf.io/download/1/").mock(return_value=httpx.Response(200, content=b"a,b\n"))
+    out = acquire.acquire(_make_pkg(tmp_path))
+    assert [r.name for r in out["resources"]] == ["in-raw.csv"]
+    assert out["failures"] == [{"repo": "osf", "id": "ab3cd", "url": "https://osf.io/ab3cd",
+                                "error": "could not connect to api.osf.io; check the internet connection or try again later"}]
+
+
+@respx.mock
+def test_status_messages(tmp_path):
+    respx.get("https://api.github.com/repos/o/r").mock(
+        return_value=httpx.Response(403, headers={"x-ratelimit-remaining": "0"}, json={"message": "rate limit"}))
+    respx.get("https://zenodo.org/api/records/2").mock(return_value=httpx.Response(403))
+    respx.get("https://zenodo.org/api/records/3").mock(return_value=httpx.Response(200, json=[1, 2]))
+    respx.get("https://zenodo.org/api/records/4").mock(return_value=httpx.Response(200, text="<html>"))
+    pkg = _make_pkg(tmp_path)
+
+    def err(repo, id):
+        with pytest.raises(ApiError) as e:
+            acquire.fetch(pkg, acquire.Link(repo=repo, url="", id=id, kind="data", label=""))
+        return e.value.message
+    assert err("github", "o/r") == "api.github.com's rate limit for anonymous requests is used up; try again in an hour"
+    assert err("zenodo", "2") == "zenodo.org refused access to the record (it may be restricted or under embargo)"
+    assert err("zenodo", "3") == "zenodo.org gave an unexpected answer (not the JSON its API documents)"
+    assert err("zenodo", "4") == "zenodo.org gave an unexpected answer (not the JSON its API documents)"
+
+
+@respx.mock
+def test_osf_self_referencing_next_terminates(tmp_path):
+    """A listing whose "next" points back at itself is read once, not followed forever."""
+    url = "https://api.osf.io/v2/nodes/ab3cd/files/"
+    route = respx.get(url).mock(return_value=httpx.Response(200, json={"data": [], "links": {"next": url}}))
+    link = acquire.Link(repo="osf", url="https://osf.io/ab3cd", id="ab3cd", kind="data", label="OSF project ab3cd")
+    assert acquire.fetch(_make_pkg(tmp_path), link) == []
+    assert route.call_count == 1
