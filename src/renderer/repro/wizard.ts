@@ -7,6 +7,7 @@ import type { UiState } from "../state";
 import type { Document, PackageSummary } from "../types";
 import { $, esc, showError } from "../util";
 import { CodegenStep } from "./codegen";
+import { ClaimsStep } from "./claims";
 import { CurationStep } from "./curation";
 import { InputsStep } from "./inputs";
 import { ReportStep } from "./report";
@@ -51,7 +52,7 @@ export class Wizard {
     this.body = $("#rp-body");
     this.steps = [
       new InputsStep(this),
-      new CurationStep(this, "targets"),
+      new ClaimsStep(this),
       new CurationStep(this, "actions"),
       new ScriptStep(this),
       new CodegenStep(this),

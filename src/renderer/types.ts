@@ -57,7 +57,7 @@ export interface Ref { extraction: string; id: string }
 export type ResultType = "number" | "categorical" | "table" | "figure";
 export const COMPARATORS = ["=", "<", "<=", ">", ">=", "~"] as const;
 export type Comparator = (typeof COMPARATORS)[number];
-interface Referenced { refs: Ref[]; unreferenced?: boolean; note?: string | null }
+export interface Referenced { refs: Ref[]; unreferenced?: boolean; note?: string | null }
 export interface Target extends Referenced {
   id: string;
   type: ResultType;
@@ -187,3 +187,58 @@ export interface ZenodoDeposit {
   published_at: string | null;
   checked_at: string | null;
 }
+
+// ---------- claims (backend/src/reprocrowd/schemas/claims.py and curation.py) ----------
+export type ClaimMode = "quote" | "paraphrase";
+export interface SubClaim extends Referenced { id: string; text: string; method?: string | null; evidence: string[] }
+export interface Claim extends Referenced {
+  id: string;
+  text: string;
+  mode: ClaimMode;
+  original_quote: string;
+  testable: boolean;
+  method?: string | null;
+  evidence: string[];
+  sub_claims: SubClaim[];
+  depends_on: string[];
+  traced_under: string[];
+  checked: boolean;
+  notes: string;
+}
+export type Verdict = "reproduced" | "partly" | "not_reproduced";
+export type ClaimState = "review" | "ready" | "running" | "reproduced" | "partly" | "not_reproduced" | "not_testable";
+export interface EvidenceResult { target: string; status: Status; expected_text: string; reproduced_text: string }
+export interface SubClaimResult { id: string; verdict: Verdict; matched: number; tested: number; evidence: EvidenceResult[] }
+export interface ClaimResult { claim: string; verdict: Verdict; matched: number; tested: number; by_sub_claim: SubClaimResult[]; evidence: EvidenceResult[] }
+export interface ClaimStatus { claim: string; state: ClaimState; stale: boolean; ran_at: string | null; result: ClaimResult | null }
+export interface SkippedSentence { ref: Ref; reason: "background" | "study_design" | "other" }
+export interface ClaimRunRecord { job: string; at: string; content_hash: string; result?: ClaimResult | null }
+export interface ClaimsFile {
+  schema_version: string;
+  kind: "claims";
+  manual: Claim[];
+  llm_runs: LlmRun<Claim>[];
+  skipped: Record<string, SkippedSentence[]>;
+  ran: Record<string, ClaimRunRecord>;
+}
+export interface TraceEvidence { id: string; label: string; value?: number | string | string[][] | null; comparator: string; unit?: string | null; decimals?: number | null; source?: string | null }
+export interface TraceSubClaim { id: string; claim: string; method?: string | null; quantitative_evidence: TraceEvidence[] }
+export interface TraceMethod { id: string; summary: string; quote: string }
+export interface ClaimTrace {
+  id?: string | null;
+  title?: string | null;
+  claim_id: string;
+  main_claim: string;
+  mode: ClaimMode;
+  original_quote: string;
+  testable: boolean;
+  depends_on: string[];
+  traced_under: string[];
+  sub_claims: TraceSubClaim[];
+  quantitative_evidence: TraceEvidence[];
+  methods: TraceMethod[];
+  assumptions: string[];
+  status: ClaimState;
+  result?: ClaimResult | null;
+}
+export interface ClaimsTrace { paper: { doi?: string | null; title?: string | null }; claims: ClaimTrace[]; skipped: SkippedSentence[] }
