@@ -323,3 +323,30 @@ def test_claims_run_toggle_cascades(client, pkg):
     assert linked("run2") == [False, False] and linked("run1") == [False, False]
     client.patch(P + "/claims/runs/run2", json={"disabled": True})
     assert linked("run2") == [True, True]
+
+
+def test_toggling_a_targets_run_unticks_its_claims(client, pkg):
+    from test_claims_script import _claims
+
+    P, root, claims, _ = _claims(client, pkg, tick=("C1",))
+    t_run = next(r["id"] for r in client.get(P + "/targets/runs").json() if r["request"].get("via") == "claims")
+    assert client.patch(f"{P}/targets/runs/{t_run}", json={"disabled": True}).status_code == 200
+    c1 = {i["item"]["id"]: i["item"] for i in client.get(P + "/claims").json()}["C1"]
+    assert c1["checked"] is False
+    assert client.patch(f"{P}/targets/runs/{t_run}", json={"disabled": False}).status_code == 200
+    a_run = next(r["id"] for r in client.get(P + "/actions/runs").json() if r["request"].get("via") == "claims")
+    assert client.patch(P + "/claims/C1", json={"checked": True}).status_code == 200
+    assert client.patch(f"{P}/actions/runs/{a_run}", json={"disabled": True}).status_code == 200
+    assert client.patch(f"{P}/actions/runs/{a_run}", json={"disabled": False}).status_code == 200
+    c1 = {i["item"]["id"]: i["item"] for i in client.get(P + "/claims").json()}["C1"]
+    assert c1["checked"] is False
+
+
+def test_claims_run_cascade_keeps_ticks(client, pkg):
+    from test_claims_script import _claims
+
+    P, *_ = _claims(client, pkg, tick=("C1",))
+    assert client.patch(P + "/claims/runs/run1", json={"disabled": True}).status_code == 200
+    assert client.patch(P + "/claims/runs/run1", json={"disabled": False}).status_code == 200
+    c1 = {i["item"]["id"]: i["item"] for i in client.get(P + "/claims").json()}["C1"]
+    assert c1["checked"] is True

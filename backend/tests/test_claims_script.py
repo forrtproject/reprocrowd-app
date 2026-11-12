@@ -71,12 +71,12 @@ def test_claim_file_kept_unless_claim_changed(client, pkg):
     assert (root / "claims" / "C1.py").read_text() == "x = 1\n" and (root / "prepare.py").read_text() == "y = 2\n"
     assert {"claims/C1.py", "prepare.py"} <= set(r.json()["kept"])
 
+    # the claim changed: the edited file is still kept (unedited ones are regenerated, see below)
     assert client.patch(P + "/claims/C1", json={"text": "The effect was clearly significant."}).status_code == 200
     assert client.patch(P + "/claims/C1", json={"checked": True}).status_code == 200
     r = client.put(P + "/script", json={"template": "python"})
-    assert r.status_code == 200 and "claims/C1.py" in r.json()["files"]
-    c1 = (root / "claims" / "C1.py").read_text()
-    assert "TODO(LLM):" in c1 and "clearly significant" in c1
+    assert r.status_code == 200 and "claims/C1.py" in r.json()["kept"]
+    assert (root / "claims" / "C1.py").read_text() == "x = 1\n"
     assert (root / "prepare.py").read_text() == "y = 2\n"
 
 
@@ -141,6 +141,8 @@ def test_prepare_error_marks_every_claim(client, pkg):
     P, root, claims, _ = _claims(client, pkg, tick=("C1", "C2"))
     assert client.put(P + "/script", json={"template": "python"}).status_code == 200
     (root / "prepare.py").write_text('raise OSError("no data")\n')
+    for cid in ("C1", "C2"):  # implemented (no TODO(LLM): markers): files with markers are not run
+        (root / "claims" / f"{cid}.py").write_text("")
     p = subprocess.run([sys.executable, "analysis.py"], cwd=root, capture_output=True, text=True)
     assert p.returncode == 0, p.stderr
     rows = ReproducedOutput.model_validate_json((root / "outputs" / "results.json").read_text()).results
@@ -204,6 +206,8 @@ def test_run_uses_current_ticks(client, pkg):
     P, root, claims, _ = _claims(client, pkg, tick=("C1", "C2"))
     assert client.put(P + "/script", json={"template": "python"}).status_code == 200
     (root / "prepare.py").write_text("")
+    for cid in ("C1", "C2"):
+        (root / "claims" / f"{cid}.py").write_text("")
     assert client.patch(P + "/claims/C2", json={"checked": False}).status_code == 200
     r = client.post(P + "/jobs", json={"type": "run"})
     assert r.status_code == 202, r.text
@@ -265,3 +269,71 @@ def test_codegen_claim_job_request_and_no_evidence(client, pkg):
     cid = r.json()["id"]
     assert client.patch(f"{P}/claims/{cid}", json={"checked": True}).status_code in (200, 409, 422)
     problem(client.post(P + "/jobs:preview", json={"type": "codegen", "claim": cid}), 409, "claim_no_evidence")
+
+
+def test_edited_claim_file_kept_when_claim_changes(client, pkg):
+    P, root, claims, _ = _claims(client, pkg)
+    assert client.put(P + "/script", json={"template": "python"}).status_code == 200
+    agent_code = f'record("{claims["C1"]["evidence"][0]}", 2.31, "A")\n'
+    (root / "claims" / "C1.py").write_text(agent_code)
+    t = claims["C1"]["evidence"][0]
+    assert client.patch(f"{P}/targets/{t}", json={"expected": 9.99}).status_code == 200
+    assert client.patch(P + "/claims/C1", json={"checked": True}).status_code == 200
+    for _ in range(2):  # a later PUT keeps it too
+        r = client.put(P + "/script", json={"template": "python"})
+        assert r.status_code == 200, r.text
+        assert (root / "claims" / "C1.py").read_text() == agent_code and "claims/C1.py" in r.json()["kept"]
+    revise = "claims/C1.py (claim C1): implement (revise it to match the claim as it stands now)"
+    assert revise in client.post(P + "/jobs:preview", json={"type": "codegen", "claim": "C1"}).json()["prompt"]
+    assert revise in client.post(P + "/jobs:preview", json={"type": "codegen"}).json()["prompt"]
+    # a successful agent run on the claim marks its file as up to date
+    job = client.post(P + "/jobs", json={"type": "codegen", "claim": "C1"})
+    assert job.status_code == 202, job.text
+    from test_jobs import wait
+    assert wait(client, pkg, job.json()["id"])["status"] == "succeeded"
+    whole = client.post(P + "/jobs:preview", json={"type": "codegen"}).json()["prompt"]
+    assert revise not in whole
+
+
+def test_unedited_claim_file_regenerated_when_claim_changes(client, pkg):
+    P, root, claims, _ = _claims(client, pkg)
+    assert client.put(P + "/script", json={"template": "python"}).status_code == 200
+    assert client.patch(P + "/claims/C1", json={"text": "The effect was clearly significant."}).status_code == 200
+    assert client.patch(P + "/claims/C1", json={"checked": True}).status_code == 200
+    r = client.put(P + "/script", json={"template": "python"})
+    assert "claims/C1.py" in r.json()["files"] and "claims/C1.py" not in r.json()["kept"]
+    assert "clearly significant" in (root / "claims" / "C1.py").read_text()
+
+
+def test_system_exit_in_claim_file_isolated(client, pkg):
+    P, root, claims, _ = _claims(client, pkg, tick=("C1", "C2"))
+    assert client.put(P + "/script", json={"template": "python"}).status_code == 200
+    t1 = claims["C1"]["evidence"][0]
+    t21 = claims["C2"]["sub_claims"][0]["evidence"][0]
+    (root / "prepare.py").write_text("")
+    (root / "claims" / "C1.py").write_text("import sys\nsys.exit(3)\n")
+    (root / "claims" / "C2.py").write_text(f'record("{t21}", 42, "A")\n')
+    p = subprocess.run([sys.executable, "analysis.py"], cwd=root, capture_output=True, text=True)
+    assert p.returncode == 0, p.stderr
+    rows = {r.id: r for r in ReproducedOutput.model_validate_json((root / "outputs" / "results.json").read_text()).results}
+    assert rows[t1].value is None and rows[t1].note.startswith("claim C1 failed") and rows[t21].value == 42
+    (root / "prepare.py").write_text("raise SystemExit('no data')\n")
+    p = subprocess.run([sys.executable, "analysis.py"], cwd=root, capture_output=True, text=True)
+    assert p.returncode == 0, p.stderr
+    rows = ReproducedOutput.model_validate_json((root / "outputs" / "results.json").read_text()).results
+    assert rows and all(r.value is None and "prepare.py failed" in r.note for r in rows)
+
+
+def test_all_claims_off_runs_empty_runner(client, pkg):
+    from test_jobs import wait
+
+    P, root, claims, _ = _claims(client, pkg)
+    assert client.put(P + "/script", json={"template": "python"}).status_code == 200
+    (root / "prepare.py").write_text("")
+    (root / "claims" / "C1.py").write_text("")
+    assert '"C1"' in (root / "analysis.py").read_text()
+    assert client.patch(P + "/claims/runs/run1", json={"disabled": True}).status_code == 200
+    job = wait(client, pkg, client.post(P + "/jobs", json={"type": "run"}).json()["id"])
+    assert job["status"] == "succeeded", job
+    assert '"C1"' not in (root / "analysis.py").read_text()
+    assert json.loads((root / "outputs" / "results.json").read_text())["results"] == []

@@ -154,7 +154,7 @@ A file written from a master-script template.
 | `generated_hash` | string | yes | hash as generated; a different current hash means the file was edited (e.g. by the agent); pattern `^sha256:[0-9a-f]{64}$` |
 | `claims_role` | `"runner"` \| `"prepare"` \| null |  | claims mode: the generated runner (master) or the shared prepare file |
 | `claim` | string \| null |  | claims mode: the claim this file implements (claims/C1.py) |
-| `claim_hash` | string \| null |  | claims mode: the claim's content hash when the file was generated; a different one means the claim changed and the file is rewritten |
+| `claim_hash` | string \| null |  | claims mode: the claim's content hash when the file was generated (or last revised by the coding agent); a different one means the claim changed: an unedited file is rewritten, an edited one is kept and the agent is asked to revise it |
 
 ### Submission
 

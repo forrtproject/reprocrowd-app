@@ -3,11 +3,19 @@
 #
 # It runs prepare.R, then the file of each ticked claim in an environment that sees prepare.R's variables. Each
 # claim file calls record(target id, value, step id). An error in a claim file marks that claim's results as not
-# computed and the other claims still run.
+# computed and the other claims still run. A claim whose file still has implementation markers is not run.
+# (A quit() or q() in a claim file still ends the whole run: R can't catch it.)
 
-# claim id -> c(evidence target id = the step that computes it)
+# claim id -> c(evidence target id = the step that computes it): the ticked claims whose file is implemented
 CLAIMS <- list(
 {% for c in claims %}
+  {{ c.id }} = c({% for t in c.targets %}{{ t.id }} = "{{ t.step }}"{{ ", " if not loop.last }}{% endfor %}){{ "," if not loop.last }}
+{% endfor %}
+)
+# ticked claims whose file still had markers when this runner was written: each runs once its file has none
+# (e.g. when the coding agent tests its work); a ReproCrowd run rewrites this runner first
+PENDING <- list(
+{% for c in pending %}
   {{ c.id }} = c({% for t in c.targets %}{{ t.id }} = "{{ t.step }}"{{ ", " if not loop.last }}{% endfor %}){{ "," if not loop.last }}
 {% endfor %}
 )
@@ -24,8 +32,15 @@ record <- function(id, value, step, note = NULL) {
   results[[id]] <<- row
 }
 
+implemented <- function(claim) {
+  path <- file.path("claims", paste0(claim, ".R"))
+  file.exists(path) && !any(grepl(paste0("TODO", "(LLM):"), readLines(path, warn = FALSE), fixed = TRUE))
+}
+RUN <- c(CLAIMS, Filter(Negate(is.null), lapply(setNames(names(PENDING), names(PENDING)), function(id) if (implemented(id)) PENDING[[id]])))
+RUN <- RUN[order(as.integer(substring(names(RUN), 2)))]
+
 not_computed <- function(claim, note) {
-  steps <- CLAIMS[[claim]]
+  steps <- RUN[[claim]]
   for (target in names(steps)) results[[target]] <<- list(id = target, value = NULL, step = steps[[target]], note = note)
 }
 
@@ -33,7 +48,7 @@ prep_env <- new.env()
 failed <- tryCatch({ sys.source("prepare.R", envir = prep_env); NULL },
                    error = function(e) { message(conditionMessage(e)); paste0("prepare.R failed: ", conditionMessage(e)) })
 
-for (claim in names(CLAIMS)) {
+for (claim in names(RUN)) {
   path <- file.path("claims", paste0(claim, ".R"))
   if (!is.null(failed)) {
     not_computed(claim, paste0("claim ", claim, " failed: ", failed))
@@ -47,7 +62,7 @@ for (claim in names(CLAIMS)) {
     not_computed(claim, paste0("claim ", claim, " failed: ", error))
     next
   }
-  steps <- CLAIMS[[claim]]
+  steps <- RUN[[claim]]
   for (target in names(steps)) {
     if (is.null(results[[target]])) {
       results[[target]] <- list(id = target, value = NULL, step = steps[[target]], note = paste0("not recorded by ", path))

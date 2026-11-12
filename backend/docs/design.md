@@ -316,14 +316,20 @@ Claim        { id: C1, text, mode: quote|paraphrase, original_quote, testable, r
   resets it (`claims.RESET_FIELDS`, `content_hash`, `uncheck_users`); notes, refs and the tick itself don't. Targets
   and actions a claim uses can't be deleted (`in_use`).
 - **Scripts and runs**: only ticked, testable claims with evidence are scripted and run (`claim_scope`; see Code
-  generation, "Claims mode"). `POST …/jobs {type: codegen, claim}` implements one claim's file. After a run,
-  `record_run` stores a run record per claim it covered, with the claim's result then.
+  generation, "Claims mode"). `POST …/jobs {type: codegen, claim}` implements one claim's file. A run covers the
+  ticked claims whose file has no `TODO(LLM):` marker left (`scripts.runnable`, in the run job's `request.claims`);
+  the others stay "Not run". After a run, `record_run` stores a run record per claim it covered, with the claim's
+  result then (compared with the last report's settings). Claim ids are never reused: a deleted manual claim's id
+  stays taken by its run record (dropped with it) and its script file. Switching a targets or actions run on or off
+  unticks the claims that use its entries (not the claims run's own cascade).
 - **Results** (`GET …/claims:status`): a claim's verdict **pools** every evidence value of the claim and its
   sub-claims (`reproduced`: all tested values match or are within tolerance; `partly`: some; `not_reproduced`:
   none), with matched/tested counts; each sub-claim's own result is listed beside it (`by_sub_claim`), so a failed
   sub-claim is not hidden. Values are compared with the package's rule (rounded to the printed decimals, comparator,
   deviation threshold): there is no per-value tolerance. States: `not_testable`, `running`, the verdict, or `ready`
-  (ticked) / `review`. A claim changed since its run is `stale` and keeps its last result.
+  (ticked) / `review`. A claim changed or unticked since its run is `stale` and keeps its last result. `rounding` and
+  `threshold` work as in `GET …/comparison` and default to the last report's settings (the defaults without a
+  report), for `claims:trace` too, so the app, the report, the trace and the deposit agree.
 - **The trace** (`GET …/claims:trace`, schema `claims-trace`): `paper {doi, title}`, `skipped` (the enabled claims
   run's) and per claim the user's format: `id` (the DOI), `title`, `claim_id`, `main_claim`, `mode`,
   `original_quote`, `testable`, `depends_on`, `traced_under`, `sub_claims [{id, claim, method, quantitative_evidence}]`,
@@ -334,7 +340,8 @@ Claim        { id: C1, text, mode: quote|paraphrase, original_quote, testable, r
   covers every claim run so far.
 - **Report and deposit**: the report has a Claims section before the comparison table (status in words, sub-claim
   results, assumptions). Depositing needs at least one claim run (409 `no_claim_run`); the Zenodo description gets a
-  table of every claim with its status (`Reproduced 14/18`, `Partly reproduced 14/18`, `Not run`, `Not testable`), and
+  table of every claim with its status (`Reproduced 14/18`, `Partly reproduced 14/18`, `Not run`, `Not testable`; a
+  stale last result adds `(claim changed since)` or `(unticked since)`), and
   the deposit records the claims run (`claims`). Depositing again after a published deposit makes a new version of the
   same record (see Deposits on Zenodo).
 
@@ -459,9 +466,14 @@ sequenceDiagram
 - **Claims mode** (`scripts.py` `_write_claims`, `claims.py` `claim_scope`): when the package has claims, the plan
   holds the ticked, testable claims' methods and evidence plus every transform action. Templates with a `[claims]`
   table (python, r) write a runner as the master file (always regenerated, never edited by the agent; `run.start`
-  re-renders it from the current ticks via `refresh_runner`), a shared prepare file (regenerated while unedited) and
-  one file per ticked claim (`claims/C1.py`, `ScriptMeta.claim` /
-  `claim_hash`), rewritten only when `claims.content_hash` changed. The runner runs the prepare file, then each claim
+  re-renders it from the current ticks via `refresh_runner`, also with every claim switched off), a shared prepare
+  file (regenerated while unedited) and one file per ticked claim (`claims/C1.py`, `ScriptMeta.claim` /
+  `claim_hash`), rewritten when `claims.content_hash` changed and the file is unedited; an edited file is kept (in
+  `kept`) and out of date, so the agent prompt asks to revise it, until a successful codegen job covering it records
+  the new hash. The runner's `CLAIMS` are the ticked claims whose file has no `TODO(LLM):` marker; `PENDING` the
+  others, which it runs only once their marker is gone (the agent testing its work; a ReproCrowd run re-renders the
+  runner first). It catches `BaseException` (not `KeyboardInterrupt`) per file in Python; in R a `quit()` still ends
+  the run. The runner runs the prepare file, then each claim
   file with a `record(id, value, step)` function and the preparation's variables, catching each claim's errors: a
   failed claim's targets get `value: null` and `note: "claim C1 failed: …"`, unrecorded ones `"not recorded by …"`.
   Files of unticked claims stay and are not run. `on_modified` applies only to an edited master that is not a

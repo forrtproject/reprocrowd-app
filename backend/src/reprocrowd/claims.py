@@ -83,14 +83,15 @@ def content_hash(pkg: Package, claim: Claim) -> str:
     return "sha256:" + hashlib.sha256(blob.encode()).hexdigest()
 
 
-def uncheck_users(pkg: Package, kind: Literal["targets", "actions"], item_id: str) -> list[str]:
-    """Untick every claim whose evidence (targets) or method (actions) is item_id; returns their ids."""
+def uncheck_users(pkg: Package, kind: Literal["targets", "actions"], item_id: str | set[str]) -> list[str]:
+    """Untick every claim whose evidence (targets) or method (actions) is item_id (or one of a set); returns their ids."""
     from .curation import Curation
 
+    ids = {item_id} if isinstance(item_id, str) else item_id
     claims = Curation(pkg, "claims")
     hit = []
     for c, _ in claims.effective(include_disabled=True):
-        used = any(item_id in (o.evidence if kind == "targets" else [o.method]) for o in _owners(c))
+        used = any(ids & set(o.evidence if kind == "targets" else [o.method]) for o in _owners(c))
         if used:
             hit.append(c.id)
             if c.checked:
@@ -193,17 +194,24 @@ def _comparison(pkg: Package, st: CompareSettings | None = None) -> Comparison |
     from .errors import ApiError
 
     try:
-        return run.comparison(pkg, st or CompareSettings())
+        return run.comparison(pkg, st or settings(pkg))
     except ApiError:
         return None  # no script or no results file yet
 
 
-def record_run(pkg: Package, job_id: str) -> None:
-    """After a run: note which claims it covered, with each one's result. A no-op outside claims mode."""
+def settings(pkg: Package) -> CompareSettings:
+    """The comparison settings of claim results when none are given: the last report's, else the defaults."""
+    from .report import report_settings
+
+    return report_settings(pkg) or CompareSettings()
+
+
+def record_run(pkg: Package, job_id: str, claim_ids: list[str]) -> None:
+    """After a run: note the claims it ran (claim_ids: the runner's claims, ticked with an implemented file), with each
+    one's result compared with the report's settings. A claim without a result in the comparison is not recorded."""
     from .curation import Curation
 
-    scope = claim_scope(pkg)
-    if scope is None:
+    if not claim_ids:
         return
     cmp = _comparison(pkg)
     snap = {r.claim: r for r in results(pkg, cmp)} if cmp else {}
@@ -211,8 +219,9 @@ def record_run(pkg: Package, job_id: str) -> None:
         cur = Curation(pkg, "claims")
         f = cur.load()
         at = now()
-        for c in scope.claims:
-            f.ran[c.id] = ClaimRunRecord(job=job_id, at=at, content_hash=content_hash(pkg, c), result=snap.get(c.id))
+        for c, _ in cur._effective_of(f, include_disabled=False):
+            if c.id in claim_ids and c.id in snap:
+                f.ran[c.id] = ClaimRunRecord(job=job_id, at=at, content_hash=content_hash(pkg, c), result=snap[c.id])
         cur._save(f)
 
 
@@ -230,11 +239,10 @@ def statuses(pkg: Package, st: CompareSettings | None = None) -> list[ClaimStatu
     running: set[str] = set()
     if job is not None:
         if job.type == "run":
-            scope = claim_scope(pkg)
-            running = {c.id for c in scope.claims} if scope else set()
+            running = set(job.request.get("claims") or [])
         elif job.request.get("claim"):
             running = {job.request["claim"]}
-    cmp = _comparison(pkg, st)  # the live result of a current claim; None: the default settings
+    cmp = _comparison(pkg, st)  # the live result of a current claim; None: the report's settings, else the defaults
     live = {r.claim: r for r in results(pkg, cmp)} if cmp else {}
     out = []
     for c in claims:
@@ -290,23 +298,37 @@ def _location(docs: dict[str, Document | None], ref: Ref) -> str:
 VERDICT_LABEL: dict[str, str] = {"reproduced": "Reproduced", "partly": "Partly reproduced", "not_reproduced": "Not reproduced"}
 
 
-def status_words(c: ClaimTrace) -> str:
-    """A claim's status in words for the report and the deposit: "Reproduced 14/18", "Not run", "Not testable"."""
+def status_words(c: ClaimTrace, changed: bool = True) -> str:
+    """A claim's status in words for the report and the deposit: "Reproduced 14/18", "Not run", "Not testable". A last
+    result that no longer describes the claim says why: "(claim changed since)" (changed: see `changed`) or "(unticked
+    since)"."""
     if not c.testable:
         return "Not testable"
     if c.result is None:
         return "Not run"
     words = f"{VERDICT_LABEL[c.result.verdict]} {c.result.matched}/{c.result.tested}"
-    return words if c.status in VERDICT_LABEL else words + " (claim changed since)"
+    if c.status in VERDICT_LABEL:
+        return words
+    return words + (" (claim changed since)" if changed else " (unticked since)")
 
 
-def ran(pkg: Package) -> list[str]:
-    """Ids of the effective claims that have been run (have a run record), in id order."""
+def changed(pkg: Package) -> set[str]:
+    """Ids of the claims whose content changed since their last run."""
     from .curation import Curation
 
     cur = Curation(pkg, "claims")
     done = cur.load().ran
-    return sorted((c.id for c, _ in cur.effective() if c.id in done), key=lambda i: int(i[1:]))
+    return {c.id for c, _ in cur.effective() if c.id in done and done[c.id].content_hash != content_hash(pkg, c)}
+
+
+def ran(pkg: Package) -> list[str]:
+    """Ids of the effective claims that have been run (have a run record with a result), in id order: the claims a
+    deposit lists, and the ones whose status is not "Not run"."""
+    from .curation import Curation
+
+    cur = Curation(pkg, "claims")
+    done = cur.load().ran
+    return sorted((c.id for c, _ in cur.effective() if c.id in done and done[c.id].result is not None), key=lambda i: int(i[1:]))
 
 
 def mode(pkg: Package) -> bool:

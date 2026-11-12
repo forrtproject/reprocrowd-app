@@ -3,15 +3,22 @@
 #
 # It runs prepare.py, then the file of each ticked claim with prepare.py's variables in scope. Each claim file
 # calls record(target id, value, step id). An error in a claim file marks that claim's results as not computed
-# and the other claims still run.
+# and the other claims still run. A claim whose file still has implementation markers is not run.
 import json
 import runpy
 import traceback
 from pathlib import Path
 
-# claim id -> {evidence target id: the step that computes it}
+# claim id -> {evidence target id: the step that computes it}: the ticked claims whose file is implemented
 CLAIMS = {
 {% for c in claims %}
+    "{{ c.id }}": { {%- for t in c.targets %}"{{ t.id }}": "{{ t.step }}"{{ ", " if not loop.last }}{% endfor -%} },
+{% endfor %}
+}
+# ticked claims whose file still had markers when this runner was written: each runs once its file has none
+# (e.g. when the coding agent tests its work); a ReproCrowd run rewrites this runner first
+PENDING = {
+{% for c in pending %}
     "{{ c.id }}": { {%- for t in c.targets %}"{{ t.id }}": "{{ t.step }}"{{ ", " if not loop.last }}{% endfor -%} },
 {% endfor %}
 }
@@ -29,8 +36,16 @@ def record(id, value, step, note=None):
     results[id] = row
 
 
+def implemented(claim):
+    path = Path(f"claims/{claim}.py")
+    return path.is_file() and "TODO" + "(LLM):" not in path.read_text(errors="replace")
+
+
+RUN = {c: t for c, t in sorted({**CLAIMS, **PENDING}.items(), key=lambda kv: int(kv[0][1:])) if c in CLAIMS or implemented(c)}
+
+
 def not_computed(claim, note):
-    for target, step in CLAIMS[claim].items():
+    for target, step in RUN[claim].items():
         results[target] = {"id": target, "value": None, "step": step, "note": note}
 
 
@@ -39,25 +54,30 @@ def plain(x):
     return x.tolist() if hasattr(x, "tolist") else str(x)
 
 
+# BaseException: sys.exit() / SystemExit in a claim file must not end the run; only Ctrl-C does.
 try:
     shared = {k: v for k, v in runpy.run_path("prepare.py", init_globals={"record": record}).items() if not k.startswith("__")}
     failed = None
-except Exception as e:
+except KeyboardInterrupt:
+    raise
+except BaseException as e:
     traceback.print_exc()
     shared, failed = {}, f"prepare.py failed: {e}"
 
-for claim in CLAIMS:
+for claim in RUN:
     path = f"claims/{claim}.py"
     if failed:
         not_computed(claim, f"claim {claim} failed: {failed}")
         continue
     try:
         runpy.run_path(path, init_globals={**shared, "record": record})
-    except Exception as e:
+    except KeyboardInterrupt:
+        raise
+    except BaseException as e:
         traceback.print_exc()
         not_computed(claim, f"claim {claim} failed: {e}")
         continue
-    for target, step in CLAIMS[claim].items():
+    for target, step in RUN[claim].items():
         if target not in results:
             results[target] = {"id": target, "value": None, "step": step, "note": f"not recorded by {path}"}
 

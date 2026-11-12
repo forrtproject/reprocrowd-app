@@ -207,8 +207,9 @@ def _claims_table(pkg: Package) -> str:
     report's settings like the ZIP's claims_trace.json; else ""."""
     if not claims_.mode(pkg):
         return ""
+    edited = claims_.changed(pkg)
     rows = "".join(f"<tr><td>{escape(c.claim_id)}</td><td>{escape(c.main_claim[:199] + '…' if len(c.main_claim) > 200 else c.main_claim)}</td>"
-                   f"<td>{escape(claims_.status_words(c))}</td></tr>" for c in claims_.trace(pkg, report_settings(pkg)).claims)
+                   f"<td>{escape(claims_.status_words(c, c.claim_id in edited))}</td></tr>" for c in claims_.trace(pkg, report_settings(pkg)).claims)
     return f"<p><b>Claims:</b></p><table><tr><th>ID</th><th>Claim</th><th>Status</th></tr>{rows}</table>"
 
 

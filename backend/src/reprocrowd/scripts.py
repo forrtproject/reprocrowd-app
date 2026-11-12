@@ -184,26 +184,46 @@ def _claims_context(pkg: Package, tpl: Template, scope: claims_mod.ClaimScope) -
     return base, targets, claim_targets
 
 
-def _put_runner(pkg: Package, m, tpl: Template, scope: claims_mod.ClaimScope) -> None:
+def _has_todo(pkg: Package, rel: str) -> bool:
+    p = pkg.path(rel)
+    return p.is_file() and bool(TODO_RE.search(p.read_text(encoding="utf-8", errors="replace")))
+
+
+def runnable(pkg: Package, tpl: Template, scope: claims_mod.ClaimScope) -> list:
+    """The scope's claims that a run covers: their file exists and has no TODO(LLM): marker left. A ticked claim whose
+    file is not implemented yet is not run (and stays "Not run")."""
+    return [c for c in scope.claims if pkg.path(_claim_dest(tpl, c.id)).is_file() and not _has_todo(pkg, _claim_dest(tpl, c.id))]
+
+
+EMPTY_SCOPE = claims_mod.ClaimScope(claims=[], targets=set(), actions=set(), preparation=[])
+
+
+def _put_runner(pkg: Package, m, tpl: Template, scope: claims_mod.ClaimScope) -> list[str]:
+    """Render the runner: CLAIMS, the scope's runnable claims (their ids are returned); PENDING, its other ticked claims,
+    which the runner itself runs only once their file has no marker left (the coding agent testing its work)."""
     base, targets, claim_targets = _claims_context(pkg, tpl, scope)
-    ctx = base | {"claims": [{"id": c.id, "targets": claim_targets(c)} for c in scope.claims],
+    run = runnable(pkg, tpl, scope)
+    ctx = base | {"claims": [{"id": c.id, "targets": claim_targets(c)} for c in run],
+                  "pending": [{"id": c.id, "targets": claim_targets(c)} for c in scope.claims if c not in run],
                   "fields": [{"id": t.id, "field": {"table": "table", "figure": "file"}[t.type]} for t in targets if t.type in ("table", "figure")]}
     spec = tpl.claims["runner"]
     _put_script(pkg, m, tpl, spec["dest"], _env().get_template(f"{tpl.id}/{spec['src']}").render(ctx), {"claims_role": "runner"})
+    return [c.id for c in run]
 
 
-def refresh_runner(pkg: Package) -> None:
-    """Claims mode: re-render only the runner from the current claim_scope (ticked claims), e.g. before a run. Never
-    touches the prepare or claim files. A no-op unless the script was generated in claims mode with a claims-ready template."""
+def refresh_runner(pkg: Package) -> list[str] | None:
+    """Claims mode: re-render only the runner from the current claim_scope (ticked claims with an implemented file), e.g.
+    before a run, and return the ids of the claims it runs. Never touches the prepare or claim files. With every claim
+    switched off the runner runs no claim. None (nothing done) unless the master script is a claims runner."""
     tpl = current_template(pkg)
-    if tpl is None or tpl.claims is None or not _claims_script(pkg):
-        return
+    if tpl is None or tpl.claims is None:
+        return None
     with pkg.locked():
-        scope = claims_mod.claim_scope(pkg)
-        if scope is None:
-            return
+        r = pkg.load().get(f"script-{_rname(tpl.claims['runner']['dest'])}")
+        if r is None or not isinstance(r.reprocrowd, ScriptMeta) or r.reprocrowd.claims_role != "runner":
+            return None
         with pkg.edit() as m:
-            _put_runner(pkg, m, tpl, scope)
+            return _put_runner(pkg, m, tpl, claims_mod.claim_scope(pkg) or EMPTY_SCOPE)
 
 
 def _generated_unchanged(pkg: Package, r) -> bool:
@@ -220,8 +240,8 @@ def _backup_path(pkg: Package, rel: str) -> str:
 
 def _write_claims(pkg: Package, tpl: Template, scope: claims_mod.ClaimScope, on_modified: OnModified) -> dict[str, Any]:
     """Claims mode (called under the package lock): the runner (always regenerated; the agent never edits it), the
-    prepare file (regenerated while unedited) and one file per ticked claim (written if missing or if the claim changed
-    since). Files of unticked claims stay on disk and are not run. on_modified applies only to an edited monolithic
+    prepare file (regenerated while unedited) and one file per ticked claim (written if missing, rewritten if the claim
+    changed since and the file is unedited; an edited file is kept and marked out of date). Files of unticked claims stay on disk and are not run. on_modified applies only to an edited monolithic
     master that the runner would replace: refuse (409), keep (moved to <stem>.pre-claims.<ext>) or overwrite."""
     if tpl.claims is None:
         raise ApiError(400, "template_not_claims_ready", f"template {tpl.id!r} has no claims mode; available: "
@@ -260,7 +280,9 @@ def _write_claims(pkg: Package, tpl: Template, scope: claims_mod.ClaimScope, on_
         digest = claims_mod.content_hash(pkg, c)
         r = m.get(f"script-{_rname(dest)}")
         generated = r is not None and isinstance(r.reprocrowd, ScriptMeta)
-        if pkg.path(dest).exists() and (not generated or r.reprocrowd.claim_hash == digest):  # not generated: the user's file
+        # kept: the user's own file (not generated), an unchanged claim, or a file edited since it was generated (the
+        # agent's code; its old claim_hash marks it out of date, so the agent prompt asks to revise it)
+        if pkg.path(dest).exists() and (not generated or r.reprocrowd.claim_hash == digest or not _generated_unchanged(pkg, r)):
             kept.append(dest)
             continue
         ctx = base | {"claim": c, "targets": claim_targets(c), "steps": [steps[a] for a in claims_mod.methods(c) if a in steps]}
@@ -283,16 +305,16 @@ def _write_claims(pkg: Package, tpl: Template, scope: claims_mod.ClaimScope, on_
                 r.reprocrowd = OtherMeta(kind="code", added_at=r.reprocrowd.added_at)  # edited: no longer a generated file
             else:
                 pkg.remove(m, r.name)
-        _put_runner(pkg, m, tpl, scope)
         written = [runner]
         for dest, src, ctx, extra in out:
             _put_script(pkg, m, tpl, dest, env.get_template(src).render(ctx), extra)
             written.append(dest)
+        _put_runner(pkg, m, tpl, scope)  # after the claim files: it runs the implemented ones
         for dest in kept:  # implemented since: the manifest gets the current bytes and hash
             if m.get(f"script-{_rname(dest)}") is not None:
                 pkg.refresh(m, f"script-{_rname(dest)}")
         _put_script(pkg, m, tpl, "README.md", env.get_template("_README.md.j2").render(base), {})
-        _put_script(pkg, m, tpl, AGENT_PROMPT, agent_prompt(pkg, tpl, claims=_claim_todo(pkg, tpl, scope)), {})
+        _put_script(pkg, m, tpl, AGENT_PROMPT, agent_prompt(pkg, tpl, claims=_claim_todo(pkg, tpl, scope, m)), {})
         written += ["README.md", AGENT_PROMPT]
         meta = OtherMeta(kind="export", added_at=now())
         pkg.write_json(m, "results-schema", "results_schema.json", ResultsSchema(paper=base["paper"], results=targets), schema="results-schema", meta=meta)
@@ -307,16 +329,41 @@ def _put_script(pkg: Package, m, tpl: Template, dest: str, text: str, extra: dic
                             mediatype="text/plain", meta=ScriptMeta(added_at=now(), template=tpl.id, generated_hash=_current_hash(pkg, dest), **extra)))
 
 
-def _claim_todo(pkg: Package, tpl: Template, scope: claims_mod.ClaimScope | None) -> list[dict]:
-    """The prepare file and each ticked claim's file, with whether it still has TODO(LLM): markers."""
+def _claim_todo(pkg: Package, tpl: Template, scope: claims_mod.ClaimScope | None, m=None) -> list[dict]:
+    """The prepare file and each ticked claim's file, with whether it still has TODO(LLM): markers and whether it is out
+    of date (generated for an earlier version of the claim and kept because it was edited since)."""
     if tpl.claims is None or scope is None:
         return []
-    out = [{"path": tpl.claims["prepare"]["dest"], "claim": None}]
-    out += [{"path": _claim_dest(tpl, c.id), "claim": c} for c in scope.claims]
+    m = m or pkg.load()  # m: the manifest being edited (claim_hash of files written just now)
+    out = [{"path": tpl.claims["prepare"]["dest"], "claim": None, "outdated": False}]
+    for c in scope.claims:
+        r = m.get(f"script-{_rname(_claim_dest(tpl, c.id))}")
+        outdated = (r is not None and isinstance(r.reprocrowd, ScriptMeta) and r.reprocrowd.claim_hash is not None
+                    and r.reprocrowd.claim_hash != claims_mod.content_hash(pkg, c))
+        out.append({"path": _claim_dest(tpl, c.id), "claim": c, "outdated": outdated})
     for f in out:
-        p = pkg.path(f["path"])
-        f["todo"] = p.exists() and bool(TODO_RE.search(p.read_text(encoding="utf-8", errors="replace")))
+        f["todo"] = _has_todo(pkg, f["path"])
     return out
+
+
+def outdated_claims(pkg: Package, tpl: Template, claim: str | None = None) -> dict[str, str]:
+    """{claim file: the claim's content hash now} of the out-of-date claim files a codegen job asks the agent to revise
+    (all of them, or only `claim`'s)."""
+    if tpl.claims is None or not _claims_script(pkg):
+        return {}
+    return {f["path"]: claims_mod.content_hash(pkg, f["claim"]) for f in _claim_todo(pkg, tpl, claims_mod.claim_scope(pkg))
+            if f["claim"] is not None and f["outdated"] and (claim is None or f["claim"].id == claim)}
+
+
+def mark_revised(pkg: Package, revised: dict[str, str]) -> None:
+    """After a successful codegen job: the claim files it revised are up to date with the claim hashes it was given."""
+    if not revised:
+        return
+    with pkg.edit() as m:
+        for path, digest in revised.items():
+            r = m.get(f"script-{_rname(path)}")
+            if r is not None and isinstance(r.reprocrowd, ScriptMeta):
+                r.reprocrowd.claim_hash = digest
 
 
 def _claims_script(pkg: Package) -> bool:

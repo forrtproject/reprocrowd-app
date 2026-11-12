@@ -5996,7 +5996,7 @@
           "script"
         ],
         "summary": "Create or replace the master script",
-        "description": "Resolves the plan (load steps for used data inputs → enabled actions → results step), writes `analysis_plan.json`, `results_schema.json`, the template's files and README.md. Returns 201 the first time, 200 when replacing. Files edited since they were generated (e.g. by the agent) are protected: `on_modified` = refuse (409), keep (regenerate the rest) or overwrite. Claims mode (the package has claims): the plan covers the ticked claims; the master file is a generated runner, the shared preparation file is written if missing, and each ticked claim gets its own file (`claims/C1.py`), rewritten only when the claim changed; `on_modified` does not apply.",
+        "description": "Resolves the plan (load steps for used data inputs → enabled actions → results step), writes `analysis_plan.json`, `results_schema.json`, the template's files and README.md. Returns 201 the first time, 200 when replacing. Files edited since they were generated (e.g. by the agent) are protected: `on_modified` = refuse (409), keep (regenerate the rest) or overwrite. Claims mode (the package has claims): the plan covers the ticked claims; the master file is a generated runner that runs the ticked claims whose file has no `TODO(LLM):` markers left; the shared preparation file is regenerated while unedited and kept once edited; each ticked claim gets its own file (`claims/C1.py`), regenerated when the claim changed and the file is unedited, kept (and listed in `kept`, out of date: the agent prompt asks to revise it) once edited. `on_modified` applies only to an edited monolithic master the runner would replace: refuse (409), keep (moved to `<stem>.pre-claims.<ext>`) or overwrite.",
         "operationId": "put_script_v1_packages__pkg__script_put",
         "security": [
           {
@@ -7018,7 +7018,7 @@
           "comparison"
         ],
         "summary": "State and result of every claim",
-        "description": "`state` is `not_testable`; `running` (a claim's codegen job, or any run job for the ticked claims); the verdict (`reproduced`, `partly`, `not_reproduced`) when the claim ran and has not changed since; otherwise `ready` (ticked) or `review`. A changed claim is `stale` and keeps its last `result`. A claim's verdict pools all the evidence of the claim and its sub-claims; `by_sub_claim` lists theirs.",
+        "description": "`state` is `not_testable`; `running` (a claim's codegen job, or any run job for the ticked claims); the verdict (`reproduced`, `partly`, `not_reproduced`) when the claim ran and has not changed since; otherwise `ready` (ticked) or `review`. A changed claim is `stale` and keeps its last `result`. A claim's verdict pools all the evidence of the claim and its sub-claims; `by_sub_claim` lists theirs. A ticked claim whose file still has `TODO(LLM):` markers is not run. `rounding` and `threshold` work as in `GET …/comparison`; left out, they are the last report's settings (the defaults without a report), so the app, the report, the trace and the deposit agree.",
         "operationId": "claims_status_v1_packages__pkg__claims_status_get",
         "security": [
           {
@@ -7036,6 +7036,40 @@
               "title": "Pkg"
             },
             "description": "package id"
+          },
+          {
+            "name": "rounding",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^(reported|\\d{1,2})$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Rounding"
+            }
+          },
+          {
+            "name": "threshold",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Threshold"
+            }
           }
         ],
         "responses": {
@@ -7084,7 +7118,7 @@
           "comparison"
         ],
         "summary": "The claims trace (claims_trace.json)",
-        "description": "Every claim in the trace format: the paper's DOI and title, the claim's id, text, mode, links, sub-claims and evidence (reported value, comparator, decimals, readable source; no tolerance: values are compared with the package-wide rule), methods, the coding agent's `# ASSUMPTION:` comments in the claim's file and the prepare file, its state and (last) result. `skipped`: the sentences the enabled claims run passed over. The report and the archive write the same object to `claims_trace.json`. Empty without claims.",
+        "description": "Every claim in the trace format: the paper's DOI and title, the claim's id, text, mode, links, sub-claims and evidence (reported value, comparator, decimals, readable source; no tolerance: values are compared with the package-wide rule), methods, the coding agent's `# ASSUMPTION:` comments in the claim's file and the prepare file, its state and (last) result. `skipped`: the sentences the enabled claims run passed over. The report and the archive write the same object to `claims_trace.json`. Empty without claims. `rounding` and `threshold` work as in `GET …/comparison`; left out, they are the last report's settings (the defaults without a report), so the app, the report, the trace and the deposit agree.",
         "operationId": "claims_trace_v1_packages__pkg__claims_trace_get",
         "security": [
           {
@@ -7102,6 +7136,40 @@
               "title": "Pkg"
             },
             "description": "package id"
+          },
+          {
+            "name": "rounding",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^(reported|\\d{1,2})$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Rounding"
+            }
+          },
+          {
+            "name": "threshold",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "number",
+                  "minimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Threshold"
+            }
           }
         ],
         "responses": {
@@ -14219,7 +14287,7 @@
               }
             ],
             "title": "Claim Hash",
-            "description": "claims mode: the claim's content hash when the file was generated; a different one means the claim changed and the file is rewritten"
+            "description": "claims mode: the claim's content hash when the file was generated (or last revised by the coding agent); a different one means the claim changed: an unedited file is rewritten, an edited one is kept and the agent is asked to revise it"
           }
         },
         "additionalProperties": false,

@@ -36,7 +36,7 @@ def start(pkg: Package) -> Job:
     if tpl is None:
         raise conflict("script_missing", "create the master script first (PUT …/script)")
     jobs.ensure_idle(pkg)
-    refresh_runner(pkg)  # claims mode: run only the claims ticked now
+    ran = refresh_runner(pkg)  # claims mode: the claims ticked now whose file is implemented; None otherwise
     targets = frozen_targets(pkg)
     jid = jobs.new_id()
     pkg.path(RESULTS).unlink(missing_ok=True)
@@ -55,16 +55,16 @@ def start(pkg: Package) -> Job:
                 errors, warnings, _ = check_output(pkg.read_json(RESULTS), targets)
             except ValueError as e:
                 errors = [f"not valid JSON: {e}"]
-        if exists:
+        if exists and ran is not None:
             try:
-                claims.record_run(pkg, jid)  # claims mode: which claims this run covered, with their results
+                claims.record_run(pkg, jid, ran)  # claims mode: which claims this run covered, with their results
             except Exception:  # bookkeeping must not break the run
                 logging.getLogger(__name__).exception("recording the claims of run %s failed", jid)
         after = gitrepo.commit(pkg, f"Run ({jid}, {job.status}, exit {job.exit_code})") if use_git else None
         return RunResult(command=tpl.command, log=job.stdout, results_file=exists, output_errors=errors, output_warnings=warnings, commit_after=after)
 
     return jobs.start(pkg, jid=jid, type="run", argv=["bash", "-c", tpl.command], stdin="", timeout_s=settings().run_timeout_s,
-                      events_format="text", profile=None, request={"template": tpl.id, "command": tpl.command}, finish=finish, merge_stderr=True,
+                      events_format="text", profile=None, request={"template": tpl.id, "command": tpl.command} | ({"claims": ran} if ran is not None else {}), finish=finish, merge_stderr=True,
                       env={"PYTHONUNBUFFERED": "1"})  # live, ordered log lines from Python pipelines
 
 

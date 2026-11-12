@@ -93,7 +93,9 @@ def write_report(pkg: Package, st: CompareSettings) -> dict[str, Any]:
     validation = validate_package(pkg)
     numeric = [r for r in cmp.rows if r.type != "figure"]
     trace = _claims_trace(pkg, st)
-    from .claims import VERDICT_LABEL, status_words
+    from .claims import VERDICT_LABEL, changed, status_words
+
+    edited = changed(pkg) if trace else set()
 
     env = Environment(loader=PackageLoader("reprocrowd", "templates"), undefined=StrictUndefined, autoescape=True, trim_blocks=True, lstrip_blocks=True)
     html = env.get_template("_report.html.j2").render(
@@ -104,7 +106,7 @@ def write_report(pkg: Package, st: CompareSettings) -> dict[str, Any]:
         plan=plan, svg=provenance.svg(graph), lineage=graph.lineage(), traces=traces, colors=provenance.COLORS, tpl=tpl, run=_last_run(pkg), codegen=codegen[-1] if codegen else None,
         inputs=m.by_kind("input"), extractions=m.by_kind("extraction"), fulltexts=m.by_kind("fulltext"), llm_runs=llm_runs,
         figures=figures, validation=validation, resources=sorted(m.resources, key=lambda r: r.path),
-        claims=trace, claim_words={c.claim_id: status_words(c) for c in trace.claims} if trace else {}, verdict_labels=VERDICT_LABEL)
+        claims=trace, claim_words={c.claim_id: status_words(c, c.claim_id in edited) for c in trace.claims} if trace else {}, verdict_labels=VERDICT_LABEL)
     with pkg.edit() as m:
         atomic_write(pkg.path(REPORT), html.encode())
         pkg.put(m, pkg.describe("report", REPORT, type="file", format="html", mediatype="text/html", meta=OtherMeta(kind="report", added_at=now())))

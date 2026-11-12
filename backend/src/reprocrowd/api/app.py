@@ -668,9 +668,12 @@ def get_script(pkg: Pkg):
                      "`analysis_plan.json`, `results_schema.json`, the template's files and README.md. Returns 201 the first "
                      "time, 200 when replacing. Files edited since they were generated (e.g. by the agent) are "
                      "protected: `on_modified` = refuse (409), keep (regenerate the rest) or overwrite. Claims mode (the package "
-                     "has claims): the plan covers the ticked claims; the master file is a generated runner, the shared "
-                     "preparation file is written if missing, and each ticked claim gets its own file (`claims/C1.py`), "
-                     "rewritten only when the claim changed; `on_modified` does not apply.",
+                     "has claims): the plan covers the ticked claims; the master file is a generated runner that runs the ticked "
+                     "claims whose file has no `TODO(LLM):` markers left; the shared preparation file is regenerated while "
+                     "unedited and kept once edited; each ticked claim gets its own file (`claims/C1.py`), regenerated when "
+                     "the claim changed and the file is unedited, kept (and listed in `kept`, out of date: the agent prompt "
+                     "asks to revise it) once edited. `on_modified` applies only to an edited monolithic master the runner "
+                     "would replace: refuse (409), keep (moved to `<stem>.pre-claims.<ext>`) or overwrite.",
          responses={201: {"model": M.ScriptResult, "description": "created"},
                     **errors("unknown_template", "template_not_claims_ready", "nothing_to_script", "script_modified")})
 def put_script(pkg: Pkg, body: M.ScriptRequest, response: Response):
@@ -808,13 +811,25 @@ def get_comparison(pkg: Pkg, rounding: Annotated[str, Query(pattern=r"^(reported
     return run.comparison(pkg, st)
 
 
+def _settings_for(pkg, rounding: str | None, threshold: float | None) -> CompareSettings:
+    base = claims.settings(pkg)
+    return CompareSettings(rounding=base.rounding if rounding is None else ("reported" if rounding == "reported" else int(rounding)),
+                           threshold=base.threshold if threshold is None else threshold)
+
+
+CLAIM_SETTINGS = ("`rounding` and `threshold` work as in `GET …/comparison`; left out, they are the last report's settings "
+                  "(the defaults without a report), so the app, the report, the trace and the deposit agree.")
+
+
 @api.get("/packages/{pkg}/claims:status", tags=["comparison"], response_model=list[ClaimStatus], summary="State and result of every claim",
          description="`state` is `not_testable`; `running` (a claim's codegen job, or any run job for the ticked claims); the "
                      "verdict (`reproduced`, `partly`, `not_reproduced`) when the claim ran and has not changed since; "
                      "otherwise `ready` (ticked) or `review`. A changed claim is `stale` and keeps its last `result`. A "
-                     "claim's verdict pools all the evidence of the claim and its sub-claims; `by_sub_claim` lists theirs.")
-def claims_status(pkg: Pkg):
-    return claims.statuses(pkg)
+                     "claim's verdict pools all the evidence of the claim and its sub-claims; `by_sub_claim` lists theirs. A "
+                     "ticked claim whose file still has `TODO(LLM):` markers is not run. " + CLAIM_SETTINGS)
+def claims_status(pkg: Pkg, rounding: Annotated[str | None, Query(pattern=r"^(reported|\d{1,2})$")] = None,
+                  threshold: Annotated[float | None, Query(ge=0)] = None):
+    return claims.statuses(pkg, _settings_for(pkg, rounding, threshold))
 
 
 @api.get("/packages/{pkg}/claims:trace", tags=["comparison"], response_model=ClaimsTrace, summary="The claims trace (claims_trace.json)",
@@ -822,9 +837,10 @@ def claims_status(pkg: Pkg):
                      "and evidence (reported value, comparator, decimals, readable source; no tolerance: values are compared "
                      "with the package-wide rule), methods, the coding agent's `# ASSUMPTION:` comments in the claim's file and "
                      "the prepare file, its state and (last) result. `skipped`: the sentences the enabled claims run passed over. "
-                     "The report and the archive write the same object to `claims_trace.json`. Empty without claims.")
-def claims_trace(pkg: Pkg):
-    return claims.trace(pkg)
+                     "The report and the archive write the same object to `claims_trace.json`. Empty without claims. " + CLAIM_SETTINGS)
+def claims_trace(pkg: Pkg, rounding: Annotated[str | None, Query(pattern=r"^(reported|\d{1,2})$")] = None,
+                 threshold: Annotated[float | None, Query(ge=0)] = None):
+    return claims.trace(pkg, _settings_for(pkg, rounding, threshold))
 
 
 # ---------- figure crops ----------

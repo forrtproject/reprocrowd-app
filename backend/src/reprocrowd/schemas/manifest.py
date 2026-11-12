@@ -85,7 +85,9 @@ class ScriptMeta(Model):
     claims_role: Literal["runner", "prepare"] | None = Field(default=None, description="claims mode: the generated runner (master) or the shared prepare file")
     claim: str | None = Field(default=None, pattern=r"^C\d+$", description="claims mode: the claim this file implements (claims/C1.py)")
     claim_hash: str | None = Field(default=None, pattern=r"^sha256:[0-9a-f]{64}$",
-                                   description="claims mode: the claim's content hash when the file was generated; a different one means the claim changed and the file is rewritten")
+                                   description="claims mode: the claim's content hash when the file was generated (or last revised by the coding agent); "
+                                               "a different one means the claim changed: an unedited file is rewritten, an edited one is kept and "
+                                               "the agent is asked to revise it")
 
 
 class OtherMeta(Model):

@@ -184,7 +184,10 @@ class Curation:
         return self._effective_of(self.load(), include_disabled)
 
     def _all_ids(self, f) -> set[str]:
-        return {i.id for i in f.manual} | {e.base.id for r in f.llm_runs for e in r.entries}
+        ids = {i.id for i in f.manual} | {e.base.id for r in f.llm_runs for e in r.entries}
+        if self.spec.kind == "claims":  # a deleted claim's id stays taken by its run record and its script file
+            ids |= set(f.ran) | {c for r in self.pkg.load().by_kind("script") if (c := getattr(r.reprocrowd, "claim", None))}
+        return ids
 
     def _next_ids(self, f, n: int) -> list[str]:
         nums = [int(i[1:]) for i in self._all_ids(f) if re.fullmatch(rf"{self.spec.prefix}\d+", i)]
@@ -240,6 +243,8 @@ class Curation:
             if users:
                 raise conflict("in_use", f"{item_id} is used by {', '.join(users)}", {"used_by": users})
             f.manual = [i for i in f.manual if i.id != item_id]
+            if self.spec.kind == "claims":
+                f.ran.pop(item_id, None)
             self._save(f)
 
     def _users(self, item_id: str) -> list[str]:
@@ -344,7 +349,10 @@ class Curation:
             if self.spec.kind == "actions" and (cycle := find_cycle([a for a, _ in self._effective_of(f, False)])):
                 raise invalid("invalid_reference", f"enabling {run_id} creates a dependency cycle", {"cycle": cycle})
             self._save(f)
-            return run
+        if self.spec.kind in ("targets", "actions"):  # switching evidence or methods on or off withdraws the claims' ticks
+            from .claims import uncheck_users
+            uncheck_users(self.pkg, self.spec.kind, {e.base.id for e in run.entries})  # (a claims run's cascade leaves its claims' ticks)
+        return run
 
     @property
     def output_schema(self) -> str:
