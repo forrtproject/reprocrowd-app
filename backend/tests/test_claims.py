@@ -116,3 +116,53 @@ def test_content_hash_ignores_notes(client, pkg):
     assert h() == h0 and h0.startswith("sha256:")
     client.patch(P + "/targets/T001", json={"expected": 2.4})
     assert h() != h0
+
+
+REF2 = [{"extraction": "ex-paper-tei", "id": "sec3.p1.s2"}]
+
+
+def _tick_sub(client, pkg):
+    package_with_targets(client, pkg)
+    P = f"/v1/packages/{pkg}"
+    sub = {"id": "C1.1", "text": "s", "refs": REF, "evidence": ["T001"]}
+    assert client.post(P + "/claims", json={"text": "x", "refs": REF, "sub_claims": [sub]}).status_code == 201
+    assert client.patch(P + "/claims/C1", json={"checked": True}).json()["item"]["checked"] is True
+    return P, sub
+
+
+def test_sub_claim_refs_keep_tick_but_text_resets(client, pkg):
+    P, sub = _tick_sub(client, pkg)
+    r = client.patch(P + "/claims/C1", json={"sub_claims": [sub | {"refs": REF2}]})
+    assert r.status_code == 200 and r.json()["item"]["checked"] is True
+    r = client.patch(P + "/claims/C1", json={"sub_claims": [sub | {"text": "other"}]})
+    assert r.json()["item"]["checked"] is False
+
+
+def test_sub_claim_evidence_resets_tick(client, pkg):
+    P, sub = _tick_sub(client, pkg)
+    r = client.patch(P + "/claims/C1", json={"sub_claims": [sub | {"evidence": ["T002"]}]})
+    assert r.status_code == 200 and r.json()["item"]["checked"] is False
+
+
+def test_noop_patch_keeps_tick(client, pkg):
+    P = _tick_c1(client, pkg)
+    r = client.patch(P + "/claims/C1", json={"text": "x"})
+    assert r.status_code == 200 and r.json()["item"]["checked"] is True
+
+
+def test_action_edit_unticks_claim(client, pkg):
+    P = _tick_c1(client, pkg)
+    assert client.patch(P + "/actions/A01", json={"summary": "changed"}).status_code == 200
+    assert _checked(client, P) is False
+
+
+def test_drop_overlay_unticks_claim(client, pkg):
+    package_with_targets(client, pkg)
+    P = f"/v1/packages/{pkg}"
+    assert client.post(P + "/targets/runs", json={"extraction": "ex-paper-tei", "scope": {"sections": ["sec3"]}}).status_code == 201
+    llm = next(t["item"]["id"] for t in client.get(P + "/targets").json() if t["origin"]["source"] == "llm")
+    assert client.patch(P + f"/targets/{llm}", json={"description": "edited"}).status_code == 200
+    assert client.post(P + "/claims", json={"text": "x", "refs": REF, "evidence": [llm]}).status_code == 201
+    assert client.patch(P + "/claims/C1", json={"checked": True}).json()["item"]["checked"] is True
+    assert client.delete(P + f"/targets/{llm}/edit").status_code == 200
+    assert _checked(client, P) is False

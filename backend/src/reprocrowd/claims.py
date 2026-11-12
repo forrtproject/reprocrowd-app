@@ -19,12 +19,20 @@ def _owners(claim: Claim) -> list:
     return [claim, *claim.sub_claims]
 
 
+_LOCATION = {"refs", "unreferenced", "note"}
+
+
+def content(claim: dict) -> dict:
+    """The part of a claim (as a dict) that a tick covers: RESET_FIELDS without the locations of the claim's sub-claims."""
+    out = {k: v for k, v in claim.items() if k in RESET_FIELDS}
+    out["sub_claims"] = [{k: v for k, v in sc.items() if k not in _LOCATION} for sc in out.get("sub_claims", [])]
+    return out
+
+
 def content_hash(pkg: Package, claim: Claim) -> str:
     from .curation import Curation  # curation.py calls uncheck_users
 
-    own = claim.model_dump(mode="json", include=RESET_FIELDS)
-    for s in own["sub_claims"]:
-        s.pop("refs", None)  # a sub-claim's refs are locations, not content
+    own = content(claim.model_dump(mode="json"))
     tids = {t for o in _owners(claim) for t in o.evidence}
     aids = {o.method for o in _owners(claim) if o.method}
     targets = {i.id: i.model_dump(mode="json", exclude={"refs"}) for i, _ in Curation(pkg, "targets").effective(include_disabled=True) if i.id in tids}

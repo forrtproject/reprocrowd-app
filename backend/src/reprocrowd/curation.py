@@ -272,10 +272,13 @@ class Curation:
             f = self.load()
             item, run, entry = self._locate(f, item_id)
             if self.spec.kind == "claims":
-                from .claims import RESET_FIELDS
-                current = self._effective_of(f, True)
-                cur = next(i for i, _ in current if i.id == item_id).model_dump(mode="json")
-                if any(k in RESET_FIELDS and v != cur.get(k) for k, v in changes.items()):
+                from .claims import content
+                cur = next(i for i, _ in self._effective_of(f, True) if i.id == item_id).model_dump(mode="json")
+                try:  # compare after validation, so defaults a patch leaves out don't count as changes
+                    new = self.spec.item.model_validate(cur | changes).model_dump(mode="json")
+                except ValidationError:
+                    new = cur | changes  # the real validation below reports it
+                if content(new) != content(cur):
                     changes = {**changes, "checked": False}  # a content edit withdraws the approval
             try:
                 if run is None:
