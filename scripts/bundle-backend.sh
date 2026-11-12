@@ -13,7 +13,7 @@ WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 
 echo "• standalone Python $PYVER"
-uv python install --quiet "$PYVER"
+uv python install --quiet --no-bin "$PYVER"
 PYBIN="$(cd "$WORK" && UV_MANAGED_PYTHON=1 uv python find --no-project "$PYVER")"
 PYHOME="$(dirname "$(dirname "$(realpath "$PYBIN")")")"
 [ ! -f "$PYHOME/pyvenv.cfg" ] || { echo "found a virtualenv instead of a standalone Python: $PYHOME" >&2; exit 1; }
