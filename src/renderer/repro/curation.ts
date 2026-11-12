@@ -448,11 +448,17 @@ export class CurationStep implements Step {
   private async generateDialog(marked?: { sections: string[]; items: string[] }) {
     const isT = this.kind === "targets";
     const st = this.state;
+    // Prefer a profile that lets the user pick a model (an agent CLI with a model list, e.g. OpenCode); only fall
+    // back to the backend's default (e.g. Claude) when no model-capable profile is configured. This way the dialog
+    // offers the models the user actually has access to instead of hiding the model picker behind a fixed profile.
+    const defaultProfile = st.llmProfile && this.profiles.some((p) => p.name === st.llmProfile)
+      ? st.llmProfile
+      : (this.profiles.find((p) => p.output === "opencode-json") ?? this.profiles.find((p) => p.default) ?? this.profiles[0])?.name;
     const dlg = modal("dlg-wide", `<form method="dialog"><h3>Generate ${NOUN[this.kind]}s with an LLM</h3>
       <div class="grid2"><section class="picker"></section>
       <section>
         <p class="hint">${isT ? "The LLM reads the marked part of the text source (nothing marked: the whole document) and returns one target per reported result, with references to the sentences, tables and figures it comes from." : "The LLM turns the marked methods text (nothing marked: the whole document) into ordered analysis steps, linked to the input files of step 2 and the targets of step 3."}</p>
-        <label>LLM profile <select name="profile">${this.profiles.map((p) => `<option value="${esc(p.name)}" ${(st.llmProfile ? p.name === st.llmProfile : p.default) ? "selected" : ""}>${esc(p.name)}: ${esc(p.model || "default model")}${p.effort ? `, effort ${esc(p.effort)}` : ""}</option>`).join("")}</select></label>
+        <label>LLM profile <select name="profile">${this.profiles.map((p) => `<option value="${esc(p.name)}" ${p.name === defaultProfile ? "selected" : ""}>${esc(p.name)}: ${esc(p.model || "default model")}${p.effort ? `, effort ${esc(p.effort)}` : ""}</option>`).join("")}</select></label>
         <label class="model-row" hidden>Model <select name="model"><option value="">(the CLI's default)</option></select></label>
         <p class="hint">Command (configured in the backend): <code class="argv"></code></p>
         <div class="form-row"><button type="button" class="show-prompt">Show prompt</button></div>
