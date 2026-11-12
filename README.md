@@ -85,7 +85,7 @@ src/preload/    the bridge: call(method, args), pathForFile(file)
 src/renderer/   the UI (vite): main.ts routes to library.ts or package.ts (the workflow,
                 from reprocrowd-zotero/ui), repro/report.ts is the Zenodo step, style.css the theme
 resources/      the ReproCrowd hex sticker (app icon and logo)
-scripts/        build.sh, bundle-backend.sh
+scripts/        build.mjs, bundle-backend.mjs, install.sh
 test/e2e.mjs    end-to-end check with a fake Zenodo and the backend tests' fake LLM
 ```
 

@@ -3,9 +3,28 @@
 //   Input files:      the study's data and, if available, the authors' code (POST …/inputs; zip archives are unpacked).
 import { ApiError, host, pkg } from "../api";
 import { countSentences } from "../doc";
-import { ROLES, type AcquireResult, type Document, type Resource, type Role } from "../types";
+import { ROLES, type AcquireFailure, type AcquireResult, type Document, type Resource, type Role } from "../types";
 import { confirmDialog, esc, sizeText } from "../util";
 import type { Step, Wizard } from "./wizard";
+
+const REPOSITORIES = "Zenodo, OSF, GitHub, GitLab, Figshare";
+/** The failure code of a file left out because it didn't fit in the download limit. */
+const SKIPPED = "acquire_too_large";
+
+/** The status-bar line after a fetch. */
+function fetchStatus(r: AcquireResult): [string, "info" | "error"] {
+  if (!r.links.length) return [`No data or code links found in the manuscript (looked for ${REPOSITORIES})`, "info"];
+  const n = r.resources.length;
+  const links = r.failures.filter((x) => !x.file).length;
+  const skipped = r.failures.filter((x) => x.file && x.code === SKIPPED).length;
+  const files = r.failures.filter((x) => x.file && x.code !== SKIPPED).length;
+  const problems = [
+    links && `${links} link(s) could not be read`,
+    files && `${files} file(s) could not be downloaded`,
+    skipped && `${skipped} file(s) skipped (download limit)`,
+  ].filter(Boolean);
+  return [`Fetched supplemental materials: ${n} file(s) added from ${r.links.length} link(s)${problems.length ? `; ${problems.join(", ")} (see the list below)` : ""}`, n || !problems.length ? "info" : "error"];
+}
 
 type InputRes = Resource & { reprocrowd: Extract<Resource["reprocrowd"], { kind: "input" }> };
 
@@ -23,25 +42,42 @@ export class InputsStep implements Step {
     if (!(this.docs.get(name) && !(this.docs.get(name) instanceof Error))) this.docs.set(name, await this.w.app.loadDoc(name).catch((e) => e as Error));
   }
 
-  /** The detected data/code links from the last fetch, each with how many files it added. */
+  /** The result of the last fetch: each detected link with the files it added and what failed, or why nothing was found. */
   private fetchList() {
     const f = this.fetch;
-    if (!f || !f.links.length) return "";
+    if (!f) return "";
+    if (!f.links.length)
+      return `<div class="card rp-fetch">
+      <div class="card-head"><h3>No data or code links found</h3></div>
+      <p>The manuscript doesn't link to a record on a supported repository (${REPOSITORIES}).</p>
+      <p class="hint">If the data or code is elsewhere (another repository, the journal's supplementary files, or "available on request"), download it yourself and add it with <b>Add files…</b> or <b>Add a folder…</b>.</p>
+    </div>`;
     const rows = f.links.map((l) => {
-      const fail = f.failures.find((x) => x.repo === l.repo && x.id === l.id);
-      const files = fail ? 0 : f.resources.filter((r) => {
+      const mine = f.failures.filter((x) => x.repo === l.repo && x.id === l.id);
+      const linkErr = mine.find((x) => !x.file);
+      const skipped = mine.filter((x) => x.file && x.code === SKIPPED);
+      const fileErrs = mine.filter((x) => x.file && x.code !== SKIPPED);
+      const files = f.resources.filter((r) => {
         const m = r.reprocrowd;
         return m.kind === "input" && m.origin.type === "fetched" && m.origin.repo === l.repo && m.origin.id === l.id;
       }).length;
-      const status = fail
-        ? `<span class="warn-inline">could not be fetched: ${esc(fail.error)}</span>`
-        : `<span class="ok small">✓ ${files} file(s) added</span>`;
-      return `<li><a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.label)}</a> <span class="muted">(${esc(l.kind)})</span> — ${status}</li>`;
+      const parts: string[] = [];
+      if (files) parts.push(`<span class="ok small">✓ ${files} file(s) added</span>`);
+      if (linkErr) parts.push(`<span class="warn-inline">${files ? "stopped early" : "could not be fetched"}: ${esc(linkErr.error)}</span>`);
+      if (!files && !linkErr && !fileErrs.length && !skipped.length) parts.push(`<span class="muted">no downloadable files in this record</span>`);
+      const group = (list: AcquireFailure[], summary: string) =>
+        list.length
+          ? `<details><summary class="warn-inline">${list.length} ${summary}</summary><ul>${list
+              .map((x) => `<li><a href="${esc(x.file_url ?? "")}" target="_blank" rel="noopener">${esc(x.file ?? "")}</a>: ${esc(x.error)}</li>`)
+              .join("")}</ul></details>`
+          : "";
+      const details = group(skipped, "file(s) skipped: over the download limit") + group(fileErrs, "file(s) could not be downloaded");
+      return `<li><a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.label)}</a> <span class="muted">(${esc(l.kind)})</span> — ${parts.join("; ")}${details}</li>`;
     }).join("");
     return `<div class="card rp-fetch">
       <div class="card-head"><h3>Detected data &amp; code links</h3><span class="muted">${f.links.length} link(s)</span></div>
       <ul class="rp-links">${rows}</ul>
-      <p class="hint">Click a link to open it; files it added appear in the table above.</p>
+      <p class="hint">Click a link to open it; files it added appear in the table above. Files that were skipped or could not be downloaded can be downloaded from their links and added by hand.</p>
     </div>`;
   }
 
@@ -95,14 +131,9 @@ export class InputsStep implements Step {
     });
     body.querySelector("#rp-add-dir")?.addEventListener("click", () => this.w.busy("upload", "Adding a folder", () => host.addFiles("inputs", true)));
     body.querySelector("#rp-fetch")?.addEventListener("click", async () => {
-      const r = await this.w.busy("fetch", "Fetching supplemental materials", async () => pkg.acquire({}));
-      if (r) {
-        this.fetch = r;
-        const n = r.resources.length;
-        const failed = r.failures.length;
-        const names = r.links.map((l) => l.url).join(", ");
-        this.w.setStatus(`Fetched supplemental materials: ${n} file(s) added${failed ? `; ${failed} link(s) could not be fetched` : ""} from ${r.links.length} link(s) (${names})`);
-      }
+      // Keep the result before busy() redraws the step, so the links card shows right away.
+      const r = await this.w.busy("fetch", "Fetching supplemental materials", async () => (this.fetch = await pkg.acquire({})));
+      if (r) this.w.setStatus(...fetchStatus(r));
     });
     const card = body.querySelector<HTMLElement>(".rp-drop")!;
     card.addEventListener("dragover", (e) => {

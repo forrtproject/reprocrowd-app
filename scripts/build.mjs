@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Build the app into build/: renderer (vite), main and preload (esbuild).
-// Cross-platform replacement for scripts/build.sh (npm can't run .sh on Windows).
+// Cross-platform (npm can't run .sh scripts on Windows).
 import { execSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";

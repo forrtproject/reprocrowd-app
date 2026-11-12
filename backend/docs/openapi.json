@@ -8544,7 +8544,7 @@
             },
             "type": "array",
             "title": "Failures",
-            "description": "per-repository failures: repo, id, url, error"
+            "description": "what could not be fetched: per link (repo, id, url, code, error) when the repository itself couldn't be read, or per file (the same plus file and file_url) when one file couldn't be downloaded or was skipped; the link's other files are still added. code: acquire_too_large (skipped for the download limit, max_download_mb per link), acquire_not_found, acquire_failed, unknown_repository or unexpected"
           }
         },
         "type": "object",
