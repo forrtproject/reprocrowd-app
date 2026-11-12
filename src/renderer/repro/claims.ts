@@ -4,9 +4,10 @@
 // coding agent flagged. Four views: Review (this), Reader (the paper with a card per claim), Table, JSON (the claim's
 // trace). Edits of evidence and methods untick the claims using them in the backend, so everything reloads after one.
 import { host, pkg } from "../api";
-import { type Action, type Claim, type ClaimResult, type ClaimsFile, type ClaimsTrace, type ClaimState, type ClaimStatus, type ClaimTrace, type Document, type LlmProfile, type LlmRun, type Target } from "../types";
+import { type Action, type Claim, type ClaimResult, type ClaimsFile, type ClaimsTrace, type ClaimState, type ClaimStatus, type ClaimTrace, type Document, type LlmProfile, type LlmRun, type ScriptState, type Target } from "../types";
 import { choose, confirmDialog, esc, modal, showError, trunc } from "../util";
 import { AlignedItem, AlignedView } from "./aligned";
+import { runClaim, stageLabel } from "./claimrun";
 import { CurationStep } from "./curation";
 import type { Step, Wizard } from "./wizard";
 
@@ -21,7 +22,7 @@ interface Row {
   edited: boolean;
 }
 
-const PILL: Record<ClaimState, string> = {
+export const PILL: Record<ClaimState, string> = {
   review: "To review",
   ready: "Ready to run",
   running: "Running",
@@ -30,13 +31,13 @@ const PILL: Record<ClaimState, string> = {
   not_reproduced: "Not reproduced",
   not_testable: "Not testable",
 };
-const pill = (s: ClaimState | undefined, stale = false) => (s ? `<span class="pill st-${s}">${PILL[s]}${stale ? " (stale)" : ""}</span>` : "");
+export const pill = (s: ClaimState | undefined, stale = false) => (s ? `<span class="pill st-${s}">${PILL[s]}${stale ? " (stale)" : ""}</span>` : "");
 const modeText = (c: Claim) => (!c.testable ? "Not testable" : c.sub_claims.length ? `${c.sub_claims.length} sub-claim${c.sub_claims.length > 1 ? "s" : ""}` : "Atomic");
 
 export class ClaimsStep implements Step {
   title = "Claims";
-  /** Run the claim (set by the run step's code in Task 9); the button is enabled only for claims that are ready. */
-  onRun?: (claimId: string) => Promise<void>;
+  /** Run the claim (steps 4–7 for it); the button is enabled only for claims that are ready. */
+  onRun?: (claimId: string) => Promise<void> = (id) => this.runOne(id);
 
   private file?: ClaimsFile;
   private status = new Map<string, ClaimStatus>();
@@ -260,7 +261,7 @@ export class ClaimsStep implements Step {
       <section><h5>${c.sub_claims.length ? "Sub-claims and methods" : "Method"}</h5>${subs}</section>
       <section><label class="small muted">Notes<textarea rows="2" data-claim="${esc(c.id)}" data-f="notes" placeholder="Your notes; they do not untick the claim">${esc(c.notes)}</textarea></label></section>
       <section class="cl-actions"><label><input type="checkbox" data-claim="${esc(c.id)}" data-f="checked" ${c.checked ? "checked" : ""} ${c.testable ? "" : "disabled"} /> Reviewed (ticked claims are run)</label>
-        <span class="spacer"></span><button data-act="run" data-claim="${esc(c.id)}" class="primary" ${ready && !this.w.running.has(`claim-${c.id}`) ? "" : "disabled"} title="${ready ? "Generate and run the code for this claim" : "Tick the claim first"}">Run this claim</button></section>
+        <span class="spacer"></span><button data-act="run" data-claim="${esc(c.id)}" class="primary" ${ready && ![...this.w.running].some((k) => k.startsWith("claim-")) ? "" : "disabled"} title="${ready ? "Generate and run the code for this claim" : "Tick the claim first"}">Run this claim</button></section>
       ${result ? `<section><h5>Last result ${st!.stale ? `<span class="pill st-stale">stale: the claim changed since</span>` : ""}</h5>${this.resultHtml(result)}</section>` : ""}
       ${tr?.assumptions.length ? `<section><h5>Assumptions made by the coding agent</h5><ul class="cl-assume">${tr.assumptions.map((a) => `<li>${esc(a)}</li>`).join("")}</ul></section>` : ""}`;
   }
@@ -312,7 +313,7 @@ export class ClaimsStep implements Step {
       const b = (e.target as HTMLElement).closest<HTMLButtonElement>("button[data-act]");
       if (!b) return;
       const id = b.dataset.claim!;
-      if (b.dataset.act === "run") return void this.edit(`Running ${id}`, async () => void (await this.onRun?.(id)));
+      if (b.dataset.act === "run") return void this.onRun?.(id);
       if (b.dataset.act === "switch") {
         const r = this.rows().find((x) => x.claim.id === id);
         if (!r) return;
@@ -320,6 +321,26 @@ export class ClaimsStep implements Step {
         await this.edit(`${r.off ? "Using" : "Leaving out"} ${id}`, () => pkg.patch(`/claims/${encodeURIComponent(id)}`, { disabled: !r.off }));
       }
     });
+  }
+
+  /** Steps 4–7 for one claim, with the template already chosen (else Python). */
+  private async runOne(id: string) {
+    const key = `claim-${id}`;
+    if (this.w.running.has(key)) return;
+    const before = this.status.get(id)?.ran_at;
+    this.w.running.add(key);
+    this.w.draw();
+    try {
+      const script = await pkg.get<ScriptState>("/script").catch(() => undefined);
+      const template = script?.template || this.state.template || "python";
+      await runClaim(this.w, id, template, (s) => this.w.setStatus(`⏳ Claim ${id}: ${stageLabel(s).toLowerCase()}…`));
+    } finally {
+      this.w.running.delete(key);
+      await this.w.render();
+    }
+    const st = this.status.get(id);
+    const ran = !!st?.ran_at && st.ran_at !== before;
+    this.w.setStatus(ran ? `Claim ${id}: ${st!.result ? PILL[st!.result.verdict] : "ran"}` : `Claim ${id} did not run`, ran ? "info" : "error");
   }
 
   // ---------- other views ----------

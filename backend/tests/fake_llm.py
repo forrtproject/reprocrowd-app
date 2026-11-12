@@ -28,21 +28,26 @@ if "reconciling" in prompt:
     if mode == "badschema":
         out = {"sections": [{"title": "x", "paragraphs": [{"sentences": []}]}]}
 elif "CLAIMS" in prompt:
-    R = "sec3.p1.s1"
+    # The ids of the test fixture's sentences; for another paper (the e2e test's JATS), the first sentences listed
+    # in the prompt's document ("[id] text" lines) stand in for them.
+    R, S1, S2 = "sec3.p1.s1", "sec2.p1.s1", "sec2.p1.s2"
+    if not all(f"[{i}]" in prompt for i in (R, S1, S2)):
+        listed = re.findall(r"^\[([^\]\s]+)\] ", prompt, re.M)
+        R, S1, S2 = (listed + [R, S1, S2])[:3]
     ev = lambda d, v, refs=(R,): {"type": "number", "description": d, "expected": v, "refs": list(refs)}
     out = {
         "claims": [
             {"text": "The effect was significant.", "original_quote": "", "refs": [R], "method": "M1",
              "evidence": [ev("t statistic", 2.31), ev("bogus", 1, ["sec9.p1.s1"])]},
             {"text": "Both outcomes differed.", "mode": "paraphrase", "original_quote": "Both outcomes differed between groups.",
-             "refs": ["sec2.p1.s1"], "sub_claims": [
+             "refs": [S1], "sub_claims": [
                  {"text": "Outcome one differed.", "refs": [R], "method": "M1", "evidence": [ev("p value", 0.026)]},
-                 {"text": "Outcome two differed.", "refs": ["sec2.p1.s1"], "method": "M1", "evidence": [ev("df", 38)]}]},
-            {"text": "Clinicians should adopt this.", "refs": ["sec2.p1.s2"], "testable": False, "depends_on": [1, 2]},
+                 {"text": "Outcome two differed.", "refs": [S1], "method": "M1", "evidence": [ev("df", 38)]}]},
+            {"text": "Clinicians should adopt this.", "refs": [S2], "testable": False, "depends_on": [1, 2]},
         ],
-        "methods": [{"key": "M1", "summary": "Run the t-test", "refs": ["sec2.p1.s1"]}],
-        "preparation": [{"key": "P1", "summary": "Exclude incomplete records", "refs": ["sec2.p1.s2"]}],
-        "skipped": [{"ref": "sec2.p1.s2", "reason": "study_design"}],
+        "methods": [{"key": "M1", "summary": "Run the t-test", "refs": [S1]}],
+        "preparation": [{"key": "P1", "summary": "Exclude incomplete records", "refs": [S2]}],
+        "skipped": [{"ref": S2, "reason": "study_design"}],
     }
     if mode == "badschema":
         out = {"results": []}

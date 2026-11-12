@@ -423,6 +423,7 @@ export class CurationStep implements Step {
       } else Object.assign(body, { kind: v("kind"), summary: v("summary"), inputs: list(v("inputs")), depends_on: list(v("depends_on")), produces: list(v("produces")) });
       try {
         await pkg.post(`/${this.kind}`, body);
+        if (marked.length) this.marked.clear(); // before the redraw (the close event may come after it)
         dlg.close();
         this.w.render();
       } catch (err) {

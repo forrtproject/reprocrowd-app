@@ -194,8 +194,10 @@ json.dump({"results": [{"id": "T001", "value": 2.3149}, {"id": "T002", "value": 
     await shot(`03-step-${k + 1}`);
   }
 
-  step("targets: the reader with the cards aligned");
+  step("targets: the reader with the cards aligned (the targets table of step 2)");
   await win.locator("#route button").nth(1).click();
+  await win.waitForSelector("#cl-targets");
+  await win.click("#cl-targets");
   await win.waitForSelector(".al-cards .al-card");
   assert.equal(await win.locator(".al-cards .al-card").count(), 3);
   assert.equal(await win.locator(".al-unlinked .al-card").count(), 1, "T004 has no passage");
@@ -251,6 +253,41 @@ json.dump({"results": [{"id": "T001", "value": 2.3149}, {"id": "T002", "value": 
   await win.waitForSelector(".al-cards .al-card[data-id=A01]");
   await shot("04c-plan-reader");
 
+  step("claims: extract, tick C1 and run it (steps 4–7 for that claim)");
+  await win.locator("#route button").nth(1).click();
+  await win.waitForSelector("#cl-back"); // the targets table is still open
+  await win.click("#cl-back");
+  await win.waitForSelector("#cl-extract:not([disabled])");
+  await win.click("#cl-extract");
+  await win.click(".dlg-wide button[value=ok]");
+  await win.waitForSelector(".cl-tree .cl-item", { timeout: 60_000 });
+  assert.equal(await win.locator(".cl-tree .cl-item").count(), 3);
+  await win.locator(".cl-tree .cl-item[data-id=C1]").click();
+  await win.waitForSelector(".cl-detail input[data-claim=C1][data-f=checked]");
+  await win.check(".cl-detail input[data-claim=C1][data-f=checked]");
+  await win.waitForSelector(".cl-detail button[data-act=run][data-claim=C1]:not([disabled])");
+  await shot("04d-claims-ticked");
+  await win.click(".cl-detail button[data-act=run][data-claim=C1]");
+  // The monolithic analysis.py written above was edited after it was generated: keep it (moved aside).
+  await win.waitForSelector(".dlg-confirm button[value=keep]", { timeout: 30_000 });
+  await win.click(".dlg-confirm button[value=keep]");
+  const VERDICT = /^(Reproduced|Partly reproduced|Not reproduced)$/;
+  // The verdict, or the error pop-up of a failed stage (fails at once, with its message).
+  await win.waitForFunction(
+    () => /Reproduced|Partly reproduced|Not reproduced/.test(document.querySelector(".cl-tree .cl-item[data-id=C1] .pill")?.textContent ?? "") || !!document.querySelector("dialog[open] h3")?.textContent?.startsWith("Running claim"),
+    undefined,
+    { timeout: 180_000 },
+  );
+  const failed = await win.locator("dialog[open]").count();
+  assert.equal(failed, 0, failed ? await win.locator("dialog[open]").innerText() : "");
+  const verdict = await win.locator(".cl-tree .cl-item[data-id=C1] .pill").innerText();
+  assert.match(verdict, VERDICT, verdict);
+  console.log(`  C1: ${verdict}`);
+  const st = (await P("/claims:status")).data;
+  assert.ok(st.find((x) => x.claim === "C1").ran_at, "C1 has run");
+  assert.ok(fs.existsSync(path.join(folder, "claims", "C1.py")) && fs.existsSync(path.join(folder, "analysis.pre-claims.py")));
+  await shot("04e-claim-ran");
+
   await win.locator("#route button").nth(6).click();
   await win.waitForSelector("#rp-report");
   step("report, ZIP and deposit (step 7)");
@@ -261,6 +298,7 @@ json.dump({"results": [{"id": "T001", "value": 2.3149}, {"id": "T002", "value": 
   await win.waitForSelector("#rp-deposit:not([disabled])", { timeout: 30_000 });
   const groups = await win.locator("[data-group]").evaluateAll((els) => els.map((e) => [e.dataset.group, e.checked]));
   assert.deepEqual(Object.fromEntries(groups), { paper: true }, "PLOS Biology is CC-BY, so the paper's material is included by default; no inputs");
+  assert.match(await win.locator(".submit-card").innerText(), /C1\s+(Reproduced|Partly reproduced|Not reproduced)/, "the deposit lists the claims with their results");
   await win.fill("#rp-note", "Checked by the end-to-end test.");
   await shot("04-deposit-ready");
   await win.click("#rp-metadata");
@@ -268,6 +306,7 @@ json.dump({"results": [{"id": "T001", "value": 2.3149}, {"id": "T002", "value": 
   const md = JSON.parse(await win.locator(".dlg-wide textarea").inputValue());
   assert.deepEqual(md.creators, [{ name: "Doe, Jane", orcid: "0000-0002-1825-0097" }]);
   assert.match(md.description, /end-to-end test/);
+  assert.match(md.description, /C1/, "the description lists the claims");
   await win.click(".dlg-wide menu button");
   await win.click("#rp-deposit");
   await win.click(".dlg-confirm button[value=ok]");
@@ -279,6 +318,7 @@ json.dump({"results": [{"id": "T001", "value": 2.3149}, {"id": "T002", "value": 
   const file = zenodo.files.get(dep.id);
   assert.ok(file && file.head === "PK" && file.name.endsWith("-reproduction.zip"), JSON.stringify(file));
   assert.equal(dep.metadata.related_identifiers[0].identifier, DOI);
+  assert.match(dep.metadata.description, /C1/, "the deposited description lists the claims");
   assert.ok(zenodo.requests.filter((r) => r.path.startsWith("/api/deposit")).every((r) => r.auth === "Bearer test-token"));
   assert.match(await win.locator(".deposit.draft").innerText(), /10\.5072\/zenodo\.1000/);
 
@@ -287,6 +327,7 @@ json.dump({"results": [{"id": "T001", "value": 2.3149}, {"id": "T002", "value": 
   await win.click(".dlg-confirm button[value=ok]");
   await win.waitForSelector(".deposit.published", { timeout: 30_000 });
   assert.equal(zenodo.depositions.get(dep.id).submitted, true);
+  assert.equal(await win.locator("#rp-deposit").innerText(), "Deposit new version", "a published package with claims gets new versions");
   await shot("06-published");
 
   step("settings and the library afterwards");

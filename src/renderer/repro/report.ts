@@ -3,8 +3,9 @@
 // on Zenodo. What goes into the upload can be chosen: the paper's own material only when its license allows.
 import { ApiError, DepositPreview, host, pkg, ZenodoAccount, ZenodoRecord } from "../api";
 import { settingsDialog } from "../settings";
-import type { ArchiveInfo, Job, PackageSummary, ReportResult, ValidationReport, ZenodoDeposit } from "../types";
+import type { ArchiveInfo, ClaimStatus, Job, PackageSummary, ReportResult, ValidationReport, ZenodoDeposit } from "../types";
 import { confirmDialog, dataUrl, esc, modal, showError, sizeText, when } from "../util";
+import { pill } from "./claims";
 import { STATUS_LABEL } from "./run";
 import type { Step, Wizard } from "./wizard";
 
@@ -36,6 +37,8 @@ export class ReportStep implements Step {
   private validation?: ValidationReport;
   private deposits: ZenodoDeposit[] = [];
   private lastRun?: Job;
+  /** The claims' states (empty for a package without claims: then the deposit is gated as before claims). */
+  private claims: ClaimStatus[] = [];
   private account?: ZenodoAccount;
   private preview?: DepositPreview | Error;
   private records?: ZenodoRecord[] | Error;
@@ -46,13 +49,15 @@ export class ReportStep implements Step {
   constructor(private w: Wizard) {}
 
   async load() {
-    const [manifest, deposits, jobs, validation, report] = await Promise.all([
+    const [manifest, deposits, jobs, validation, report, claims] = await Promise.all([
       pkg.get<any>("/manifest"),
       pkg.get<ZenodoDeposit[]>("/deposits"),
       pkg.get<Job[]>("/jobs"),
       pkg.get<ValidationReport>("/validation").catch(() => undefined),
       pkg.text("/report").catch(() => undefined),
+      pkg.get<ClaimStatus[]>("/claims:status").catch(() => []),
     ]);
+    this.claims = claims;
     this.manifest = manifest;
     this.deposits = deposits;
     this.lastRun = jobs.filter((j) => j.type === "run").pop();
@@ -80,9 +85,12 @@ export class ReportStep implements Step {
     const a = this.account;
     const errs = this.validation?.errors ?? [];
     const server = a?.sandbox ? "the Zenodo sandbox" : "Zenodo";
+    const ran = this.claims.filter((x) => x.ran_at);
+    const newVersion = this.newVersion();
     const checks: [boolean, string, string?][] = [
       [!!doi, doi ? `DOI ${doi}` : "The paper has a DOI (the record links to it, and OpenAlex provides its metadata)"],
       [this.lastRun?.status === "succeeded", this.lastRun ? `Last run: ${this.lastRun.status}${this.lastRun.status === "succeeded" ? "" : " (step 7)"}` : "The master script ran successfully (step 7)"],
+      ...(this.claims.length ? [[ran.length > 0, ran.length ? `${ran.length} claim${ran.length === 1 ? "" : "s"} run` : "Run at least one claim first."] as [boolean, string]] : []),
       [!!this.report, "Report created"],
       [!!archive, archive ? `ZIP created ${when(archive.created_at)}` : "ZIP created"],
       [!!a?.creator.name, a?.creator.name ? `Signed as ${a.creator.name}${a.creator.orcid ? ` (ORCID ${a.creator.orcid})` : ""}` : "Your name for the record (Settings)", "you"],
@@ -123,8 +131,11 @@ export class ReportStep implements Step {
           <div class="groups">${groups.map(([g, info]) => `<label class="inline"><input type="checkbox" data-group="${esc(g)}" ${this.exclude?.has(g) ? "" : "checked"} /> ${esc(GROUP_LABEL[g] ?? info.description)} <span class="muted small">(${info.resources.length} file${info.resources.length === 1 ? "" : "s"}, ${sizeText(info.bytes)})</span></label>`).join("") || `<span class="muted small">Nothing optional in this package.</span>`}</div>
           ${pv.contents.groups.paper?.resources.length ? `<p class="small ${lic && !pv.contents.default_exclude.includes("paper") ? "ok" : "warn-soft"}">${lic ? `OpenAlex reports the license <b>${esc(lic)}</b> for the paper.` : "OpenAlex reports no license for the paper."} ${pv.contents.default_exclude.includes("paper") ? "Include its material only if you may redistribute it." : "Its material may be redistributed with attribution."}</p>` : ""}
           ${pv.contents.groups.inputs?.resources.length ? `<p class="hint">Include the input files only if their license allows redistribution (most open data repositories use CC-BY or CC0).</p>` : ""}
+          ${this.claims.length ? this.claimsHtml() : ""}
           <label>Note for the record (optional) <textarea id="rp-note" rows="2" placeholder="e.g. what didn't reproduce and why">${esc(this.note)}</textarea></label>
-          <div class="actions"><button id="rp-deposit" class="primary big" ${ready ? "" : "disabled"}>${this.w.running.has("deposit") ? "Uploading…" : `Upload to ${server} as a draft`}</button><button id="rp-metadata">Show metadata</button></div>
+          <div class="actions"><button id="rp-deposit" class="primary big" ${ready ? "" : "disabled"}>${this.w.running.has("deposit") ? "Uploading…" : newVersion ? "Deposit new version" : `Upload to ${server} as a draft`}</button><button id="rp-metadata">Show metadata</button></div>
+          ${this.claims.length && !ran.length ? `<p class="hint">Run at least one claim first.</p>` : ""}
+          ${newVersion ? `<p class="hint">This package is already published on Zenodo: the deposit becomes a new version of that record (a draft until you publish it).</p>` : ""}
           ${already ? `<p class="hint">This ZIP is already on Zenodo (${already.status === "draft" ? "as a draft" : "published"}). A changed package (new run or report, then a new ZIP) or another choice of files makes a new deposit.</p>` : ""}
           ` : this.preview instanceof Error && !stale ? `<p class="hint">${esc(this.preview.message)}</p>` : ""}
           ${this.deposits.length ? `<h4>Deposits of this package</h4><ul class="deposits">${this.deposits.map((d) => this.depositRow(d)).join("")}</ul>` : ""}
@@ -170,6 +181,24 @@ export class ReportStep implements Step {
     body.querySelectorAll<HTMLButtonElement>("[data-dep]").forEach((b) => b.addEventListener("click", () => this.action(b.dataset.dep!, b.dataset.action as "refresh" | "publish" | "discard")));
   }
 
+  /** A package with claims that is published on this Zenodo server: the backend makes the deposit a new version. */
+  private newVersion() {
+    return this.claims.length > 0 && this.deposits.some((d) => d.status === "published" && d.sandbox === !!this.account?.sandbox);
+  }
+
+  /** The claims as the record describes them: the ones that ran with their result, and the ones that did not. */
+  private claimsHtml() {
+    const rows = this.claims
+      .filter((x) => x.state !== "not_testable")
+      .map((x) => {
+        const res = x.ran_at ? x.result : null;
+        return `<tr><td><b>${esc(x.claim)}</b></td><td>${res ? `${pill(res.verdict, x.stale)}` : `<span class="muted">${x.ran_at ? "ran, no result" : "not run"}</span>`}</td><td>${res ? `${res.matched} of ${res.tested} values match` : ""}</td></tr>`;
+      })
+      .join("");
+    return `<h4>Claims</h4><p class="hint">The record's description lists the claims with their results.</p>
+      <table class="tbl-list small"><thead><tr><th>Claim</th><th>Result</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+  }
+
   private depositRow(d: ZenodoDeposit) {
     const busy = this.w.running.has(`dep-${d.id}`) ? "disabled" : "";
     return `<li class="deposit ${d.status}">
@@ -203,7 +232,7 @@ export class ReportStep implements Step {
     const ex = this.excludeList() ?? [];
     const ok = await confirmDialog(
       "Upload to Zenodo",
-      `<p>The package ZIP${ex.length ? ` (without ${esc(ex.map((g) => GROUP_LABEL[g]?.toLowerCase() ?? g).join("; "))})` : ""} is uploaded to <b>${a.sandbox ? "the Zenodo sandbox" : "zenodo.org"}</b> as a <b>draft</b> by <b>${esc(a.creator.name)}</b>, with a reserved DOI.</p>
+      `${this.newVersion() ? `<p>The package is already published: this upload becomes a <b>new version</b> of that Zenodo record.</p>` : ""}<p>The package ZIP${ex.length ? ` (without ${esc(ex.map((g) => GROUP_LABEL[g]?.toLowerCase() ?? g).join("; "))})` : ""} is uploaded to <b>${a.sandbox ? "the Zenodo sandbox" : "zenodo.org"}</b> as a <b>draft</b> by <b>${esc(a.creator.name)}</b>, with a reserved DOI.</p>
        <p class="hint">Nothing is public yet: review the draft on Zenodo, then publish it there or here.</p>`,
       "Upload draft",
     );
