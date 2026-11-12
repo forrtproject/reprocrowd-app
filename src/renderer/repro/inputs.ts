@@ -3,19 +3,26 @@
 //   Input files:      the study's data and, if available, the authors' code (POST …/inputs; zip archives are unpacked).
 import { ApiError, host, pkg } from "../api";
 import { countSentences } from "../doc";
-import { ROLES, type AcquireResult, type Document, type Resource, type Role } from "../types";
+import { ROLES, type AcquireFailure, type AcquireResult, type Document, type Resource, type Role } from "../types";
 import { confirmDialog, esc, sizeText } from "../util";
 import type { Step, Wizard } from "./wizard";
 
 const REPOSITORIES = "Zenodo, OSF, GitHub, GitLab, Figshare";
+/** The failure code of a file left out because it didn't fit in the download limit. */
+const SKIPPED = "acquire_too_large";
 
 /** The status-bar line after a fetch. */
 function fetchStatus(r: AcquireResult): [string, "info" | "error"] {
   if (!r.links.length) return [`No data or code links found in the manuscript (looked for ${REPOSITORIES})`, "info"];
   const n = r.resources.length;
   const links = r.failures.filter((x) => !x.file).length;
-  const files = r.failures.filter((x) => x.file).length;
-  const problems = [links && `${links} link(s) could not be read`, files && `${files} file(s) could not be downloaded`].filter(Boolean);
+  const skipped = r.failures.filter((x) => x.file && x.code === SKIPPED).length;
+  const files = r.failures.filter((x) => x.file && x.code !== SKIPPED).length;
+  const problems = [
+    links && `${links} link(s) could not be read`,
+    files && `${files} file(s) could not be downloaded`,
+    skipped && `${skipped} file(s) skipped (download limit)`,
+  ].filter(Boolean);
   return [`Fetched supplemental materials: ${n} file(s) added from ${r.links.length} link(s)${problems.length ? `; ${problems.join(", ")} (see the list below)` : ""}`, n || !problems.length ? "info" : "error"];
 }
 
@@ -48,7 +55,8 @@ export class InputsStep implements Step {
     const rows = f.links.map((l) => {
       const mine = f.failures.filter((x) => x.repo === l.repo && x.id === l.id);
       const linkErr = mine.find((x) => !x.file);
-      const fileErrs = mine.filter((x) => x.file);
+      const skipped = mine.filter((x) => x.file && x.code === SKIPPED);
+      const fileErrs = mine.filter((x) => x.file && x.code !== SKIPPED);
       const files = f.resources.filter((r) => {
         const m = r.reprocrowd;
         return m.kind === "input" && m.origin.type === "fetched" && m.origin.repo === l.repo && m.origin.id === l.id;
@@ -56,18 +64,20 @@ export class InputsStep implements Step {
       const parts: string[] = [];
       if (files) parts.push(`<span class="ok small">✓ ${files} file(s) added</span>`);
       if (linkErr) parts.push(`<span class="warn-inline">${files ? "stopped early" : "could not be fetched"}: ${esc(linkErr.error)}</span>`);
-      if (!files && !linkErr && !fileErrs.length) parts.push(`<span class="muted">no downloadable files in this record</span>`);
-      const details = fileErrs.length
-        ? `<details><summary class="warn-inline">${fileErrs.length} file(s) could not be downloaded</summary><ul>${fileErrs
-            .map((x) => `<li><a href="${esc(x.file_url ?? "")}" target="_blank" rel="noopener">${esc(x.file ?? "")}</a>: ${esc(x.error)}</li>`)
-            .join("")}</ul></details>`
-        : "";
+      if (!files && !linkErr && !fileErrs.length && !skipped.length) parts.push(`<span class="muted">no downloadable files in this record</span>`);
+      const group = (list: AcquireFailure[], summary: string) =>
+        list.length
+          ? `<details><summary class="warn-inline">${list.length} ${summary}</summary><ul>${list
+              .map((x) => `<li><a href="${esc(x.file_url ?? "")}" target="_blank" rel="noopener">${esc(x.file ?? "")}</a>: ${esc(x.error)}</li>`)
+              .join("")}</ul></details>`
+          : "";
+      const details = group(skipped, "file(s) skipped: over the download limit") + group(fileErrs, "file(s) could not be downloaded");
       return `<li><a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.label)}</a> <span class="muted">(${esc(l.kind)})</span> — ${parts.join("; ")}${details}</li>`;
     }).join("");
     return `<div class="card rp-fetch">
       <div class="card-head"><h3>Detected data &amp; code links</h3><span class="muted">${f.links.length} link(s)</span></div>
       <ul class="rp-links">${rows}</ul>
-      <p class="hint">Click a link to open it; files it added appear in the table above. Files that could not be downloaded can be fetched again later or added by hand.</p>
+      <p class="hint">Click a link to open it; files it added appear in the table above. Files that were skipped or could not be downloaded can be downloaded from their links and added by hand.</p>
     </div>`;
   }
 

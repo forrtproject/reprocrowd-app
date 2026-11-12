@@ -13,6 +13,7 @@ the rest. Messages are written for the user (host, what went wrong, what to do).
 from __future__ import annotations
 
 import re
+from urllib.parse import quote
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, Iterable
@@ -83,6 +84,11 @@ def _status_error(r: httpx.Response, what: str) -> ApiError:
 
 def _get_json(url: str | None, expect: type = dict) -> dict | list:
     """GET a JSON document of type ``expect``; every failure is an ApiError with a readable message."""
+    return _get_json_page(url, expect)[0]
+
+
+def _get_json_page(url: str | None, expect: type = dict) -> tuple[dict | list, str | None]:
+    """Like :func:`_get_json`, plus the next page's URL from the ``Link`` header (None on the last page)."""
     if not url:
         raise ApiError(502, "acquire_failed", "the repository returned an empty URL")
     try:
@@ -98,7 +104,7 @@ def _get_json(url: str | None, expect: type = dict) -> dict | list:
         data = None
     if not isinstance(data, expect):
         raise ApiError(502, "acquire_failed", f"{_host(url)} gave an unexpected answer (not the JSON its API documents)")
-    return data
+    return data, (r.links.get("next") or {}).get("url")
 
 
 def _download(url: str | None, dest: Path, max_bytes: int) -> None:
@@ -125,8 +131,19 @@ def _guess_kind(name: str) -> str:
     return inputs.guess_role(name)
 
 
+def _size(n: int) -> str:
+    """Bytes for a message: "850 KB", "180 MB", "1.2 GB"."""
+    for unit, f in (("GB", 2**30), ("MB", 2**20)):
+        if n >= f:
+            return f"{n / f:.1f} {unit}".replace(".0 ", " ")
+    return f"{max(round(n / 2**10), 1)} KB" if n else "0 KB"
+
+
 class _Budget:
-    """A shared byte budget for one repository's files, so many files can't together exceed the limit."""
+    """The download limit for one link's files, so many files can't together exceed it.
+
+    Only bytes actually downloaded count: an unpacked zip is charged once, for the archive.
+    """
 
     def __init__(self, max_bytes: int):
         self.max = max_bytes
@@ -140,6 +157,16 @@ class _Budget:
 
     def spend(self, n: int) -> None:
         self.used += n
+
+    def skip_reason(self, size: int = 0) -> str:
+        """Why a file of ``size`` bytes (0: unknown) is skipped, or "" if it may be downloaded."""
+        limit = f"the {_size(self.max)} download limit"
+        if self.remaining() == 0:
+            return f"skipped: {limit} is used up"
+        if size and not self.allow(size):
+            left = "" if self.used == 0 else f"the {_size(self.remaining())} left of "
+            return f"skipped: {_size(size)}, more than {left}{limit}"
+        return ""
 
 
 def _origin(url: str, repo: str, link: Link) -> FetchedOrigin:
@@ -163,25 +190,38 @@ class _Job:
     resources: list[Resource] = field(default_factory=list)
     failures: list[dict[str, str]] = field(default_factory=list)
     error: str = ""  # set when the repository itself couldn't be read (listing, API record, ...)
+    error_code: str = ""
+
+    def fail(self, filename: str, url: str, code: str, error: str) -> None:
+        self.failures.append({"file": filename, "url": url, "code": code, "error": error})
 
     def add(self, filename: str, download_url: str, size: int = 0) -> None:
+        """Download one file and register it; on any failure record it in ``failures`` and return."""
         budget = self.budget = self.budget or _Budget(settings().max_download_mb * 2**20)
-        if not budget.allow(size):
+        if reason := budget.skip_reason(size):
+            self.fail(filename, download_url, "acquire_too_large", reason)
             return
+        left = budget.remaining()
+        downloaded = 0
 
         def write(dest: Path) -> None:
-            _download(download_url, dest, budget.remaining())
+            nonlocal downloaded
+            _download(download_url, dest, left)
+            downloaded = dest.stat().st_size
 
         try:
             r = inputs._add_file(self.pkg, filename, write, _origin(download_url, self.link.repo, self.link),
                                  self.role, self.note, self.unpack)
         except ApiError as e:
-            self.failures.append({"file": filename, "url": download_url, "error": e.message})
+            if e.code == "acquire_too_large":  # size unknown up front; found out while downloading
+                left_text = "" if budget.used == 0 else f"the {_size(left)} left of "
+                e.message = f"skipped: larger than {left_text}the {_size(budget.max)} download limit"
+            self.fail(filename, download_url, e.code, e.message)
             return
         except Exception as e:  # noqa: BLE001 - one file's bug must not lose the rest of the repository
-            self.failures.append({"file": filename, "url": download_url, "error": f"unexpected error: {e}"})
+            self.fail(filename, download_url, "unexpected", f"unexpected error: {e}")
             return
-        budget.spend(sum(x.bytes for x in r))
+        budget.spend(downloaded)
         self.resources += r
 
 
@@ -256,7 +296,7 @@ def github_fetch(job: _Job) -> None:
         if not path:
             continue
         name = Path(path).name
-        raw = f"https://raw.githubusercontent.com/{owner}/{repo}/{branch}/{path}"
+        raw = f"https://raw.githubusercontent.com/{owner}/{repo}/{quote(branch)}/{quote(path)}"
         size = int(entry["size"]) if entry.get("size") else 0
         job.add(name, raw, size)
 
@@ -293,18 +333,20 @@ def gitlab_fetch(job: _Job) -> None:
         branch = proj.get("default_branch", "main")
     except ApiError:
         branch = "main"
-    data = _get_json(f"https://gitlab.com/api/v4/projects/{project}/repository/tree?recursive=true&ref={branch}",
-                     expect=list)
-    for entry in data:
-        if entry.get("type") != "blob":
-            continue
-        path = entry.get("path")
-        if not path:
-            continue
-        name = Path(path).name
-        raw = f"https://gitlab.com/{job.link.id}/-/raw/{branch}/{path}"
-        size = int(entry["size"]) if entry.get("size") else 0
-        job.add(name, raw, size)
+    # The tree comes in pages (20 entries by default); keyset pagination hands out the next page's URL in
+    # the Link header. Each page is read once, so a server pointing "next" back at a page can't loop.
+    url: str | None = (f"https://gitlab.com/api/v4/projects/{project}/repository/tree"
+                       f"?recursive=true&ref={urllib.parse.quote(branch, safe='')}&per_page=100&pagination=keyset")
+    seen: set[str] = set()
+    while url and url not in seen:
+        seen.add(url)
+        page, url = _get_json_page(url, expect=list)
+        for entry in page:
+            if not isinstance(entry, dict) or entry.get("type") != "blob" or not entry.get("path"):
+                continue
+            path = entry["path"]
+            raw = f"https://gitlab.com/{job.link.id}/-/raw/{urllib.parse.quote(branch)}/{urllib.parse.quote(path)}"
+            job.add(Path(path).name, raw, int(entry["size"]) if entry.get("size") else 0)
 
 
 def _osf_id(text: str) -> list[str]:
@@ -417,15 +459,15 @@ def _run(pkg: Package, link: Link, role: str | None, note: str, unpack: bool) ->
     single files that fail go to ``job.failures``, and files added before either are kept."""
     job = _Job(pkg, link, role, note, unpack, _Budget(settings().max_download_mb * 2**20))
     if link.repo not in ADAPTERS:
-        job.error = f"no adapter for repository {link.repo!r}"
+        job.error, job.error_code = f"no adapter for repository {link.repo!r}", "unknown_repository"
         return job
     _, fetch_fn = ADAPTERS[link.repo]
     try:
         fetch_fn(job)
     except ApiError as e:
-        job.error = e.message
+        job.error, job.error_code = e.message, e.code
     except Exception as e:  # noqa: BLE001 - an adapter bug must not 500 the whole request
-        job.error = f"unexpected error: {e}"
+        job.error, job.error_code = f"unexpected error: {e}", "unexpected"
     return job
 
 
@@ -434,21 +476,24 @@ def fetch(pkg: Package, link: Link, role: str | None = None, note: str = "",
     """Download the files of one detected link into the package as inputs; raises if nothing could be added."""
     job = _run(pkg, link, role, note, unpack)
     if job.error and not job.resources:
-        raise ApiError(502, "acquire_failed", job.error)
+        raise ApiError(502, job.error_code if job.error_code.startswith("acquire_") else "acquire_failed", job.error)
     return job.resources
 
 
 def manuscript_text(pkg: Package, fulltext: str | None = None) -> str:
-    """Extract all text from a full-text resource (default: the first full text), for scanning."""
+    """Extract all text from a full-text resource (default: the JATS XML), for scanning."""
     from . import fulltexts
     m = pkg.load()
     if fulltext:
         r = fulltexts.get(pkg, fulltext)
     else:
-        r = next((r for r in m.by_kind("fulltext") if r.path.lower().endswith((".xml", ".json"))), None)
+        r = next((r for r in m.by_kind("fulltext") if r.reprocrowd.flavor == "jats"), None)
         if r is None:
             raise ApiError(409, "no_fulltext", "add a full text (JATS XML) first")
-    root = etree.parse(str(pkg.path(r.path))).getroot()
+    try:
+        root = etree.parse(str(pkg.path(r.path))).getroot()
+    except etree.XMLSyntaxError as e:
+        raise ApiError(409, "no_fulltext", f"{r.name} is not XML and can't be scanned for links; use the JATS full text") from e
     return " ".join(t for t in root.itertext() if t and t.strip())
 
 
@@ -456,7 +501,8 @@ def acquire(pkg: Package, fulltext: str | None = None, role: str | None = None,
             note: str = "", unpack: bool = True, repos: Iterable[str] | None = None) -> dict:
     """Detect repository links in a manuscript and fetch them. Returns the links found, the resources added,
     and the failures: one per link whose repository couldn't be read (no ``file``), and one per file that
-    couldn't be downloaded (with ``file`` and ``file_url``). A failure never stops the other links or files."""
+    couldn't be downloaded or was skipped for the download limit (with ``file`` and ``file_url``; ``code``
+    ``acquire_too_large`` for skips). A failure never stops the other links or files."""
     text = manuscript_text(pkg, fulltext)
     links = detect(text, repos)
     resources: list[Resource] = []
@@ -466,7 +512,7 @@ def acquire(pkg: Package, fulltext: str | None = None, role: str | None = None,
         resources += job.resources
         where = {"repo": link.repo, "id": link.id, "url": link.url}
         if job.error:
-            failures.append({**where, "error": job.error})
+            failures.append({**where, "code": job.error_code, "error": job.error})
         for f in job.failures:
-            failures.append({**where, "file": f["file"], "file_url": f["url"], "error": f["error"]})
+            failures.append({**where, "file": f["file"], "file_url": f["url"], "code": f["code"], "error": f["error"]})
     return {"links": [l.__dict__ for l in links], "resources": resources, "failures": failures}
