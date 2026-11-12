@@ -1,11 +1,13 @@
-// Steps 3 and 4: targets (results to reproduce) and actions (the analysis plan). Both are curated lists in the
+// Steps 2 and 3: targets (results to reproduce) and actions (the analysis plan). Both are curated lists in the
 // backend: items added by hand, plus LLM runs whose entries keep the LLM's version and store the user's changes on
-// top (restorable). The table shows manual items first, then one group per LLM run.
+// top (restorable). Two views: Reader, the paper with each item as a card next to the passage it comes from (marking
+// sentences there leads to new items), and Table, manual items first, then one group per LLM run.
 import { ApiError, host, pkg } from "../api";
 import { refText } from "../doc";
 import { COMPARATORS, type Action, type CurationFile, type Document, type Item, type LlmEntry, type LlmProfile, type LlmRun, type PromptPreview, type Resource, type Target } from "../types";
 import { choose, confirmDialog, esc, list, modal, seconds, showError, showPrompt, trunc, when } from "../util";
 import { ACTION_PRESETS, Preset, ScopeTree, TARGET_PRESETS } from "./scope";
+import { AlignedItem, AlignedView } from "./aligned";
 import type { Step, Wizard } from "./wizard";
 
 type Kind = "targets" | "actions";
@@ -26,6 +28,9 @@ export class CurationStep implements Step {
   private inputs: Resource[] = [];
   private targets: Target[] = [];
   private profiles: LlmProfile[] = [];
+  private doc?: Document;
+  /** Passages marked in the reader view (sentence, figure and table ids), for the next new item or LLM run. */
+  private marked = new Set<string>();
 
   constructor(private w: Wizard, private kind: Kind) {
     this.title = kind === "targets" ? "Targets" : "Analysis plan";
@@ -40,6 +45,7 @@ export class CurationStep implements Step {
     this.file = file;
     this.inputs = inputs;
     this.targets = targets;
+    this.doc = await this.w.app.loadDoc(this.w.app.jats()).catch(() => undefined);
     if (!this.profiles.length) this.profiles = await host.service<LlmProfile[]>("/v1/llm-profiles").catch(() => []);
   }
 
@@ -145,23 +151,147 @@ export class CurationStep implements Step {
         <button data-act="run-toggle">${g.run.disabled ? "Use this run again" : "Don't use this run"}</button></div></td></tr>`;
       if (!collapsed) tbody += g.rows.map((r) => this.rowHtml(r)).join("");
     }
-    const sources = this.state.sources;
+    const sources = [this.w.app.jats()].filter(Boolean);
     const isT = this.kind === "targets";
+    const view = this.state.curationView;
     body.innerHTML = `
-    <div class="card">
-      <div class="card-head"><h3>${isT ? "Reproduction targets" : "Analysis plan"}</h3><span class="muted">${enabled} in use</span><span class="spacer"></span>
+    <div class="card ${view === "reader" ? "cur-reader" : ""}">
+      <div class="card-head"><h3>${isT ? "Reproduction targets" : "Analysis plan"}</h3><span class="muted">${enabled} in use</span>
+        <div class="seg" id="rp-view"><button data-view="reader" class="${view === "reader" ? "on" : ""}" title="The paper, with each ${NOUN[this.kind]} next to its passage">Reader</button><button data-view="table" class="${view === "table" ? "on" : ""}" title="All fields, grouped by LLM run">Table</button></div>
+        <span class="spacer"></span>
         <button id="rp-add">+ Add ${NOUN[this.kind]}…</button>
-        <button id="rp-llm" class="primary" ${generating || !sources.length ? "disabled" : ""} title="${sources.length ? "" : "Add a text source in step 2 first"}">${generating ? "Generating…" : "Generate with LLM…"}</button></div>
-      ${sources.length ? "" : `<p class="warn-soft">No text sources yet. Add one in step 2 (Inputs) to generate ${NOUN[this.kind]}s or to point at passages of the paper.</p>`}
-      <p class="hint">${isT ? "The reported results the reproduction should recompute." : "The analysis steps described in the paper, linked to input files (step 2) and to the targets they produce (step 3). Load steps (one per data file) and the final results step are added when the master script is created."}
-        Rows from an LLM run are grouped under it; your changes are stored on top of the LLM's version and can be restored. Unticked rows are not used.</p>
+        <button id="rp-llm" class="primary" ${generating || !sources.length ? "disabled" : ""}>${generating ? "Generating…" : "Generate with LLM…"}</button></div>
+      <p class="hint">${isT ? "The reported results the reproduction should recompute." : "The analysis steps described in the paper, linked to input files (step 1) and to the targets they produce (step 2). Load steps (one per data file) and the final results step are added when the master script is created."}
+        ${view === "reader" ? `Each ${NOUN[this.kind]} sits next to the passage it comes from. Click sentences, figures or tables to mark them, then add a ${NOUN[this.kind]} or let the LLM read just those.` : "Rows from an LLM run are grouped under it."} Your changes to LLM entries are stored on top of the LLM's version and can be restored. Unticked ${NOUN[this.kind]}s are not used.</p>
       <datalist id="rp-input-names">${this.inputs.map((i) => `<option value="${esc(i.name)}">${esc(i.path)}</option>`).join("")}</datalist>
-      <table class="tbl-list rp-items"><thead><tr><th>Use</th><th>ID</th>${this.head().map((h) => `<th>${h}</th>`).join("")}<th></th></tr></thead>
-        <tbody>${tbody || `<tr><td colspan="${ncol}" class="muted">No ${NOUN[this.kind]}s yet. Generate them with the LLM or add them by hand.</td></tr>`}</tbody></table>
+      ${view === "reader" ? `<div class="al-host"></div>` : `<table class="tbl-list rp-items"><thead><tr><th>Use</th><th>ID</th>${this.head().map((h) => `<th>${h}</th>`).join("")}<th></th></tr></thead>
+        <tbody>${tbody || `<tr><td colspan="${ncol}" class="muted">No ${NOUN[this.kind]}s yet. Generate them with the LLM or add them by hand.</td></tr>`}</tbody></table>`}
     </div>`;
     body.querySelector("#rp-add")!.addEventListener("click", () => this.addDialog());
     body.querySelector("#rp-llm")!.addEventListener("click", () => this.generateDialog());
-    this.bind(body.querySelector<HTMLElement>(".rp-items")!);
+    body.querySelector("#rp-view")!.addEventListener("click", (e) => {
+      const b = (e.target as HTMLElement).closest<HTMLButtonElement>("[data-view]");
+      if (!b || b.dataset.view === view) return;
+      this.state.curationView = b.dataset.view as "reader" | "table";
+      this.w.app.save();
+      this.w.draw();
+    });
+    if (view === "table") this.bind(body.querySelector<HTMLElement>(".rp-items")!);
+    else this.drawReader(body.querySelector<HTMLElement>(".al-host")!);
+  }
+
+  // ---------- reader view ----------
+
+  private allRows(): Row[] {
+    const { manual, runs } = this.rows();
+    return [...manual, ...runs.flatMap((g) => g.rows)];
+  }
+
+  private cardHtml(r: Row): string {
+    const v = r.value;
+    const off = !!(r.entry?.disabled || r.run?.disabled);
+    const use = r.manual
+      ? `<span class="muted" title="Added by hand (delete it to drop it)">●</span>`
+      : `<input type="checkbox" data-act="toggle" ${r.entry?.disabled ? "" : "checked"} ${r.run?.disabled ? "disabled" : ""} title="${r.run?.disabled ? "The whole LLM run is left out (Table view)" : `Use this ${NOUN[this.kind]}`}" />`;
+    const actions = [`<button data-act="edit" title="Edit all fields">Edit</button>`, r.manual ? `<button data-act="remove" title="Delete">✕</button>` : r.entry?.edit ? `<button data-act="restore" title="Restore the LLM's version">↺</button>` : ""].join("");
+    const origin = r.manual ? "added by hand" : `LLM ${esc(r.run!.id)} · ${esc(r.run!.call.profile)}${off && r.run?.disabled ? " · run not used" : ""}`;
+    const other = v.refs.filter((x) => x.extraction !== this.w.app.jats()).length;
+    let detail: string;
+    if (this.kind === "targets") {
+      const t = v as Target;
+      const exp =
+        t.type === "table" ? `${(t.expected as string[][] | null)?.length ?? 0}×${(t.expected as string[][] | null)?.[0]?.length ?? 0} table`
+        : t.type === "figure" ? "a figure"
+        : t.expected === null || t.expected === undefined || t.expected === "" ? `<span class="warn-inline">no expected value</span>`
+        : `<b>${esc(t.comparator && t.comparator !== "=" ? `${t.comparator} ` : "")}${esc(t.expected)}</b>${t.unit ? ` ${esc(t.unit)}` : ""}${t.decimals !== null && t.decimals !== undefined ? ` <span class="muted">(${t.decimals} dp)</span>` : ""}`;
+      detail = `<div class="al-desc">${esc(t.description)}</div><div class="small">Expected ${exp}</div>`;
+    } else {
+      const a = v as Action;
+      const links = [a.inputs.length && `inputs ${a.inputs.join(", ")}`, a.depends_on.length && `after ${a.depends_on.join(", ")}`, a.produces.length && `produces ${a.produces.join(", ")}`].filter(Boolean).join(" · ");
+      detail = `<div class="al-desc">${esc(a.summary)}</div>${links ? `<div class="small">${esc(links)}</div>` : ""}`;
+    }
+    const kindBadge = this.kind === "targets" ? (v as Target).type : (v as Action).kind;
+    return `<div class="al-card-head">${use}<b>${esc(v.id)}</b><span class="badge">${esc(kindBadge)}</span>${r.entry?.edit ? `<span class="badge edited" title="Changed from the LLM's extraction">edited</span>` : ""}<span class="spacer"></span>${actions}</div>
+      ${detail}<div class="small muted">${origin}${v.unreferenced ? ` · no passage${v.note ? `: ${esc(v.note)}` : ""}` : ""}${other ? ` · ${other} reference${other > 1 ? "s" : ""} to another text` : ""}</div>`;
+  }
+
+  private drawReader(host: HTMLElement) {
+    const jats = this.w.app.jats();
+    const items: AlignedItem[] = this.allRows().map((r) => ({
+      id: r.value.id,
+      anchors: r.value.refs.filter((x) => x.extraction === jats).map((x) => x.id),
+      html: this.cardHtml(r),
+      cls: [r.entry?.disabled || r.run?.disabled ? "off" : "", r.manual ? "manual" : ""].join(" "),
+    }));
+    const noun = NOUN[this.kind];
+    new AlignedView(host, {
+      doc: this.doc,
+      meta: this.w.app.meta(),
+      items,
+      marked: this.marked,
+      unlinkedLabel: `Not linked to a passage of the text`,
+      onMark: () => {},
+      barHtml: (n) => `<span><b>${n}</b> marked</span><span class="spacer"></span>
+        <button data-act="add" class="primary">+ Add ${noun} from the marked text…</button>
+        <button data-act="generate" ${this.w.running.has(`llm-${this.kind}`) ? "disabled" : ""}>Generate ${noun}s from the marked text…</button>
+        <button data-act="clear">Clear marks</button>`,
+      onBar: (act) => {
+        if (act === "clear") {
+          this.marked.clear();
+          return this.w.draw();
+        }
+        const ids = [...this.marked];
+        if (act === "add") this.addDialog(ids);
+        if (act === "generate") this.generateDialog({ sections: [], items: ids });
+      },
+      onCard: (id, act, el) => this.cardAction(id, act, el),
+    });
+  }
+
+  private async cardAction(id: string, act: string, el: HTMLElement) {
+    const r = this.find(id);
+    if (!r) return;
+    const P = `/${this.kind}`;
+    if (act === "toggle") return void this.w.busy("edit", `${(el as HTMLInputElement).checked ? "Using" : "Leaving out"} ${id}`, () => pkg.patch(`${P}/${encodeURIComponent(id)}`, { disabled: !(el as HTMLInputElement).checked }));
+    if (act === "edit") return this.editDialog(r);
+    if (act === "restore") return void this.w.busy("edit", `Restoring ${id}`, () => pkg.del(`${P}/${encodeURIComponent(id)}/edit`));
+    if (act === "remove") return this.remove(id);
+  }
+
+  private async remove(id: string) {
+    if (!(await confirmDialog(`Delete ${NOUN[this.kind]}`, `Delete <b>${esc(id)}</b>?`, "Delete", true))) return;
+    await this.w.busy("edit", `Deleting ${id}`, async () => {
+      try {
+        await pkg.del(`/${this.kind}/${encodeURIComponent(id)}`);
+      } catch (e) {
+        if (e instanceof ApiError && e.code === "in_use") throw new ApiError(`${id} is still used (e.g. a step produces this target); change that first.`, e.problem);
+        throw e;
+      }
+    });
+  }
+
+  /** All fields of one item, saved as they change (the same editors as the table). */
+  private editDialog(r: Row) {
+    const id = r.value.id;
+    const head = this.head();
+    const cells = this.cells(r.value, false);
+    const dlg = modal("dlg-edit", `<h3>${this.kind === "targets" ? "Target" : "Step"} ${esc(id)}</h3>
+      <div class="edit-grid">${head.map((h, i) => (cells[i] ? `<span class="edit-label">${esc(h)}</span><div>${cells[i]}</div>` : "")).join("")}</div>
+      <p class="hint">Changes are saved as you make them${r.manual ? "" : "; ↺ restores the LLM's version"}.</p>
+      <form method="dialog"><menu><button class="primary">Done</button></menu></form>`);
+    dlg.addEventListener("change", async (ev) => {
+      const el = ev.target as HTMLInputElement;
+      if (!el.dataset.f) return;
+      const now = this.find(id);
+      if (!now) return;
+      try {
+        await pkg.patch(`/${this.kind}/${encodeURIComponent(id)}`, { [el.dataset.f]: this.parse(el.dataset.f, el.value.trim(), now.value) });
+        this.file = await pkg.get<CurationFile<Item>>(`/${this.kind}`, { view: "raw" });
+      } catch (e) {
+        showError(`Changing ${id}`, e);
+      }
+    });
+    dlg.addEventListener("close", () => this.w.render());
   }
 
   private find(id: string): Row | undefined {
@@ -214,26 +344,16 @@ export class CurationStep implements Step {
       }
       if (!id) return;
       if (act === "restore") return void this.w.busy("edit", `Restoring ${id}`, () => pkg.del(`${P}/${encodeURIComponent(id)}/edit`));
-      if (act === "remove") {
-        if (!(await confirmDialog(`Delete ${NOUN[this.kind]}`, `Delete <b>${esc(id)}</b>?`, "Delete", true))) return;
-        return void this.w.busy("edit", `Deleting ${id}`, async () => {
-          try {
-            await pkg.del(`${P}/${encodeURIComponent(id)}`);
-          } catch (e) {
-            if (e instanceof ApiError && e.code === "in_use") throw new ApiError(`${id} is still used (e.g. a step produces this target); change that first.`, e.problem);
-            throw e;
-          }
-        });
-      }
+      if (act === "remove") return this.remove(id);
     });
   }
 
   // ---------- dialogs ----------
 
-  /** Text-source picker: a select over the step-1 sources and a scope tree of the chosen one. */
+  /** The scope tree of the paper's text (its JATS extraction). */
   private async sourcePicker(el: HTMLElement, opts: { floats: boolean; presets: Preset[]; onChange?: () => void; initial?: (name: string) => { sections: string[]; items: string[] } | undefined }) {
-    const sources = this.state.sources;
-    el.innerHTML = `<label>Text source <select class="src-pick">${sources.map((s) => `<option>${esc(s)}</option>`).join("")}</select></label><div class="tree-box"></div>`;
+    const sources = [this.w.app.jats()].filter(Boolean);
+    el.innerHTML = `<select class="src-pick" hidden>${sources.map((s) => `<option>${esc(s)}</option>`).join("")}</select><div class="tree-box"></div>`;
     const sel = el.querySelector<HTMLSelectElement>(".src-pick")!;
     const box = el.querySelector<HTMLElement>(".tree-box")!;
     const picker = { name: "", doc: undefined as Document | undefined, tree: undefined as ScopeTree | undefined };
@@ -251,11 +371,11 @@ export class CurationStep implements Step {
     };
     sel.addEventListener("change", show);
     if (sources.length) await show();
-    else el.innerHTML = `<p class="warn-soft">No text sources: add one in step 2 to point at passages of the paper.</p>`;
+    else el.innerHTML = `<p class="warn-soft">The paper's text isn't available.</p>`;
     return picker;
   }
 
-  private async addDialog() {
+  private async addDialog(marked: string[] = []) {
     const isT = this.kind === "targets";
     const fields = isT
       ? `<div class="form-row"><label>Type <select name="type"><option>number</option><option>categorical</option><option>table</option><option>figure</option></select></label>
@@ -312,14 +432,20 @@ export class CurationStep implements Step {
     picker = await this.sourcePicker(dlg.querySelector(".picker")!, {
       floats: true,
       presets: [],
+      initial: () => (marked.length ? { sections: [], items: marked } : undefined),
       onChange: () => {
         const t = picker?.tree;
         if (!touched && t) q.value = t.quote;
       },
     });
+    if (marked.length && picker.tree && !touched) q.value = picker.tree.quote;
+    // Once added, the marks have served their purpose.
+    dlg.addEventListener("close", () => {
+      if (dlg.returnValue !== "cancel" && marked.length) this.marked.clear();
+    });
   }
 
-  private async generateDialog() {
+  private async generateDialog(marked?: { sections: string[]; items: string[] }) {
     const isT = this.kind === "targets";
     const st = this.state;
     const dlg = modal("dlg-wide", `<form method="dialog"><h3>Generate ${NOUN[this.kind]}s with an LLM</h3>
@@ -363,7 +489,7 @@ export class CurationStep implements Step {
             choose("Some items were rejected", `<p>${run.entries.length} ${NOUN[this.kind]}s were added; ${run.rejected.length} ${run.rejected.length === 1 ? "item" : "items"} of the LLM's answer didn't validate and were left out:</p>${rejectedHtml(run)}`, [["ok", "OK", "primary"]]);
         });
     });
-    picker = await this.sourcePicker(dlg.querySelector(".picker")!, { floats: isT, presets: isT ? TARGET_PRESETS : ACTION_PRESETS, initial: (name) => st.scopes[`${this.kind}:${name}`] });
+    picker = await this.sourcePicker(dlg.querySelector(".picker")!, { floats: isT, presets: isT ? TARGET_PRESETS : ACTION_PRESETS, initial: (name) => marked ?? st.scopes[`${this.kind}:${name}`] });
   }
 }
 

@@ -32,16 +32,27 @@ run reproductions you also need what the paper's analysis uses (R, Python, …).
 
 ## Using it
 
-- **Library**: your reproductions. **New reproduction** takes a DOI (looked up
-  in OpenAlex, with a check for ReproCrowd records of that paper already on
-  Zenodo), optionally the paper's PDF, and a folder (default
-  `~/ReproCrowd/<doi>`). **Open a package folder…** adds an existing package.
-- **A reproduction** is the numbered workflow of the Zotero plugin: 1 Text
-  (PDF next to the paper's text), 2 Inputs, 3 Targets, 4 Analysis plan,
-  5 Master script, 6 Code generation, 7 Run & compare, 8 Report & deposit.
-  Files are added by path from this computer (file dialogs, drag and drop),
-  folders of inputs too.
-- **Step 8, Deposit on Zenodo**: after the report and the ZIP, the package is
+- **Library**: your reproductions. **New reproduction** takes a DOI, looked up
+  in OpenAlex. **Only articles with JATS XML are supported at this time**: the
+  app checks that Europe PMC serves the article's full-text XML (the open-access
+  subset of PubMed Central) and refuses the paper otherwise. It also checks for
+  ReproCrowd records of that paper already on Zenodo. The package goes in a
+  folder (default `~/ReproCrowd/<doi>`); the JATS XML is downloaded and parsed
+  right away. **Open a package folder…** adds an existing package.
+- **A reproduction** is a numbered workflow: 1 Inputs, 2 Targets, 3 Analysis
+  plan, 4 Master script, 5 Code generation, 6 Run & compare, 7 Report &
+  deposit. The paper's text is its JATS XML; there is no PDF view. The study's
+  data and code are added as input files from this computer (file dialogs, drag
+  and drop, folders).
+- **Steps 2 and 3, Reader view**: the paper, with each target (or analysis
+  step) as a card in a sidebar, level with the passage it comes from and joined
+  to it by a line. Hovering a card lights up its passage, and the other way
+  round. Click sentences, figures or tables to mark them, then **Add … from the
+  marked text** or **Generate … from the marked text** (the LLM reads only
+  those). Cards can be switched off, edited, restored or deleted; items without
+  a passage are listed at the top. The **Table** view shows every field,
+  grouped by LLM run.
+- **Step 7, Deposit on Zenodo**: after the report and the ZIP, the package is
   uploaded as a **draft** with a reserved DOI, signed with your name (and
   ORCID). Review it on Zenodo, then **Publish…** (here or on Zenodo):
   publishing registers the DOI, and a published record can't be deleted.

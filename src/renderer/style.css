@@ -471,3 +471,43 @@ body.view-library .lib-header { padding-right: 96px; }
 #route { scrollbar-width: none; }
 #route::-webkit-scrollbar { display: none; }
 #paper-title { flex: 0 1 300px; font-size: 13.5px; }
+
+/* ---------- targets and analysis plan: the paper with the items aligned next to it ---------- */
+.cur-reader > .card-head { position: sticky; top: -10px; z-index: 4; background: var(--panel); padding: 8px 0 4px; margin-top: -8px; }
+.card-head .seg { margin-left: 8px; }
+.al-host { position: relative; margin-top: 6px; }
+.al-grid { display: grid; grid-template-columns: minmax(0, 1fr) 40px minmax(300px, 380px); position: relative; }
+.al-text { min-width: 0; padding: 0 6px 48px 0; }
+.al-text article.reader { max-width: 780px; margin: 0 0 0 auto; }
+.al-gutter { position: relative; }
+.al-lines { position: absolute; top: 0; left: 0; overflow: visible; pointer-events: none; }
+.al-lines path { fill: none; stroke: var(--accent-line); stroke-width: 1.5; }
+.al-lines path.off { stroke: var(--border); stroke-dasharray: 3 3; }
+.al-lines path.hot { stroke: var(--accent); stroke-width: 2.5; }
+.al-side { position: relative; min-width: 0; }
+.al-cards { position: relative; }
+.al-cards > .al-card { position: absolute; left: 0; right: 0; }
+.al-card { background: var(--panel); border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: 10px; padding: 6px 10px 7px; box-shadow: var(--shadow); font-size: 13px; cursor: pointer; transition: box-shadow .15s, border-color .15s; }
+.al-card.manual { border-left-color: var(--ink-soft); }
+.al-card.off { opacity: .55; border-left-color: var(--border); }
+.al-card.hot { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft), var(--shadow); opacity: 1; }
+.al-card-head { display: flex; gap: 6px; align-items: center; }
+.al-card-head button { padding: 0 7px; font-size: 12px; }
+.al-desc { margin: 3px 0 2px; line-height: 1.35; color: var(--ink); }
+.al-unlinked { margin-bottom: 18px; display: flex; flex-direction: column; gap: 6px; }
+.al-unlinked h4 { margin: 0; font-size: 12.5px; color: var(--muted); font-weight: 600; }
+.al-text .sent, .al-text figure[data-hid] { cursor: pointer; border-radius: 3px; }
+.al-text span.sent.ref { text-decoration: underline; text-decoration-color: var(--accent-line); text-decoration-thickness: 2px; text-underline-offset: 3px; }
+.al-text span.sent.ref-off { text-decoration: underline dotted; text-decoration-color: var(--muted); text-underline-offset: 3px; }
+.al-text p.ref, .al-text figure.ref, .al-text h2.ref, .al-text h3.ref, .al-text h4.ref, .al-text h5.ref { box-shadow: -8px 0 0 -5px var(--accent-line); }
+.al-text .hot { background: var(--accent-soft); }
+.al-text .marked { background: #fde68a; color: #2b2430; }
+.al-text .flash { animation: al-flash 1.2s ease-out; }
+@keyframes al-flash { 0% { background: #fcd34d; } 100% { background: transparent; } }
+.al-bar { position: sticky; bottom: 0; z-index: 5; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 8px 12px; margin-top: 8px; background: var(--panel); border: 1px solid var(--accent-line); border-radius: 12px; box-shadow: 0 -4px 16px rgba(0,0,0,.08); }
+.dlg-edit { width: 680px; }
+.edit-grid { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 8px 14px; align-items: start; margin: 6px 0; }
+.edit-label { font-size: 13px; color: var(--muted); padding-top: 5px; }
+.edit-grid textarea { width: 100%; }
+.refusal { border: 1px solid var(--warn); background: var(--warn-soft); color: var(--warn-ink); border-radius: 10px; padding: 8px 12px; font-size: 13.5px; margin: 4px 0; }
+@media (prefers-color-scheme: dark) { .al-text .marked { background: #8a6d1a; color: #fff; } }

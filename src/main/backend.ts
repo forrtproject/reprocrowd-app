@@ -7,7 +7,7 @@
 //   3. in a development checkout: `uv run --project backend python -m reprocrowd serve`
 //
 // Its config (REPROCROWD_CONFIG) is written at every start from the user's part (userData/backend.toml: LLM and
-// agent profiles, OpenAlex, converters, run limits; editable in Settings) and the app's part ([server], no package
+// agent profiles, OpenAlex, run limits; editable in Settings) and the app's part ([server], no package
 // database, the Zenodo choices from Settings).
 import { app } from "electron";
 import { ChildProcess, spawn } from "node:child_process";
@@ -82,15 +82,6 @@ mailto = ""                # your e-mail for OpenAlex's polite pool (optional)
 [downloads]
 max_download_mb = 200
 max_upload_mb = 500
-
-# PDF converters.
-[converters.grobid]
-url = ""                   # e.g. "http://localhost:8070"; empty = not configured
-timeout_s = 600
-
-[converters.docling]
-argv = ["docling", "--to", "json", "--output", "{outdir}", "{input}"]
-timeout_s = 1800
 
 [zenodo]
 license = "cc-by-4.0"

@@ -127,35 +127,49 @@ try {
   assert.ok(await win.locator("#setup-note").isHidden(), "name and token are set");
   await shot("01-library-empty");
 
-  step("new reproduction: DOI lookup in OpenAlex");
+  step("new reproduction: a paper without JATS XML is refused");
   await win.click("#new-btn");
+  await win.fill(".dlg-new [name=doi]", "10.1038/nature14539");
+  await win.click("#nd-lookup");
+  await win.waitForSelector("#nd-jats .refusal", { timeout: 60_000 });
+  assert.match(await win.locator("#nd-jats").innerText(), /Only articles with JATS XML/);
+  assert.ok(await win.locator("#nd-create").isDisabled());
+  await shot("02a-refused");
+
+  step("new reproduction: DOI lookup, JATS available");
   await win.fill(".dlg-new [name=doi]", `https://doi.org/${DOI}`);
   await win.click("#nd-lookup");
-  await win.waitForSelector("#nd-work b.serif", { timeout: 30_000 });
-  const title = await win.locator("#nd-work b").innerText();
-  assert.match(title, /p-hacking/i);
+  await win.waitForSelector("#nd-jats .ok", { timeout: 60_000 });
+  assert.match(await win.locator("#nd-work b").innerText(), /p-hacking/i);
+  assert.match(await win.locator("#nd-jats").innerText(), /PMC4359000/);
   assert.equal(await win.inputValue(".dlg-new [name=folder]"), path.join(packagesRoot, "10-1371-journal-pbio-1002106"));
   await shot("02-new-dialog");
-  await Promise.all([win.waitForEvent("load"), win.click("#nd-create")]);
-  await win.waitForSelector("#route button", { timeout: 60_000 });
+  await Promise.all([win.waitForEvent("load"), win.click("#nd-create:not([disabled])")]);
+  await win.waitForSelector("#route button", { timeout: 120_000 });
   await win.waitForFunction(() => document.querySelector("#paper-title")?.textContent?.match(/p-hacking/i));
   const pkgId = new URLSearchParams((await win.evaluate(() => location.hash)).slice(1)).get("pkg");
   assert.ok(pkgId);
 
-  step("bring the package to a successful run (backend API)");
+  step("the package has the JATS text; set it up to a successful run (backend API)");
   const P = (sub, method = "GET", body) => call("pkg", method, sub, body);
   const folder = (await call("info")).folder;
-  await call("upload", "fulltexts", { name: "paper.tei.xml", path: path.join(CLI_TESTS, "fixtures/paper.tei.xml") });
-  await P("/extractions", "POST", { method: "parse", fulltext: "ft-paper-tei" });
-  const REF = [{ extraction: "ex-paper-tei", id: "sec3.p1.s1" }];
-  for (const t of [{ type: "number", description: "t", expected: 2.31, decimals: 2 }, { type: "categorical", description: "significant?", expected: "yes" },
-                   { type: "table", description: "descriptives", expected: [["Group", "M"], ["A", "512.4"]] }])
-    await P("/targets", "POST", { ...t, refs: REF });
-  await P("/actions", "POST", { kind: "analysis", summary: "everything", refs: REF, produces: ["T001", "T002", "T003"] });
+  const { jats } = await call("connect");
+  const fts = (await P("/fulltexts")).data;
+  assert.deepEqual(fts.map((f) => f.reprocrowd.flavor), ["jats"], "only the JATS XML, no PDF");
+  const doc = (await P(`/extractions/${jats}`)).data;
+  // Three sentences with numbers, from sections far apart, so the cards spread over the text.
+  const sents = doc.sections.flatMap((sec) => sec.paragraphs.flatMap((pa) => pa.sentences.filter((x) => /\d/.test(x.text)).map((x) => x.id)));
+  assert.ok(sents.length > 10, "the parsed JATS has sentences with numbers");
+  const picks = [sents[Math.floor(sents.length * 0.2)], sents[Math.floor(sents.length * 0.5)], sents[Math.floor(sents.length * 0.8)]];
+  const targets = [{ type: "number", description: "t", expected: 2.31, decimals: 2 }, { type: "categorical", description: "significant?", expected: "yes" },
+                   { type: "table", description: "descriptives", expected: [["Group", "M"], ["A", "512.4"]] }];
+  for (const [i, t] of targets.entries()) await P("/targets", "POST", { ...t, refs: [{ extraction: jats, id: picks[i] }] });
+  await P("/targets", "POST", { type: "number", description: "a result without a passage", expected: 1, unreferenced: true, note: "from the supplement", refs: [] });
+  await P("/actions", "POST", { kind: "analysis", summary: "everything", refs: [{ extraction: jats, id: picks[1] }], produces: ["T001", "T002", "T003"] });
   await P("/script", "PUT", { template: "python" });
   fs.writeFileSync(path.join(folder, "analysis.py"), `import json, os
 os.makedirs("outputs", exist_ok=True)
-json.dump({"results": [{"id": "T001", "value": 2.3149}, {"id": "T002", "value": "Yes"}, {"id": "T003", "table": [["A", 512.38]]}]}, open("outputs/results.json", "w"))
+json.dump({"results": [{"id": "T001", "value": 2.3149}, {"id": "T002", "value": "Yes"}, {"id": "T003", "table": [["A", 512.38]]}, {"id": "T004", "value": 1}]}, open("outputs/results.json", "w"))
 `);
   const job = (await P("/jobs", "POST", { type: "run" })).data;
   for (let i = 0; i < 120; i++) {
@@ -169,17 +183,77 @@ json.dump({"results": [{"id": "T001", "value": 2.3149}, {"id": "T002", "value": 
   await win.reload();
   await win.waitForSelector("#route button");
 
-  step("every step renders");
+  step("every step renders, and there is no PDF pane");
   const steps = await win.locator("#route button").count();
-  assert.equal(steps, 8);
+  assert.equal(steps, 7);
+  assert.equal(await win.locator("#pdf, #pdf-pane, #sources-btn").count(), 0);
   for (let k = 0; k < steps; k++) {
     await win.locator("#route button").nth(k).click();
     await win.waitForFunction((n) => document.querySelectorAll("#route button")[n]?.classList.contains("on"), k);
-    await win.waitForTimeout(k === 0 ? 1500 : 700);
+    await win.waitForTimeout(800);
     await shot(`03-step-${k + 1}`);
   }
 
-  step("report, ZIP and deposit (step 8)");
+  step("targets: the reader with the cards aligned");
+  await win.locator("#route button").nth(1).click();
+  await win.waitForSelector(".al-cards .al-card");
+  assert.equal(await win.locator(".al-cards .al-card").count(), 3);
+  assert.equal(await win.locator(".al-unlinked .al-card").count(), 1, "T004 has no passage");
+  // Each card is level with its passage, or below the card above it; never above its passage.
+  const geo = await win.evaluate(() =>
+    [...document.querySelectorAll(".al-cards .al-card")].map((c) => {
+      const ref = document.querySelectorAll(".al-text .sent.ref");
+      return { id: c.dataset.id, top: c.getBoundingClientRect().top };
+    }),
+  );
+  const anchors = await win.evaluate((ids) => ids.map((id) => document.querySelector(`.al-text [data-hid="${CSS.escape(id)}"]`).getBoundingClientRect().top), picks);
+  for (const [i, g] of geo.sort((a, b) => a.id.localeCompare(b.id)).entries()) assert.ok(g.top >= anchors[i] - 1 && g.top < anchors[i] + 200, `${g.id} at ${g.top}, its passage at ${anchors[i]}`);
+  assert.equal(await win.locator(".al-lines path").count(), 3);
+  await win.locator(`.al-cards .al-card[data-id="T002"]`).hover();
+  assert.ok(await win.locator(`.al-text [data-hid="${picks[1]}"]`).evaluate((e) => e.classList.contains("hot")), "hovering a card lights up its passage");
+  await win.locator(`.al-cards .al-card[data-id="T002"]`).scrollIntoViewIfNeeded();
+  await shot("04a-targets-reader");
+
+  step("targets: mark a sentence and add a target from it");
+  const free = sents.find((id) => !picks.includes(id));
+  await win.locator(`.al-text .sent[data-hid="${free}"]`).scrollIntoViewIfNeeded();
+  await win.locator(`.al-text .sent[data-hid="${free}"]`).click();
+  await win.waitForSelector(".al-bar:not([hidden])");
+  await shot("04b-marked");
+  await win.click(".al-bar [data-act=add]");
+  await win.waitForSelector(".dlg-wide [name=quote]");
+  await win.waitForFunction(() => document.querySelector(".dlg-wide [name=quote]")?.value.length > 0);
+  await win.fill(".dlg-wide [name=description]", "a result marked in the reader");
+  await win.fill(".dlg-wide [name=expected]", "3");
+  await win.click(".dlg-wide button[value=ok]");
+  await win.waitForFunction(() => document.querySelectorAll(".al-cards .al-card").length === 4);
+  const added = (await P("/targets")).data.find((x) => x.item.description === "a result marked in the reader").item;
+  assert.deepEqual(added.refs, [{ extraction: jats, id: free }]);
+  assert.ok(await win.locator(".al-bar").isHidden(), "the marks are cleared once used");
+
+  step("targets: edit a card, and the table view");
+  await win.click(`.al-card[data-id="${added.id}"] [data-act=edit]`);
+  await win.waitForSelector(".dlg-edit textarea[data-f=description]");
+  await win.fill(".dlg-edit textarea[data-f=description]", "a result marked in the reader, edited");
+  await win.locator(".dlg-edit textarea[data-f=description]").blur();
+  await win.waitForTimeout(500);
+  await win.click(".dlg-edit button.primary");
+  await win.waitForFunction((id) => document.querySelector(`.al-card[data-id="${id}"] .al-desc`)?.textContent?.includes("edited"), added.id);
+  await win.click("#rp-view [data-view=table]");
+  await win.waitForSelector(".rp-items tbody tr[data-id]");
+  assert.equal(await win.locator(".rp-items tbody tr[data-id]").count(), 5);
+  await win.click("#rp-view [data-view=reader]");
+  await win.waitForSelector(".al-cards .al-card");
+  await P(`/targets/${added.id}`, "DELETE");
+
+  step("analysis plan: the reader too");
+  await win.locator("#route button").nth(2).click();
+  await win.waitForSelector(".al-cards .al-card[data-id=A01]");
+  await shot("04c-plan-reader");
+
+  await win.locator("#route button").nth(6).click();
+  await win.waitForSelector("#rp-report");
+  step("report, ZIP and deposit (step 7)");
   await win.click("#rp-report");
   await win.waitForSelector("#rp-report-show", { timeout: 60_000 });
   await win.click("#rp-zip");

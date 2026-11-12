@@ -1,5 +1,5 @@
 // Settings: you as the creator of Zenodo records, the Zenodo server and token, where packages go, the code editor,
-// and the app's backend (status, output, its configuration: LLM and agent profiles, converters, OpenAlex).
+// and the app's backend (status, output, its configuration: LLM and agent profiles, OpenAlex).
 import { Config, host } from "./api";
 import { esc, modal, showError } from "./util";
 
@@ -47,7 +47,7 @@ export async function settingsDialog(onSaved: (changed: boolean) => void, focus?
       <p class="backend-line small"></p>
       <div class="actions"><button type="button" id="be-restart">Restart</button><button type="button" id="be-log">Show output</button></div>
       <pre class="log" id="be-log-text" hidden></pre>
-      <details ${focus === "backend" ? "open" : ""}><summary>Configuration: LLM and coding-agent profiles, converters, OpenAlex</summary>
+      <details ${focus === "backend" ? "open" : ""}><summary>Configuration: LLM and coding-agent profiles, OpenAlex</summary>
         <p class="hint">TOML, as in the backend's <code>config.example.toml</code>, without <code>[server]</code> and <code>[database]</code> (the app sets those). LLM calls and the coding agent run the commands configured here, e.g. Claude Code (<code>claude</code>) on your PATH.</p>
         <textarea class="mono big" name="becfg" spellcheck="false">${esc(cfg.backendConfig)}</textarea>
         <div class="actions"><button type="button" id="be-save" class="primary">Save configuration and restart</button><button type="button" id="be-reset">Reset to defaults</button></div>

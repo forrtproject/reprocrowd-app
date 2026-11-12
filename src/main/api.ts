@@ -12,7 +12,8 @@ import { get, post, request, ResponseType, ServiceError } from "./service";
 import { loadSettings, saveSettings, secretStorageKind, serverOf, setSecret, getSecret, userData, zenodoKey, ZenodoServer } from "./settings";
 
 /** Read-only backend endpoints any window may call. */
-const GLOBAL_GETS = new Set(["/v1/health", "/v1/templates", "/v1/llm-profiles", "/v1/agent-profiles", "/v1/converters", "/v1/zenodo"]);
+const GLOBAL_GETS = new Set(["/v1/health", "/v1/templates", "/v1/llm-profiles", "/v1/agent-profiles", "/v1/zenodo"]);
+export const JATS_ONLY = "Only articles with JATS XML full text (the open-access subset of PubMed Central) are supported at this time.";
 const EDITORS = ["code", "codium", "cursor", "zed", "subl", "xdg-open"];
 const LONG = 3 * 3600_000; // LLM calls and conversions are synchronous requests bounded by the backend's own timeouts
 
@@ -104,8 +105,34 @@ async function lookupDoi(raw: string): Promise<Work> {
   };
 }
 
-async function uploadPath(id: string, kind: "fulltexts" | "inputs", file: string, fields: Record<string, unknown> = {}) {
-  return (await request("POST", `/v1/packages/${enc(id)}/${kind}`, { json: { path: file, ...fields }, timeout: LONG })).data;
+async function uploadPath(id: string, file: string, fields: Record<string, unknown> = {}) {
+  return (await request("POST", `/v1/packages/${enc(id)}/inputs`, { json: { path: file, ...fields }, timeout: LONG })).data;
+}
+
+/**
+ * The paper's text: its JATS XML from Europe PMC, parsed into the common document schema. Returns the extraction's name,
+ * retrieving and parsing the XML first if the package has none yet. Throws `jats_unavailable` if there is no JATS XML.
+ */
+export async function ensureJats(id: string): Promise<string> {
+  const P = `/v1/packages/${enc(id)}`;
+  const [fulltexts, extractions] = await Promise.all([get<any[]>(`${P}/fulltexts`), get<any[]>(`${P}/extractions`)]);
+  const jatsFt = fulltexts.filter((f) => f.reprocrowd?.flavor === "jats").map((f) => f.name as string);
+  const parsed = extractions.find((x) => x.reprocrowd?.method === "parse" && (x.reprocrowd.fulltexts ?? []).some((n: string) => jatsFt.includes(n)));
+  if (parsed) return parsed.name;
+  let ft = jatsFt[0];
+  if (!ft) {
+    const { candidates, notes } = await get<{ candidates: any[]; notes: string[] }>(`${P}/fulltexts/candidates`, undefined, 60_000);
+    const c = candidates.find((x) => x.format === "jats");
+    if (!c) throw new ServiceError(`${JATS_ONLY} ${notes.find((n) => /PMCID/.test(n)) ?? "There is no JATS XML for this paper."}`, { status: 409, code: "jats_unavailable" });
+    try {
+      ft = ((await request("POST", `${P}/fulltexts`, { json: { candidate: c.id, name: "ft-jats" }, timeout: 300_000 })).data as any).name;
+    } catch (e) {
+      const code = (e as ServiceError).problem?.code;
+      if (code === "download_failed" || code === "integrity_check_failed") throw new ServiceError(`${JATS_ONLY} Europe PMC has no JATS XML for this paper (${(e as Error).message}).`, { status: 409, code: "jats_unavailable" });
+      throw e;
+    }
+  }
+  return ((await request("POST", `${P}/extractions`, { json: { method: "parse", fulltext: ft }, timeout: 300_000 })).data as any).name;
 }
 
 export function makeApi(wc: WebContents) {
@@ -115,6 +142,7 @@ export function makeApi(wc: WebContents) {
   async function pkg(method: string, sub: string, json?: unknown, query?: Record<string, string | number | boolean>, responseType: ResponseType = "json") {
     if (!/^([/:][\w./:%-]*)?$/.test(sub) || sub.split("/").includes("..")) throw new Error(`invalid package path ${sub}`);
     if (!["GET", "POST", "PUT", "PATCH", "DELETE"].includes(method)) throw new Error(`invalid method ${method}`);
+    if (method !== "GET" && /^\/(fulltexts|extractions)\b/.test(sub)) throw new Error("The paper's text is its JATS XML, retrieved by the app.");
     return request(method, base() + sub, { json, query, responseType, timeout: method === "GET" ? 120_000 : LONG });
   }
 
@@ -135,37 +163,31 @@ export function makeApi(wc: WebContents) {
     },
     packageDeposits: async (id: string) => get<any[]>(`/v1/packages/${enc(id)}/deposits`),
     lookupDoi,
+    jatsAvailability: async (doi: string) => get<any>("/v1/jats", { doi }, 60_000),
     zenodoRecords: async (doi: string) => get<any[]>("/v1/zenodo/records", { doi, sandbox: loadSettings().zenodo.sandbox }, 20_000),
     suggestFolder: async (name: string) => suggestFolder(name),
     chooseFolder: async (defaultPath?: string) => {
       const r = await dialog.showOpenDialog(win(), { title: "Folder for the package", defaultPath, properties: ["openDirectory", "createDirectory"] });
       return r.canceled ? null : r.filePaths[0];
     },
-    choosePdfs: async () => {
-      const r = await dialog.showOpenDialog(win(), { title: "The paper's PDF", properties: ["openFile", "multiSelections"], filters: [{ name: "PDF", extensions: ["pdf"] }] });
-      return r.canceled ? [] : r.filePaths;
-    },
-    createPackage: async (opts: { doi: string; folder: string; pdfs: string[] }) => {
+    /** A package for the paper's DOI, with its JATS XML retrieved and parsed. Undone if that fails. */
+    createPackage: async (opts: { doi: string; folder: string }) => {
       const doi = normalizeDoi(opts.doi);
+      if (!doi) throw new Error("A DOI is needed: the paper's JATS XML is found through it.");
       const target = path.resolve(opts.folder);
-      if (fs.existsSync(target) && fs.readdirSync(target).length) throw new Error(`${target} isn't empty; choose another folder.`);
-      const created = (await request("POST", "/v1/packages", { json: { path: target, identifier: doi || undefined }, timeout: 60_000 })).data as any;
-      const warnings: string[] = [];
-      if (doi) {
-        try {
-          await request("POST", `/v1/packages/${enc(created.id)}/metadata`, { json: {}, timeout: 60_000 });
-        } catch (e) {
-          warnings.push(`OpenAlex metadata: ${(e as Error).message}`);
-        }
+      const existed = fs.existsSync(target);
+      if (existed && fs.readdirSync(target).length) throw new Error(`${target} isn't empty; choose another folder.`);
+      const created = (await request("POST", "/v1/packages", { json: { path: target, identifier: doi }, timeout: 60_000 })).data as any;
+      try {
+        await request("POST", `/v1/packages/${enc(created.id)}/metadata`, { json: {}, timeout: 60_000 });
+        await ensureJats(created.id);
+      } catch (e) {
+        await request("DELETE", `/v1/packages/${enc(created.id)}`).catch(() => {});
+        if (existed) for (const f of fs.readdirSync(target)) fs.rmSync(path.join(target, f), { recursive: true, force: true });
+        else fs.rmSync(target, { recursive: true, force: true });
+        throw e;
       }
-      for (const p of opts.pdfs) {
-        try {
-          await uploadPath(created.id, "fulltexts", p);
-        } catch (e) {
-          warnings.push(`${path.basename(p)}: ${(e as Error).message}`);
-        }
-      }
-      return { id: created.id, warnings };
+      return { id: created.id as string };
     },
     adoptFolder: async () => {
       const r = await dialog.showOpenDialog(win(), { title: "Open a package folder (with datapackage.json)", properties: ["openDirectory"] });
@@ -241,6 +263,7 @@ export function makeApi(wc: WebContents) {
     },
     connect: async () => {
       let s = await summary();
+      const jats = await ensureJats(s.id);
       let metadata_error: string | undefined;
       const doi = s.identifier?.scheme === "doi" ? s.identifier.value : "";
       if (doi && !s.metadata_fetched_at) {
@@ -251,7 +274,7 @@ export function makeApi(wc: WebContents) {
           metadata_error = (e as Error).message;
         }
       }
-      return { ...s, metadata_error };
+      return { ...s, metadata_error, jats };
     },
     pkg,
     pkgBytes: async (sub: string) => (await pkg("GET", sub, undefined, undefined, "bytes")).data as ArrayBuffer,
@@ -261,22 +284,20 @@ export function makeApi(wc: WebContents) {
       return get<T>(p, query);
     },
     /** A file from the renderer: by its path on disk (the backend runs here), or its bytes. */
-    upload: async (kind: "fulltexts" | "inputs", file: { name: string; path?: string; data?: Uint8Array }, fields: Record<string, string | boolean | undefined> = {}) => {
-      if (kind !== "fulltexts" && kind !== "inputs") throw new Error(`invalid upload kind ${kind}`);
+    /** Input files from the renderer: by path on disk (the backend runs here), or their bytes. */
+    upload: async (kind: "inputs", file: { name: string; path?: string; data?: Uint8Array }, fields: Record<string, string | boolean | undefined> = {}) => {
+      if (kind !== "inputs") throw new Error("only input files are added from this computer");
       const clean = Object.fromEntries(Object.entries(fields).filter(([, v]) => v !== undefined && v !== ""));
-      if (file.path) return uploadPath(pkgId(wc), kind, file.path, clean);
+      if (file.path) return uploadPath(pkgId(wc), file.path, clean);
       if (!file.data) throw new Error("no file content");
-      return (await request("POST", `${base()}/${kind}`, { form: { file: { name: file.name, data: file.data }, fields: clean }, timeout: LONG })).data;
+      return (await request("POST", `${base()}/inputs`, { form: { file: { name: file.name, data: file.data }, fields: clean }, timeout: LONG })).data;
     },
-    addFiles: async (kind: "fulltexts" | "inputs", directory = false) => {
-      const r = await dialog.showOpenDialog(win(), {
-        title: kind === "fulltexts" ? "Add full texts" : directory ? "Add a folder of input files" : "Add input files",
-        properties: directory ? ["openDirectory"] : ["openFile", "multiSelections"],
-        filters: kind === "fulltexts" ? [{ name: "Full texts", extensions: ["pdf", "xml", "nxml", "tei", "json"] }] : undefined,
-      });
+    addFiles: async (kind: "inputs", directory = false) => {
+      if (kind !== "inputs") throw new Error("only input files are added from this computer");
+      const r = await dialog.showOpenDialog(win(), { title: directory ? "Add a folder of input files" : "Add input files", properties: directory ? ["openDirectory"] : ["openFile", "multiSelections"] });
       if (r.canceled) return [];
       const out = [];
-      for (const p of r.filePaths) out.push(await uploadPath(pkgId(wc), kind, p));
+      for (const p of r.filePaths) out.push(await uploadPath(pkgId(wc), p));
       return out;
     },
     openInEditor: async () => {

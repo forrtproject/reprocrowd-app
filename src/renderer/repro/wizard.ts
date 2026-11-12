@@ -1,11 +1,10 @@
-// The numbered workflow: the paper's text, then seven reproduction steps, each backed by the ReproCrowd backend. A step
+// The numbered workflow: seven reproduction steps, each backed by the ReproCrowd backend. A step
 // loads what it shows from the backend (load), then draws it (draw); the wizard runs them in that order, drops stale
 // loads, and polls steps that watch long-running jobs. The route in the header shows where you are; Back and Next in
 // the footer move between the steps.
 import { isBackendDown, type Info } from "../api";
-import type { PdfView } from "../pdfview";
 import type { UiState } from "../state";
-import type { Document, PackageSummary, Resource } from "../types";
+import type { Document, PackageSummary } from "../types";
 import { $, esc, showError } from "../util";
 import { CodegenStep } from "./codegen";
 import { CurationStep } from "./curation";
@@ -21,20 +20,14 @@ export interface AppContext {
   summary(): PackageSummary;
   refreshSummary(): Promise<void>;
   meta(): any;
-  fulltexts(): Resource[];
-  extractions(): Resource[];
-  refreshSources(prefer?: string): Promise<void>;
+  /** The extraction of the paper's JATS XML: the text everything is extracted from and points into. */
+  jats(): string;
   loadDoc(name: string): Promise<Document>;
-  pdf: PdfView;
   status(msg: string, kind?: "info" | "error"): void;
-  openSources(): void;
-  showInReader(name: string): Promise<void>;
 }
 
 export interface Step {
   title: string;
-  /** Shown instead of the wizard body (the text step keeps its own, long-lived pane). */
-  pane?: HTMLElement;
   /** Fetch what the step shows. */
   load(): Promise<void>;
   /** Render into the body (synchronous; uses what load fetched). */
@@ -42,14 +35,6 @@ export interface Step {
   /** Called every pollMs while the step is shown, if defined. */
   poll?(): Promise<void>;
   pollMs?(): number;
-}
-
-/** Step 1: the PDF and the paper's text. main.ts keeps the pane up to date; the wizard only shows it. */
-class TextStep implements Step {
-  title = "Text";
-  constructor(readonly pane: HTMLElement) {}
-  async load() {}
-  draw() {}
 }
 
 export class Wizard {
@@ -62,10 +47,9 @@ export class Wizard {
   private started = false;
 
   /** Uses the page's #route (header), #rp-body, #rp-back and #rp-next (footer). */
-  constructor(textPane: HTMLElement, readonly app: AppContext) {
+  constructor(readonly app: AppContext) {
     this.body = $("#rp-body");
     this.steps = [
-      new TextStep(textPane),
       new InputsStep(this),
       new CurationStep(this, "targets"),
       new CurationStep(this, "actions"),
@@ -105,8 +89,7 @@ export class Wizard {
     const i = this.step;
     const s = this.steps[i];
     this.drawNav();
-    this.showPane(s);
-    if (this.drawnStep !== i && !s.pane) this.body.innerHTML = `<p class="muted pad">Loading…</p>`;
+    if (this.drawnStep !== i) this.body.innerHTML = `<p class="muted pad">Loading…</p>`;
     try {
       await s.load();
     } catch (e) {
@@ -127,17 +110,10 @@ export class Wizard {
     const same = this.drawnStep === i;
     const top = this.body.scrollTop;
     this.drawNav();
-    this.showPane(this.steps[i]);
     this.steps[i].draw(this.body);
     if (same) this.body.scrollTop = top;
     this.drawnStep = i;
     this.managePolling();
-  }
-
-  /** The text step shows its own pane, all others the wizard body. */
-  private showPane(s: Step) {
-    for (const t of this.steps) if (t.pane) t.pane.hidden = t !== s;
-    this.body.hidden = !!s.pane;
   }
 
   private drawNav() {

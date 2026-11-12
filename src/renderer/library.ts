@@ -1,6 +1,6 @@
 // The library: your reproductions (packages the app's backend knows), a new one from a DOI, or a package folder
 // opened from disk. Opening one switches the window to its numbered workflow (package.ts).
-import { host, isBackendDown, LibraryEntry, Work, ZenodoRecord } from "./api";
+import { host, isBackendDown, JATS_ONLY, JatsAvailability, LibraryEntry, Work, ZenodoRecord } from "./api";
 import { backendProblem } from "./backend";
 import { brandHtml } from "./brand";
 import { settingsDialog } from "./settings";
@@ -9,7 +9,7 @@ import { $, confirmDialog, esc, modal, showError } from "./util";
 import sticker from "../../resources/hex-sticker.png";
 
 const STEPS: [string, string][] = [
-  ["Choose an article", "A paper with open data and code. Start from its DOI; ReproCrowd fetches its metadata and, where it can, its full text."],
+  ["Choose an article", "A paper with open data and code, in the open-access subset of PubMed Central. Start from its DOI; ReproCrowd fetches its metadata and its JATS XML."],
   ["Run the reproducibility check", "Extract the results to reproduce, plan the analysis, let a coding agent write the script, run it and compare."],
   ["Check and sign it", "Look at every number and its provenance in the report. The deposit carries your name and ORCID."],
   ["Deposit on Zenodo", "The package becomes a citable record with a DOI that links to the paper, for anyone to find, re-run or compare."],
@@ -154,20 +154,21 @@ function newDialog() {
     <h3>New reproduction</h3>
     <label>DOI of the paper <span class="row"><input name="doi" placeholder="10.1371/journal.pbio.1002106 or https://doi.org/…" spellcheck="false" autofocus /><button type="button" id="nd-lookup">Look up</button></span></label>
     <div id="nd-work" class="work-box" hidden></div>
+    <div id="nd-jats" hidden></div>
     <div id="nd-records" hidden></div>
-    <label>The paper's PDF <span class="muted small">(optional; it can also be downloaded later in Sources)</span></label>
-    <div class="row"><span id="nd-pdfs" class="muted small">None chosen</span><span class="spacer"></span><button type="button" id="nd-pdf">Choose PDF…</button></div>
     <label>Folder <span class="row"><input name="folder" spellcheck="false" /><button type="button" id="nd-folder">Choose…</button></span></label>
     <p class="hint">The package is a folder of plain files (a Frictionless data package); the folder must be new or empty.</p>
     <p class="nd-error warn-inline" hidden></p>
-    <menu><button value="cancel">Cancel</button><button value="create" class="primary" id="nd-create">Create</button></menu></form>`);
+    <menu><button value="cancel">Cancel</button><button value="create" class="primary" id="nd-create" disabled>Create</button></menu></form>`);
   const q = <T extends HTMLElement = HTMLInputElement>(s: string) => dlg.querySelector<T>(s)!;
   const doiIn = q("[name=doi]");
   const folderIn = q("[name=folder]");
-  let pdfs: string[] = [];
+  const create = q<HTMLButtonElement>("#nd-create");
   let work: Work | undefined;
+  let jats: JatsAvailability | undefined;
   let folderTouched = false;
   let lookedUp = "";
+  let seq = 0;
   const err = (msg: string) => {
     q<HTMLElement>(".nd-error").textContent = msg;
     q<HTMLElement>(".nd-error").hidden = !msg;
@@ -182,47 +183,71 @@ function newDialog() {
     const raw = doiIn.value.trim();
     if (!raw || raw === lookedUp) return;
     lookedUp = raw;
+    const n = ++seq;
     const box = q<HTMLElement>("#nd-work");
+    const jbox = q<HTMLElement>("#nd-jats");
     const rec = q<HTMLElement>("#nd-records");
     box.hidden = false;
-    rec.hidden = true;
+    jbox.hidden = rec.hidden = true;
+    create.disabled = true;
     box.innerHTML = `<span class="muted">Looking up ${esc(raw)} in OpenAlex…</span>`;
-    work = undefined;
+    work = jats = undefined;
     try {
       work = await host.lookupDoi(raw);
-      box.innerHTML = `<b class="serif">${esc(work.title ?? "(no title)")}</b><br><span class="small">${esc(work.authors.slice(0, 5).join(", "))}${work.authors.length > 5 ? " et al." : ""}${work.year ? ` (${work.year})` : ""}${work.venue ? ` · <i>${esc(work.venue)}</i>` : ""}</span>
-        <br><span class="small muted">${work.open_access ? "Open access" : "Not open access"}${work.license ? ` · license ${esc(work.license)}` : ""}</span>`;
-      err("");
-      suggest();
-      const records = await host.zenodoRecords(work.doi).catch(() => [] as ZenodoRecord[]);
-      if (records.length) {
-        rec.hidden = false;
-        rec.innerHTML = `<p class="notice small">Already on Zenodo: ${records.length} ReproCrowd record${records.length > 1 ? "s" : ""} for this paper — ${records.map((r) => `<a href="#" data-url="${esc(r.url)}">${esc(r.creators.join("; ") || "record")}, ${esc(r.published ?? "")}</a>`).join(" · ")}. You can still make your own.</p>`;
-        rec.querySelectorAll<HTMLElement>("[data-url]").forEach((a) =>
-          a.addEventListener("click", (e) => {
-            e.preventDefault();
-            host.openUrl(a.dataset.url!);
-          }),
-        );
-      }
     } catch (e) {
       box.innerHTML = `<span class="warn-inline">${esc((e as Error).message)}</span>`;
+      return;
     }
+    if (n !== seq) return;
+    box.innerHTML = `<b class="serif">${esc(work.title ?? "(no title)")}</b><br><span class="small">${esc(work.authors.slice(0, 5).join(", "))}${work.authors.length > 5 ? " et al." : ""}${work.year ? ` (${work.year})` : ""}${work.venue ? ` · <i>${esc(work.venue)}</i>` : ""}</span>
+      <br><span class="small muted">${work.open_access ? "Open access" : "Not open access"}${work.license ? ` · license ${esc(work.license)}` : ""}</span>`;
+    err("");
+    suggest();
+    jbox.hidden = false;
+    jbox.innerHTML = `<p class="muted small">Checking Europe PMC for the article's JATS XML…</p>`;
+    try {
+      jats = await host.jatsAvailability(work.doi);
+    } catch (e) {
+      if (n !== seq) return;
+      jbox.innerHTML = `<p class="warn-soft small">Couldn't check for JATS XML: ${esc((e as Error).message)} <a href="#" id="nd-retry">Try again</a></p>`;
+      jbox.querySelector("#nd-retry")!.addEventListener("click", (ev) => {
+        ev.preventDefault();
+        lookedUp = "";
+        lookup();
+      });
+      return;
+    }
+    if (n !== seq) return;
+    if (!jats.available) {
+      jbox.innerHTML = `<div class="refusal"><b>This article isn't supported.</b> ${esc(JATS_ONLY)}<br><span class="small">${esc(jats.reason ?? "")}</span></div>`;
+      return;
+    }
+    jbox.innerHTML = `<p class="ok small">✓ JATS XML available from Europe PMC (${esc(jats.pmcid ?? "")}).</p>`;
+    create.disabled = false;
+    const records = await host.zenodoRecords(work.doi).catch(() => [] as ZenodoRecord[]);
+    if (n !== seq || !records.length) return;
+    rec.hidden = false;
+    rec.innerHTML = `<p class="notice small">Already on Zenodo: ${records.length} ReproCrowd record${records.length > 1 ? "s" : ""} for this paper — ${records.map((r) => `<a href="#" data-url="${esc(r.url)}">${esc(r.creators.join("; ") || "record")}, ${esc(r.published ?? "")}</a>`).join(" · ")}. You can still make your own.</p>`;
+    rec.querySelectorAll<HTMLElement>("[data-url]").forEach((a) =>
+      a.addEventListener("click", (e) => {
+        e.preventDefault();
+        host.openUrl(a.dataset.url!);
+      }),
+    );
   }
   q("#nd-lookup").addEventListener("click", () => {
     lookedUp = "";
     lookup();
   });
   doiIn.addEventListener("change", lookup);
+  doiIn.addEventListener("input", () => {
+    if (doiIn.value.trim() !== lookedUp) create.disabled = true;
+  });
   doiIn.addEventListener("keydown", (e) => {
     if (e.key === "Enter") {
       e.preventDefault();
       lookup();
     }
-  });
-  q("#nd-pdf").addEventListener("click", async () => {
-    pdfs = await host.choosePdfs();
-    q("#nd-pdfs").textContent = pdfs.length ? pdfs.map((p) => p.split(/[\\/]/).pop()).join(", ") : "None chosen";
   });
   q("#nd-folder").addEventListener("click", async () => {
     const dir = await host.chooseFolder(folderIn.value);
@@ -234,23 +259,18 @@ function newDialog() {
   q<HTMLFormElement>("form").addEventListener("submit", async (e) => {
     if ((e.submitter as HTMLButtonElement | null)?.value !== "create") return;
     e.preventDefault();
-    const doi = doiIn.value.trim();
-    if (!doi && !(await confirmDialog("No DOI", "<p>Without a DOI, ReproCrowd can't fetch the paper's metadata or full text, and the package can't be deposited on Zenodo. Create it anyway?</p>", "Create without DOI"))) return;
-    if (doi && !work) await lookup();
-    if (doi && !work) return err("Check the DOI first: OpenAlex doesn't know it.");
+    if (!work || !jats?.available) return;
     if (!folderIn.value.trim()) return err("Choose a folder for the package.");
-    const btn = q<HTMLButtonElement>("#nd-create");
-    btn.disabled = true;
-    btn.textContent = "Creating…";
+    create.disabled = true;
+    create.textContent = "Creating…";
+    err("");
     try {
-      const r = await host.createPackage({ doi: work?.doi ?? "", folder: folderIn.value.trim(), pdfs });
+      const r = await host.createPackage({ doi: work.doi, folder: folderIn.value.trim() });
       dlg.close("create");
-      if (r.warnings.length) {
-        modal("dlg-confirm", `<form method="dialog"><h3>Created, with warnings</h3><ul>${r.warnings.map((w) => `<li>${esc(w)}</li>`).join("")}</ul><menu><button class="primary">Open the package</button></menu></form>`).addEventListener("close", () => openPackage(r.id));
-      } else openPackage(r.id);
+      openPackage(r.id);
     } catch (e2) {
-      btn.disabled = false;
-      btn.textContent = "Create";
+      create.disabled = false;
+      create.textContent = "Create";
       err((e2 as Error).message);
     }
   });

@@ -1,5 +1,4 @@
 // What the window remembers about a package between sessions (in the app's data folder, not in the package).
-import type { TextMode } from "./reader";
 import type { CompareSettings } from "./types";
 
 export interface Scope { sections: string[]; items: string[] }
@@ -8,13 +7,10 @@ export interface Scope { sections: string[]; items: string[] }
 export const FIGURE_HEIGHT = { min: 160, max: 900, default: 320 };
 
 export interface UiState {
-  textMode: TextMode;
-  extraction: string;
-  rawSource: string;
-  pdf: string; // "ft:<resource>"
-  step: number; // 0 is the text, 1… the reproduction
-  /** Extractions chosen in step 2 as the text sources targets and actions are extracted from. */
-  sources: string[];
+  layout: 2;
+  step: number; // 0: inputs, 1: targets, 2: analysis plan, …
+  /** Targets and analysis plan: the paper with the items aligned next to it, or the table. */
+  curationView: "reader" | "table";
   /** Last scope per "<kind>:<extraction>" chosen in the LLM dialogs. */
   scopes: Record<string, Scope>;
   llmProfile: string;
@@ -30,13 +26,10 @@ export interface UiState {
 export function loadUiState(raw: any): UiState {
   const s = raw && typeof raw === "object" ? raw : {};
   return {
-    textMode: ["tree", "reader", "raw"].includes(s.textMode) ? s.textMode : "reader",
-    extraction: String(s.extraction ?? ""),
-    rawSource: String(s.rawSource ?? ""),
-    pdf: String(s.pdf ?? ""),
-    // Older tabs kept the reader as a separate view and counted the reproduction steps from 0.
-    step: "view" in s ? (s.view === "repro" && Number.isInteger(s.step) ? s.step + 1 : 0) : Number.isInteger(s.step) ? s.step : 0,
-    sources: Array.isArray(s.sources) ? s.sources.map(String) : [],
+    layout: 2,
+    // Windows saved before layout 2 had the text (with the PDF) as step 0.
+    step: Number.isInteger(s.step) ? Math.max(0, s.layout === 2 ? s.step : s.step - 1) : 0,
+    curationView: s.curationView === "table" ? "table" : "reader",
     scopes: s.scopes && typeof s.scopes === "object" ? s.scopes : {},
     llmProfile: String(s.llmProfile ?? ""),
     agentProfile: String(s.agentProfile ?? ""),

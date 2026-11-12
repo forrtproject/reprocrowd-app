@@ -61,6 +61,8 @@ export interface Config {
   defaultBackendConfig: string;
 }
 export type BackendCheck = { ok: true; url: string; version: string } | { ok: false; url: string; code: string; message: string };
+export interface JatsAvailability { doi: string; available: boolean; pmcid: string | null; url: string | null; title: string | null; reason: string | null }
+export const JATS_ONLY = "Only articles with JATS XML full text (the open-access subset of PubMed Central) are supported at this time.";
 export interface Work { doi: string; title: string | null; authors: string[]; year: number | null; venue: string | null; license: string | null; open_access: boolean | null }
 export interface ZenodoRecord { id: number | string | null; doi: string | null; title: string | null; creators: string[]; published: string | null; url: string }
 export interface ZenodoAccount { sandbox: boolean; hasToken: boolean; creator: Creator; community: string }
@@ -86,7 +88,7 @@ export const pkg = {
   del: (sub: string) => call<Reply<null>>("pkg", "DELETE", sub),
   bytes: (sub: string) => call<ArrayBuffer>("pkgBytes", sub),
   text: (sub: string) => call<string>("pkgText", sub),
-  upload: async <T>(kind: "fulltexts" | "inputs", file: File, fields: Record<string, string | boolean | undefined> = {}) => call<T>("upload", kind, await fileArg(file), fields),
+  upload: async <T>(kind: "inputs", file: File, fields: Record<string, string | boolean | undefined> = {}) => call<T>("upload", kind, await fileArg(file), fields),
 };
 
 export const host = {
@@ -98,8 +100,8 @@ export const host = {
   zenodoRecords: (doi: string) => call<ZenodoRecord[]>("zenodoRecords", doi),
   suggestFolder: (name: string) => call<string>("suggestFolder", name),
   chooseFolder: (defaultPath?: string) => call<string | null>("chooseFolder", defaultPath),
-  choosePdfs: () => call<string[]>("choosePdfs"),
-  createPackage: (opts: { doi: string; folder: string; pdfs: string[] }) => call<{ id: string; warnings: string[] }>("createPackage", opts),
+  jatsAvailability: (doi: string) => call<JatsAvailability>("jatsAvailability", doi),
+  createPackage: (opts: { doi: string; folder: string }) => call<{ id: string }>("createPackage", opts),
   adoptFolder: () => call<string | null>("adoptFolder"),
   removePackage: (id: string) => call<void>("removePackage", id),
   revealPackage: (id: string) => call<void>("revealPackage", id),
@@ -118,9 +120,9 @@ export const host = {
   checkBackend: () => call<BackendCheck>("checkBackend"),
   // the window's package
   info: () => call<Info>("info"),
-  connect: () => call<PackageSummary & { metadata_error?: string }>("connect"),
+  connect: () => call<PackageSummary & { metadata_error?: string; jats: string }>("connect"),
   service: <T>(path: string, query?: Record<string, string>) => call<T>("service", path, query),
-  addFiles: <T>(kind: "fulltexts" | "inputs", directory = false) => call<T[]>("addFiles", kind, directory),
+  addFiles: <T>(kind: "inputs", directory = false) => call<T[]>("addFiles", kind, directory),
   openInEditor: () => call<string>("openInEditor"),
   reveal: (rel = "") => call<void>("reveal", rel),
   loadState: () => call<any>("loadState"),
