@@ -44,6 +44,11 @@ def _claims_trace(pkg: Package, st: CompareSettings | None):
     return claims.trace(pkg, st) if claims.mode(pkg) else None
 
 
+def report_settings(pkg: Package) -> CompareSettings | None:
+    """The comparison settings of the last report (stored in comparison.json); None without a report."""
+    return CompareSettings.model_validate(pkg.read_json(COMPARISON)["settings"]) if pkg.load().get("comparison") else None
+
+
 def _write_trace(pkg: Package, m, trace) -> None:
     pkg.write_json(m, "claims-trace", CLAIMS_TRACE, trace, schema="claims-trace", meta=OtherMeta(kind="report", added_at=now()))
 
@@ -119,8 +124,7 @@ def write_archive(pkg: Package) -> ArchiveInfo:
     if not m.get("report"):
         raise conflict("report_missing", "create the report first (PUT …/report)")
     # refreshed, so the archive's trace covers every claim run so far; compared with the report's settings
-    st = CompareSettings.model_validate(pkg.read_json(COMPARISON)["settings"]) if m.get("comparison") else None
-    trace = _claims_trace(pkg, st)
+    trace = _claims_trace(pkg, report_settings(pkg))
     with pkg.edit() as m:  # inputs.json: the input list in the package database's format
         entries = [InputEntry(path=r.path, role=r.reprocrowd.role, note=r.reprocrowd.note, used=r.reprocrowd.used,
                               archive=m.get(r.reprocrowd.archive).path if r.reprocrowd.archive and m.get(r.reprocrowd.archive) else None)

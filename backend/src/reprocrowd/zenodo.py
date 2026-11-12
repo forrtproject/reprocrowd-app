@@ -37,7 +37,7 @@ from .config import settings
 from .database import Prepared
 from .errors import ApiError, conflict, invalid, not_found
 from .package import MANIFEST, Package, sha256_file
-from .report import archive_path
+from .report import archive_path, report_settings
 from .schemas.common import now
 from .schemas.manifest import Resource, ZenodoCreator, ZenodoDeposit
 
@@ -203,11 +203,12 @@ def _creators(given: list[ZenodoCreator] | None) -> list[ZenodoCreator]:
 
 
 def _claims_table(pkg: Package) -> str:
-    """Claims mode: one row per claim with its status in words ("Not run" for claims not run yet); else ""."""
+    """Claims mode: one row per claim with its status in words ("Not run" for claims not run yet), compared with the
+    report's settings like the ZIP's claims_trace.json; else ""."""
     if not claims_.mode(pkg):
         return ""
     rows = "".join(f"<tr><td>{escape(c.claim_id)}</td><td>{escape(c.main_claim[:199] + '…' if len(c.main_claim) > 200 else c.main_claim)}</td>"
-                   f"<td>{escape(claims_.status_words(c))}</td></tr>" for c in claims_.trace(pkg).claims)
+                   f"<td>{escape(claims_.status_words(c))}</td></tr>" for c in claims_.trace(pkg, report_settings(pkg)).claims)
     return f"<p><b>Claims:</b></p><table><tr><th>ID</th><th>Claim</th><th>Status</th></tr>{rows}</table>"
 
 

@@ -169,6 +169,10 @@ def test_report_claims_use_report_settings(client, pkg):
     assert trace["claims"][0]["result"]["verdict"] == "reproduced"
     assert client.put(P + "/archive").status_code == 201  # the archive's trace keeps the report's settings
     assert json.loads((root / "claims_trace.json").read_text())["claims"][0]["result"]["verdict"] == "reproduced"
+    with respx.mock:  # the deposit's claims table agrees with the report and the ZIP's trace
+        mock_openalex()
+        desc = client.post(P + "/deposits:preview", json={"creators": ME}).json()["metadata"]["description"]
+    assert f"<td>C1</td><td>{claims_['C1']['text']}</td><td>Reproduced {n}/{n}</td>" in desc
 
     assert client.put(P + "/report", json={}).status_code == 200
     assert f"Not reproduced 0/{n}" in section()

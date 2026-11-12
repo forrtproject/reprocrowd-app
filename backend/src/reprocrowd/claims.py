@@ -347,14 +347,14 @@ def trace(pkg: Package, st: CompareSettings | None = None) -> ClaimsTrace:
 
     out = []
     for c in claims:
-        st = state[c.id]
+        cs = state[c.id]
         out.append(ClaimTrace(
             id=doi, title=title, claim_id=c.id, main_claim=c.text, mode=c.mode, original_quote=c.original_quote,
             testable=c.testable, depends_on=c.depends_on, traced_under=c.traced_under,
             sub_claims=[TraceSubClaim(id=sc.id, claim=sc.text, method=sc.method, quantitative_evidence=ev(sc.evidence)) for sc in c.sub_claims],
             quantitative_evidence=ev(c.evidence),
             methods=[TraceMethod(id=a.id, summary=a.summary, quote=a.quote) for a in (actions[i] for i in methods(c) if i in actions)],
-            assumptions=assumptions(pkg, c.id), status=st.state, result=st.result))
+            assumptions=assumptions(pkg, c.id), status=cs.state, result=cs.result))
     skipped = [s for r in f.llm_runs if not r.disabled for s in f.skipped.get(r.id, [])]
     return ClaimsTrace(paper=TracePaper(doi=doi, title=title), claims=out, skipped=skipped)
 
