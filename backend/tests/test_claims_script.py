@@ -241,3 +241,25 @@ def test_codegen_claim_preconditions(client, pkg):
         for path in ("/jobs:preview", "/jobs"):
             r = client.post(P + path, json={"type": "codegen", **body})
             problem(r, status, code)
+
+
+def test_codegen_claim_rerun_revises_its_file(client, pkg):
+    P, root, claims, _ = _claims(client, pkg)
+    assert client.put(P + "/script", json={"template": "python"}).status_code == 200
+    (root / "claims" / "C1.py").write_text("x = 1\n")
+    prompt = client.post(P + "/jobs:preview", json={"type": "codegen", "claim": "C1"}).json()["prompt"]
+    line = next(ln for ln in prompt.splitlines() if "claims/C1.py (claim C1)" in ln)
+    assert "implement" in line and "keep it as it is" not in line
+
+
+def test_codegen_claim_job_request_and_no_evidence(client, pkg):
+    P, root, claims, _ = _claims(client, pkg)
+    assert client.put(P + "/script", json={"template": "python"}).status_code == 200
+    job = client.post(P + "/jobs", json={"type": "codegen", "claim": "C1", "allow_exec": False})
+    assert job.status_code == 202, job.text
+    assert job.json()["request"]["claim"] == "C1"
+    r = client.post(P + "/claims", json={"text": "no evidence", "refs": claims["C1"]["refs"]})
+    assert r.status_code == 201, r.text
+    cid = r.json()["id"]
+    assert client.patch(f"{P}/claims/{cid}", json={"checked": True}).status_code in (200, 409, 422)
+    problem(client.post(P + "/jobs:preview", json={"type": "codegen", "claim": cid}), 409, "claim_no_evidence")

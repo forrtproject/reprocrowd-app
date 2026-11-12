@@ -33,7 +33,7 @@ Rules:
 {% if claims %}
 1. {{ tpl.claims.agent_rule }}
 {% for f in claims %}
-   - {{ f.path }}{% if f.claim %} (claim {{ f.claim.id }}){% endif %}: {{ "implement" if f.todo else "already implemented; keep it as it is" }}
+   - {{ f.path }}{% if f.claim %} (claim {{ f.claim.id }}){% endif %}: {% if f.revise is defined and f.revise %}implement (revise it to match the claim as it stands now){% else %}{{ "implement" if f.todo else "already implemented; keep it as it is" }}{% endif %}
 {% endfor %}
 {% else %}
 1. {{ tpl.agent_rule }}

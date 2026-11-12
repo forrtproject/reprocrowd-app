@@ -372,7 +372,7 @@ def agent_prompt(pkg: Package, tpl: Template, instructions: str = "", claim: str
     one = None
     if claim:
         one = _scoped_claim(pkg, tpl, claim)
-        claims = [f for f in claims or [] if f["claim"] is None and f["todo"]] + [f for f in claims or [] if f["claim"] and f["claim"].id == claim]
+        claims = [f for f in claims or [] if f["claim"] is None and f["todo"]] + [{**f, "revise": not f["todo"]} for f in claims or [] if f["claim"] and f["claim"].id == claim]
     text = _env().get_template("_AGENT_PROMPT.md.j2").render(tpl=tpl, inputs=by_role, marker=TODO_MARK, folder=str(pkg.root),
                                                              claims=claims or [], one=one)
     if instructions.strip():
