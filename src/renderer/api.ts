@@ -1,7 +1,7 @@
 // The UI runs in a sandboxed window; every call goes to the main process (src/main/api.ts) through the preload's
 // bridge. Errors keep the backend's problem details (code, detail, extra members) so callers can react to specific
 // problems.
-import type { PackageSummary, ZenodoDeposit } from "./types";
+import type { AcquireResult, PackageSummary, ZenodoDeposit } from "./types";
 
 export interface Problem { status: number; code: string; title?: string; detail?: string; [k: string]: unknown }
 
@@ -89,6 +89,8 @@ export const pkg = {
   bytes: (sub: string) => call<ArrayBuffer>("pkgBytes", sub),
   text: (sub: string) => call<string>("pkgText", sub),
   upload: async <T>(kind: "inputs", file: File, fields: Record<string, string | boolean | undefined> = {}) => call<T>("upload", kind, await fileArg(file), fields),
+  /** Scan a full text for data/code repository links (Zenodo, GitHub, GitLab, OSF, Figshare) and fetch them as inputs. */
+  acquire: (opts: { fulltext?: string; role?: string; note?: string; unpack?: boolean; repos?: string[] } = {}) => pkg.post<AcquireResult>("/acquire", opts),
 };
 
 export const host = {
