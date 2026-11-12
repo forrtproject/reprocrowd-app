@@ -9,6 +9,27 @@ ReproCrowd backend (`../reprocrowd-cli`, bundled) and the workflow UI of the
 Zotero plugin (`../reprocrowd-zotero`), without Zotero. Finished packages are
 **deposited on Zenodo** instead of the ReproCrowd Database.
 
+## Install
+
+You need [Node.js](https://nodejs.org) 20 or newer and [uv](https://docs.astral.sh/uv/)
+(`curl -LsSf https://astral.sh/uv/install.sh | sh`). Then, in a terminal:
+
+```sh
+git clone https://github.com/<org>/reprocrowd-cli
+git clone https://github.com/<org>/reprocrowd-app
+reprocrowd-app/scripts/install.sh
+```
+
+That builds the app with its own Python and backend, and installs it for you: on
+Linux in the app menu (and as the `reprocrowd` command), on macOS in
+`~/Applications`. It takes a few minutes the first time. Run the same script
+again after `git pull` to update; `scripts/install.sh --uninstall` removes the
+app (your reproductions and settings stay). Windows: use WSL. macOS is untested.
+
+For the AI steps, install [Claude Code](https://claude.com/claude-code) and sign
+in once (`claude`), or configure another LLM command in Settings → Backend. To
+run reproductions you also need what the paper's analysis uses (R, Python, …).
+
 ## Using it
 
 - **Library**: your reproductions. **New reproduction** takes a DOI (looked up
@@ -69,6 +90,6 @@ package registry, per-package UI state) lives in Electron's userData folder
 npm install
 npm start                 # build and run (uses ../reprocrowd-cli through uv if there is no bundled backend)
 npm run bundle-backend    # build/backend: a standalone Python with reprocrowd installed
-npm run dist              # Linux AppImage + unpacked dir in dist/ (with the bundled backend)
+npm run dist              # installers for this system in dist/ (with the bundled backend)
 node test/e2e.mjs         # after npm run build
 ```
