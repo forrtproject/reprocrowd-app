@@ -15,7 +15,11 @@ trap 'rm -rf "$WORK"' EXIT
 echo "• standalone Python $PYVER"
 uv python install --quiet --no-bin "$PYVER"
 PYBIN="$(cd "$WORK" && UV_MANAGED_PYTHON=1 uv python find --no-project "$PYVER")"
-PYHOME="$(dirname "$(dirname "$(realpath "$PYBIN")")")"
+# uv prints a Windows path (backslashes) on Windows; convert it for the shell utilities (no-op where there is no cygpath).
+PYBIN="$(cygpath -u "$PYBIN" 2>/dev/null || echo "$PYBIN")"
+PYHOME="$(dirname "$PYBIN")"
+# On Unix the interpreter is in bin/, so step up one more; on Windows python.exe sits at the install root.
+[ -x "$PYHOME/python.exe" ] || PYHOME="$(dirname "$PYHOME")"
 [ ! -f "$PYHOME/pyvenv.cfg" ] || { echo "found a virtualenv instead of a standalone Python: $PYHOME" >&2; exit 1; }
 
 rm -rf "$OUT"
@@ -23,7 +27,7 @@ mkdir -p "$OUT"
 cp -a "$PYHOME" "$OUT/python"
 PY="$OUT/python/bin/python3"
 [ -x "$PY" ] || PY="$OUT/python/python.exe"
-rm -f "$OUT/python/lib/python3"*/EXTERNALLY-MANAGED
+rm -f "$OUT/python/lib/python3"*/EXTERNALLY-MANAGED "$OUT/python/Lib/EXTERNALLY-MANAGED"
 
 echo "• reprocrowd from $CLI (locked dependencies)"
 (cd "$CLI" && uv export --quiet --frozen --no-dev --no-hashes --no-emit-project --format requirements-txt) > "$WORK/requirements.txt"
