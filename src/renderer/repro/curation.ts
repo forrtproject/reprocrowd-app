@@ -460,6 +460,7 @@ export class CurationStep implements Step {
         <p class="hint">${isT ? "The LLM reads the marked part of the text source (nothing marked: the whole document) and returns one target per reported result, with references to the sentences, tables and figures it comes from." : "The LLM turns the marked methods text (nothing marked: the whole document) into ordered analysis steps, linked to the input files of step 2 and the targets of step 3."}</p>
         <label>LLM profile <select name="profile">${this.profiles.map((p) => `<option value="${esc(p.name)}" ${p.name === defaultProfile ? "selected" : ""}>${esc(p.name)}: ${esc(p.model || "default model")}${p.effort ? `, effort ${esc(p.effort)}` : ""}</option>`).join("")}</select></label>
         <label class="model-row" hidden>Model <select name="model"><option value="">(the CLI's default)</option></select></label>
+        <div class="claude-login" hidden><p class="hint">Claude Code is installed but not signed in.</p><button type="button" id="claude-login">Log in to Claude Code</button></div>
         <p class="hint">Command (configured in the backend): <code class="argv"></code></p>
         <div class="form-row"><button type="button" class="show-prompt">Show prompt</button></div>
         <label>Extra instructions <textarea name="instructions" rows="4" placeholder="optional, e.g. only the main analyses"></textarea></label>
@@ -470,6 +471,7 @@ export class CurationStep implements Step {
     const profileSel = form.querySelector<HTMLSelectElement>("[name=profile]")!;
     const modelRow = form.querySelector<HTMLElement>(".model-row")!;
     const modelSel = form.querySelector<HTMLSelectElement>("[name=model]")!;
+    const claudeLogin = form.querySelector<HTMLElement>(".claude-login")!;
     const showArgv = () => (form.querySelector(".argv")!.textContent = this.profiles.find((p) => p.name === profileSel.value)?.argv.join(" ") ?? "");
     /** The model row is for profiles that take a chosen model (an agent CLI with a model list, e.g. OpenCode, Claude Code). */
     const profileUsesModel = () => ["opencode-json", "claude-json"].includes(this.profiles.find((p) => p.name === profileSel.value)?.output ?? "");
@@ -483,6 +485,7 @@ export class CurationStep implements Step {
     const fillModels = () => {
       if (!models) return;
       const claude = this.profiles.find((p) => p.name === profileSel.value)?.output === "claude-json";
+      claudeLogin.hidden = !(claude && models.claudeNeedsLogin);
       const byProv = new Map<string, LlmModel[]>();
       for (const x of models.available) if (!models.disabled.includes(x.id)) {
         if (claude ? x.provider !== "claude" : x.provider === "claude") continue;
@@ -498,6 +501,15 @@ export class CurationStep implements Step {
     profileSel.addEventListener("change", () => {
       showArgv();
       fillModels();
+    });
+    claudeLogin.querySelector("button")!.addEventListener("click", async () => {
+      try {
+        await host.claudeLogin();
+        models = await host.llmModels(true);
+        fillModels();
+      } catch (e) {
+        showError("Logging in to Claude Code", e);
+      }
     });
     showArgv();
     host.llmModels().then((m) => { models = m; fillModels(); }).catch(() => showModelRow());
