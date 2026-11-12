@@ -19,7 +19,8 @@ export interface LlmModel {
 }
 
 const TTL = 5 * 60_000; // the CLI's model list doesn't change often; re-detect at most every few minutes
-let cache: { at: number; value: LlmModel[] } | undefined;
+interface ModelSet { available: LlmModel[]; claudeNeedsLogin: boolean }
+let cache: { at: number; value: ModelSet } | undefined;
 
 function run(cmd: string): Promise<string> {
   return new Promise((resolve) => {
@@ -33,6 +34,17 @@ function parseModels(out: string): string[] {
     .split(/\r?\n/)
     .map((l) => l.trim())
     .filter((l) => /^[^\s]+\/[^\s]+$/.test(l));
+}
+
+/** Claude Code's model list has one model id per line (no `provider/` prefix), e.g. `claude-sonnet-4-5`. It needs
+ * a login; "Not logged in" yields nothing. We keep the CLI's own id and label it under the `claude` provider. */
+function parseClaudeModels(out: string): string[] {
+  const ids = new Set<string>();
+  for (const l of out.split(/\r?\n/)) {
+    const m = l.trim().match(/^(claude-[a-z0-9][a-z0-9.-]*)/i);
+    if (m) ids.add(m[1].toLowerCase());
+  }
+  return [...ids];
 }
 
 /** Providers the user has configured in their agent's config (where they put their own API keys / local servers). */
@@ -64,12 +76,13 @@ function modelOf(id: string): LlmModel {
   return { provider, id, name: displayName(short) };
 }
 
-export async function detectLlmModels(refresh = false): Promise<LlmModel[]> {
+export async function detectLlmModels(refresh = false): Promise<ModelSet> {
   if (!refresh && cache && Date.now() - cache.at < TTL) return cache.value;
   const available = configuredProviders();
   available.add("opencode"); // OpenCode's free built-in models need no key
   const found: LlmModel[] = [];
   const seen = new Set<string>();
+  let claudeNeedsLogin = false;
   const clis: string[] = [];
   if (which("opencode")) clis.push("opencode models");
   if (which("t3code")) clis.push("t3code models");
@@ -83,7 +96,20 @@ export async function detectLlmModels(refresh = false): Promise<LlmModel[]> {
       found.push(m);
     }
   }
+  // Claude Code (separate CLI from OpenCode). Listed only when installed and logged in; modelOf adds the `claude/`
+  // prefix so it appears as its own family and its own profile can use it. Not logged in → offer a login instead.
+  if (which("claude")) {
+    const out = await run("claude model list");
+    claudeNeedsLogin = /not logged in|login|authenticate/i.test(out) && !parseClaudeModels(out).length;
+    for (const id of parseClaudeModels(out)) {
+      const m = modelOf(`claude/${id}`);
+      if (seen.has(m.id)) continue;
+      seen.add(m.id);
+      found.push(m);
+    }
+  }
   found.sort((a, b) => a.provider.localeCompare(b.provider) || a.name.localeCompare(b.name));
-  cache = { at: Date.now(), value: found };
-  return found;
+  const value: ModelSet = { available: found, claudeNeedsLogin };
+  cache = { at: Date.now(), value };
+  return value;
 }

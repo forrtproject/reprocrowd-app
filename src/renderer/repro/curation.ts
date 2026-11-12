@@ -2,7 +2,7 @@
 // backend: items added by hand, plus LLM runs whose entries keep the LLM's version and store the user's changes on
 // top (restorable). Two views: Reader, the paper with each item as a card next to the passage it comes from (marking
 // sentences there leads to new items), and Table, manual items first, then one group per LLM run.
-import { ApiError, host, LlmModel, pkg } from "../api";
+import { ApiError, host, LlmModel, LlmModels, pkg } from "../api";
 import { refText } from "../doc";
 import { COMPARATORS, type Action, type CurationFile, type Document, type Item, type LlmEntry, type LlmProfile, type LlmRun, type PromptPreview, type Resource, type Target } from "../types";
 import { choose, confirmDialog, esc, list, modal, seconds, showError, showPrompt, trunc, when } from "../util";
@@ -471,33 +471,36 @@ export class CurationStep implements Step {
     const modelRow = form.querySelector<HTMLElement>(".model-row")!;
     const modelSel = form.querySelector<HTMLSelectElement>("[name=model]")!;
     const showArgv = () => (form.querySelector(".argv")!.textContent = this.profiles.find((p) => p.name === profileSel.value)?.argv.join(" ") ?? "");
-    profileSel.addEventListener("change", () => {
-      showArgv();
-      showModelRow();
-    });
-    /** The model row is for profiles that take a chosen model (an agent CLI with a model list, e.g. OpenCode). */
-    const profileUsesModel = () => this.profiles.find((p) => p.name === profileSel.value)?.output === "opencode-json";
+    /** The model row is for profiles that take a chosen model (an agent CLI with a model list, e.g. OpenCode, Claude Code). */
+    const profileUsesModel = () => ["opencode-json", "claude-json"].includes(this.profiles.find((p) => p.name === profileSel.value)?.output ?? "");
     const showModelRow = () => {
       modelRow.hidden = !profileUsesModel();
       if (modelRow.hidden) modelSel.value = "";
     };
+    // Available models, with the ones the user turned off left out, grouped by provider. For a Claude profile only the
+    // detected Claude Code models are offered; for the OpenCode family everything else (OpenCode, Ollama, uniGPT…).
+    let models: LlmModels | undefined;
+    const fillModels = () => {
+      if (!models) return;
+      const claude = this.profiles.find((p) => p.name === profileSel.value)?.output === "claude-json";
+      const byProv = new Map<string, LlmModel[]>();
+      for (const x of models.available) if (!models.disabled.includes(x.id)) {
+        if (claude ? x.provider !== "claude" : x.provider === "claude") continue;
+        const a = byProv.get(x.provider) ?? [];
+        a.push(x);
+        byProv.set(x.provider, a);
+      }
+      modelSel.innerHTML = `<option value="">(the CLI's default)</option>${[...byProv.entries()]
+        .map(([p, arr]) => `<optgroup label="${esc(p)}">${arr.map((x) => `<option value="${esc(x.id)}">${esc(x.name)}</option>`).join("")}</optgroup>`)
+        .join("")}`;
+      showModelRow();
+    };
+    profileSel.addEventListener("change", () => {
+      showArgv();
+      fillModels();
+    });
     showArgv();
-    // Available models, with the ones the user turned off left out, grouped by provider.
-    host
-      .llmModels()
-      .then((m) => {
-        const byProv = new Map<string, LlmModel[]>();
-        for (const x of m.available) if (!m.disabled.includes(x.id)) {
-          const a = byProv.get(x.provider) ?? [];
-          a.push(x);
-          byProv.set(x.provider, a);
-        }
-        modelSel.innerHTML = `<option value="">(the CLI's default)</option>${[...byProv.entries()]
-          .map(([p, arr]) => `<optgroup label="${esc(p)}">${arr.map((x) => `<option value="${esc(x.id)}">${esc(x.name)}</option>`).join("")}</optgroup>`)
-          .join("")}`;
-        showModelRow();
-      })
-      .catch(() => showModelRow());
+    host.llmModels().then((m) => { models = m; fillModels(); }).catch(() => showModelRow());
     let picker: Awaited<ReturnType<CurationStep["sourcePicker"]>> | undefined;
     /** The request, once the text source has loaded. */
     const runRequest = () => {

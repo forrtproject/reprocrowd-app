@@ -103,8 +103,17 @@ async function renderLlmModels(refresh = false) {
     </div>`)
     .join("");
   el.innerHTML = `<h2 class="section-title">LLM models <button class="ghost icon-btn" id="llm-recheck" title="Refresh the model list" aria-label="Refresh the model list"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg></button></h2>
-    <div class="card llm-models-card">${familyHtml || '<p class="muted">No models found. Add one to your agent\u2019s config, then refresh.</p>'}</div>`;
+    <div class="card llm-models-card">${familyHtml || '<p class="muted">No models found. Add one to your agent\u2019s config, then refresh.</p>'}
+      ${m.claudeNeedsLogin ? `<div class="claude-login"><p class="hint">Claude Code is installed but not signed in.</p><button id="claude-login" class="btn">Log in to Claude Code</button></div>` : ""}</div>`;
   el.querySelector("#llm-recheck")?.addEventListener("click", () => renderLlmModels(true));
+  el.querySelector("#claude-login")?.addEventListener("click", async () => {
+    try {
+      await host.claudeLogin();
+      await renderLlmModels(true);
+    } catch (e) {
+      showError("Logging in to Claude Code", e);
+    }
+  });
   const syncFamilies = () => {
     el.querySelectorAll<HTMLInputElement>("[data-family-toggle]").forEach((f) => {
       const models = m.available.filter((x) => x.provider === f.dataset.familyToggle);

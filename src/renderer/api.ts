@@ -50,7 +50,7 @@ export interface BackendStatus {
   userConfigFile: string;
 }
 export interface LlmModel { provider: string; id: string; name: string }
-export interface LlmModels { available: LlmModel[]; disabled: string[] }
+export interface LlmModels { available: LlmModel[]; disabled: string[]; claudeNeedsLogin: boolean }
 export interface Config {
   packagesRoot: string;
   editorCmd: string;
@@ -118,6 +118,7 @@ export const host = {
   setConfig: (patch: { packagesRoot?: string; editorCmd?: string; backendCmd?: string; zenodo?: { sandbox?: boolean; community?: string; creator?: Partial<Creator> } }) => call<void>("setConfig", patch),
   llmModels: (refresh?: boolean) => call<LlmModels>("llmModels", refresh),
   setLlmModels: (disabled: string[]) => call<void>("setLlmModels", disabled),
+  claudeLogin: () => call<string>("claudeLogin"),
   setZenodoToken: (server: "zenodo" | "sandbox", token: string | null) => call<void>("setZenodoToken", server, token),
   verifyZenodoToken: (sandbox: boolean, token?: string) => call<{ ok: boolean; url: string; sandbox: boolean }>("verifyZenodoToken", sandbox, token),
   saveBackendConfig: (text: string) => call<void>("saveBackendConfig", text),

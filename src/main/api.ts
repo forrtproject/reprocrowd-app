@@ -4,6 +4,7 @@
 // Package requests are restricted to that package and a few read-only backend endpoints. The Zenodo token is added
 // here, never handed to the renderer.
 import { BrowserWindow, dialog, shell, WebContents } from "electron";
+import { spawn } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import * as backend from "./backend";
@@ -223,7 +224,7 @@ export function makeApi(wc: WebContents) {
         backend: backend.status(),
         backendConfig: backend.readUserConfig(),
         defaultBackendConfig: backend.DEFAULT_USER_CONFIG,
-        llmModels: { available: await detectLlmModels(), disabled: s.llmDisabled },
+        llmModels: { ...(await detectLlmModels()), disabled: s.llmDisabled },
       };
     },
     setConfig: async (patch: Parameters<typeof saveSettings>[0]) => {
@@ -232,9 +233,20 @@ export function makeApi(wc: WebContents) {
       // The backend gets the Zenodo choices and its start command at start.
       if (before.backendCmd !== after.backendCmd || before.zenodo.sandbox !== after.zenodo.sandbox || before.zenodo.community !== after.zenodo.community) await backend.restart().catch(() => {});
     },
-    llmModels: async (refresh?: boolean) => ({ available: await detectLlmModels(refresh), disabled: loadSettings().llmDisabled }),
+    llmModels: async (refresh?: boolean) => ({ ...(await detectLlmModels(refresh)), disabled: loadSettings().llmDisabled }),
     setLlmModels: async (disabled: string[]) => {
       saveSettings({ llmDisabled: disabled });
+    },
+    claudeLogin: async () => {
+      const exe = which("claude");
+      if (!exe) throw new Error("Claude Code isn't installed, or not on the PATH.");
+      if (process.platform === "win32") {
+        // Claude Code's login is an OAuth flow (browser + a code typed back); it needs a visible terminal.
+        spawn("cmd.exe", ["/c", "start", "", "cmd", "/k", `"${exe}" auth login`], { detached: true, stdio: "ignore" }).unref();
+      } else {
+        spawnDetached([exe, "auth", "login"], process.cwd());
+      }
+      return "Opened Claude Code's login. Complete it in the terminal that opened, then refresh the model list.";
     },
     setZenodoToken: async (server: ZenodoServer, token: string | null) => setSecret(zenodoKey(server), token?.trim() || null),
     verifyZenodoToken: async (sandbox: boolean, token?: string) => {
