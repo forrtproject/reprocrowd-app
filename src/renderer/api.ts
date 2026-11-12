@@ -49,6 +49,8 @@ export interface BackendStatus {
   configFile: string;
   userConfigFile: string;
 }
+export interface LlmModel { provider: string; id: string }
+export interface LlmModels { available: LlmModel[]; disabled: string[] }
 export interface Config {
   packagesRoot: string;
   editorCmd: string;
@@ -59,6 +61,7 @@ export interface Config {
   backend: BackendStatus;
   backendConfig: string;
   defaultBackendConfig: string;
+  llmModels: LlmModels;
 }
 export type BackendCheck = { ok: true; url: string; version: string } | { ok: false; url: string; code: string; message: string };
 export interface JatsAvailability { doi: string; available: boolean; pmcid: string | null; url: string | null; title: string | null; reason: string | null }
@@ -111,6 +114,8 @@ export const host = {
   // settings and backend
   getConfig: () => call<Config>("getConfig"),
   setConfig: (patch: { packagesRoot?: string; editorCmd?: string; backendCmd?: string; zenodo?: { sandbox?: boolean; community?: string; creator?: Partial<Creator> } }) => call<void>("setConfig", patch),
+  llmModels: () => call<LlmModels>("llmModels"),
+  setLlmModels: (disabled: string[]) => call<void>("setLlmModels", disabled),
   setZenodoToken: (server: "zenodo" | "sandbox", token: string | null) => call<void>("setZenodoToken", server, token),
   verifyZenodoToken: (sandbox: boolean, token?: string) => call<{ ok: boolean; url: string; sandbox: boolean }>("verifyZenodoToken", sandbox, token),
   saveBackendConfig: (text: string) => call<void>("saveBackendConfig", text),

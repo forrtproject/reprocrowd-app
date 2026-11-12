@@ -306,10 +306,11 @@ class Curation:
         required = ("document", "schema") + (("inputs", "targets") if self.spec.kind == "actions" else ())
         return llm.render(prompt if prompt is not None else llm.load_prompt(self.spec.kind), values, required=required)
 
-    def generate(self, extraction: str, scope: Scope, *, instructions: str, prompt: str | None, profile: str | None) -> LlmRun:
+    def generate(self, extraction: str, scope: Scope, *, instructions: str, prompt: str | None, profile: str | None,
+                 model: str | None = None) -> LlmRun:
         text = self.render_prompt(extraction, scope, instructions=instructions, prompt=prompt)
         call = llm.run(self.pkg, self.spec.kind, text, profile_name=profile, template="custom" if prompt is not None else "default",
-                       instructions=instructions, schema=self.output_schema)
+                       instructions=instructions, schema=self.output_schema, model=model)
         # The call succeeded; problems from here on are the output's fault.
         try:
             raw = llm.output_json(call)

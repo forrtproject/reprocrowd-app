@@ -112,6 +112,16 @@ model = "haiku"
 effort = "low"
 timeout_s = 600
 
+# OpenCode (https://opencode.ai), with the models you have there. The prompt goes to stdin; output =
+# "opencode-json" reads its "run --format json" event stream. model = "" uses OpenCode's default; pick one of your
+# models on the starting page or in the "Generate with LLM" dialog.
+[llm.profiles.opencode]
+argv = ["opencode", "run", "--format", "json", "-m", "{model}", "--variant", "{effort}"]
+output = "opencode-json"
+model = ""
+effort = ""
+timeout_s = 1800
+
 # Coding agents for code generation. {tools}: the allowed tools, plus exec_tools when running the analysis is allowed.
 [agent]
 default_profile = "claude"

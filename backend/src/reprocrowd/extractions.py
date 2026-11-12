@@ -65,10 +65,10 @@ def reconcile_prompt(pkg: Package, sources: list[str], *, prompt: str | None, in
 
 
 def reconcile(pkg: Package, sources: list[str], *, prompt: str | None, instructions: str, profile: str | None,
-              name: str | None = None, replace: bool = False) -> Resource:
+              name: str | None = None, replace: bool = False, model: str | None = None) -> Resource:
     fts, text = reconcile_prompt(pkg, sources, prompt=prompt, instructions=instructions)
     call = llm.run(pkg, "reconcile", text, profile_name=profile, template="custom" if prompt is not None else "default",
-                   instructions=instructions, read_files=True, schema=RECONCILE_SCHEMA)
+                   instructions=instructions, read_files=True, schema=RECONCILE_SCHEMA, model=model)
     # From here on the call succeeded; anything wrong is the output's fault (llm_output_invalid).
     try:
         raw = llm.output_json(call)

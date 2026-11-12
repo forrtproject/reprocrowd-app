@@ -293,7 +293,7 @@ api = APIRouter(prefix="/v1", dependencies=[Security(auth)], responses=errors("u
 @api.get("/llm-profiles", tags=["service"], response_model=list[M.LlmProfileView], summary="Configured LLM profiles")
 def llm_profiles():
     cfg = settings()
-    return [M.LlmProfileView(name=n, default=n == cfg.llm_default_profile, argv=p.argv, model=p.model, effort=p.effort, timeout_s=p.timeout_s)
+    return [M.LlmProfileView(name=n, default=n == cfg.llm_default_profile, argv=p.argv, model=p.model, effort=p.effort, timeout_s=p.timeout_s, output=p.output)
             for n, p in cfg.llm_profiles.items()]
 
 
@@ -454,15 +454,15 @@ EXTRACTION_ERRORS = errors("not_found", "not_parseable", "parse_failed", "extrac
                            "llm_call_failed", "llm_timeout", "llm_output_invalid")
 
 
-def _llm_preview(prompt: str, profile: str | None, *, read_files: bool = False, schema: str) -> M.PromptPreview:
-    name, p, argv, structured = llm.command(profile, read_files=read_files, schema=schema)
-    return M.PromptPreview(prompt=prompt, argv=argv, profile=name, model=p.model, effort=p.effort, output_schema=structured)
+def _llm_preview(prompt: str, profile: str | None, *, read_files: bool = False, schema: str, model: str | None = None) -> M.PromptPreview:
+    name, p, argv, structured = llm.command(profile, read_files=read_files, schema=schema, model=model)
+    return M.PromptPreview(prompt=prompt, argv=argv, profile=name, model=p.model if model is None else model, effort=p.effort, output_schema=structured)
 
 
 def _make_extraction(pkg: Package, body, name: str | None, replace: bool) -> Resource:
     if isinstance(body, M.ExtractionParse):
         return extractions.parse(pkg, body.fulltext, name, replace)
-    return extractions.reconcile(pkg, body.sources, prompt=body.prompt, instructions=body.instructions, profile=body.profile, name=name, replace=replace)
+    return extractions.reconcile(pkg, body.sources, prompt=body.prompt, instructions=body.instructions, profile=body.profile, name=name, replace=replace, model=body.model)
 
 
 @api.get("/packages/{pkg}/extractions", tags=["extractions"], response_model=list[Resource], summary="List extractions")
@@ -486,7 +486,7 @@ def create_extraction(pkg: Pkg, body: Annotated[M.ExtractionCreate, Body()], res
           responses=errors("not_found", "no_sources", "unknown_profile"))
 def preview_reconcile(pkg: Pkg, body: M.ExtractionReconcile):
     _, text = extractions.reconcile_prompt(pkg, body.sources, prompt=body.prompt, instructions=body.instructions)
-    return _llm_preview(text, body.profile, read_files=True, schema=extractions.RECONCILE_SCHEMA)
+    return _llm_preview(text, body.profile, read_files=True, schema=extractions.RECONCILE_SCHEMA, model=body.model)
 
 
 @api.put("/packages/{pkg}/extractions/{name}", tags=["extractions"], response_model=Resource, summary="Create or replace an extraction",
@@ -589,7 +589,7 @@ def curation_routes(kind: str, fields: type, view: type, patch_model: type) -> N
                           "output has no usable JSON (`llm_output_invalid`).", responses=run_errors)
     def create_run(pkg: Pkg, body: M.RunCreate, response: Response):
         run = curation.Curation(pkg, kind).generate(body.extraction, Scope(body.scope.sections, body.scope.items),
-                                                    instructions=body.instructions, prompt=body.prompt, profile=body.profile)
+                                                    instructions=body.instructions, prompt=body.prompt, profile=body.profile, model=body.model)
         created(response, f"/v1/packages/{pkg.id}/{kind}/runs/{run.id}")
         return run
 
@@ -599,7 +599,7 @@ def curation_routes(kind: str, fields: type, view: type, patch_model: type) -> N
     def preview_run(pkg: Pkg, body: M.RunCreate):
         c = curation.Curation(pkg, kind)
         text = c.render_prompt(body.extraction, Scope(body.scope.sections, body.scope.items), instructions=body.instructions, prompt=body.prompt)
-        return _llm_preview(text, body.profile, schema=c.output_schema)
+        return _llm_preview(text, body.profile, schema=c.output_schema, model=body.model)
 
     @api.get(base + "/runs/{run}", tags=[kind], response_model=LlmRunModel, summary="Get an LLM run", responses=errors("not_found"))
     def get_run(pkg: Pkg, run: str):

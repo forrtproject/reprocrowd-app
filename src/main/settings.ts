@@ -23,6 +23,8 @@ export interface Settings {
   };
   /** Advanced: start the backend with this command instead of the bundled one ({host}, {port}). */
   backendCmd: string;
+  /** LLM models (from OpenCode / T3 Code) the user turned off, so they don't accidentally spend tokens on them. */
+  llmDisabled: string[];
 }
 
 export const userData = () => app.getPath("userData");
@@ -34,6 +36,7 @@ export const DEFAULTS: Settings = {
   editorCmd: "",
   zenodo: { sandbox: true, community: "", creator: { name: "", orcid: "", affiliation: "" } },
   backendCmd: "",
+  llmDisabled: [],
 };
 
 function readJson(file: string): any {
@@ -66,6 +69,7 @@ export function loadSettings(): Settings {
       creator: { name: str(c.name, ""), orcid: str(c.orcid, ""), affiliation: str(c.affiliation, "") },
     },
     backendCmd: str(s.backendCmd, ""),
+    llmDisabled: Array.isArray(s.llmDisabled) ? s.llmDisabled.map(String) : [],
   };
 }
 
@@ -77,6 +81,7 @@ export function saveSettings(patch: Partial<Omit<Settings, "zenodo">> & { zenodo
     zenodo: { ...cur.zenodo, ...patch.zenodo, creator: { ...cur.zenodo.creator, ...patch.zenodo?.creator } },
   };
   next.packagesRoot = next.packagesRoot.trim().replace(/^~(?=$|\/)/, os.homedir()) || DEFAULTS.packagesRoot;
+  next.llmDisabled = Array.isArray(next.llmDisabled) ? next.llmDisabled.filter(Boolean) : [];
   writeJson(settingsFile(), next);
   return next;
 }

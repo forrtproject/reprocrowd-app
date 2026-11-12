@@ -1,6 +1,6 @@
 // The library: your reproductions (packages the app's backend knows), a new one from a DOI, or a package folder
 // opened from disk. Opening one switches the window to its numbered workflow (package.ts).
-import { host, isBackendDown, JATS_ONLY, JatsAvailability, LibraryEntry, Work, ZenodoRecord } from "./api";
+import { host, isBackendDown, JATS_ONLY, JatsAvailability, LibraryEntry, LlmModels, Work, ZenodoRecord } from "./api";
 import { backendProblem } from "./backend";
 import { brandHtml } from "./brand";
 import { settingsDialog } from "./settings";
@@ -37,6 +37,7 @@ export async function start() {
       </div>
       <div class="hero-visual"><img src="${sticker}" alt="ReproCrowd" class="hero-sticker" /></div>
     </div></section>
+    <section class="container llm-models"><div id="llm-models"></div></section>
     <section class="container lib-list"><div id="lib-body"><p class="muted">Loading…</p></div></section>
   </main>`;
 
@@ -55,6 +56,7 @@ export async function start() {
     }
   });
   await render();
+  await renderLlmModels();
 }
 
 async function setupNote() {
@@ -71,6 +73,38 @@ async function setupNote() {
       settingsDialog(() => render(), "zenodo");
     });
   }
+}
+
+/** The starting page: which LLM models the installed agent CLIs offer, so the user can turn the ones they don't want
+ * off and not spend tokens on them by accident. */
+async function renderLlmModels() {
+  const el = $("#llm-models");
+  let m: LlmModels;
+  try {
+    m = await host.llmModels();
+  } catch {
+    el.innerHTML = "";
+    return;
+  }
+  if (!m.available.length) {
+    el.innerHTML = "";
+    return;
+  }
+  const off = new Set(m.disabled);
+  el.innerHTML = `<h2 class="section-title">LLM models available</h2>
+    <div class="card llm-models-card">
+      <p class="hint">The models your installed coding agents (OpenCode / T3 Code) offer. Generating targets and the analysis plan uses one of these. Untick the ones you don't want, so they aren't offered and you don't spend tokens on them by accident.</p>
+      <div class="llm-model-list">${m.available
+        .map((x) => `<label class="inline llm-model"><input type="checkbox" data-model="${esc(x.id)}" ${off.has(x.id) ? "" : "checked"} /> <code>${esc(x.id)}</code></label>`)
+        .join("")}</div>
+    </div>`;
+  el.querySelectorAll<HTMLInputElement>("[data-model]").forEach((cb) =>
+    cb.addEventListener("change", async () => {
+      if (cb.checked) off.delete(cb.dataset.model!);
+      else off.add(cb.dataset.model!);
+      await host.setLlmModels([...off]).catch((e) => showError("Saving the model choice", e));
+    }),
+  );
 }
 
 function card(p: LibraryEntry) {

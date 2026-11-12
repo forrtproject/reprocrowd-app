@@ -453,6 +453,7 @@ export class CurationStep implements Step {
       <section>
         <p class="hint">${isT ? "The LLM reads the marked part of the text source (nothing marked: the whole document) and returns one target per reported result, with references to the sentences, tables and figures it comes from." : "The LLM turns the marked methods text (nothing marked: the whole document) into ordered analysis steps, linked to the input files of step 2 and the targets of step 3."}</p>
         <label>LLM profile <select name="profile">${this.profiles.map((p) => `<option value="${esc(p.name)}" ${(st.llmProfile ? p.name === st.llmProfile : p.default) ? "selected" : ""}>${esc(p.name)}: ${esc(p.model || "default model")}${p.effort ? `, effort ${esc(p.effort)}` : ""}</option>`).join("")}</select></label>
+        <label class="model-row" hidden>Model <select name="model"><option value="">(the CLI's default)</option></select></label>
         <p class="hint">Command (configured in the backend): <code class="argv"></code></p>
         <div class="form-row"><button type="button" class="show-prompt">Show prompt</button></div>
         <label>Extra instructions <textarea name="instructions" rows="4" placeholder="optional, e.g. only the main analyses"></textarea></label>
@@ -461,15 +462,36 @@ export class CurationStep implements Step {
       <menu><button value="cancel">Cancel</button><button value="ok" class="primary">Generate</button></menu></form>`);
     const form = dlg.querySelector("form")!;
     const profileSel = form.querySelector<HTMLSelectElement>("[name=profile]")!;
+    const modelRow = form.querySelector<HTMLElement>(".model-row")!;
+    const modelSel = form.querySelector<HTMLSelectElement>("[name=model]")!;
     const showArgv = () => (form.querySelector(".argv")!.textContent = this.profiles.find((p) => p.name === profileSel.value)?.argv.join(" ") ?? "");
-    profileSel.addEventListener("change", showArgv);
+    profileSel.addEventListener("change", () => {
+      showArgv();
+      showModelRow();
+    });
+    /** The model row is for profiles that take a chosen model (an agent CLI with a model list, e.g. OpenCode). */
+    const profileUsesModel = () => this.profiles.find((p) => p.name === profileSel.value)?.output === "opencode-json";
+    const showModelRow = () => {
+      modelRow.hidden = !profileUsesModel();
+      if (modelRow.hidden) modelSel.value = "";
+    };
     showArgv();
+    // Available models, with the ones the user turned off left out.
+    const enabledModels = new Set<string>();
+    host
+      .llmModels()
+      .then((m) => {
+        for (const x of m.available) if (!m.disabled.includes(x.id)) enabledModels.add(x.id);
+        modelSel.innerHTML = `<option value="">(the CLI's default)</option>${[...enabledModels].map((id) => `<option value="${esc(id)}">${esc(id)}</option>`).join("")}`;
+        showModelRow();
+      })
+      .catch(() => showModelRow());
     let picker: Awaited<ReturnType<CurationStep["sourcePicker"]>> | undefined;
     /** The request, once the text source has loaded. */
     const runRequest = () => {
       const scope = picker?.tree?.scope;
       if (!picker || !scope) return undefined;
-      return { extraction: picker.name, scope, instructions: (form.elements.namedItem("instructions") as HTMLTextAreaElement).value.trim(), profile: profileSel.value || undefined };
+      return { extraction: picker.name, scope, instructions: (form.elements.namedItem("instructions") as HTMLTextAreaElement).value.trim(), profile: profileSel.value || undefined, model: profileUsesModel() && modelSel.value ? modelSel.value : undefined };
     };
     form.querySelector(".show-prompt")!.addEventListener("click", () => {
       const request = runRequest();

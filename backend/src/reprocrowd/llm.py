@@ -12,6 +12,7 @@ from __future__ import annotations
 import json
 import os
 import secrets
+import shutil
 import signal
 import subprocess
 import time
@@ -35,9 +36,27 @@ def profile(name: str | None) -> tuple[str, LlmProfile]:
     return name, p
 
 
-def build_argv(p: LlmProfile, read_files: bool) -> list[str]:
-    """Substitute {model}/{effort}; an empty value drops the placeholder argument and the flag before it."""
-    return expand_argv(p.argv, {"model": p.model, "effort": p.effort}) + (p.read_files_argv if read_files else [])
+def build_argv(p: LlmProfile, read_files: bool, model: str | None = None) -> list[str]:
+    """Substitute {model}/{effort}; an empty value drops the placeholder argument and the flag before it.
+    ``model`` overrides the profile's model (e.g. a model chosen from the CLI's available ones)."""
+    return expand_argv(p.argv, {"model": model if model is not None else p.model, "effort": p.effort}) + (p.read_files_argv if read_files else [])
+
+
+def resolve_argv(argv: list[str]) -> list[str]:
+    """Make a command line runnable where the CLI is a shell shim. On Windows, npm installs agent CLIs as
+    ``.cmd``/``.ps1`` wrappers, which ``subprocess`` can't start on its own; run those through the shell they need."""
+    if not argv:
+        return argv
+    exe = shutil.which(argv[0])
+    if exe is None:
+        return argv  # let Popen raise its usual error
+    if os.name == "nt":
+        low = exe.lower()
+        if low.endswith((".cmd", ".bat")):
+            return ["cmd", "/c", exe, *argv[1:]]
+        if low.endswith(".ps1"):
+            return ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", exe, *argv[1:]]
+    return [exe, *argv[1:]]
 
 
 def load_prompt(name: str) -> str:
@@ -54,11 +73,12 @@ def render(template: str, values: dict[str, str], required: tuple[str, ...] = ()
     return text
 
 
-def command(profile_name: str | None, *, read_files: bool = False, schema: str | None = None) -> tuple[str, LlmProfile, list[str], str | None]:
+def command(profile_name: str | None, *, read_files: bool = False, schema: str | None = None, model: str | None = None) -> tuple[str, LlmProfile, list[str], str | None]:
     """The profile's name, the profile, the exact command line, and the output schema if the CLI gets one.
-    ``schema``: name of the output's JSON Schema; passed to the CLI if the profile supports structured output."""
+    ``schema``: name of the output's JSON Schema; passed to the CLI if the profile supports structured output.
+    ``model`` overrides the profile's model (a model chosen from the CLI's available ones)."""
     name, p = profile(profile_name)
-    argv = build_argv(p, read_files)
+    argv = build_argv(p, read_files, model)
     structured = schema if schema and p.json_schema_argv else None
     if structured:
         argv += expand_argv(p.json_schema_argv, {"schema": cli_schema(structured)})
@@ -66,8 +86,9 @@ def command(profile_name: str | None, *, read_files: bool = False, schema: str |
 
 
 def run(pkg: Package, task: str, prompt: str, *, profile_name: str | None, template: str, instructions: str, read_files: bool = False,
-        schema: str | None = None) -> LlmCall:
-    name, p, argv, structured = command(profile_name, read_files=read_files, schema=schema)
+        schema: str | None = None, model: str | None = None) -> LlmCall:
+    name, p, argv, structured = command(profile_name, read_files=read_files, schema=schema, model=model)
+    used_model = model if model is not None else p.model
     call_id = f"{task}-{time.strftime('%Y%m%dT%H%M%S')}-{secrets.token_hex(2)}"
     folder = pkg.path(f"llm-calls/{call_id}")
     folder.mkdir(parents=True)
@@ -77,14 +98,14 @@ def run(pkg: Package, task: str, prompt: str, *, profile_name: str | None, templ
     def record(out: str, err: str, code: int | None) -> LlmCall:
         (folder / "stdout.txt").write_text(out, encoding="utf-8")
         (folder / "stderr.txt").write_text(err, encoding="utf-8")
-        call = LlmCall(id=call_id, task=task, profile=name, argv=argv, model=p.model, effort=p.effort, template=template,
+        call = LlmCall(id=call_id, task=task, profile=name, argv=argv, model=used_model, effort=p.effort, template=template,
                        instructions=instructions, prompt=prompt, output=out, output_format=p.output, output_schema=structured, started_at=started,
                        duration_ms=int((time.monotonic() - t0) * 1000), exit_code=code)
         atomic_write(folder / "call.json", dump_json(call))
         return call
 
     try:
-        proc = subprocess.Popen(argv, cwd=pkg.root, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        proc = subprocess.Popen(resolve_argv(argv), cwd=pkg.root, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                 text=True, start_new_session=True)
     except OSError as e:
         record("", str(e), None)
@@ -92,7 +113,12 @@ def run(pkg: Package, task: str, prompt: str, *, profile_name: str | None, templ
     try:
         out, err = proc.communicate(prompt, timeout=p.timeout_s)
     except subprocess.TimeoutExpired:
-        os.killpg(proc.pid, signal.SIGKILL)  # the whole process group: the CLI may have spawned children
+        # Kill the whole process group (the CLI may have spawned children); on Windows there is no process group,
+        # so the process itself is killed.
+        if hasattr(os, "killpg"):
+            os.killpg(proc.pid, signal.SIGKILL)
+        else:
+            proc.kill()
         out, err = proc.communicate()
         record(out, err, None)
         raise ApiError(504, "llm_timeout", f"the LLM call exceeded {p.timeout_s} s", {"call": call_id})
@@ -130,6 +156,25 @@ def _envelope(out: str) -> dict | None:
         return None
 
 
+def _opencode_text(out: str) -> str:
+    """OpenCode's ``run --format json``: one JSON event per line; the model's answer is the ``text`` of the
+    ``text`` events, in order (reasoning, tool calls and other events are ignored)."""
+    parts: list[str] = []
+    for line in out.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            ev = json.loads(line)
+        except ValueError:
+            continue
+        if isinstance(ev, dict) and ev.get("type") == "text":
+            part = ev.get("part")
+            if isinstance(part, dict) and isinstance(part.get("text"), str):
+                parts.append(part["text"])
+    return "\n".join(parts)
+
+
 def output_json(call: LlmCall) -> Any:
     """The JSON object the call produced: the structured output if the CLI gave one, else parsed from the text."""
     if call.output_format == "claude-json":
@@ -137,6 +182,8 @@ def output_json(call: LlmCall) -> Any:
         if isinstance(env.get("structured_output"), (dict, list)):
             return env["structured_output"]
         return extract_json(str(env.get("result") or ""))
+    if call.output_format == "opencode-json":
+        return extract_json(_opencode_text(call.output))
     return extract_json(call.output)
 
 

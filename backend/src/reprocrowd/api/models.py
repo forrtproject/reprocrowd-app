@@ -31,6 +31,7 @@ class LlmProfileView(BaseModel):
     model: str
     effort: str
     timeout_s: int
+    output: str = Field(description="how stdout is read (text, claude-json, opencode-json); whether the profile takes a chosen model")
 
 
 class PromptPreview(BaseModel):
@@ -147,6 +148,7 @@ class ExtractionReconcile(Req):
     prompt: str | None = Field(default=None, description="custom prompt template; placeholders $files, $schema, $instructions. Omit for the default")
     instructions: str = Field(default="", description="extra instructions added to the prompt")
     profile: str | None = Field(default=None, description="LLM profile name; default from the service config")
+    model: str | None = Field(default=None, description="override the profile's model, e.g. a model chosen from the CLI's available ones")
     name: str | None = None
 
 
@@ -216,6 +218,7 @@ class RunCreate(Req):
     instructions: str = ""
     prompt: str | None = Field(default=None, description="custom prompt template; placeholders $document, $schema, $instructions (actions also $inputs, $targets)")
     profile: str | None = None
+    model: str | None = Field(default=None, description="override the profile's model, e.g. a model chosen from the CLI's available ones")
 
 
 class RunPatch(Req):

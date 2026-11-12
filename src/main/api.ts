@@ -7,6 +7,7 @@ import { BrowserWindow, dialog, shell, WebContents } from "electron";
 import fs from "node:fs";
 import path from "node:path";
 import * as backend from "./backend";
+import { detectLlmModels, LlmModel } from "./models";
 import { spawnDetached, splitCommand, which } from "./processes";
 import { get, post, request, ResponseType, ServiceError } from "./service";
 import { loadSettings, saveSettings, secretStorageKind, serverOf, setSecret, getSecret, userData, zenodoKey, ZenodoServer } from "./settings";
@@ -222,6 +223,7 @@ export function makeApi(wc: WebContents) {
         backend: backend.status(),
         backendConfig: backend.readUserConfig(),
         defaultBackendConfig: backend.DEFAULT_USER_CONFIG,
+        llmModels: { available: await detectLlmModels(), disabled: s.llmDisabled },
       };
     },
     setConfig: async (patch: Parameters<typeof saveSettings>[0]) => {
@@ -229,6 +231,10 @@ export function makeApi(wc: WebContents) {
       const after = saveSettings(patch);
       // The backend gets the Zenodo choices and its start command at start.
       if (before.backendCmd !== after.backendCmd || before.zenodo.sandbox !== after.zenodo.sandbox || before.zenodo.community !== after.zenodo.community) await backend.restart().catch(() => {});
+    },
+    llmModels: async () => ({ available: await detectLlmModels(), disabled: loadSettings().llmDisabled }),
+    setLlmModels: async (disabled: string[]) => {
+      saveSettings({ llmDisabled: disabled });
     },
     setZenodoToken: async (server: ZenodoServer, token: string | null) => setSecret(zenodoKey(server), token?.trim() || null),
     verifyZenodoToken: async (sandbox: boolean, token?: string) => {

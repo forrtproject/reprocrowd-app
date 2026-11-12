@@ -10051,6 +10051,18 @@
             "title": "Profile",
             "description": "LLM profile name; default from the service config"
           },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model",
+            "description": "override the profile's model, e.g. a model chosen from the CLI's available ones"
+          },
           "name": {
             "anyOf": [
               {
@@ -10860,7 +10872,8 @@
             "type": "string",
             "enum": [
               "text",
-              "claude-json"
+              "claude-json",
+              "opencode-json"
             ],
             "title": "Output Format",
             "description": "how stdout was read",
@@ -11010,6 +11023,11 @@
           "timeout_s": {
             "type": "integer",
             "title": "Timeout S"
+          },
+          "output": {
+            "type": "string",
+            "title": "Output",
+            "description": "how stdout is read (text, claude-json, opencode-json); whether the profile takes a chosen model"
           }
         },
         "type": "object",
@@ -11019,7 +11037,8 @@
           "argv",
           "model",
           "effort",
-          "timeout_s"
+          "timeout_s",
+          "output"
         ],
         "title": "LlmProfileView"
       },
@@ -11892,6 +11911,18 @@
               }
             ],
             "title": "Profile"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model",
+            "description": "override the profile's model, e.g. a model chosen from the CLI's available ones"
           }
         },
         "additionalProperties": false,

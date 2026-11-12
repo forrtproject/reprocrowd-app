@@ -110,7 +110,7 @@ export interface LlmRun<T> {
 export interface CurationFile<T> { schema_version: string; kind: "targets" | "actions"; manual: T[]; llm_runs: LlmRun<T>[] }
 
 export interface TemplateView { id: string; label: string; language: string; command: string; master: string }
-export interface LlmProfile { name: string; default: boolean; argv: string[]; model: string; effort: string; timeout_s: number }
+export interface LlmProfile { name: string; default: boolean; argv: string[]; model: string; effort: string; timeout_s: number; output: string }
 export interface AgentProfile extends LlmProfile { tools: string[]; exec_tools: string[]; events: string }
 export interface Converter { name: string; configured: boolean; output: string; detail: string }
 export interface Candidate { id: string; label: string; url: string; format: string; filename: string; openalex_auth: boolean }
