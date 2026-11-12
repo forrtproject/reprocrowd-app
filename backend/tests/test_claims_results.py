@@ -91,7 +91,24 @@ def test_unticked_claim_keeps_its_result(client, pkg):
     _run(client, P, pkg)
     assert client.patch(P + "/claims/C1", json={"checked": False}).status_code == 200
     st = _status(client, P)["C1"]
+    assert st["state"] == "review" and st["stale"] is True and st["result"]["verdict"] == "reproduced"
+    assert client.patch(P + "/claims/C1", json={"checked": True}).status_code == 200
+    st = _status(client, P)["C1"]
     assert st["state"] == "reproduced" and st["stale"] is False and st["result"]["matched"] == st["result"]["tested"] > 0
+
+
+def test_record_run_failure_does_not_break_run(client, pkg, monkeypatch):
+    P, root, claims_, _ = _claims(client, pkg)
+    assert client.put(P + "/script", json={"template": "python"}).status_code == 200
+    (root / "prepare.py").write_text("")
+    _write_claim(root, client, P, "C1", claims_["C1"], lambda t: True)
+
+    def boom(*a, **k):
+        raise ValueError("boom")
+
+    monkeypatch.setattr(claims, "record_run", boom)
+    job = _run(client, P, pkg)
+    assert job["status"] == "succeeded"
 
 
 def test_not_testable_status(client, pkg):

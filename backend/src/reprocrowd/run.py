@@ -7,6 +7,7 @@ and everything is committed.
 """
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from . import claims, files, gitrepo, jobs
@@ -55,7 +56,10 @@ def start(pkg: Package) -> Job:
             except ValueError as e:
                 errors = [f"not valid JSON: {e}"]
         if exists:
-            claims.record_run(pkg, jid)  # claims mode: which claims this run covered, with their results
+            try:
+                claims.record_run(pkg, jid)  # claims mode: which claims this run covered, with their results
+            except Exception:  # bookkeeping must not break the run
+                logging.getLogger(__name__).exception("recording the claims of run %s failed", jid)
         after = gitrepo.commit(pkg, f"Run ({jid}, {job.status}, exit {job.exit_code})") if use_git else None
         return RunResult(command=tpl.command, log=job.stdout, results_file=exists, output_errors=errors, output_warnings=warnings, commit_after=after)
 

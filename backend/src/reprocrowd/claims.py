@@ -224,13 +224,13 @@ def statuses(pkg: Package) -> list[ClaimStatus]:
     out = []
     for c in claims:
         rec = ran.get(c.id)
-        stale = rec is not None and rec.content_hash != content_hash(pkg, c)
+        stale = rec is not None and (rec.content_hash != content_hash(pkg, c) or not c.checked)
         if not c.testable:
             out.append(ClaimStatus(claim=c.id, state="not_testable", stale=False, ran_at=None, result=None))
             continue
         result = None
         if rec is not None:  # the snapshot of that run, unless the claim is current and ticked: then the live comparison
-            result = rec.result if stale or not c.checked else live.get(c.id, rec.result)
+            result = rec.result if stale else live.get(c.id, rec.result)
         state: ClaimState = "ready" if c.checked else "review"
         if c.id in running:
             state = "running"
