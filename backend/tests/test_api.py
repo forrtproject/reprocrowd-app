@@ -152,7 +152,7 @@ def test_previews_show_what_a_call_sends_and_store_nothing(client, pkg):
     call = client.post(P + "/targets/runs", json=body).json()["call"]
     assert (call["prompt"], call["argv"]) == (target_preview["prompt"], target_preview["argv"])
     assert client.post(P + "/extractions", json=reconcile).status_code == 201
-    calls = [json.loads(p.read_text()) for p in (root / "llm-calls").glob("reconcile-*/call.json")]
+    calls = [json.loads(p.read_text(encoding="utf-8")) for p in (root / "llm-calls").glob("reconcile-*/call.json")]
     assert [(c["prompt"], c["argv"]) for c in calls] == [(reconcile_preview["prompt"], reconcile_preview["argv"])]
 
     problem(client.post(P + "/targets/runs:preview", json={**body, "scope": {"items": ["sec7.p1.s1"]}}), 422, "unknown_ids")
@@ -181,7 +181,7 @@ def test_parse_and_reconcile(client, pkg):
     meta = r.json()["reprocrowd"]
     assert meta["method"] == "reconcile" and meta["fulltexts"] == ["ft-paper-tei", "ft-paper-pdf"]
     root = Path(client.get(f"/v1/packages/{pkg}").json()["path"])
-    call = json.loads((root / "llm-calls" / meta["llm_call"] / "call.json").read_text())
+    call = json.loads((root / "llm-calls" / meta["llm_call"] / "call.json").read_text(encoding="utf-8"))
     assert call["model"] == "fake-1" and call["effort"] == "low" and call["template"] == "default"
     assert "fulltext/paper.tei.xml" in call["prompt"] and '"DraftSection"' in call["prompt"]
     doc = client.get(f"/v1/packages/{pkg}/extractions/{r.json()['name']}").json()
@@ -190,7 +190,7 @@ def test_parse_and_reconcile(client, pkg):
     # custom prompt without placeholders: files and schema are appended
     r = client.post(f"/v1/packages/{pkg}/extractions", json=body | {"prompt": "You are reconciling. Be careful.", "name": "ex-custom"})
     assert r.status_code == 201
-    call = json.loads((root / "llm-calls" / r.json()["reprocrowd"]["llm_call"] / "call.json").read_text())
+    call = json.loads((root / "llm-calls" / r.json()["reprocrowd"]["llm_call"] / "call.json").read_text(encoding="utf-8"))
     assert call["template"] == "custom" and "## files" in call["prompt"]
 
     # error classes
@@ -378,7 +378,7 @@ def test_problem_catalog_complete(client):
     src = Path(__file__).parent.parent / "src" / "reprocrowd"
     codes = set()
     for p in src.rglob("*.py"):
-        text = p.read_text()
+        text = p.read_text(encoding="utf-8")
         codes |= set(re.findall(r'ApiError\(\d+, "([a-z_]+)"', text))
         codes |= set(re.findall(r'(?:conflict|invalid)\("([a-z_]+)"', text))
     assert codes - set(CATALOG) == set()

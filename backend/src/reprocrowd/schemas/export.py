@@ -100,11 +100,15 @@ def main(argv: list[str] | None = None) -> int:
     root = Path(args[1] if len(args) > 1 else ".")
     stale = []
     for path, text in outputs(root).items():
-        if not path.exists() or path.read_text() != text:
+        try:
+            existing = path.read_text(encoding="utf-8") if path.exists() else None
+        except (UnicodeDecodeError, OSError):  # written with another encoding: regenerate
+            existing = None
+        if existing != text:
             stale.append(path)
             if cmd == "export":
                 path.parent.mkdir(parents=True, exist_ok=True)
-                path.write_text(text)
+                path.write_text(text, encoding="utf-8")
     if cmd == "check" and stale:
         print("out of date:", *map(str, stale), sep="\n  ")
         return 1

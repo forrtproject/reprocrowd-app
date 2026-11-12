@@ -106,7 +106,7 @@ def run(pkg: Package, task: str, prompt: str, *, profile_name: str | None, templ
 
     try:
         proc = subprocess.Popen(resolve_argv(argv), cwd=pkg.root, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                text=True, start_new_session=True)
+                                text=True, encoding="utf-8", errors="replace", start_new_session=True)
     except OSError as e:
         record("", str(e), None)
         raise ApiError(502, "llm_call_failed", f"could not start the LLM command: {e}", {"call": call_id, "argv": argv})
