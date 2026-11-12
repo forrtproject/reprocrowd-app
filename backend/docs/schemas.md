@@ -152,6 +152,8 @@ A file written from a master-script template.
 | `added_at` | string (date-time) | yes |  |
 | `template` | string | yes | template id |
 | `generated_hash` | string | yes | hash as generated; a different current hash means the file was edited (e.g. by the agent); pattern `^sha256:[0-9a-f]{64}$` |
+| `claim` | string \| null |  | claims mode: the claim this file implements (claims/C1.py) |
+| `claim_hash` | string \| null |  | claims mode: the claim's content hash when the file was generated; a different one means the claim changed and the file is rewritten |
 
 ### Submission
 

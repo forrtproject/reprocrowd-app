@@ -4,3 +4,9 @@ command = "python3 analysis.py"
 master = "analysis.py"
 agent_rule = "Implement each step section of analysis.py in place, in order."
 files = [{ src = "analysis.py.j2", dest = "analysis.py" }]
+
+[claims]
+runner  = { src = "claims_runner.py.j2",  dest = "analysis.py" }
+prepare = { src = "claims_prepare.py.j2", dest = "prepare.py" }
+claim   = { src = "claims_claim.py.j2",   dest = "claims/{id}.py" }
+agent_rule = "Implement prepare.py and the claims/<id>.py file named below; never edit analysis.py or other claims' files."

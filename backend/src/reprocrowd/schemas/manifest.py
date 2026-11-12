@@ -82,6 +82,9 @@ class ScriptMeta(Model):
     added_at: datetime
     template: str = Field(description="template id")
     generated_hash: str = Field(pattern=r"^sha256:[0-9a-f]{64}$", description="hash as generated; a different current hash means the file was edited (e.g. by the agent)")
+    claim: str | None = Field(default=None, pattern=r"^C\d+$", description="claims mode: the claim this file implements (claims/C1.py)")
+    claim_hash: str | None = Field(default=None, pattern=r"^sha256:[0-9a-f]{64}$",
+                                   description="claims mode: the claim's content hash when the file was generated; a different one means the claim changed and the file is rewritten")
 
 
 class OtherMeta(Model):

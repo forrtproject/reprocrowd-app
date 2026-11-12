@@ -666,8 +666,12 @@ def get_script(pkg: Pkg):
          description="Resolves the plan (load steps for used data inputs → enabled actions → results step), writes "
                      "`analysis_plan.json`, `results_schema.json`, the template's files and README.md. Returns 201 the first "
                      "time, 200 when replacing. Files edited since they were generated (e.g. by the agent) are "
-                     "protected: `on_modified` = refuse (409), keep (regenerate the rest) or overwrite.",
-         responses={201: {"model": M.ScriptResult, "description": "created"}, **errors("unknown_template", "nothing_to_script", "script_modified")})
+                     "protected: `on_modified` = refuse (409), keep (regenerate the rest) or overwrite. Claims mode (the package "
+                     "has claims): the plan covers the ticked claims; the master file is a generated runner, the shared "
+                     "preparation file is written if missing, and each ticked claim gets its own file (`claims/C1.py`), "
+                     "rewritten only when the claim changed; `on_modified` does not apply.",
+         responses={201: {"model": M.ScriptResult, "description": "created"},
+                    **errors("unknown_template", "template_not_claims_ready", "nothing_to_script", "script_modified")})
 def put_script(pkg: Pkg, body: M.ScriptRequest, response: Response):
     out = scripts.write(pkg, body.template, body.on_modified)
     if out["created"]:

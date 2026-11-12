@@ -167,7 +167,7 @@ clients) works without special cases.
 | `GET` / `PATCH` / `DELETE …/targets/{id}` | merge patch incl. `disabled` | `{item, origin}` · 204 | `schema_invalid`, `invalid_reference`, `manual_item`, `llm_entry`, `in_use` |
 | `DELETE …/targets/{id}/edit` | | restored LLM version | `manual_item` |
 | `…/actions…` | same as targets | | |
-| `GET` / `PUT …/script` | `{template, on_modified?: refuse\|keep\|overwrite}` | template, TODO status, files · 201 / 200 `{created, files, command}` | `unknown_template`, `nothing_to_script`, `script_modified`, `job_running` |
+| `GET` / `PUT …/script` | `{template, on_modified?: refuse\|keep\|overwrite}` | template, TODO status, files · 201 / 200 `{created, files, command}` | `unknown_template`, `template_not_claims_ready`, `nothing_to_script`, `script_modified`, `job_running` |
 | `GET /v1/agent-profiles` | | agent profiles (argv, tools read-only) | |
 | `POST …/extractions:preview` · `POST …/targets/runs:preview` · `POST …/jobs:preview` | the body of the call they preview | `{prompt, argv, profile, model, effort, output_schema}`; runs and stores nothing | the call's input errors |
 | `POST …/jobs` | `{type:"codegen", profile?, allow_exec?, instructions?}` | 202 job + `Location` | `script_missing`, `job_running`, `unknown_profile`, `job_start_failed` |
@@ -394,6 +394,15 @@ sequenceDiagram
   master script, `PUT …/script` refuses to regenerate it unless `on_modified` is `keep` or `overwrite`, while the manifest's `hash` is
   refreshed so integrity validation stays green. Inputs, full texts and extractions are never refreshed: if
   an agent changes them, validation reports it.
+- **Claims mode** (`scripts.py` `_write_claims`, `claims.py` `claim_scope`): when the package has claims, the plan
+  holds the ticked, testable claims' methods and evidence plus every transform action. Templates with a `[claims]`
+  table (python, r) write a runner as the master file (always regenerated, never edited by the agent), a shared
+  prepare file (written only if missing) and one file per ticked claim (`claims/C1.py`, `ScriptMeta.claim` /
+  `claim_hash`), rewritten only when `claims.content_hash` changed. The runner runs the prepare file, then each claim
+  file with a `record(id, value, step)` function and the preparation's variables, catching each claim's errors: a
+  failed claim's targets get `value: null` and `note: "claim C1 failed: …"`, unrecorded ones `"not recorded by …"`.
+  Files of unticked claims stay and are not run. `on_modified` does not apply. Other templates: 400
+  `template_not_claims_ready`.
 - **One job per package** (409 `job_running`); script writes and `:sync` also wait for it. Job records
   (`jobs/<id>.json`, schema `job`) survive restarts. When the service shuts down it ends its running jobs
   (SIGTERM to each process group, SIGKILL after 5 s), so no agent keeps changing a package unobserved; they

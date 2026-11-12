@@ -64,6 +64,7 @@ CATALOG: dict[str, tuple[int, str]] = {
     "manual_item": (409, "Not applicable to items added by hand"),
     # scripts
     "unknown_template": (400, "No such master-script template"),
+    "template_not_claims_ready": (400, "The template has no claims mode; pick one with a [claims] table (python, r)"),
     "nothing_to_script": (422, "At least one enabled target and one enabled action are needed"),
     "script_modified": (409, "Generated files were changed since; pass force to overwrite"),
     "script_missing": (409, "Create the master script first"),

@@ -1,0 +1,60 @@
+{% import "_macros.j2" as m -%}
+{{ m.header(paper, tpl, marker, runner=true) }}
+#
+# It runs prepare.R, then the file of each ticked claim in an environment that sees prepare.R's variables. Each
+# claim file calls record(target id, value, step id). An error in a claim file marks that claim's results as not
+# computed and the other claims still run.
+
+# claim id -> c(evidence target id = the step that computes it)
+CLAIMS <- list(
+{% for c in claims %}
+  {{ c.id }} = c({% for t in c.targets %}{{ t.id }} = "{{ t.step }}"{{ ", " if not loop.last }}{% endfor %}){{ "," if not loop.last }}
+{% endfor %}
+)
+# targets reported in "table" (table targets) or "file" (figure targets) instead of "value"
+FIELDS <- c({% for t in fields %}{{ t.id }} = "{{ t.field }}"{{ ", " if not loop.last }}{% endfor %})
+
+results <- list()
+
+record <- function(id, value, step, note = NULL) {
+  field <- if (id %in% names(FIELDS)) FIELDS[[id]] else "value"
+  row <- list(id = id, value = value, step = step)
+  names(row)[2] <- field
+  if (!is.null(note)) row$note <- note
+  results[[id]] <<- row
+}
+
+not_computed <- function(claim, note) {
+  steps <- CLAIMS[[claim]]
+  for (target in names(steps)) results[[target]] <<- list(id = target, value = NULL, step = steps[[target]], note = note)
+}
+
+prep_env <- new.env()
+failed <- tryCatch({ sys.source("prepare.R", envir = prep_env); NULL },
+                   error = function(e) { message(conditionMessage(e)); paste0("prepare.R failed: ", conditionMessage(e)) })
+
+for (claim in names(CLAIMS)) {
+  path <- file.path("claims", paste0(claim, ".R"))
+  if (!is.null(failed)) {
+    not_computed(claim, paste0("claim ", claim, " failed: ", failed))
+    next
+  }
+  error <- tryCatch({
+    sys.source(path, envir = new.env(parent = prep_env))
+    NULL
+  }, error = function(e) { message(path, ": ", conditionMessage(e)); conditionMessage(e) })
+  if (!is.null(error)) {
+    not_computed(claim, paste0("claim ", claim, " failed: ", error))
+    next
+  }
+  steps <- CLAIMS[[claim]]
+  for (target in names(steps)) {
+    if (is.null(results[[target]])) {
+      results[[target]] <- list(id = target, value = NULL, step = steps[[target]], note = paste0("not recorded by ", path))
+    }
+  }
+}
+
+dir.create("outputs", showWarnings = FALSE)
+jsonlite::write_json(list(results = unname(results)), "outputs/results.json",
+                     auto_unbox = TRUE, null = "null", na = "null", digits = NA, pretty = TRUE)

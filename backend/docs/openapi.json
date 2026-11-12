@@ -5996,7 +5996,7 @@
           "script"
         ],
         "summary": "Create or replace the master script",
-        "description": "Resolves the plan (load steps for used data inputs → enabled actions → results step), writes `analysis_plan.json`, `results_schema.json`, the template's files and README.md. Returns 201 the first time, 200 when replacing. Files edited since they were generated (e.g. by the agent) are protected: `on_modified` = refuse (409), keep (regenerate the rest) or overwrite.",
+        "description": "Resolves the plan (load steps for used data inputs → enabled actions → results step), writes `analysis_plan.json`, `results_schema.json`, the template's files and README.md. Returns 201 the first time, 200 when replacing. Files edited since they were generated (e.g. by the agent) are protected: `on_modified` = refuse (409), keep (regenerate the rest) or overwrite. Claims mode (the package has claims): the plan covers the ticked claims; the master file is a generated runner, the shared preparation file is written if missing, and each ticked claim gets its own file (`claims/C1.py`), rewritten only when the claim changed; `on_modified` does not apply.",
         "operationId": "put_script_v1_packages__pkg__script_put",
         "security": [
           {
@@ -6078,7 +6078,7 @@
                 }
               }
             },
-            "description": "`unknown_template`: No such master-script template"
+            "description": "`unknown_template`: No such master-script template; `template_not_claims_ready`: The template has no claims mode; pick one with a [claims] table (python, r)"
           },
           "409": {
             "content": {
@@ -13688,6 +13688,32 @@
             "pattern": "^sha256:[0-9a-f]{64}$",
             "title": "Generated Hash",
             "description": "hash as generated; a different current hash means the file was edited (e.g. by the agent)"
+          },
+          "claim": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^C\\d+$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Claim",
+            "description": "claims mode: the claim this file implements (claims/C1.py)"
+          },
+          "claim_hash": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^sha256:[0-9a-f]{64}$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Claim Hash",
+            "description": "claims mode: the claim's content hash when the file was generated; a different one means the claim changed and the file is rewritten"
           }
         },
         "additionalProperties": false,

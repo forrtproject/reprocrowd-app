@@ -1,0 +1,27 @@
+{% import "_macros.j2" as m -%}
+{{ m.header(paper, tpl, marker) }}
+#
+# Claim {{ claim.id }}: {{ claim.text | wordwrap(100, true, "\n# ") }}
+{% for sc in claim.sub_claims %}
+#   {{ sc.id }}: {{ sc.text | wordwrap(100, true, "\n#     ") }}
+#     method: {{ sc.method or "—" }} · evidence: {{ sc.evidence | join(", ") or "—" }}
+{% endfor %}
+#
+# analysis.py runs this file after prepare.py, with prepare.py's variables in scope. It must not write
+# outputs/results.json: report each evidence value with record(target id, value, step id); if one cannot be
+# computed, record(target id, None, step id, note="why"). Edit only this file for this claim.
+{% for t in targets %}
+#   record("{{ t.id }}", ..., "{{ t.step }}")  # {{ t.type }}: {{ t.description | truncate(70, true, "…", 0) }}
+{% endfor %}
+
+# {{ marker }}: imports
+{% for s in steps %}
+
+{{ m.step_header(s) | trim }}
+# {{ marker }}: implement {{ s.id }} for claim {{ claim.id }} and record its evidence
+
+{% else %}
+
+# {{ marker }}: compute the evidence of claim {{ claim.id }} and record it
+
+{% endfor %}

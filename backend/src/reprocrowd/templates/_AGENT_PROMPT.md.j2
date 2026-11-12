@@ -4,7 +4,13 @@ You are working in a computational reproduction package at:
 Goal: implement the analysis so that running `{{ tpl.command }}` from the package root reproduces the paper's results.
 
 Read first:
+{% if claims %}
+- {{ tpl.claims.runner.dest }}: the generated runner (do not edit it). It runs {{ tpl.claims.prepare.dest }}, then the file of each claim being reproduced, and writes outputs/results.json from what the claim files record.
+- {{ tpl.claims.prepare.dest }}: the shared preparation (loading the data, preparation steps); its variables are visible in every claim file.
+- One file per claim, with the claim, its sub-claims and evidence, and one section per method step. Each section has the step summary and the verbatim quote from the paper it implements.
+{% else %}
 - {{ tpl.master }}: master {{ tpl.language }} script with one section per analysis step. Each section has the step summary and the verbatim quote from the paper it implements.
+{% endif %}
 - analysis_plan.json: the same steps as structured data (ids, inputs, dependencies, target ids each step produces).
 - results_schema.json: the reproduction targets, in "results" (ids, descriptions, quotes, expected values).
 - schemas/results-output.schema.json: the required format of outputs/results.json.
@@ -24,11 +30,22 @@ Read first:
 {% endfor %}{% endif %}
 
 Rules:
+{% if claims %}
+1. {{ tpl.claims.agent_rule }}
+{% for f in claims %}
+   - {{ f.path }}{% if f.claim %} (claim {{ f.claim.id }}){% endif %}: {{ "implement" if f.todo else "already implemented; keep it as it is" }}
+{% endfor %}
+{% else %}
 1. {{ tpl.agent_rule }}
+{% endif %}
 2. Replace every `{{ marker }}:` marker with working code and delete the marker. Keep the step header comments (ids, summaries, quotes) intact and in order.
 3. Use paths relative to the package root.
 4. Compute every result from the data. NEVER copy expected values from results_schema.json into the output; the point is to test whether they reproduce.
+{% if claims %}
+5. Do not write outputs/results.json yourself: in a claim file, report each evidence value with `record("<target id>", value, "<step id>")`, as listed at the top of the file. Pass the unrounded number or string; for table targets an array of rows (same layout as expected, header row included); for figure targets the path of the figure (save figures as outputs/figures/<target id>.png). If a result cannot be computed, record it with a null value and a note explaining why. An error in one claim file does not stop the others.
+{% else %}
 5. outputs/results.json: {"results": [{"id": "<target id>", "value": <unrounded number or string>, "step": "<step id>"}, ...]}. Use "table" (array of rows, same layout as expected, header row included) for table targets, and "file" for figure targets (save figures as outputs/figures/<target id>.png). If a result cannot be computed, emit it with "value": null and a "note" explaining why.
+{% endif %}
 6. List required packages in {{ "install.R (install.packages(...) calls)" if tpl.language == "R" else "requirements.txt" }}.
 7. If something in the paper is ambiguous, pick the most plausible reading and document it in a comment starting with "# ASSUMPTION:".
 8. When finished, run the pipeline once if you can and fix errors.

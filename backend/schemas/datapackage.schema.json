@@ -631,6 +631,34 @@
           "pattern": "^sha256:[0-9a-f]{64}$",
           "title": "Generated Hash",
           "type": "string"
+        },
+        "claim": {
+          "anyOf": [
+            {
+              "pattern": "^C\\d+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "claims mode: the claim this file implements (claims/C1.py)",
+          "title": "Claim"
+        },
+        "claim_hash": {
+          "anyOf": [
+            {
+              "pattern": "^sha256:[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "claims mode: the claim's content hash when the file was generated; a different one means the claim changed and the file is rewritten",
+          "title": "Claim Hash"
         }
       },
       "required": [

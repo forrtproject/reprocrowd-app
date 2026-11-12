@@ -1,0 +1,13 @@
+{% import "_macros.j2" as m -%}
+{{ m.header(paper, tpl, marker) }}
+#
+# Shared preparation: loads the data and runs the preparation steps every claim builds on. analysis.R runs this
+# file first; the variables it defines (e.g. the cleaned data) are visible in every claims/<id>.R file.
+
+# {{ marker }}: load required packages
+{% for s in steps %}
+
+{{ m.step_header(s) | trim }}
+# {{ marker }}: implement {{ s.id }}
+
+{% endfor %}

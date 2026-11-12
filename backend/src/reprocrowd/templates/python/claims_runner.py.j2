@@ -1,0 +1,65 @@
+{% import "_macros.j2" as m -%}
+{{ m.header(paper, tpl, marker, runner=true) }}
+#
+# It runs prepare.py, then the file of each ticked claim with prepare.py's variables in scope. Each claim file
+# calls record(target id, value, step id). An error in a claim file marks that claim's results as not computed
+# and the other claims still run.
+import json
+import runpy
+import traceback
+from pathlib import Path
+
+# claim id -> {evidence target id: the step that computes it}
+CLAIMS = {
+{% for c in claims %}
+    "{{ c.id }}": { {%- for t in c.targets %}"{{ t.id }}": "{{ t.step }}"{{ ", " if not loop.last }}{% endfor -%} },
+{% endfor %}
+}
+# targets reported in "table" (table targets) or "file" (figure targets) instead of "value"
+FIELDS = { {%- for t in fields %}"{{ t.id }}": "{{ t.field }}"{{ ", " if not loop.last }}{% endfor -%} }
+
+results = {}
+
+
+def record(id, value, step, note=None):
+    """Report the reproduced value of target `id`, computed in step `step`."""
+    row = {"id": id, FIELDS.get(id, "value"): value, "step": step}
+    if note:
+        row["note"] = note
+    results[id] = row
+
+
+def not_computed(claim, note):
+    for target, step in CLAIMS[claim].items():
+        results[target] = {"id": target, "value": None, "step": step, "note": note}
+
+
+def plain(x):
+    """numpy values (and anything else json can't write) as JSON."""
+    return x.tolist() if hasattr(x, "tolist") else str(x)
+
+
+try:
+    shared = {k: v for k, v in runpy.run_path("prepare.py", init_globals={"record": record}).items() if not k.startswith("__")}
+    failed = None
+except Exception as e:
+    traceback.print_exc()
+    shared, failed = {}, f"prepare.py failed: {e}"
+
+for claim in CLAIMS:
+    path = f"claims/{claim}.py"
+    if failed:
+        not_computed(claim, f"claim {claim} failed: {failed}")
+        continue
+    try:
+        runpy.run_path(path, init_globals={**shared, "record": record})
+    except Exception as e:
+        traceback.print_exc()
+        not_computed(claim, f"claim {claim} failed: {e}")
+        continue
+    for target, step in CLAIMS[claim].items():
+        if target not in results:
+            results[target] = {"id": target, "value": None, "step": step, "note": f"not recorded by {path}"}
+
+Path("outputs").mkdir(exist_ok=True)
+Path("outputs/results.json").write_text(json.dumps({"results": list(results.values())}, indent=1, default=plain))

@@ -4,3 +4,9 @@ command = "Rscript analysis.R"
 master = "analysis.R"
 agent_rule = "Implement each step section of analysis.R in place, in order."
 files = [{ src = "analysis.R.j2", dest = "analysis.R" }]
+
+[claims]
+runner  = { src = "claims_runner.R.j2",  dest = "analysis.R" }
+prepare = { src = "claims_prepare.R.j2", dest = "prepare.R" }
+claim   = { src = "claims_claim.R.j2",   dest = "claims/{id}.R" }
+agent_rule = "Implement prepare.R and the claims/<id>.R file named below; never edit analysis.R or other claims' files."

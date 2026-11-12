@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from dataclasses import dataclass
 from typing import Literal
 
 from pydantic import ValidationError
@@ -76,6 +77,53 @@ def uncheck_users(pkg: Package, kind: Literal["targets", "actions"], item_id: st
             if c.checked:
                 claims.patch(c.id, {"checked": False})
     return hit
+
+
+# ---------- which claims the master script runs ----------
+
+
+@dataclass(frozen=True)
+class ClaimScope:
+    """What the master script covers in claims mode."""
+
+    claims: list[Claim]  # ticked, testable, with at least one enabled evidence target; in id order
+    targets: set[str]  # their enabled evidence targets
+    actions: set[str]  # their enabled methods, plus every effective transform action
+    preparation: list[str]  # the transform action ids
+
+
+def evidence(claim: Claim) -> list[str]:
+    """The claim's evidence target ids: its own and its sub-claims', in order."""
+    return list(dict.fromkeys(t for o in _owners(claim) for t in o.evidence))
+
+
+def methods(claim: Claim) -> list[str]:
+    """The claim's method action ids: its own and its sub-claims', in order."""
+    return list(dict.fromkeys(o.method for o in _owners(claim) if o.method))
+
+
+def claim_scope(pkg: Package) -> ClaimScope | None:
+    """None when the package has no effective claim: the master script is the monolithic one, as before claims."""
+    from .curation import Curation
+
+    all_claims = [c for c, _ in Curation(pkg, "claims").effective()]
+    if not all_claims:
+        return None
+    enabled_t = {t.id for t, _ in Curation(pkg, "targets").effective()}
+    actions = [a for a, _ in Curation(pkg, "actions").effective()]
+    enabled_a = {a.id for a in actions}
+    picked = [c for c in sorted(all_claims, key=lambda c: int(c.id[1:]))
+              if c.checked and c.testable and any(t in enabled_t for t in evidence(c))]
+    preparation = [a.id for a in actions if a.kind == "transform"]
+    return ClaimScope(claims=picked,
+                      targets={t for c in picked for t in evidence(c) if t in enabled_t},
+                      actions={a for c in picked for a in methods(c) if a in enabled_a} | set(preparation),
+                      preparation=preparation)
+
+
+def claim_files(pkg: Package, claim_id: str) -> list[str]:
+    """Paths of the master-script files generated for the claim (claims/C1.py)."""
+    return [r.path for r in pkg.load().by_kind("script") if getattr(r.reprocrowd, "claim", None) == claim_id]
 
 
 # ---------- extraction: one LLM call writes claims, targets and actions ----------
