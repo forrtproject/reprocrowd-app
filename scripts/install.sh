@@ -39,13 +39,37 @@ say "Building the app…"
 npm run --silent build
 say "Bundling the backend with its own Python (takes a minute)…"
 scripts/bundle-backend.sh backend
+say "Fetching Electron (~100 MB, once; kept for later installs)…"
+# electron-builder downloads Electron in one request that it abandons after 10 minutes, so on a slow network it
+# can never finish. curl resumes where it stopped, and the checked zip is handed over with electronDist.
+EVER="$(node -p 'require("electron/package.json").version')"
+case "$(uname -m)" in arm64 | aarch64) EARCH=arm64 ;; x86_64) EARCH=x64 ;; *) die "Unsupported CPU: $(uname -m)" ;; esac
+[ "$OS" = Linux ] && EPLAT=linux || EPLAT=darwin
+ECACHE="${ELECTRON_CACHE:-$([ "$OS" = Darwin ] && echo "$HOME/Library/Caches" || echo "${XDG_CACHE_HOME:-$HOME/.cache}")/electron}"
+EZIP="$ECACHE/electron-v$EVER-$EPLAT-$EARCH.zip"
+EURL="${ELECTRON_MIRROR:-https://github.com/electron/electron/releases/download/}v$EVER"
+mkdir -p "$ECACHE"
+sha256() { shasum -a 256 "$1" | cut -d' ' -f1; }
+EWANT="$(curl -fsSL --retry 5 "$EURL/SHASUMS256.txt" | grep " \*$(basename "$EZIP")\$" | cut -d' ' -f1)" ||
+  die "Could not fetch Electron's checksums from $EURL"
+if [ ! -f "$EZIP" ] || [ "$(sha256 "$EZIP")" != "$EWANT" ]; then
+  rm -f "$EZIP"
+  for n in 1 2 3 4 5; do
+    curl -fL --retry 5 --retry-all-errors --progress-bar -C - -o "$EZIP.part" "$EURL/$(basename "$EZIP")" && break
+    [ "$n" = 5 ] && die "Could not download Electron $EVER; run the installer again to resume."
+    echo "  (network hiccup, resuming…)" >&2
+  done
+  [ "$(sha256 "$EZIP.part")" = "$EWANT" ] || { rm -f "$EZIP.part"; die "The Electron download was corrupt; run the installer again."; }
+  mv "$EZIP.part" "$EZIP"
+fi
+
 say "Packaging…"
 export CSC_IDENTITY_AUTO_DISCOVERY=false # a local build needs no signing certificate
-if [ "$OS" = Linux ]; then
-  npx electron-builder --linux dir --publish never >/dev/null
-else
-  npx electron-builder --mac dir --publish never >/dev/null
-fi
+LOG="$(mktemp)"
+[ "$OS" = Linux ] && TARGET=--linux || TARGET=--mac
+npx electron-builder "$TARGET" dir --publish never -c.electronDist="$EZIP" >"$LOG" 2>&1 ||
+  { tail -20 "$LOG" >&2; die "Packaging failed (full log: $LOG)."; }
+rm -f "$LOG"
 
 # ---------- install ----------
 if [ "$OS" = Linux ]; then
