@@ -448,12 +448,11 @@ export class CurationStep implements Step {
   private async generateDialog(marked?: { sections: string[]; items: string[] }) {
     const isT = this.kind === "targets";
     const st = this.state;
-    // Prefer a profile that lets the user pick a model (an agent CLI with a model list, e.g. OpenCode); only fall
-    // back to the backend's default (e.g. Claude) when no model-capable profile is configured. This way the dialog
-    // offers the models the user actually has access to instead of hiding the model picker behind a fixed profile.
-    const defaultProfile = st.llmProfile && this.profiles.some((p) => p.name === st.llmProfile)
-      ? st.llmProfile
-      : (this.profiles.find((p) => p.output === "opencode-json") ?? this.profiles.find((p) => p.default) ?? this.profiles[0])?.name;
+    // Always default to a profile that lets the user pick a model (an agent CLI with a model list, e.g. OpenCode), so
+    // the dialog offers the models the user actually has access to. Only fall back to the remembered/default profile
+    // when no model-capable profile is configured.
+    const defaultProfile =
+      (this.profiles.find((p) => p.output === "opencode-json") ?? this.profiles.find((p) => p.name === st.llmProfile) ?? this.profiles.find((p) => p.default) ?? this.profiles[0])?.name;
     const dlg = modal("dlg-wide", `<form method="dialog"><h3>Generate ${NOUN[this.kind]}s with an LLM</h3>
       <div class="grid2"><section class="picker"></section>
       <section>
