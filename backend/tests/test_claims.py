@@ -272,3 +272,54 @@ def test_claims_prompt_preview(client, pkg):
     r = client.post(f"/v1/packages/{pkg}/claims/runs:preview", json={"extraction": "ex-paper-tei"})
     assert r.status_code == 200
     assert "CLAIMS" in r.json()["prompt"] and "sec3.p1.s1" in r.json()["prompt"]
+
+
+def test_extract_is_all_or_nothing(client, pkg, monkeypatch):
+    package_with_targets(client, pkg)
+    from reprocrowd import claims as cl
+
+    def boom(*a, **k):
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(cl, "SubClaim", boom)
+    P = f"/v1/packages/{pkg}"
+    n = {k: len(client.get(f"{P}/{k}/runs").json()) for k in ("targets", "actions", "claims")}
+    try:
+        client.post(P + "/claims/runs", json={"extraction": "ex-paper-tei"})
+    except RuntimeError:
+        pass
+    assert {k: len(client.get(f"{P}/{k}/runs").json()) for k in n} == n
+
+
+def test_extract_save_failure_rolls_back(client, pkg, monkeypatch):
+    package_with_targets(client, pkg)
+    from reprocrowd.curation import Curation
+    orig = Curation._save
+
+    def flaky(self, f):
+        if self.spec.kind == "claims":
+            raise RuntimeError("disk full")
+        return orig(self, f)
+
+    monkeypatch.setattr(Curation, "_save", flaky)
+    P = f"/v1/packages/{pkg}"
+    n = {k: len(client.get(f"{P}/{k}/runs").json()) for k in ("targets", "actions")}
+    try:
+        client.post(P + "/claims/runs", json={"extraction": "ex-paper-tei"})
+    except RuntimeError:
+        pass
+    assert {k: len(client.get(f"{P}/{k}/runs").json()) for k in n} == n
+
+
+def test_claims_run_toggle_cascades(client, pkg):
+    P, _ = _extract(client, pkg)
+    client.post(P + "/claims/runs", json={"extraction": "ex-paper-tei"})
+
+    def linked(run):
+        return [r["disabled"] for k in ("targets", "actions") for r in client.get(f"{P}/{k}/runs").json()
+                if r["request"].get("claims_run") == run]
+    assert linked("run2") == [True, True]
+    assert client.patch(P + "/claims/runs/run2", json={"disabled": False}).status_code == 200
+    assert linked("run2") == [False, False] and linked("run1") == [False, False]
+    client.patch(P + "/claims/runs/run2", json={"disabled": True})
+    assert linked("run2") == [True, True]

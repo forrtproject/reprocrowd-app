@@ -330,6 +330,17 @@ class Curation:
             if run is None:
                 raise not_found("run", run_id)
             run.disabled = disabled
+            if self.spec.kind == "claims":  # the evidence and methods of a claims run follow it
+                linked = {k: Curation(self.pkg, k) for k in ("targets", "actions")}
+                files = {k: c.load() for k, c in linked.items()}
+                for k, lf in files.items():
+                    for r in lf.llm_runs:
+                        if r.request.get("via") == "claims" and r.request.get("claims_run") == run_id:
+                            r.disabled = disabled
+                if cycle := find_cycle([a for a, _ in linked["actions"]._effective_of(files["actions"], False)]):
+                    raise invalid("invalid_reference", f"enabling {run_id} creates a dependency cycle", {"cycle": cycle})
+                for k, c in linked.items():
+                    c._save(files[k])
             if self.spec.kind == "actions" and (cycle := find_cycle([a for a, _ in self._effective_of(f, False)])):
                 raise invalid("invalid_reference", f"enabling {run_id} creates a dependency cycle", {"cycle": cycle})
             self._save(f)

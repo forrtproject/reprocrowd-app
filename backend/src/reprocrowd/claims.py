@@ -136,6 +136,7 @@ def generate(pkg: Package, extraction: str, scope: Scope, *, instructions: str, 
     with pkg.locked():
         claims_c, targets_c, actions_c = (Curation(pkg, k) for k in ("claims", "targets", "actions"))
         cf, tf, af = claims_c.load(), targets_c.load(), actions_c.load()
+        tf_before, af_before = tf.model_copy(deep=True), af.model_copy(deep=True)
         ctx = Context(pkg)
         disabled = any(not r.disabled for r in cf.llm_runs)  # "A new run's claims arrive switched off"
         run_no = lambda f: max((int(r.id[3:]) for r in f.llm_runs), default=0) + 1  # noqa: E731
@@ -225,7 +226,6 @@ def generate(pkg: Package, extraction: str, scope: Scope, *, instructions: str, 
             built.append((pos, it, own, subs))
         t_run = LlmRun[Target](id=f"run{run_no(tf)}", disabled=disabled, request=request, call=call, entries=target_entries, rejected=targets_rejected)
         tf.llm_runs.append(t_run)
-        targets_c._save(tf)
 
         # 4. actions: preparation first, then each method (created once), producing its evidence
         aids = iter(actions_c._next_ids(af, len(preps) + len(methods)))
@@ -242,7 +242,6 @@ def generate(pkg: Package, extraction: str, scope: Scope, *, instructions: str, 
                 depends_on=[key_to_id[k] for k in preps], produces=by_method.get(key, []))))
         a_run = LlmRun[Action](id=f"run{run_no(af)}", disabled=disabled, request=request, call=call, entries=action_entries, rejected=actions_rejected)
         af.llm_runs.append(a_run)
-        actions_c._save(af)
 
         # 5. claims, with ids; positions in depends_on / traced_under point at accepted claims only
         cids = iter(claims_c._next_ids(cf, len(built)))
@@ -267,5 +266,16 @@ def generate(pkg: Package, extraction: str, scope: Scope, *, instructions: str, 
             if s is not None and not ctx.ref_errors([Ref(extraction=extraction, id=s.ref)]):
                 skipped.append(SkippedSentence(ref=Ref(extraction=extraction, id=s.ref), reason=s.reason))
         cf.skipped[claims_run_id] = skipped
-        claims_c._save(cf)
+
+        # 6. everything is built; write the three files back to back (undone if one write fails)
+        saved = []
+        try:
+            for cur, f, before in ((targets_c, tf, tf_before), (actions_c, af, af_before), (claims_c, cf, None)):
+                cur._save(f)
+                saved.append((cur, before))
+        except Exception:
+            for cur, before in saved:
+                if before is not None:
+                    cur._save(before)
+            raise
         return c_run
