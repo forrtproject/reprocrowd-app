@@ -55,7 +55,7 @@ export class ReportStep implements Step {
       pkg.get<Job[]>("/jobs"),
       pkg.get<ValidationReport>("/validation").catch(() => undefined),
       pkg.text("/report").catch(() => undefined),
-      pkg.get<ClaimStatus[]>("/claims:status").catch(() => []),
+      pkg.get<ClaimStatus[]>("/claims:status", { rounding: String(this.w.app.state.compare.rounding), threshold: this.w.app.state.compare.threshold }).catch(() => []),
     ]);
     this.claims = claims;
     this.manifest = manifest;

@@ -58,10 +58,10 @@ export class ClaimsStep implements Step {
   async load() {
     const [file, status, targets, actions, trace, doc] = await Promise.all([
       pkg.get<ClaimsFile>("/claims", { view: "raw" }),
-      pkg.get<ClaimStatus[]>("/claims:status"),
+      pkg.get<ClaimStatus[]>("/claims:status", this.compare()),
       pkg.get<{ item: Target }[]>("/targets"),
       pkg.get<{ item: Action }[]>("/actions"),
-      pkg.get<ClaimsTrace>("/claims:trace").catch(() => undefined),
+      pkg.get<ClaimsTrace>("/claims:trace", this.compare()).catch(() => undefined),
       this.w.app.loadDoc(this.w.app.jats()).catch(() => undefined),
     ]);
     this.file = file;
@@ -91,6 +91,12 @@ export class ClaimsStep implements Step {
 
   private get state() {
     return this.w.app.state;
+  }
+
+  /** The step-7 comparison settings, so verdicts here agree with the comparison table and the report. */
+  private compare() {
+    const c = this.state.compare;
+    return { rounding: String(c.rounding), threshold: c.threshold };
   }
 
   /** Claims runs that are switched off: a new extraction waiting for the user's decision. */
@@ -185,19 +191,45 @@ export class ClaimsStep implements Step {
         if (!(e.target as HTMLElement).closest("[data-act=use-run]")) return;
         const id = el.dataset.run!;
         const older = this.file!.llm_runs.filter((r) => !r.disabled && r.id !== id);
-        let off: string[] = [];
+        let off: string[] = []; // whole runs to switch off
+        let offClaims: string[] = []; // single claims to switch off
         if (older.length) {
-          const a = await choose("Use the new extraction", `<p>The earlier extraction (${older.map((r) => esc(r.id)).join(", ")}) is still in use, so claims would appear twice. Switch it off?</p>`, [
-            ["cancel", "Cancel"],
-            ["keep", "Keep both"],
-            ["off", "Switch the earlier one off", "primary"],
-          ]);
-          if (!a || a === "cancel") return;
-          if (a === "off") off = older.map((r) => r.id);
+          const runs = older.map((r) => esc(r.id)).join(", ");
+          const live = older.flatMap((r) => r.entries.filter((e) => !e.disabled).map((e) => ({ ...e.base, ...(e.edit ?? {}) }) as Claim));
+          // a claim that has run (a run record with a result) is never switched off silently: it is in the deposit
+          const ran = live.filter((c) => this.file!.ran[c.id]?.result);
+          const notRun = live.filter((c) => !this.file!.ran[c.id]?.result);
+          if (!ran.length) {
+            const a = await choose("Use the new extraction", `<p>The earlier extraction (${runs}) is still in use, so claims would appear twice. Switch it off?</p>`, [
+              ["cancel", "Cancel"],
+              ["keep", "Keep both"],
+              ["off", "Switch the earlier one off", "primary"],
+            ]);
+            if (!a || a === "cancel") return;
+            if (a === "off") off = older.map((r) => r.id);
+          } else {
+            const n = ran.length;
+            const a = await choose(
+              "Use the new extraction",
+              `<p>The earlier extraction (${runs}) is still in use, so claims would appear twice. ${n === 1 ? "One of its claims has" : `${n} of its claims have`} run:</p>
+              <ul>${ran.map((c) => `<li><b>${esc(c.id)}</b> ${esc(trunc(c.text, 120))}</li>`).join("")}</ul>
+              <p>Switch off its ${notRun.length} other claim${notRun.length === 1 ? "" : "s"} and keep ${n === 1 ? "this one" : "these"}?</p>`,
+              [
+                ["cancel", "Cancel"],
+                ["keep", "Keep both"],
+                ["all", `Switch the whole earlier run off, including ${n} claim${n === 1 ? " that has" : "s that have"} run; ${n === 1 ? "it leaves" : "they leave"} the next deposit`],
+                ["notrun", `Switch off the ${notRun.length} claim${notRun.length === 1 ? "" : "s"} that ${notRun.length === 1 ? "has" : "have"} not run`, "primary"],
+              ],
+            );
+            if (!a || a === "cancel") return;
+            if (a === "all") off = older.map((r) => r.id);
+            if (a === "notrun") offClaims = notRun.map((c) => c.id);
+          }
         }
         await this.edit(`Using ${id}`, async () => {
           await pkg.patch(`/claims/runs/${id}`, { disabled: false });
           for (const o of off) await pkg.patch(`/claims/runs/${o}`, { disabled: true });
+          for (const c of offClaims) await pkg.patch(`/claims/${c}`, { disabled: true });
         });
       }),
     );
@@ -262,7 +294,7 @@ export class ClaimsStep implements Step {
       <section><label class="small muted">Notes<textarea rows="2" data-claim="${esc(c.id)}" data-f="notes" placeholder="Your notes; they do not untick the claim">${esc(c.notes)}</textarea></label></section>
       <section class="cl-actions"><label><input type="checkbox" data-claim="${esc(c.id)}" data-f="checked" ${c.checked ? "checked" : ""} ${c.testable ? "" : "disabled"} /> Reviewed (ticked claims are run)</label>
         <span class="spacer"></span><button data-act="run" data-claim="${esc(c.id)}" class="primary" ${ready && ![...this.w.running].some((k) => k.startsWith("claim-")) ? "" : "disabled"} title="${ready ? "Generate and run the code for this claim" : "Tick the claim first"}">Run this claim</button></section>
-      ${result ? `<section><h5>Last result ${st!.stale ? `<span class="pill st-stale">stale: the claim changed since</span>` : ""}</h5>${this.resultHtml(result)}</section>` : ""}
+      ${result ? `<section><h5>Last result ${st!.stale ? `<span class="pill st-stale">stale: ${c.checked ? "the claim changed since" : "unticked or changed since"}</span>` : ""}</h5>${this.resultHtml(result)}</section>` : ""}
       ${tr?.assumptions.length ? `<section><h5>Assumptions made by the coding agent</h5><ul class="cl-assume">${tr.assumptions.map((a) => `<li>${esc(a)}</li>`).join("")}</ul></section>` : ""}`;
   }
 
