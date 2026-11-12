@@ -261,9 +261,22 @@ class Curation:
         if unknown:
             raise invalid("schema_invalid", f"cannot change {', '.join(sorted(unknown))}", {"editable": sorted(editable | {'disabled'})})
         changes = {k: v for k, v in patch.items() if k != "disabled"}
+        result = self._patch(item_id, patch, changes)
+        if self.spec.kind in ("targets", "actions"):
+            from .claims import uncheck_users
+            uncheck_users(self.pkg, self.spec.kind, item_id)  # after the save: claims.json has its own file
+        return result
+
+    def _patch(self, item_id: str, patch: dict[str, Any], changes: dict[str, Any]) -> tuple[Any, dict]:
         with self.pkg.locked():
             f = self.load()
             item, run, entry = self._locate(f, item_id)
+            if self.spec.kind == "claims":
+                from .claims import RESET_FIELDS
+                current = self._effective_of(f, True)
+                cur = next(i for i, _ in current if i.id == item_id).model_dump(mode="json")
+                if any(k in RESET_FIELDS and v != cur.get(k) for k, v in changes.items()):
+                    changes = {**changes, "checked": False}  # a content edit withdraws the approval
             try:
                 if run is None:
                     if "disabled" in patch:
@@ -294,7 +307,10 @@ class Curation:
             entry.edit, entry.disabled = None, False
             self._check(f, entry.base)
             self._save(f)
-            return entry.base
+        if self.spec.kind in ("targets", "actions"):
+            from .claims import uncheck_users
+            uncheck_users(self.pkg, self.spec.kind, item_id)
+        return entry.base
 
     # ----- LLM runs -----
 
