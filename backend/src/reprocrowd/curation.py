@@ -277,8 +277,8 @@ class Curation:
                 try:  # compare after validation, so defaults a patch leaves out don't count as changes
                     new = self.spec.item.model_validate(cur | changes).model_dump(mode="json")
                 except ValidationError:
-                    new = cur | changes  # the real validation below reports it
-                if content(new) != content(cur):
+                    new = None  # the real validation below reports it
+                if new is not None and content(new) != content(cur):
                     changes = {**changes, "checked": False}  # a content edit withdraws the approval
             try:
                 if run is None:

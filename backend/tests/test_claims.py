@@ -166,3 +166,30 @@ def test_drop_overlay_unticks_claim(client, pkg):
     assert client.patch(P + "/claims/C1", json={"checked": True}).json()["item"]["checked"] is True
     assert client.delete(P + f"/targets/{llm}/edit").status_code == 200
     assert _checked(client, P) is False
+
+
+def test_malformed_sub_claims_patch_is_422(client, pkg):
+    P = _tick_c1(client, pkg)
+    before = client.get(P + "/claims/C1").json()
+    # the route's request schema rejects a non-list or a list of non-objects; null reaches the model
+    problem(client.patch(P + "/claims/C1", json={"sub_claims": ["x"]}), 422, "request_invalid")
+    problem(client.patch(P + "/claims/C1", json={"sub_claims": "x"}), 422, "request_invalid")
+    problem(client.patch(P + "/claims/C1", json={"sub_claims": None}), 422, "schema_invalid")
+    assert client.get(P + "/claims/C1").json() == before
+
+
+def test_malformed_sub_claims_reach_model_as_schema_invalid(client, pkg):
+    """Curation.patch itself (below the route's request check) must report malformed sub_claims as schema_invalid."""
+    from reprocrowd.curation import Curation
+    from reprocrowd.errors import ApiError
+    from reprocrowd.package import Package
+    P = _tick_c1(client, pkg)
+    p = Package(pkg, Path(client.get(P).json()["path"]))
+    for bad in (["x"], None, "x"):
+        try:
+            Curation(p, "claims").patch("C1", {"sub_claims": bad})
+        except ApiError as e:
+            assert e.code == "schema_invalid", e
+        else:
+            raise AssertionError("expected ApiError")
+    assert Curation(p, "claims").effective()[0][0].checked is True
