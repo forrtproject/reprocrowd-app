@@ -1,0 +1,6 @@
+label = "Python Snakemake pipeline"
+language = "Python"
+command = "snakemake --cores 1"
+master = "Snakefile"
+agent_rule = "Implement the run: block of each rule in the Snakefile (you may move code into scripts/ and use script: instead). Intermediate data goes in outputs/intermediate/. The final rule must write outputs/results.json."
+files = [{ src = "Snakefile.j2", dest = "Snakefile" }]

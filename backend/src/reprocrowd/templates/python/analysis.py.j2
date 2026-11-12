@@ -1,0 +1,10 @@
+{% import "_macros.j2" as m -%}
+{{ m.header(paper, tpl, marker) }}
+
+# {{ marker }}: imports
+{% for s in plan.steps %}
+
+{{ m.step_header(s) | trim }}
+# {{ marker }}: implement {{ s.id }}{% if s.kind == "results" %} (write outputs/results.json){% endif %}
+
+{% endfor %}

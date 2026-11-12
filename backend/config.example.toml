@@ -1,0 +1,84 @@
+# ReproCrowd backend configuration. Location: $REPROCROWD_CONFIG, else ~/.config/reprocrowd/config.toml.
+# Everything executable is configured here; API callers can only choose a profile by name.
+
+[server]
+host = "127.0.0.1"
+port = 8770
+token = ""                 # if set, requests need "Authorization: Bearer <token>"
+registry = "~/.local/share/reprocrowd/registry.json"
+allowed_roots = []         # e.g. ["~/papers"]: local paths the service may read or create packages under
+
+[openalex]
+api_key = ""               # needed for OpenAlex cached content (PDF, GROBID TEI)
+mailto = ""
+
+[downloads]
+max_download_mb = 200
+max_upload_mb = 500         # multipart uploads
+
+# PDF converters (POST …/fulltexts {source, converter}).
+[converters.grobid]
+url = ""                   # e.g. "http://localhost:8070"; empty = not configured
+timeout_s = 600
+
+[converters.docling]
+argv = ["docling", "--to", "json", "--output", "{outdir}", "{input}"]
+timeout_s = 1800
+
+# Package database for submissions (ReproCrowd Database); empty = none.
+[database]
+url = ""                   # e.g. "http://127.0.0.1:8765"
+
+# Zenodo deposits (POST …/deposits). Deposits are drafts until published; published records can't be deleted.
+[zenodo]
+url = "https://zenodo.org"
+sandbox_url = "https://sandbox.zenodo.org"
+sandbox = false            # true: deposit to the sandbox unless a request says otherwise
+token = ""                 # personal access token (deposit:write, deposit:actions); clients usually send the user's own
+community = ""             # e.g. "reprocrowd": deposits are submitted to this community
+license = "cc-by-4.0"
+creators = []              # used when a request names none, e.g. [{name = "Doe, Jane", orcid = "0000-0002-1825-0097"}]
+
+# Runs of the master script (the template's command, in the user's environment).
+[run]
+timeout_s = 7200
+
+[llm]
+default_profile = "claude"
+
+# {model} and {effort} are substituted; an empty value drops the placeholder and the flag before it.
+# The prompt is sent on stdin; the working directory is the package folder.
+# Structured output: json_schema_argv is appended with {schema} = the task's output JSON Schema, and
+# output = "claude-json" reads Claude's --output-format json envelope. Leave both out for plain-text CLIs.
+[llm.profiles.claude]
+argv = ["claude", "-p", "--output-format", "json", "--model", "{model}", "--effort", "{effort}"]
+read_files_argv = ["--allowedTools", "Read"]   # appended when the LLM must read package files (reconcile)
+json_schema_argv = ["--json-schema", "{schema}"]
+output = "claude-json"
+model = "sonnet"
+effort = "medium"
+timeout_s = 1800
+
+[llm.profiles.claude-fast]
+argv = ["claude", "-p", "--output-format", "json", "--model", "{model}", "--effort", "{effort}"]
+read_files_argv = ["--allowedTools", "Read"]
+json_schema_argv = ["--json-schema", "{schema}"]
+output = "claude-json"
+model = "haiku"
+effort = "low"
+timeout_s = 600
+
+# Coding agents for code generation (jobs). {tools} becomes the comma-separated list of tools, plus exec_tools
+# when the caller allows running the analysis (allow_exec).
+[agent]
+default_profile = "claude"
+
+[agent.profiles.claude]
+argv = ["claude", "-p", "--output-format", "stream-json", "--verbose", "--permission-mode", "acceptEdits",
+        "--model", "{model}", "--effort", "{effort}", "--allowedTools", "{tools}"]
+tools = ["Read", "Write", "Edit", "Glob", "Grep"]
+exec_tools = ["Bash(Rscript:*)", "Bash(R:*)", "Bash(python:*)", "Bash(python3:*)", "Bash(snakemake:*)", "Bash(pip:*)", "Bash(ls:*)"]
+model = "sonnet"
+effort = "high"
+timeout_s = 7200
+events = "claude-stream-json"

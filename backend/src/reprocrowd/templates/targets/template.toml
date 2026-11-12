@@ -1,0 +1,6 @@
+label = "R targets pipeline"
+language = "R"
+command = "Rscript -e 'targets::tar_make()'"
+master = "_targets.R"
+agent_rule = "Implement each tar_target() in _targets.R. Pass data between targets as target values. The final target must write outputs/results.json and return its path (format = \"file\"). Helper functions may go in R/."
+files = [{ src = "_targets.R.j2", dest = "_targets.R" }]

@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://reprocrowd.example/schemas/inputs.schema.json",
+  "title": "InputsList (inputs.json (written with the archive))",
+  "$defs": {
+    "InputEntry": {
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "title": "Path",
+          "type": "string"
+        },
+        "role": {
+          "title": "Role",
+          "type": "string"
+        },
+        "note": {
+          "default": "",
+          "title": "Note",
+          "type": "string"
+        },
+        "used": {
+          "default": true,
+          "title": "Used",
+          "type": "boolean"
+        },
+        "archive": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "path of the zip archive it was unpacked from",
+          "title": "Archive"
+        }
+      },
+      "required": [
+        "path",
+        "role"
+      ],
+      "title": "InputEntry",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "inputs.json: the input files (also in datapackage.json), in the package database's format.",
+  "properties": {
+    "inputs": {
+      "items": {
+        "$ref": "#/$defs/InputEntry"
+      },
+      "title": "Inputs",
+      "type": "array"
+    }
+  },
+  "required": [
+    "inputs"
+  ],
+  "type": "object"
+}
