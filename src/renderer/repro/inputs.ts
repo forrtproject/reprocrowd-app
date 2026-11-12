@@ -3,7 +3,7 @@
 //   Input files:      the study's data and, if available, the authors' code (POST …/inputs; zip archives are unpacked).
 import { ApiError, host, pkg } from "../api";
 import { countSentences } from "../doc";
-import { ROLES, type Document, type Resource, type Role } from "../types";
+import { ROLES, type AcquireResult, type Document, type Resource, type Role } from "../types";
 import { confirmDialog, esc, sizeText } from "../util";
 import type { Step, Wizard } from "./wizard";
 
@@ -13,6 +13,7 @@ export class InputsStep implements Step {
   title = "Inputs";
   private inputs: InputRes[] = [];
   private docs = new Map<string, Document | Error>();
+  private fetch?: AcquireResult;
 
   constructor(private w: Wizard) {}
 
@@ -20,6 +21,28 @@ export class InputsStep implements Step {
     this.inputs = (await pkg.get<Resource[]>("/inputs")) as InputRes[];
     const name = this.w.app.jats();
     if (!(this.docs.get(name) && !(this.docs.get(name) instanceof Error))) this.docs.set(name, await this.w.app.loadDoc(name).catch((e) => e as Error));
+  }
+
+  /** The detected data/code links from the last fetch, each with how many files it added. */
+  private fetchList() {
+    const f = this.fetch;
+    if (!f || !f.links.length) return "";
+    const rows = f.links.map((l) => {
+      const fail = f.failures.find((x) => x.repo === l.repo && x.id === l.id);
+      const files = fail ? 0 : f.resources.filter((r) => {
+        const m = r.reprocrowd;
+        return m.kind === "input" && m.origin.type === "fetched" && m.origin.repo === l.repo && m.origin.id === l.id;
+      }).length;
+      const status = fail
+        ? `<span class="warn-inline">could not be fetched: ${esc(fail.error)}</span>`
+        : `<span class="ok small">✓ ${files} file(s) added</span>`;
+      return `<li><a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.label)}</a> <span class="muted">(${esc(l.kind)})</span> — ${status}</li>`;
+    }).join("");
+    return `<div class="card rp-fetch">
+      <div class="card-head"><h3>Detected data &amp; code links</h3><span class="muted">${f.links.length} link(s)</span></div>
+      <ul class="rp-links">${rows}</ul>
+      <p class="hint">Click a link to open it; files it added appear in the table above.</p>
+    </div>`;
   }
 
   draw(body: HTMLElement) {
@@ -44,6 +67,8 @@ export class InputsStep implements Step {
     }
     const counts = ROLES.map((r) => `${this.inputs.filter((i) => i.reprocrowd.used && i.reprocrowd.role === r && !archives.includes(i)).length} ${r}`).join(" · ");
     const uploading = this.w.running.has("upload");
+    const fetching = this.w.running.has("fetch");
+    const busy = uploading || fetching;
 
     body.innerHTML = `
     <div class="card">
@@ -53,11 +78,12 @@ export class InputsStep implements Step {
     </div>
     <div class="card rp-drop">
       <div class="card-head"><h3>Input files</h3><span class="muted">${counts}</span><span class="spacer"></span>
-        <label class="btn primary ${uploading ? "disabled" : ""}">Add files…<input type="file" multiple hidden id="rp-add-files" /></label><button id="rp-add-dir" ${uploading ? "disabled" : ""}>Add a folder…</button></div>
-      <p class="hint">The study's data and, if available, the authors' original code. The backend guesses the role from the file type; notes are passed on to the LLM and the report. Zip archives are unpacked; files in an archive can be left out (unticked) without changing it. You can also drop files here.</p>
+        <button id="rp-fetch" ${busy ? "disabled" : ""} title="Find data/code repository links in the manuscript and download them here">Fetch supplemental materials…</button>
+        <label class="btn primary ${busy ? "disabled" : ""}">Add files…<input type="file" multiple hidden id="rp-add-files" /></label><button id="rp-add-dir" ${busy ? "disabled" : ""}>Add a folder…</button></div>
+      <p class="hint">The study's data and, if available, the authors' original code. The backend guesses the role from the file type; notes are passed on to the LLM and the report. Zip archives are unpacked; files in an archive can be left out (unticked) without changing it. You can also drop files here. <b>Fetch supplemental materials…</b> looks for data/code links (Zenodo, GitHub, GitLab, OSF, Figshare) in the manuscript and downloads them here.</p>
       <table class="tbl-list rp-inputs"><thead><tr><th title="Used">Use</th><th>File</th><th>Role</th><th>Note</th><th>Size</th><th></th></tr></thead>
         <tbody>${rows || `<tr><td colspan="6" class="muted">No input files yet.</td></tr>`}</tbody></table>
-    </div>`;
+    </div>${this.fetchList()}`;
 
     const add = (files: File[]) =>
       this.w.busy("upload", `Adding ${files.length} file(s)`, async () => {
@@ -68,6 +94,16 @@ export class InputsStep implements Step {
       if (files.length) add(files);
     });
     body.querySelector("#rp-add-dir")?.addEventListener("click", () => this.w.busy("upload", "Adding a folder", () => host.addFiles("inputs", true)));
+    body.querySelector("#rp-fetch")?.addEventListener("click", async () => {
+      const r = await this.w.busy("fetch", "Fetching supplemental materials", async () => pkg.acquire({}));
+      if (r) {
+        this.fetch = r;
+        const n = r.resources.length;
+        const failed = r.failures.length;
+        const names = r.links.map((l) => l.url).join(", ");
+        this.w.setStatus(`Fetched supplemental materials: ${n} file(s) added${failed ? `; ${failed} link(s) could not be fetched` : ""} from ${r.links.length} link(s) (${names})`);
+      }
+    });
     const card = body.querySelector<HTMLElement>(".rp-drop")!;
     card.addEventListener("dragover", (e) => {
       e.preventDefault();

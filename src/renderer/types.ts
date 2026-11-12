@@ -20,7 +20,8 @@ export type Origin =
   | { type: "local"; path: string }
   | { type: "url"; url: string; candidate: string; label: string }
   | { type: "conversion"; source: string; converter: string; detail: string }
-  | { type: "upload"; filename: string };
+  | { type: "upload"; filename: string }
+  | { type: "fetched"; url: string; repo: string; id: string; label: string };
 export type ResourceMeta =
   | { kind: "fulltext"; added_at: string; flavor: "pdf" | "tei" | "jats" | "docling"; origin: Origin; check: CheckResult }
   | { kind: "extraction"; added_at: string; method: "parse" | "reconcile"; fulltexts: string[]; llm_call?: string | null }
@@ -40,6 +41,10 @@ export interface Resource {
 }
 export type Role = "data" | "code" | "other";
 export const ROLES: Role[] = ["data", "code", "other"];
+
+export interface AcquireLink { repo: string; id: string; kind: string; label: string; url: string }
+export interface AcquireFailure { repo: string; id: string; url: string; error: string }
+export interface AcquireResult { links: AcquireLink[]; resources: Resource[]; failures: AcquireFailure[] }
 
 export interface Identifier { scheme: string; value: string }
 export interface PackageSummary {

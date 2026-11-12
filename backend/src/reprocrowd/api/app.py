@@ -24,7 +24,7 @@ from starlette.concurrency import run_in_threadpool
 from starlette.datastructures import UploadFile as StarletteUploadFile
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from .. import __version__, openalex, zenodo, codegen, coordinates, curation, database, figures, report, run, extractions, files, fulltexts, inputs, jobs, llm, metadata, scripts
+from .. import __version__, acquire, openalex, zenodo, codegen, coordinates, curation, database, figures, report, run, extractions, files, fulltexts, inputs, jobs, llm, metadata, scripts
 from ..config import settings
 from ..errors import ApiError, not_found
 from ..extractions import Scope
@@ -550,6 +550,14 @@ def patch_input(pkg: Pkg, name: str, body: M.InputPatch):
             responses=errors("not_found", "archive_member", "in_use"))
 def delete_input(pkg: Pkg, name: str):
     inputs.delete(pkg, name)
+
+
+@api.post("/packages/{pkg}/acquire", tags=["inputs"], response_model=M.AcquireResult, summary="Fetch data & code from the manuscript",
+          description="Scans a full text for links to data/code repositories (Zenodo, OSF, GitHub, GitLab, Figshare) and downloads "
+                      "the files as inputs, so users don't have to upload anything by hand (metacheck-style).",
+          responses=errors("no_fulltext", "acquire_failed", "acquire_not_found", "acquire_too_large"))
+def acquire_inputs(pkg: Pkg, body: M.AcquireCreate):
+    return acquire.acquire(pkg, body.fulltext, body.role, body.note, body.unpack, body.repos)
 
 
 # ---------- targets and actions (same routes, different models) ----------

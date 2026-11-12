@@ -185,6 +185,24 @@ class InputPatch(Req):
     used: bool | None = None
 
 
+class AcquireCreate(Req):
+    """Detect data/code repository links in a manuscript and fetch them as inputs."""
+
+    fulltext: str | None = Field(default=None, description="resource name of the full text to scan; default: the first full text")
+    role: Role | None = Field(default=None, description="default role for fetched files; default: guessed per file")
+    note: str = ""
+    unpack: bool = Field(default=True, description="unpack zip archives into inputs/<stem>/")
+    repos: list[str] | None = Field(default=None, description="restrict detection to these repositories (zenodo, github, gitlab, osf, figshare)")
+
+
+class AcquireResult(BaseModel):
+    """Result of an acquire run: the links found and the resources (inputs) added."""
+
+    links: list[dict[str, Any]] = Field(description="detected repository links, with their repo, id, kind and label")
+    resources: list[Resource] = Field(description="input resources added")
+    failures: list[dict[str, Any]] = Field(default_factory=list, description="per-repository failures: repo, id, url, error")
+
+
 # ---------- targets and actions ----------
 
 
