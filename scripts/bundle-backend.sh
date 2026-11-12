@@ -11,9 +11,13 @@ PYVER="$(cat "$CLI/.python-version" 2>/dev/null || echo 3.13)"
 OUT=build/backend
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
+# Slow or flaky networks: wait longer than uv's 30 s default and retry, unless the caller set these already.
+export UV_HTTP_TIMEOUT="${UV_HTTP_TIMEOUT:-300}" UV_HTTP_RETRIES="${UV_HTTP_RETRIES:-5}"
+# Up to 3 attempts; downloads that finished stay in uv's cache, so a retry only fetches what is missing.
+retry() { local n; for n in 1 2 3; do "$@" && return; [ "$n" = 3 ] || echo "  (network hiccup, retrying…)" >&2; done; return 1; }
 
 echo "• standalone Python $PYVER"
-uv python install --quiet --no-bin "$PYVER"
+retry uv python install --quiet --no-bin "$PYVER"
 PYBIN="$(cd "$WORK" && UV_MANAGED_PYTHON=1 uv python find --no-project "$PYVER")"
 PYHOME="$(dirname "$(dirname "$(realpath "$PYBIN")")")"
 [ ! -f "$PYHOME/pyvenv.cfg" ] || { echo "found a virtualenv instead of a standalone Python: $PYHOME" >&2; exit 1; }
@@ -28,8 +32,8 @@ rm -f "$OUT/python/lib/python3"*/EXTERNALLY-MANAGED
 echo "• reprocrowd from $CLI (locked dependencies)"
 (cd "$CLI" && uv export --quiet --frozen --no-dev --no-hashes --no-emit-project --format requirements-txt) > "$WORK/requirements.txt"
 (cd "$CLI" && uv build --quiet --wheel --out-dir "$WORK/dist")
-uv pip install --quiet --python "$PY" --no-cache -r "$WORK/requirements.txt"
-uv pip install --quiet --python "$PY" --no-cache --no-deps "$WORK"/dist/*.whl
+retry uv pip install --quiet --python "$PY" --link-mode=copy -r "$WORK/requirements.txt"
+uv pip install --quiet --python "$PY" --link-mode=copy --no-deps "$WORK"/dist/*.whl
 
 echo "• trimming"
 LIB="$(echo "$OUT"/python/lib/python3.*)"
