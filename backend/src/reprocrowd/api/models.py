@@ -302,6 +302,7 @@ class CodegenJobCreate(Req):
     profile: str | None = Field(default=None, description="agent profile; default from the service config")
     allow_exec: bool = Field(default=True, description="let the agent run the analysis (the profile's exec_tools)")
     instructions: str = Field(default="", description="added to the agent prompt")
+    model: str | None = Field(default=None, description="override the profile's model, e.g. a model chosen from the CLI's available ones")
 
 
 class RunJobCreate(Req):

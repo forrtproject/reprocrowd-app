@@ -15,6 +15,7 @@ export interface UiState {
   scopes: Record<string, Scope>;
   llmProfile: string;
   agentProfile: string;
+  agentModel: string;
   allowExec: boolean;
   agentInstructions: string;
   template: string;
@@ -33,6 +34,7 @@ export function loadUiState(raw: any): UiState {
     scopes: s.scopes && typeof s.scopes === "object" ? s.scopes : {},
     llmProfile: String(s.llmProfile ?? ""),
     agentProfile: String(s.agentProfile ?? ""),
+    agentModel: String(s.agentModel ?? ""),
     allowExec: s.allowExec !== false,
     agentInstructions: String(s.agentInstructions ?? ""),
     template: String(s.template ?? ""),

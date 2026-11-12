@@ -2,6 +2,7 @@
 // backend's headless coding agent as a job: its messages and tool calls stream in while it works, the package's
 // files are listed (most recently changed first) with the TODO(LLM) markers left.
 import { host, pkg } from "../api";
+import type { LlmModel, LlmModels } from "../api";
 import type { AgentProfile, FileEntry, PromptPreview, ScriptState } from "../types";
 import { esc, modal, showPrompt, sizeText, when } from "../util";
 import { appendEvents, JobFollower, statusBadge } from "./jobs";
@@ -11,6 +12,7 @@ export class CodegenStep implements Step {
   title = "Code generation";
   private job = new JobFollower("codegen");
   private profiles: AgentProfile[] = [];
+  private models?: LlmModels;
   private files: FileEntry[] = [];
   private script?: ScriptState;
 
@@ -18,6 +20,7 @@ export class CodegenStep implements Step {
 
   async load() {
     if (!this.profiles.length) this.profiles = await host.service<AgentProfile[]>("/v1/agent-profiles").catch(() => []);
+    this.models = await host.llmModels().catch(() => undefined);
     await Promise.all([this.job.load(), this.loadFiles()]);
   }
 
@@ -41,7 +44,7 @@ export class CodegenStep implements Step {
     const j = this.job.job;
     const running = this.job.running;
     const ready = !!s?.template;
-    const profile = this.profiles.find((p) => p.name === st.agentProfile) ?? this.profiles.find((p) => p.default) ?? this.profiles[0];
+    const profile = this.profiles.find((p) => p.events === "opencode-json") ?? this.profiles.find((p) => p.name === st.agentProfile) ?? this.profiles.find((p) => p.default) ?? this.profiles[0];
     const res = j?.result?.type === "codegen" ? j.result : undefined;
     body.innerHTML = `
     <div class="cols cols-codegen">
@@ -57,6 +60,7 @@ export class CodegenStep implements Step {
           <div><b>Headless coding agent</b><div class="hint">Runs in the package folder without interaction and implements the TODO(LLM): markers. The package is committed to git before and after.</div>
             <div class="form-row">
               <label>Profile <select id="rp-profile" ${running ? "disabled" : ""}>${this.profiles.map((p) => `<option value="${esc(p.name)}" ${p === profile ? "selected" : ""}>${esc(p.name)}: ${esc(p.model || "default")}${p.effort ? `, ${esc(p.effort)}` : ""}</option>`).join("")}</select></label>
+              <label>Model <select id="rp-model" ${running ? "disabled" : ""}><option value="">(the CLI's default)</option></select></label>
               <label class="inline" title="${esc(profile?.exec_tools.join(", ") ?? "")}"><input type="checkbox" id="rp-exec" ${st.allowExec ? "checked" : ""} ${running ? "disabled" : ""} /> let it run the analysis (R, Python, Snakemake)</label>
             </div>
             <div class="form-row"><button id="rp-prompt" ${ready ? "" : "disabled"}>Show prompt</button></div>
@@ -83,6 +87,38 @@ export class CodegenStep implements Step {
       st.agentProfile = prof.value;
       this.w.app.save();
     });
+    const modelSel = body.querySelector<HTMLSelectElement>("#rp-model")!;
+    /** The agent profile that runs a given model: Claude Code models → the Claude agent, everything else → the OpenCode agent. */
+    const profileForModel = (id: string) => {
+      if (!id) return undefined;
+      return (id.startsWith("claude/")
+        ? this.profiles.find((p) => p.events === "claude-stream-json")
+        : this.profiles.find((p) => p.events === "opencode-json"))?.name;
+    };
+    // The model list always comes from the detected models (never hard-coded); picking one selects the matching profile.
+    const fillModels = () => {
+      const m = this.models;
+      if (!m) return;
+      const byProv = new Map<string, LlmModel[]>();
+      for (const x of m.available) if (!m.disabled.includes(x.id)) {
+        const a = byProv.get(x.provider) ?? [];
+        a.push(x);
+        byProv.set(x.provider, a);
+      }
+      modelSel.innerHTML = `<option value="">(the CLI's default)</option>${[...byProv.entries()]
+        .map(([p, arr]) => `<optgroup label="${esc(p)}">${arr.map((x) => `<option value="${esc(x.id)}">${esc(x.name)}</option>`).join("")}</optgroup>`)
+        .join("")}`;
+      if (st.agentModel && m.available.some((x) => x.id === st.agentModel)) modelSel.value = st.agentModel;
+      const p = profileForModel(modelSel.value);
+      if (p && prof.value !== p) { prof.value = p; st.agentProfile = p; }
+    };
+    fillModels();
+    modelSel.addEventListener("change", () => {
+      st.agentModel = modelSel.value;
+      const p = profileForModel(modelSel.value);
+      if (p) { prof.value = p; st.agentProfile = p; }
+      this.w.app.save();
+    });
     body.querySelector<HTMLInputElement>("#rp-exec")!.addEventListener("change", (e) => {
       st.allowExec = (e.target as HTMLInputElement).checked;
       this.w.app.save();
@@ -101,6 +137,7 @@ export class CodegenStep implements Step {
           profile: prof.value || undefined,
           allow_exec: st.allowExec,
           instructions: body.querySelector<HTMLTextAreaElement>("#rp-instr")!.value.trim(),
+          model: st.agentModel || undefined,
         }),
       ),
     );
@@ -142,20 +179,22 @@ export class CodegenStep implements Step {
   private async start() {
     const st = this.w.app.state;
     const profile = this.profiles.find((p) => p.name === (document.querySelector<HTMLSelectElement>("#rp-profile")?.value ?? ""));
+    const model = document.querySelector<HTMLSelectElement>("#rp-model")?.value || "";
+    st.agentModel = model;
     st.agentInstructions = document.querySelector<HTMLTextAreaElement>("#rp-instr")?.value.trim() ?? "";
     const tools = profile ? [...profile.tools, ...(st.allowExec ? profile.exec_tools : [])] : [];
     const ok = await new Promise<boolean>((resolve) => {
       const dlg = modal("dlg-wide", `<h3>Run the coding agent?</h3>
         <p>The agent works in <code>${esc(this.w.app.summary().path)}</code> and may take minutes to hours. It can read and write files there${st.allowExec ? " and run the analysis" : ""}.</p>
-        <div class="kv"><span>Profile</span><span>${esc(profile?.name ?? "(default)")} · model ${esc(profile?.model || "default")} · effort ${esc(profile?.effort || "default")} · timeout ${profile ? Math.round(profile.timeout_s / 60) : "?"} min</span>
-          <span>Command</span><code>${esc(profile?.argv.join(" ").replace("{tools}", tools.join(",")) ?? "")}</code>
+        <div class="kv"><span>Profile</span><span>${esc(profile?.name ?? "(default)")} · model ${esc(model || profile?.model || "default")} · effort ${esc(profile?.effort || "default")} · timeout ${profile ? Math.round(profile.timeout_s / 60) : "?"} min</span>
+          <span>Command</span><code>${esc(profile?.argv.join(" ").replace("{model}", model || profile?.model || "").replace("{tools}", tools.join(",")) ?? "")}</code>
           <span>Tools</span><span>${esc(tools.join(", "))}</span></div>
         <form method="dialog"><menu><button value="cancel">Cancel</button><button value="ok" class="primary">Run</button></menu></form>`);
       dlg.addEventListener("close", () => resolve(dlg.returnValue === "ok"));
     });
     if (!ok) return;
     this.w.app.save();
-    await this.w.busy("codegen-start", "Starting the coding agent", () => this.job.start({ profile: profile?.name, allow_exec: st.allowExec, instructions: st.agentInstructions }));
+    await this.w.busy("codegen-start", "Starting the coding agent", () => this.job.start({ profile: profile?.name, allow_exec: st.allowExec, instructions: st.agentInstructions, model: model || undefined }));
     this.w.repoll();
   }
 }

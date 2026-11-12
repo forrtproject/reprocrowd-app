@@ -695,7 +695,7 @@ def create_job(pkg: Pkg, body: Annotated[M.JobCreate, Body()], response: Respons
     if isinstance(body, M.RunJobCreate):
         job = run.start(pkg)
     else:
-        job = codegen.start(pkg, profile=body.profile, allow_exec=body.allow_exec, instructions=body.instructions)
+        job = codegen.start(pkg, profile=body.profile, allow_exec=body.allow_exec, instructions=body.instructions, model=body.model)
     response.headers["Location"] = f"/v1/packages/{pkg.id}/jobs/{job.id}"
     return job
 
@@ -720,8 +720,8 @@ def running_jobs(page: Paged):
           description="Takes the body of `POST …/jobs` with `type: codegen` and returns what would be sent. Runs nothing and stores nothing.",
           responses=errors("script_missing", "unknown_profile"))
 def preview_codegen(pkg: Pkg, body: M.CodegenJobCreate):
-    p = codegen.plan(pkg, profile=body.profile, allow_exec=body.allow_exec, instructions=body.instructions)
-    return M.PromptPreview(prompt=p.prompt, argv=p.argv, profile=p.name, model=p.profile.model, effort=p.profile.effort)
+    p = codegen.plan(pkg, profile=body.profile, allow_exec=body.allow_exec, instructions=body.instructions, model=body.model)
+    return M.PromptPreview(prompt=p.prompt, argv=p.argv, profile=p.name, model=body.model or p.profile.model, effort=p.profile.effort)
 
 
 @api.get("/packages/{pkg}/jobs", tags=["jobs"], response_model=list[Job], summary="List jobs (oldest first)")

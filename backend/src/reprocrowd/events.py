@@ -17,7 +17,7 @@ TOOL_RESULT_MAX = 2000
 
 
 def _tool_summary(name: str, inp: dict) -> str:
-    for key in ("file_path", "command", "pattern", "path", "url", "description"):
+    for key in ("file_path", "filePath", "command", "pattern", "path", "url", "description"):
         if isinstance(inp.get(key), str):
             return f"{name} {inp[key]}"
     return name
@@ -59,7 +59,42 @@ def parse_text(line: str) -> Iterable[Raw]:
     yield ("log", line, None, None)
 
 
-PARSERS: dict[str, Callable[[str], Iterable[Raw]]] = {"claude-stream-json": parse_claude, "text": parse_text}
+def parse_opencode(line: str) -> Iterable[Raw]:
+    """OpenCode's ``run --format json``: one JSON object per line; a tool call carries its result in ``state``."""
+    try:
+        ev = json.loads(line)
+    except ValueError:
+        yield ("log", line, None, None)
+        return
+    t = ev.get("type")
+    part = ev.get("part") or {}
+    if t == "step_start":
+        yield ("start", "step started", None, None)
+    elif t == "text":
+        txt = (part.get("text") or "").strip()
+        if txt:
+            yield ("text", txt, None, None)
+    elif t == "tool_use":
+        tool = part.get("tool", "?")
+        state = part.get("state") or {}
+        yield ("tool_use", _tool_summary(tool, state.get("input") or {}), tool, None)
+        status = state.get("status")
+        output = state.get("output")
+        if status == "error":
+            yield ("tool_result", str(output or "")[:TOOL_RESULT_MAX], None, True)
+        elif output:
+            yield ("tool_result", str(output)[:TOOL_RESULT_MAX], None, False)
+    elif t == "reasoning":
+        return
+    elif t == "error":
+        yield ("log", str(part.get("message") or part.get("text") or "error"), None, True)
+    elif t == "session_error":
+        yield ("log", str(part.get("error") or "error"), None, True)
+    elif t == "step_finish":
+        return
+
+
+PARSERS: dict[str, Callable[[str], Iterable[Raw]]] = {"claude-stream-json": parse_claude, "opencode-json": parse_opencode, "text": parse_text}
 
 
 class EventReader:

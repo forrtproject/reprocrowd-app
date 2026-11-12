@@ -135,6 +135,15 @@ model = "sonnet"
 effort = "high"
 timeout_s = 7200
 events = "claude-stream-json"
+
+# OpenCode as a headless coding agent: --auto approves the tool calls it makes (Read/Write/Edit/Glob/Grep/Bash).
+# model = "" uses the CLI's default; pick one of your models on the starting page.
+[agent.profiles.opencode]
+argv = ["opencode", "run", "--format", "json", "-m", "{model}", "--variant", "{effort}", "--auto"]
+model = ""
+effort = ""
+timeout_s = 7200
+events = "opencode-json"
 `;
 
 export function readUserConfig(): string {
@@ -204,9 +213,14 @@ function writeConfig(port: number, token: string) {
   // The OpenCode profile is the model-capable profile the "LLM models" feature relies on; keep it present even if the
   // user's config was written by an older version or edited to drop it.
   if (!profiles.opencode) profiles.opencode = { argv: ["opencode", "run", "--format", "json", "-m", "{model}", "--variant", "{effort}"], output: "opencode-json", model: "", effort: "", timeout_s: 1800 };
+  const agent = (user.agent ?? {}) as Record<string, any>;
+  const agentProfiles = { ...((agent.profiles ?? {}) as Record<string, any>) };
+  // Same for the headless coding agent: keep an OpenCode profile so the agent can use the user's OpenCode models.
+  if (!agentProfiles.opencode) agentProfiles.opencode = { argv: ["opencode", "run", "--format", "json", "-m", "{model}", "--variant", "{effort}", "--auto"], model: "", effort: "", timeout_s: 7200, events: "opencode-json" };
   const cfg = {
     ...user,
     llm: { ...llm, profiles },
+    agent: { ...agent, profiles: agentProfiles },
     server: { host: "127.0.0.1", port, token, registry: path.join(userData(), "registry.json"), allowed_roots: [] },
     database: { url: "" },
     zenodo: { ...(user.zenodo ?? {}), sandbox: s.zenodo.sandbox, community: s.zenodo.community, token: "" },
