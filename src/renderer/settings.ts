@@ -1,6 +1,6 @@
 // Settings: you as the creator of Zenodo records, the Zenodo server and token, where packages go, the code editor,
-// and the app's backend (status, output, its configuration: LLM and agent profiles, OpenAlex).
-import { Config, host } from "./api";
+// the app's backend (status, output, its configuration: LLM and agent profiles, OpenAlex), and updates.
+import { Config, host, UpdateStatus } from "./api";
 import { esc, modal, showError } from "./util";
 
 const ZENODO = { zenodo: "https://zenodo.org", sandbox: "https://sandbox.zenodo.org" } as const;
@@ -56,6 +56,12 @@ export async function settingsDialog(onSaved: (changed: boolean) => void, focus?
         <label>Start the backend with <input name="becmd" value="${esc(cfg.backendCmd)}" placeholder="(the bundled backend)" spellcheck="false" /></label>
         <p class="hint">For example <code>uv run --project /path/to/backend python -m reprocrowd serve --host {host} --port {port}</code>. Empty: the backend that comes with the app.</p>
       </details>
+    </fieldset>
+    <fieldset id="set-updates"><legend>Updates</legend>
+      <p class="hint" id="upd-explain"></p>
+      <label class="inline"><input type="checkbox" name="checkupd" ${cfg.checkUpdates ? "checked" : ""} /> Check for a new version when ReproCrowd starts</label>
+      <div class="actions"><button type="button" id="upd-check">Check now</button><button type="button" id="upd-install" class="primary" hidden>Restart and install</button><button type="button" id="upd-page" hidden>Open the release page</button></div>
+      <p class="upd-status small" id="upd-status" aria-live="polite"></p>
     </fieldset>
     <p class="save-error warn-inline" hidden></p>
     <menu><button value="cancel">Cancel</button><button value="save" class="primary">Save</button></menu></form>`);
@@ -139,6 +145,52 @@ export async function settingsDialog(onSaved: (changed: boolean) => void, focus?
     b.disabled = false;
     showBackend();
   });
+  // ---------- updates ----------
+  const upd = { status: q<HTMLElement>("#upd-status"), check: q<HTMLButtonElement>("#upd-check"), install: q<HTMLButtonElement>("#upd-install"), page: q<HTMLButtonElement>("#upd-page") };
+  let updUrl = "";
+  let updPoll: number | undefined;
+  const showUpdate = (s: UpdateStatus) => {
+    const say = (cls: string, html: string) => (upd.status.innerHTML = `<span class="${cls}">${html}</span>`);
+    upd.install.hidden = s.state !== "ready";
+    upd.check.disabled = s.state === "checking" || s.state === "downloading";
+    updUrl = s.state === "manual" || s.state === "error" ? (s.url ?? "") : "";
+    upd.page.hidden = !updUrl;
+    if (s.state === "idle") say("muted", `You have ReproCrowd ${esc(s.current)}.`);
+    else if (s.state === "disabled") say("muted", esc(s.reason));
+    else if (s.state === "checking") say("muted", "Checking…");
+    else if (s.state === "not-available") say("muted", `You're up to date (${esc(s.current)}).${s.note ? ` ${esc(s.note)}` : ""}`);
+    else if (s.state === "downloading") say("ok", `Version ${esc(s.version)} is available; downloading… ${s.percent} %`);
+    else if (s.state === "ready") say("ok", `✓ Version ${esc(s.version)} is downloaded. Restart to install it (or it installs when you quit).`);
+    else if (s.state === "manual") say("ok", `Version ${esc(s.version)} is available (you have ${esc(s.current)}). ${esc(s.howTo)}`);
+    else if (s.state === "error") upd.status.innerHTML = `<span class="warn-inline">${esc(s.message)}</span>${s.detail ? `<br><span class="muted">${esc(s.detail)}</span>` : ""}`;
+    // While downloading, follow the progress until the dialog closes.
+    window.clearTimeout(updPoll);
+    if ((s.state === "downloading" || s.state === "checking") && dlg.open) updPoll = window.setTimeout(refreshUpdate, 1000);
+  };
+  const refreshUpdate = async () => {
+    try {
+      const info = await host.updateInfo();
+      q<HTMLElement>("#upd-explain").textContent = info.explain;
+      upd.check.hidden = info.mode === "off";
+      showUpdate(info.status);
+    } catch (err) {
+      upd.status.innerHTML = `<span class="warn-inline">${esc((err as Error).message)}</span>`;
+    }
+  };
+  void refreshUpdate();
+  upd.check.addEventListener("click", async () => {
+    showUpdate({ state: "checking", current: "" });
+    try {
+      showUpdate(await host.checkForUpdates());
+    } catch (err) {
+      upd.status.innerHTML = `<span class="warn-inline">${esc((err as Error).message)}</span>`;
+      upd.check.disabled = false;
+    }
+  });
+  upd.install.addEventListener("click", () => host.installUpdate().catch((err) => showError("Installing the update", err)));
+  upd.page.addEventListener("click", () => updUrl && host.openUrl(updUrl).catch((err) => showError("Opening the release page", err)));
+  dlg.addEventListener("close", () => window.clearTimeout(updPoll));
+
   if (focus) dlg.querySelector(`#set-${focus === "zenodo" ? "you" : "backend"}`)?.scrollIntoView();
 
   q<HTMLFormElement>("form").addEventListener("submit", async (e) => {
@@ -159,6 +211,7 @@ export async function settingsDialog(onSaved: (changed: boolean) => void, focus?
         packagesRoot: q<HTMLInputElement>("[name=root]").value.trim(),
         editorCmd: q<HTMLInputElement>("[name=editor]").value.trim(),
         backendCmd: q<HTMLInputElement>("[name=becmd]").value.trim(),
+        checkUpdates: q<HTMLInputElement>("[name=checkupd]").checked,
         zenodo: {
           sandbox: server() === "sandbox",
           community: q<HTMLInputElement>("[name=zcommunity]").value.trim(),

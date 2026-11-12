@@ -6,6 +6,7 @@ import { pathToFileURL } from "node:url";
 import * as backend from "./backend";
 import { Api, bindPackage, makeApi } from "./api";
 import { get } from "./service";
+import { initUpdater, promptUpdate } from "./updater";
 
 const SCHEME = "app";
 const ORIGIN = `${SCHEME}://ui`;
@@ -108,6 +109,7 @@ function menu() {
       {
         role: "help",
         submenu: [
+          { label: "Check for Updates…", click: () => promptUpdate() },
           { label: "About ReproCrowd (forrt.org)", click: () => shell.openExternal("https://forrt.org/reprocrowd/") },
           { label: "Backend log", click: () => dialog.showMessageBox({ type: "info", title: "Backend log", message: "The last lines the backend printed", detail: backend.logTail(60) || "(nothing yet)" }) },
         ],
@@ -158,6 +160,7 @@ app.on("second-instance", () => {
 app.whenReady().then(() => {
   serveUi();
   menu();
+  initUpdater();
   createWindow();
   backend.ensure().catch(() => {}); // start early; the UI shows problems when it asks
   app.on("activate", () => BrowserWindow.getAllWindows().length === 0 && createWindow());
