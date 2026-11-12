@@ -1,0 +1,34 @@
+{
+  "name": "reprocrowd-app",
+  "productName": "ReproCrowd",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Desktop app for AI-assisted computational reproductions, deposited on Zenodo",
+  "main": "build/main/index.js",
+  "author": "Luna Fazio",
+  "license": "UNLICENSED",
+  "scripts": {
+    "typecheck": "tsc --noEmit -p src/renderer && tsc --noEmit -p src/main",
+    "build": "scripts/build.sh",
+    "start": "npm run build && electron .",
+    "bundle-backend": "scripts/bundle-backend.sh",
+    "dist": "npm run build && npm run bundle-backend && electron-builder --linux dir AppImage",
+    "test:e2e": "node test/e2e.mjs"
+  },
+  "dependencies": {
+    "@fontsource/domine": "^5.3.0",
+    "@fontsource/jetbrains-mono": "^5.3.0",
+    "@fontsource/source-sans-3": "^5.3.1",
+    "pdfjs-dist": "^4.10.38",
+    "smol-toml": "^1.9.1"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "electron": "^45.3.1",
+    "electron-builder": "^26.18.0",
+    "esbuild": "^0.28.2",
+    "playwright-core": "^1.65.0",
+    "typescript": "^7.0.2",
+    "vite": "^6.4.6"
+  }
+}
