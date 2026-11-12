@@ -225,6 +225,8 @@ def test_codegen_preview_for_claim(client, pkg):
     assert "claims/C1.py" in prompt and "Do not modify analysis.py" in prompt and "ASSUMPTION" in prompt
     assert claims["C1"]["text"] in prompt and "claims/C2.py" not in prompt
     assert "prepare.py" in prompt
+    files = [ln.strip() for ln in prompt.splitlines() if ln.startswith("   - ")]
+    assert files[-1] == "- claims/C1.py (claim C1): implement" and any(f.startswith("- prepare.py: ") for f in files), files
     r = client.post(P + "/jobs:preview", json={"type": "codegen", "claim": "C2"})
     p2 = r.json()["prompt"]
     assert "claims/C2.py" in p2 and "claims/C1.py" not in p2
