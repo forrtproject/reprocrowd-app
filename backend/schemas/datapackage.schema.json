@@ -158,6 +158,45 @@
       "title": "ExtractionMeta",
       "type": "object"
     },
+    "FetchedOrigin": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "fetched",
+          "default": "fetched",
+          "title": "Type",
+          "type": "string"
+        },
+        "url": {
+          "description": "download URL (secrets such as API keys removed)",
+          "title": "Url",
+          "type": "string"
+        },
+        "repo": {
+          "description": "repository type the file came from (zenodo, github, gitlab, osf, figshare, ...)",
+          "title": "Repo",
+          "type": "string"
+        },
+        "id": {
+          "description": "repository-specific identifier (DOI, owner/repo, record id, ...)",
+          "title": "Id",
+          "type": "string"
+        },
+        "label": {
+          "description": "where the link was found, e.g. 'data availability statement'",
+          "title": "Label",
+          "type": "string"
+        }
+      },
+      "required": [
+        "url",
+        "repo",
+        "id",
+        "label"
+      ],
+      "title": "FetchedOrigin",
+      "type": "object"
+    },
     "FulltextMeta": {
       "additionalProperties": false,
       "properties": {
@@ -299,6 +338,7 @@
         "origin": {
           "discriminator": {
             "mapping": {
+              "fetched": "#/$defs/FetchedOrigin",
               "local": "#/$defs/LocalOrigin",
               "upload": "#/$defs/UploadOrigin"
             },
@@ -310,6 +350,9 @@
             },
             {
               "$ref": "#/$defs/UploadOrigin"
+            },
+            {
+              "$ref": "#/$defs/FetchedOrigin"
             }
           ],
           "title": "Origin"

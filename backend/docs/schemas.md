@@ -61,6 +61,16 @@ The last ZIP of the package (PUT …/archive).
 | `fulltexts` | list of string | yes | full-text resources it was made from |
 | `llm_call` | string \| null |  |  |
 
+### FetchedOrigin
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `type` | `"fetched"` |  | default `fetched` |
+| `url` | string | yes | download URL (secrets such as API keys removed) |
+| `repo` | string | yes | repository type the file came from (zenodo, github, gitlab, osf, figshare, ...) |
+| `id` | string | yes | repository-specific identifier (DOI, owner/repo, record id, ...) |
+| `label` | string | yes | where the link was found, e.g. 'data availability statement' |
+
 ### FulltextMeta
 
 | Field | Type | Req. | Description |
@@ -90,7 +100,7 @@ A work identifier that OpenAlex can resolve.
 | `note` | string |  | default `` |
 | `used` | boolean |  | false: kept on disk but not part of the reproduction; default `True` |
 | `archive` | string \| null |  | resource name of the zip archive this file was unpacked from |
-| `origin` | [LocalOrigin](#localorigin) \| [UploadOrigin](#uploadorigin) | yes |  |
+| `origin` | [LocalOrigin](#localorigin) \| [UploadOrigin](#uploadorigin) \| [FetchedOrigin](#fetchedorigin) | yes |  |
 
 ### LocalOrigin
 
