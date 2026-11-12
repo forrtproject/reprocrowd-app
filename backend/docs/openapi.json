@@ -6239,7 +6239,7 @@
                 }
               }
             },
-            "description": "`script_missing`: Create the master script first; `job_running`: Another job is running in this package"
+            "description": "`script_missing`: Create the master script first; `job_running`: Another job is running in this package; `claim_not_checked`: The claim is not ticked (or the package has no ticked claims); `claim_not_testable`: The claim is not testable; there is nothing to implement; `claim_no_evidence`: The claim has no evidence targets to reproduce"
           },
           "400": {
             "content": {
@@ -6262,6 +6262,17 @@
               }
             },
             "description": "`job_start_failed`: The job's command could not be started"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "`not_found`: No such resource"
           }
         }
       },
@@ -6528,7 +6539,7 @@
                 }
               }
             },
-            "description": "`script_missing`: Create the master script first"
+            "description": "`script_missing`: Create the master script first; `claim_not_checked`: The claim is not ticked (or the package has no ticked claims); `claim_not_testable`: The claim is not testable; there is nothing to implement; `claim_no_evidence`: The claim has no evidence targets to reproduce"
           },
           "400": {
             "content": {
@@ -6540,6 +6551,17 @@
               }
             },
             "description": "`unknown_profile`: No LLM profile with this name is configured"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "`not_found`: No such resource"
           }
         }
       }
@@ -10558,6 +10580,19 @@
             "title": "Instructions",
             "description": "added to the agent prompt",
             "default": ""
+          },
+          "claim": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^C\\d+$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Claim",
+            "description": "implement only this claim's file (claims mode); it must be ticked, testable and have evidence"
           }
         },
         "additionalProperties": false,

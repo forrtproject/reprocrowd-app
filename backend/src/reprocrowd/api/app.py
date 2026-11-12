@@ -696,12 +696,14 @@ def agent_profiles():
                       "`TODO(LLM):` markers. `type: run` runs the master script with the template's command (output and "
                       "errors as `log` events), then checks `outputs/results.json`. The package is committed to git before "
                       "and after. Returns 202 at once; follow the job at its `Location`, its progress at `…/events`.",
-          responses=errors("script_missing", "job_running", "unknown_profile", "job_start_failed"))
+          responses=errors("script_missing", "job_running", "unknown_profile", "job_start_failed", "not_found", "claim_not_checked",
+                           "claim_not_testable", "claim_no_evidence"))
 def create_job(pkg: Pkg, body: Annotated[M.JobCreate, Body()], response: Response):
     if isinstance(body, M.RunJobCreate):
         job = run.start(pkg)
     else:
-        job = codegen.start(pkg, profile=body.profile, allow_exec=body.allow_exec, instructions=body.instructions)
+        job = codegen.start(pkg, profile=body.profile, allow_exec=body.allow_exec, instructions=body.instructions,
+                             claim=body.claim)
     response.headers["Location"] = f"/v1/packages/{pkg.id}/jobs/{job.id}"
     return job
 
@@ -724,9 +726,10 @@ def running_jobs(page: Paged):
 
 @api.post("/packages/{pkg}/jobs:preview", tags=["jobs"], response_model=M.PromptPreview, summary="Show the prompt of a code-generation job",
           description="Takes the body of `POST …/jobs` with `type: codegen` and returns what would be sent. Runs nothing and stores nothing.",
-          responses=errors("script_missing", "unknown_profile"))
+          responses=errors("script_missing", "unknown_profile", "not_found", "claim_not_checked", "claim_not_testable",
+                           "claim_no_evidence"))
 def preview_codegen(pkg: Pkg, body: M.CodegenJobCreate):
-    p = codegen.plan(pkg, profile=body.profile, allow_exec=body.allow_exec, instructions=body.instructions)
+    p = codegen.plan(pkg, profile=body.profile, allow_exec=body.allow_exec, instructions=body.instructions, claim=body.claim)
     return M.PromptPreview(prompt=p.prompt, argv=p.argv, profile=p.name, model=p.profile.model, effort=p.profile.effort)
 
 

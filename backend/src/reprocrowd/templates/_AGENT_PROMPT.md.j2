@@ -48,4 +48,13 @@ Rules:
 {% endif %}
 6. List required packages in {{ "install.R (install.packages(...) calls)" if tpl.language == "R" else "requirements.txt" }}.
 7. If something in the paper is ambiguous, pick the most plausible reading and document it in a comment starting with "# ASSUMPTION:".
+{% if one %}
+Scope of this job: only claim {{ one.id }}. Implement just the files listed in rule 1.
+- Claim {{ one.id }}: {{ one.text }}
+{% for s in one.sub_claims %}  - {{ s.id }}: {{ s.text }}
+{% endfor %}
+Do not modify {{ tpl.claims.runner.dest }} or any other claims/ file.{% if tpl.claims.prepare.dest %} Shared code goes in {{ tpl.claims.prepare.dest }} only if it is listed in rule 1.{% endif %}
+
+Where the paper does not describe something this claim needs, work it out from the study's data and code, and flag the guess with a comment starting with "# ASSUMPTION:" (rule 7).
+{% endif %}
 8. When finished, run the pipeline once if you can and fix errors.

@@ -34,7 +34,7 @@ class Plan(NamedTuple):
     prompt: str
 
 
-def plan(pkg: Package, *, profile: str | None, allow_exec: bool, instructions: str) -> Plan:
+def plan(pkg: Package, *, profile: str | None, allow_exec: bool, instructions: str, claim: str | None = None) -> Plan:
     """What a code-generation job would run; nothing is written."""
     name, prof = agent_profile(profile)
     tpl = current_template(pkg)
@@ -42,11 +42,11 @@ def plan(pkg: Package, *, profile: str | None, allow_exec: bool, instructions: s
         raise conflict("script_missing", "create the master script first (PUT …/script)")
     tools = prof.tools + (prof.exec_tools if allow_exec else [])
     argv = expand_argv(prof.argv, {"model": prof.model, "effort": prof.effort, "tools": ",".join(tools)})
-    return Plan(name, prof, tpl, tools, argv, agent_prompt(pkg, tpl, instructions))
+    return Plan(name, prof, tpl, tools, argv, agent_prompt(pkg, tpl, instructions, claim))
 
 
-def start(pkg: Package, *, profile: str | None, allow_exec: bool, instructions: str) -> Job:
-    name, prof, tpl, tools, argv, prompt = plan(pkg, profile=profile, allow_exec=allow_exec, instructions=instructions)
+def start(pkg: Package, *, profile: str | None, allow_exec: bool, instructions: str, claim: str | None = None) -> Job:
+    name, prof, tpl, tools, argv, prompt = plan(pkg, profile=profile, allow_exec=allow_exec, instructions=instructions, claim=claim)
     jobs.ensure_idle(pkg)
     jid = jobs.new_id()
 
@@ -67,5 +67,7 @@ def start(pkg: Package, *, profile: str | None, allow_exec: bool, instructions: 
 
     request = {"profile": name, "model": prof.model, "effort": prof.effort, "allow_exec": allow_exec, "instructions": instructions,
                "template": tpl.id, "tools": tools}
+    if claim:
+        request["claim"] = claim
     return jobs.start(pkg, jid=jid, type="codegen", argv=argv, stdin=prompt, timeout_s=prof.timeout_s, events_format=prof.events,
                       profile=name, request=request, finish=finish)

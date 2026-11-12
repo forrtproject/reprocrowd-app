@@ -287,6 +287,8 @@ class CodegenJobCreate(Req):
     profile: str | None = Field(default=None, description="agent profile; default from the service config")
     allow_exec: bool = Field(default=True, description="let the agent run the analysis (the profile's exec_tools)")
     instructions: str = Field(default="", description="added to the agent prompt")
+    claim: str | None = Field(default=None, pattern=r"^C\d+$",
+                              description="implement only this claim's file (claims mode); it must be ticked, testable and have evidence")
 
 
 class RunJobCreate(Req):

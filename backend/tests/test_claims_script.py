@@ -214,3 +214,30 @@ def test_run_uses_current_ticks(client, pkg):
     ids = {row["id"] for row in json.loads((root / "outputs" / "results.json").read_text())["results"]}
     assert ids == set(claims["C1"]["evidence"]) and not ids & set(_evidence(claims["C2"]))
     assert (root / "claims" / "C2.py").exists()
+
+
+def test_codegen_preview_for_claim(client, pkg):
+    P, root, claims, _ = _claims(client, pkg, tick=("C1", "C2"))
+    assert client.put(P + "/script", json={"template": "python"}).status_code == 200
+    r = client.post(P + "/jobs:preview", json={"type": "codegen", "claim": "C1"})
+    assert r.status_code == 200, r.text
+    prompt = r.json()["prompt"]
+    assert "claims/C1.py" in prompt and "Do not modify analysis.py" in prompt and "ASSUMPTION" in prompt
+    assert claims["C1"]["text"] in prompt and "claims/C2.py" not in prompt
+    assert "prepare.py" in prompt
+    r = client.post(P + "/jobs:preview", json={"type": "codegen", "claim": "C2"})
+    p2 = r.json()["prompt"]
+    assert "claims/C2.py" in p2 and "claims/C1.py" not in p2
+    assert all(s["text"] in p2 for s in claims["C2"]["sub_claims"])
+    whole = client.post(P + "/jobs:preview", json={"type": "codegen"}).json()["prompt"]
+    assert "Do not modify analysis.py" not in whole
+
+
+def test_codegen_claim_preconditions(client, pkg):
+    P, *_ = _claims(client, pkg)
+    assert client.put(P + "/script", json={"template": "python"}).status_code == 200
+    for body, status, code in [({"claim": "C2"}, 409, "claim_not_checked"), ({"claim": "C3"}, 409, "claim_not_testable"),
+                               ({"claim": "C9"}, 404, "not_found")]:
+        for path in ("/jobs:preview", "/jobs"):
+            r = client.post(P + path, json={"type": "codegen", **body})
+            problem(r, status, code)

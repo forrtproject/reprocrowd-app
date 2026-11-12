@@ -17,7 +17,7 @@ from jinja2 import Environment, PackageLoader, StrictUndefined
 from . import claims as claims_mod
 from . import jobs
 from .curation import Curation
-from .errors import ApiError, conflict, invalid
+from .errors import ApiError, conflict, invalid, not_found
 from .package import Package, atomic_write, sha256_file, slug
 from .schemas.common import now
 from .schemas.exports import AnalysisPlan, Paper, PlanStep, ResultsSchema
@@ -360,15 +360,40 @@ def todo_status(pkg: Package, tpl: Template) -> TodoStatus:
     return TodoStatus(remaining=sum(f.remaining for f in files), files=files)
 
 
-def agent_prompt(pkg: Package, tpl: Template, instructions: str = "", *, claims: list[dict] | None = None) -> str:
-    """claims: the files of a claims-mode script (see _claim_todo); found from the package when not given."""
+def agent_prompt(pkg: Package, tpl: Template, instructions: str = "", claim: str | None = None, *,
+                 claims: list[dict] | None = None) -> str:
+    """claims: the files of a claims-mode script (see _claim_todo); found from the package when not given.
+    claim: scope the prompt to this claim's file (and the prepare file while it has TODO markers)."""
     m = pkg.load()
     used = [r for r in m.by_kind("input") if r.reprocrowd.used]
     by_role = {role: [r for r in used if r.reprocrowd.role == role] for role in ("data", "code", "other")}
     if claims is None and tpl.claims and _claims_script(pkg):
         claims = _claim_todo(pkg, tpl, claims_mod.claim_scope(pkg))
+    one = None
+    if claim:
+        one = _scoped_claim(pkg, tpl, claim)
+        claims = [f for f in claims or [] if f["claim"] is None and f["todo"]] + [f for f in claims or [] if f["claim"] and f["claim"].id == claim]
     text = _env().get_template("_AGENT_PROMPT.md.j2").render(tpl=tpl, inputs=by_role, marker=TODO_MARK, folder=str(pkg.root),
-                                                             claims=claims or [])
+                                                             claims=claims or [], one=one)
     if instructions.strip():
         text += f"\nAdditional instructions:\n{instructions.strip()}\n"
     return text
+
+
+def _scoped_claim(pkg: Package, tpl: Template, claim_id: str):
+    """The claim a codegen job is scoped to; raises the precondition problems (404, then 409s)."""
+    if tpl.claims is None:
+        raise conflict("claim_not_checked", "this template has no claims mode")
+    found = next((c for c, _ in Curation(pkg, "claims").effective() if c.id == claim_id), None)
+    if found is None:
+        raise not_found("claim", claim_id)
+    if not found.testable:
+        raise conflict("claim_not_testable", f"claim {claim_id} is not testable")
+    if not claims_mod.evidence(found):
+        raise conflict("claim_no_evidence", f"claim {claim_id} has no evidence targets")
+    scope = claims_mod.claim_scope(pkg)
+    if not found.checked or scope is None or claim_id not in {c.id for c in scope.claims}:
+        raise conflict("claim_not_checked", f"claim {claim_id} is not ticked; tick it and regenerate the script")
+    if not (pkg.path(_claim_dest(tpl, claim_id)).exists() and claims_mod.claim_files(pkg, claim_id)):
+        raise conflict("script_missing", f"claim {claim_id} has no file yet; regenerate the script (PUT …/script)")
+    return found
