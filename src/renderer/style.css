@@ -405,6 +405,9 @@ a { color: var(--accent-dark); }
 .brand-name { font-family: var(--serif); font-weight: 700; font-size: 17px; letter-spacing: -0.02em; }
 button.ghost { background: transparent; border-color: transparent; color: var(--ink-soft); }
 button.ghost:hover:not(:disabled) { border-color: var(--border); color: var(--accent-dark); }
+.icon-btn { display: inline-flex; align-items: center; justify-content: center; padding: 4px 6px; line-height: 0; }
+.icon-btn svg { vertical-align: middle; }
+.llm-models .section-title { display: flex; align-items: center; gap: 8px; }
 .navlink { color: var(--ink-soft); text-decoration: none; font-weight: 600; font-size: 14px; }
 .navlink:hover { color: var(--accent-dark); }
 .btn-primary, .btn-secondary { display: inline-block; padding: .62rem 1.2rem; border-radius: 999px; font-weight: 600; font-size: 15px; border: 1px solid transparent; cursor: pointer; }

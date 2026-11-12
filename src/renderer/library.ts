@@ -37,8 +37,8 @@ export async function start() {
       </div>
       <div class="hero-visual"><img src="${sticker}" alt="ReproCrowd" class="hero-sticker" /></div>
     </div></section>
-    <section class="container llm-models"><div id="llm-models"></div></section>
     <section class="container lib-list"><div id="lib-body"><p class="muted">Loading…</p></div></section>
+    <section class="container llm-models"><div id="llm-models"></div></section>
   </main>`;
 
   $("#settings-btn").addEventListener("click", () => settingsDialog(() => render()));
@@ -102,8 +102,8 @@ async function renderLlmModels(refresh = false) {
         .join("")}</div>
     </div>`)
     .join("");
-  el.innerHTML = `<h2 class="section-title">LLM models <button class="ghost" id="llm-recheck" title="Look again for models you've added">Recheck</button></h2>
-    <div class="card llm-models-card">${familyHtml || '<p class="muted">No models found. Add one to your agent\u2019s config, then Recheck.</p>'}</div>`;
+  el.innerHTML = `<h2 class="section-title">LLM models <button class="ghost icon-btn" id="llm-recheck" title="Refresh the model list" aria-label="Refresh the model list"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg></button></h2>
+    <div class="card llm-models-card">${familyHtml || '<p class="muted">No models found. Add one to your agent\u2019s config, then refresh.</p>'}</div>`;
   el.querySelector("#llm-recheck")?.addEventListener("click", () => renderLlmModels(true));
   const syncFamilies = () => {
     el.querySelectorAll<HTMLInputElement>("[data-family-toggle]").forEach((f) => {
