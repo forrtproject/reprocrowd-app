@@ -123,6 +123,59 @@
       "title": "Claim",
       "type": "object"
     },
+    "ClaimResult": {
+      "additionalProperties": false,
+      "description": "A claim's result from the comparison: every evidence value of the claim and its sub-claims pooled.",
+      "properties": {
+        "claim": {
+          "title": "Claim",
+          "type": "string"
+        },
+        "verdict": {
+          "enum": [
+            "reproduced",
+            "partly",
+            "not_reproduced"
+          ],
+          "title": "Verdict",
+          "type": "string"
+        },
+        "matched": {
+          "title": "Matched",
+          "type": "integer"
+        },
+        "tested": {
+          "title": "Tested",
+          "type": "integer"
+        },
+        "by_sub_claim": {
+          "description": "results of the sub-claims, beside the pooled one",
+          "items": {
+            "$ref": "#/$defs/SubClaimResult"
+          },
+          "title": "By Sub Claim",
+          "type": "array"
+        },
+        "evidence": {
+          "description": "the claim's own evidence (an atomic claim's)",
+          "items": {
+            "$ref": "#/$defs/EvidenceResult"
+          },
+          "title": "Evidence",
+          "type": "array"
+        }
+      },
+      "required": [
+        "claim",
+        "verdict",
+        "matched",
+        "tested",
+        "by_sub_claim",
+        "evidence"
+      ],
+      "title": "ClaimResult",
+      "type": "object"
+    },
     "ClaimRunRecord": {
       "additionalProperties": false,
       "description": "When a claim's breakdown (evidence and method) was last generated, and for which text.",
@@ -139,6 +192,18 @@
         "content_hash": {
           "title": "Content Hash",
           "type": "string"
+        },
+        "result": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ClaimResult"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "the claim's result in that run, kept when the claim is later unticked or edited"
         }
       },
       "required": [
@@ -147,6 +212,43 @@
         "content_hash"
       ],
       "title": "ClaimRunRecord",
+      "type": "object"
+    },
+    "EvidenceResult": {
+      "additionalProperties": false,
+      "properties": {
+        "target": {
+          "title": "Target",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "match",
+            "within",
+            "deviation",
+            "missing",
+            "figure",
+            "unparsable"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "expected_text": {
+          "title": "Expected Text",
+          "type": "string"
+        },
+        "reproduced_text": {
+          "title": "Reproduced Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "target",
+        "status",
+        "expected_text",
+        "reproduced_text"
+      ],
+      "title": "EvidenceResult",
       "type": "object"
     },
     "LlmCall": {
@@ -492,6 +594,50 @@
         "text"
       ],
       "title": "SubClaim",
+      "type": "object"
+    },
+    "SubClaimResult": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "verdict": {
+          "enum": [
+            "reproduced",
+            "partly",
+            "not_reproduced"
+          ],
+          "title": "Verdict",
+          "type": "string"
+        },
+        "matched": {
+          "description": "evidence values that match or are within tolerance",
+          "title": "Matched",
+          "type": "integer"
+        },
+        "tested": {
+          "description": "evidence values that were computed (match, within or deviation)",
+          "title": "Tested",
+          "type": "integer"
+        },
+        "evidence": {
+          "items": {
+            "$ref": "#/$defs/EvidenceResult"
+          },
+          "title": "Evidence",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "verdict",
+        "matched",
+        "tested",
+        "evidence"
+      ],
+      "title": "SubClaimResult",
       "type": "object"
     }
   },

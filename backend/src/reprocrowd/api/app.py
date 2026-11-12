@@ -32,6 +32,7 @@ from ..identifiers import parse_identifier
 from ..package import MANIFEST, Package, Registry
 from ..events import EventReader, read_events
 from ..schemas.document import Document
+from ..schemas.claims import ClaimStatus
 from ..schemas.comparison import Comparison, CompareSettings
 from ..schemas.jobs import Job, JobEvent
 from ..schemas.manifest import ArchiveInfo, Resource, Submission, ZenodoDeposit
@@ -805,6 +806,15 @@ def get_comparison(pkg: Pkg, rounding: Annotated[str, Query(pattern=r"^(reported
                    threshold: Annotated[float, Query(ge=0)] = 5):
     st = CompareSettings(rounding="reported" if rounding == "reported" else int(rounding), threshold=threshold)
     return run.comparison(pkg, st)
+
+
+@api.get("/packages/{pkg}/claims:status", tags=["comparison"], response_model=list[ClaimStatus], summary="State and result of every claim",
+         description="`state` is `not_testable`; `running` (a claim's codegen job, or any run job for the ticked claims); the "
+                     "verdict (`reproduced`, `partly`, `not_reproduced`) when the claim ran and has not changed since; "
+                     "otherwise `ready` (ticked) or `review`. A changed claim is `stale` and keeps its last `result`. A "
+                     "claim's verdict pools all the evidence of the claim and its sub-claims; `by_sub_claim` lists theirs.")
+def claims_status(pkg: Pkg):
+    return claims.statuses(pkg)
 
 
 # ---------- figure crops ----------

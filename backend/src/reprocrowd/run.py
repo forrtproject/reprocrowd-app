@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from . import files, gitrepo, jobs
+from . import claims, files, gitrepo, jobs
 from .compare import check_output, compare
 from .config import settings
 from .errors import conflict
@@ -54,6 +54,8 @@ def start(pkg: Package) -> Job:
                 errors, warnings, _ = check_output(pkg.read_json(RESULTS), targets)
             except ValueError as e:
                 errors = [f"not valid JSON: {e}"]
+        if exists:
+            claims.record_run(pkg, jid)  # claims mode: which claims this run covered, with their results
         after = gitrepo.commit(pkg, f"Run ({jid}, {job.status}, exit {job.exit_code})") if use_git else None
         return RunResult(command=tpl.command, log=job.stdout, results_file=exists, output_errors=errors, output_warnings=warnings, commit_after=after)
 

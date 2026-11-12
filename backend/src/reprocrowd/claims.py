@@ -18,10 +18,14 @@ from .extractions import Scope, check_scope, listing
 from .extractions import get as get_extraction
 from .package import Package
 from .schemas import json_schema
+from .schemas.claims import ClaimResult, ClaimState, ClaimStatus, EvidenceResult, SubClaimResult, Verdict
+from .schemas.common import now
+from .schemas.comparison import CompareSettings, Comparison, Status
 from .schemas.curation import (
     Action,
     Claim,
     ClaimLlmItem,
+    ClaimRunRecord,
     LlmEntry,
     LlmRun,
     MethodLlmItem,
@@ -124,6 +128,116 @@ def claim_scope(pkg: Package) -> ClaimScope | None:
 def claim_files(pkg: Package, claim_id: str) -> list[str]:
     """Paths of the master-script files generated for the claim (claims/C1.py)."""
     return [r.path for r in pkg.load().by_kind("script") if getattr(r.reprocrowd, "claim", None) == claim_id]
+
+
+# ---------- results and statuses ----------
+
+_TESTED = {"match", "within", "deviation"}
+
+
+def verdict(statuses: list[Status]) -> tuple[Verdict, int, int]:
+    """(verdict, matched, tested): missing, unparsable and figure rows are not computed, so they are not tested."""
+    tested = sum(s in _TESTED for s in statuses)
+    matched = sum(s in ("match", "within") for s in statuses)
+    if tested == 0 or matched == 0:
+        return "not_reproduced", matched, tested
+    return ("reproduced" if matched == tested else "partly"), matched, tested
+
+
+def _evidence_results(cmp: Comparison, ids: list[str]) -> list[EvidenceResult]:
+    rows = {r.target: r for r in cmp.rows}
+    return [EvidenceResult(target=i, status=rows[i].status, expected_text=rows[i].expected_text, reproduced_text=rows[i].reproduced_text)
+            for i in ids if i in rows]
+
+
+def results(pkg: Package, cmp: Comparison) -> list[ClaimResult]:
+    """The result of each testable claim that has evidence in the comparison. A claim's verdict pools every evidence value
+    of the claim and its sub-claims; each sub-claim's own result is listed beside it."""
+    from .curation import Curation
+
+    out = []
+    for c, _ in Curation(pkg, "claims").effective():
+        if not c.testable:
+            continue
+        pooled = _evidence_results(cmp, evidence(c))
+        if not pooled:
+            continue
+        v, matched, tested = verdict([e.status for e in pooled])
+        subs = []
+        for sc in c.sub_claims:
+            ev = _evidence_results(cmp, list(dict.fromkeys(sc.evidence)))
+            sv, sm, st = verdict([e.status for e in ev])
+            subs.append(SubClaimResult(id=sc.id, verdict=sv, matched=sm, tested=st, evidence=ev))
+        out.append(ClaimResult(claim=c.id, verdict=v, matched=matched, tested=tested, by_sub_claim=subs,
+                               evidence=_evidence_results(cmp, list(dict.fromkeys(c.evidence)))))
+    return sorted(out, key=lambda r: int(r.claim[1:]))
+
+
+def _comparison(pkg: Package) -> Comparison | None:
+    from . import run
+    from .errors import ApiError
+
+    try:
+        return run.comparison(pkg, CompareSettings())
+    except ApiError:
+        return None  # no script or no results file yet
+
+
+def record_run(pkg: Package, job_id: str) -> None:
+    """After a run: note which claims it covered, with each one's result. A no-op outside claims mode."""
+    from .curation import Curation
+
+    scope = claim_scope(pkg)
+    if scope is None:
+        return
+    cmp = _comparison(pkg)
+    snap = {r.claim: r for r in results(pkg, cmp)} if cmp else {}
+    with pkg.locked():
+        cur = Curation(pkg, "claims")
+        f = cur.load()
+        at = now()
+        for c in scope.claims:
+            f.ran[c.id] = ClaimRunRecord(job=job_id, at=at, content_hash=content_hash(pkg, c), result=snap.get(c.id))
+        cur._save(f)
+
+
+def statuses(pkg: Package) -> list[ClaimStatus]:
+    """The state of every effective claim, decided in this order: not testable; running (its codegen job, or any run job
+    for a ticked claim); the verdict when it ran and is unchanged; ready (ticked) or review. A changed claim is stale and
+    keeps its last result."""
+    from . import jobs
+    from .curation import Curation
+
+    cur = Curation(pkg, "claims")
+    ran = cur.load().ran
+    claims = sorted((c for c, _ in cur.effective()), key=lambda c: int(c.id[1:]))
+    job = jobs.active(pkg)
+    running: set[str] = set()
+    if job is not None:
+        if job.type == "run":
+            scope = claim_scope(pkg)
+            running = {c.id for c in scope.claims} if scope else set()
+        elif job.request.get("claim"):
+            running = {job.request["claim"]}
+    cmp = _comparison(pkg)
+    live = {r.claim: r for r in results(pkg, cmp)} if cmp else {}
+    out = []
+    for c in claims:
+        rec = ran.get(c.id)
+        stale = rec is not None and rec.content_hash != content_hash(pkg, c)
+        if not c.testable:
+            out.append(ClaimStatus(claim=c.id, state="not_testable", stale=False, ran_at=None, result=None))
+            continue
+        result = None
+        if rec is not None:  # the snapshot of that run, unless the claim is current and ticked: then the live comparison
+            result = rec.result if stale or not c.checked else live.get(c.id, rec.result)
+        state: ClaimState = "ready" if c.checked else "review"
+        if c.id in running:
+            state = "running"
+        elif rec is not None and not stale and result is not None:
+            state = result.verdict
+        out.append(ClaimStatus(claim=c.id, state=state, stale=stale, ran_at=rec.at if rec else None, result=result))
+    return out
 
 
 # ---------- extraction: one LLM call writes claims, targets and actions ----------

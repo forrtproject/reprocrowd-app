@@ -12,6 +12,7 @@ from typing import Any, Generic, Literal, TypeVar
 
 from pydantic import ConfigDict, Field, field_validator, model_validator
 
+from .claims import ClaimResult
 from .common import LlmCall, Model
 from .document import ref_kind
 
@@ -170,6 +171,7 @@ class ClaimRunRecord(Model):
     job: str
     at: datetime
     content_hash: str
+    result: ClaimResult | None = Field(default=None, description="the claim's result in that run, kept when the claim is later unticked or edited")
 
 
 # ---------- generic curated collection ----------

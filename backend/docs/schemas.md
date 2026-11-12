@@ -540,6 +540,19 @@ claims.json
 | `notes` | string |  | default `` |
 | `id` | string | yes | pattern `^C\d+$` |
 
+### ClaimResult
+
+A claim's result from the comparison: every evidence value of the claim and its sub-claims pooled.
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `claim` | string | yes |  |
+| `verdict` | `"reproduced"` \| `"partly"` \| `"not_reproduced"` | yes |  |
+| `matched` | integer | yes |  |
+| `tested` | integer | yes |  |
+| `by_sub_claim` | list of [SubClaimResult](#subclaimresult) | yes | results of the sub-claims, beside the pooled one |
+| `evidence` | list of [EvidenceResult](#evidenceresult) | yes | the claim's own evidence (an atomic claim's) |
+
 ### ClaimRunRecord
 
 When a claim's breakdown (evidence and method) was last generated, and for which text.
@@ -549,6 +562,16 @@ When a claim's breakdown (evidence and method) was last generated, and for which
 | `job` | string | yes |  |
 | `at` | string (date-time) | yes |  |
 | `content_hash` | string | yes |  |
+| `result` | [ClaimResult](#claimresult) \| null |  | the claim's result in that run, kept when the claim is later unticked or edited |
+
+### EvidenceResult
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `target` | string | yes |  |
+| `status` | `"match"` \| `"within"` \| `"deviation"` \| `"missing"` \| `"figure"` \| `"unparsable"` | yes |  |
+| `expected_text` | string | yes |  |
+| `reproduced_text` | string | yes |  |
 
 ### LlmEntry_Claim_
 
@@ -591,6 +614,16 @@ One narrower, testable piece of a broad claim.
 | `text` | string | yes |  |
 | `method` | string \| null |  | id of the action that implements the test |
 | `evidence` | list of string |  | ids of targets that report the result |
+
+### SubClaimResult
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `id` | string | yes |  |
+| `verdict` | `"reproduced"` \| `"partly"` \| `"not_reproduced"` | yes |  |
+| `matched` | integer | yes | evidence values that match or are within tolerance |
+| `tested` | integer | yes | evidence values that were computed (match, within or deviation) |
+| `evidence` | list of [EvidenceResult](#evidenceresult) | yes |  |
 
 ## `target-llm-output`: output of the target-extraction prompt
 
