@@ -185,6 +185,28 @@ class InputPatch(Req):
     used: bool | None = None
 
 
+class AcquireCreate(Req):
+    """Detect data/code repository links in a manuscript and fetch them as inputs."""
+
+    fulltext: str | None = Field(default=None, description="resource name of the full text to scan; default: the first full text")
+    role: Role | None = Field(default=None, description="default role for fetched files; default: guessed per file")
+    note: str = ""
+    unpack: bool = Field(default=True, description="unpack zip archives into inputs/<stem>/")
+    repos: list[str] | None = Field(default=None, description="restrict detection to these repositories (zenodo, github, gitlab, osf, figshare)")
+
+
+class AcquireResult(BaseModel):
+    """Result of an acquire run: the links found and the resources (inputs) added."""
+
+    links: list[dict[str, Any]] = Field(description="detected repository links, with their repo, id, kind and label")
+    resources: list[Resource] = Field(description="input resources added")
+    failures: list[dict[str, Any]] = Field(default_factory=list, description="what could not be fetched: per link (repo, id, url, code, error) when the repository itself "
+                                          "couldn't be read, or per file (the same plus file and file_url) when one file couldn't be downloaded "
+                                          "or was skipped; the link's other files are still added. code: acquire_too_large (skipped for the "
+                                          "download limit, max_download_mb per link), acquire_not_found, acquire_failed, unknown_repository "
+                                          "or unexpected")
+
+
 # ---------- targets and actions ----------
 
 

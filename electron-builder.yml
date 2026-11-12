@@ -1,6 +1,10 @@
 appId: org.forrt.reprocrowd
 productName: ReproCrowd
 copyright: ReproCrowd (FORRT)
+publish:
+  provider: github
+  owner: forrtproject
+  repo: reprocrowd-app
 directories:
   output: dist
   buildResources: resources
@@ -28,3 +32,4 @@ mac:
   category: public.app-category.education
 win:
   target: [nsis]
+  artifactName: ${productName}-${version}-setup.${ext}

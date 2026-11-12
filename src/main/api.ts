@@ -10,6 +10,7 @@ import * as backend from "./backend";
 import { spawnDetached, splitCommand, which } from "./processes";
 import { get, post, request, ResponseType, ServiceError } from "./service";
 import { loadSettings, saveSettings, secretStorageKind, serverOf, setSecret, getSecret, userData, zenodoKey, ZenodoServer } from "./settings";
+import * as updater from "./updater";
 
 /** Read-only backend endpoints any window may call. */
 const GLOBAL_GETS = new Set(["/v1/health", "/v1/templates", "/v1/llm-profiles", "/v1/agent-profiles", "/v1/zenodo"]);
@@ -157,6 +158,10 @@ export function makeApi(wc: WebContents) {
   return {
     // ---------- library ----------
     appInfo: async () => ({ version: (await import("electron")).app.getVersion(), platform: process.platform, backend: backend.status() }),
+    // ---------- updates ----------
+    checkForUpdates: () => updater.checkForUpdates(),
+    updateInfo: async () => updater.updateInfo(),
+    installUpdate: async () => updater.installUpdate(),
     listPackages: async () => {
       const all = await get<any[]>("/v1/packages");
       return all.map((p) => ({ ...p, missing: !fs.existsSync(path.join(p.path, "datapackage.json")) }));

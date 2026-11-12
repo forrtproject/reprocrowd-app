@@ -43,6 +43,14 @@ class UploadOrigin(Model):
     filename: str = Field(description="file name the client sent (multipart upload)")
 
 
+class FetchedOrigin(Model):
+    type: Literal["fetched"] = "fetched"
+    url: str = Field(description="download URL (secrets such as API keys removed)")
+    repo: str = Field(description="repository type the file came from (zenodo, github, gitlab, osf, figshare, ...)")
+    id: str = Field(description="repository-specific identifier (DOI, owner/repo, record id, ...)")
+    label: str = Field(description="where the link was found, e.g. 'data availability statement'")
+
+
 class CheckResult(Model):
     passed: bool
     checked_at: datetime
@@ -72,7 +80,7 @@ class InputMeta(Model):
     note: str = ""
     used: bool = Field(default=True, description="false: kept on disk but not part of the reproduction")
     archive: str | None = Field(default=None, description="resource name of the zip archive this file was unpacked from")
-    origin: Annotated[Union[LocalOrigin, UploadOrigin], Field(discriminator="type")]
+    origin: Annotated[Union[LocalOrigin, UploadOrigin, FetchedOrigin], Field(discriminator="type")]
 
 
 class ScriptMeta(Model):

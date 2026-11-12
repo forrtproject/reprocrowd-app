@@ -38,7 +38,7 @@ npm ci --no-audit --no-fund --loglevel=error
 say "Building the app…"
 npm run --silent build
 say "Bundling the backend with its own Python (takes a minute)…"
-scripts/bundle-backend.sh backend
+node scripts/bundle-backend.mjs backend
 say "Fetching Electron (~100 MB, once; kept for later installs)…"
 # electron-builder downloads Electron in one request that it abandons after 10 minutes, so on a slow network it
 # can never finish. curl resumes where it stopped, and the checked zip is handed over with electronDist.

@@ -105,6 +105,12 @@ CATALOG: dict[str, tuple[int, str]] = {
     "job_running": (409, "Another job is running in this package"),
     "job_finished": (409, "The job is not running"),
     "job_start_failed": (502, "The job's command could not be started"),
+    # data & code acquisition (metacheck-style)
+    "no_fulltext": (409, "Add a full text (JATS XML) to scan first"),
+    "unknown_repository": (400, "No acquisition adapter for this repository"),
+    "acquire_not_found": (404, "The repository has no such record or file"),
+    "acquire_too_large": (413, "The repository file exceeds the download budget"),
+    "acquire_failed": (502, "The repository could not be reached or returned an error"),
 }
 
 STATUS_CODES = {404: "not_found", 405: "method_not_allowed", 401: "unauthorized"}
