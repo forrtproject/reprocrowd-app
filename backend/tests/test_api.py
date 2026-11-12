@@ -416,3 +416,43 @@ def test_structured_output(client, pkg):
     assert r.status_code == 201, r.text
     e = problem(client.post(P + "/targets/runs", json={"extraction": "ex-paper-tei", "profile": "structured-error"}), 502, "llm_call_failed")
     assert e["subtype"] == "error_max_turns" and "ran out of turns" in e["result"]
+
+
+# ---------- JATS availability (before a package exists) ----------
+
+JATS_URL = "https://www.ebi.ac.uk/europepmc/webservices/rest/PMC4359000/fullTextXML"
+
+
+@respx.mock
+def test_jats_available(client):
+    mock_openalex()
+    respx.get(JATS_URL).mock(return_value=httpx.Response(200, content=(FIXTURES / "paper.jats.xml").read_bytes()))
+    r = client.get("/v1/jats", params={"doi": "https://doi.org/10.1371/journal.pbio.1002106"})
+    assert r.status_code == 200, r.text
+    assert r.json() | {"title": None} == {"doi": "10.1371/journal.pbio.1002106", "available": True, "pmcid": "PMC4359000", "url": JATS_URL,
+                                          "title": None, "reason": None}
+
+
+@respx.mock
+def test_jats_unavailable(client):
+    xml = respx.get(JATS_URL).mock(return_value=httpx.Response(404))  # before mock_openalex's route for the same URL
+    mock_openalex()
+    j = client.get("/v1/jats", params={"doi": "10.1371/journal.pbio.1002106"}).json()
+    assert not j["available"] and "open-access subset" in j["reason"]
+    xml.mock(return_value=httpx.Response(200, text="<html>error</html>"))
+    assert "isn't JATS" in client.get("/v1/jats", params={"doi": "10.1371/journal.pbio.1002106"}).json()["reason"]
+    xml.mock(side_effect=httpx.ConnectError("down"))
+    problem(client.get("/v1/jats", params={"doi": "10.1371/journal.pbio.1002106"}), 502, "jats_check_failed")
+    problem(client.get("/v1/jats", params={"doi": "10.1234/missing"}), 404, "openalex_not_found")
+    problem(client.get("/v1/jats", params={"doi": "W123"}), 400, "invalid_identifier")
+
+
+@respx.mock
+def test_jats_no_pmcid(client):
+    work = WORK | {"ids": {"openalex": "https://openalex.org/W2", "doi": "https://doi.org/10.1234/nopmc"}}
+    respx.get(url__regex=r"https://api\.openalex\.org/works/doi:10\.1234/nopmc.*").mock(return_value=httpx.Response(200, json=work))
+    respx.get(url__regex=r"https://www\.ebi\.ac\.uk/europepmc/webservices/rest/search.*").mock(return_value=httpx.Response(200, json={"resultList": {"result": []}}))
+    r = client.get("/v1/jats", params={"doi": "10.1234/nopmc"})
+    j = r.json()
+    assert r.status_code == 200, r.text
+    assert not j["available"] and j["pmcid"] is None and "no PMCID" in j["reason"]

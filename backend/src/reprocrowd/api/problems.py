@@ -36,6 +36,7 @@ CATALOG: dict[str, tuple[int, str]] = {
     "integrity_check_failed": (422, "The file failed its format's integrity check"),
     "duplicate_fulltext": (409, "An identical full text is already in the package"),
     "download_failed": (502, "The candidate could not be downloaded"),
+    "jats_check_failed": (502, "Europe PMC could not be reached to check for JATS XML"),
     "in_use": (409, "Other items depend on this resource"),
     "unknown_converter": (400, "No such converter"),
     "converter_not_configured": (409, "The converter is not configured in the service"),

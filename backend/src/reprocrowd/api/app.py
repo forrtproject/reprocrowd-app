@@ -24,7 +24,7 @@ from starlette.concurrency import run_in_threadpool
 from starlette.datastructures import UploadFile as StarletteUploadFile
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from .. import __version__, zenodo, codegen, coordinates, curation, database, figures, report, run, extractions, files, fulltexts, inputs, jobs, llm, metadata, scripts
+from .. import __version__, openalex, zenodo, codegen, coordinates, curation, database, figures, report, run, extractions, files, fulltexts, inputs, jobs, llm, metadata, scripts
 from ..config import settings
 from ..errors import ApiError, not_found
 from ..extractions import Scope
@@ -389,6 +389,17 @@ def put_metadata(pkg: Pkg, body: M.MetadataRequest = Body(default_factory=M.Meta
 @api.get("/packages/{pkg}/fulltexts", tags=["fulltexts"], response_model=list[Resource], summary="List full texts")
 def list_fulltexts(pkg: Pkg, page: Paged):
     return page(pkg.load().by_kind("fulltext"))
+
+
+@api.get("/jats", tags=["fulltexts"], response_model=M.JatsAvailability, summary="Is the paper's JATS XML available?",
+         description="Looks the DOI up in OpenAlex and Europe PMC and fetches the start of Europe PMC's full-text XML, before "
+                     "any package exists. Only papers in the open-access subset of PubMed Central have it.",
+         responses=errors("openalex_not_found", "openalex_failed", "jats_check_failed"))
+def jats_availability(doi: Annotated[str, Query(min_length=3)]):
+    ident = parse_identifier(doi)
+    if ident.scheme != "doi":
+        raise ApiError(400, "invalid_identifier", f"not a DOI: {doi}")
+    return openalex.jats_availability(ident.value)
 
 
 @api.get("/packages/{pkg}/fulltexts/candidates", tags=["fulltexts"], response_model=M.CandidateList, summary="Download candidates from OpenAlex",

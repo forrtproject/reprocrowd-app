@@ -338,6 +338,15 @@ class SubmissionCreate(Req):
                                   "published at once under that user; without it the user confirms at finish_url. Passed on, never stored")
 
 
+class JatsAvailability(BaseModel):
+    doi: str
+    available: bool = Field(description="Europe PMC serves the paper's JATS XML")
+    pmcid: str | None
+    url: str | None = Field(description="the JATS XML at Europe PMC")
+    title: str | None = Field(description="from OpenAlex")
+    reason: str | None = Field(description="why it isn't available")
+
+
 # ---------- Zenodo ----------
 
 

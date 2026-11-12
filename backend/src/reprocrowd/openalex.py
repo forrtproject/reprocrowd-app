@@ -130,3 +130,34 @@ def download(c: Candidate, dest, max_bytes: int) -> None:
                     f.write(chunk)
     except httpx.HTTPError as e:
         raise ApiError(502, "download_failed", f"{c.label}: {e}", {"url": c.url})
+
+
+def jats_availability(doi: str) -> dict[str, Any]:
+    """Can the paper's JATS XML be retrieved? Asks OpenAlex and Europe PMC for its PMCID, then fetches the start of
+    Europe PMC's fullTextXML: a PMCID alone isn't enough, since only the open-access subset has full-text XML."""
+    work = fetch_work(Identifier(scheme="doi", value=doi))
+    cands, _ = candidates(work)
+    jats = next((c for c in cands if c.format == "jats"), None)
+    out: dict[str, Any] = {"doi": doi, "available": False, "pmcid": None, "url": None, "title": work.get("title"), "reason": None}
+    if jats is None:
+        out["reason"] = "Europe PMC has no copy of this paper in PubMed Central (no PMCID)."
+        return out
+    out["pmcid"] = jats.label.split("(")[-1].rstrip(")")
+    out["url"] = jats.url
+    try:
+        with _client() as c, c.stream("GET", jats.url, headers={"Accept": "application/xml"}) as r:
+            head = b""
+            if r.status_code == 200:
+                for chunk in r.iter_bytes():
+                    head += chunk
+                    if len(head) > 65536:
+                        break
+    except httpx.HTTPError as e:
+        raise ApiError(502, "jats_check_failed", f"could not reach Europe PMC: {e}")
+    if r.status_code != 200:
+        out["reason"] = f"Europe PMC has no JATS XML for {out['pmcid']}: the paper isn't in the open-access subset of PubMed Central."
+    elif b"<article" not in head:
+        out["reason"] = f"Europe PMC's answer for {out['pmcid']} isn't JATS XML."
+    else:
+        out["available"] = True
+    return out
