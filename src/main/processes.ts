@@ -8,8 +8,17 @@ export function searchPath(): string {
   const home = os.homedir();
   const sep = path.delimiter;
   const dirs = (process.env.PATH ?? "").split(sep).filter(Boolean);
-  const extra = process.platform === "win32" ? [] : [`${home}/.local/bin`, `${home}/bin`, `${home}/.cargo/bin`, "/usr/local/bin", "/opt/homebrew/bin", "/usr/bin", "/bin", "/snap/bin"];
-  for (const d of extra) if (!dirs.includes(d)) dirs.push(d);
+  // Desktop launchers start apps with a minimal PATH, so add the places the templates' commands (bash, R, Python,
+  // Snakemake, git) usually live: Git for Windows and Rtools (both per-user and per-machine installs).
+  const extra = process.platform === "win32"
+    ? [
+        path.join(home, "AppData", "Local", "Programs", "Git", "bin"),
+        path.join(home, "AppData", "Local", "Programs", "Git", "cmd"),
+        "C:\\Program Files\\Git\\bin", "C:\\Program Files\\Git\\cmd",
+        "C:\\rtools43\\usr\\bin", "C:\\RBuildTools\\4.4\\usr\\bin",
+      ]
+    : [`${home}/.local/bin`, `${home}/bin`, `${home}/.cargo/bin`, "/usr/local/bin", "/opt/homebrew/bin", "/usr/bin", "/bin", "/snap/bin"];
+  for (const d of extra) if (d && !dirs.includes(d)) dirs.push(d);
   return dirs.join(sep);
 }
 
