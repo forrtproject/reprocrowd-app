@@ -15,7 +15,11 @@ trap 'rm -rf "$WORK"' EXIT
 echo "• standalone Python $PYVER"
 uv python install --quiet --no-bin "$PYVER"
 PYBIN="$(cd "$WORK" && UV_MANAGED_PYTHON=1 uv python find --no-project "$PYVER")"
-PYHOME="$(dirname "$(dirname "$(realpath "$PYBIN")")")"
+PYBIN="$(realpath "$PYBIN")"
+case "$PYBIN" in
+  */bin/python3) PYHOME="$(dirname "$(dirname "$PYBIN")")" ;;   # Unix: .../bin/python3 → the install prefix
+  *) PYHOME="$(dirname "$PYBIN")" ;;                            # Windows: python.exe lives in the install prefix
+esac
 [ ! -f "$PYHOME/pyvenv.cfg" ] || { echo "found a virtualenv instead of a standalone Python: $PYHOME" >&2; exit 1; }
 
 rm -rf "$OUT"
@@ -28,8 +32,10 @@ rm -f "$OUT/python/lib/python3"*/EXTERNALLY-MANAGED
 echo "• reprocrowd from $CLI (locked dependencies)"
 (cd "$CLI" && uv export --quiet --frozen --no-dev --no-hashes --no-emit-project --format requirements-txt) > "$WORK/requirements.txt"
 (cd "$CLI" && uv build --quiet --wheel --out-dir "$WORK/dist")
-uv pip install --quiet --python "$PY" --no-cache -r "$WORK/requirements.txt"
-uv pip install --quiet --python "$PY" --no-cache --no-deps "$WORK"/dist/*.whl
+# uv pip install --python rejects a non-venv standalone Python (uv 0.5+); use the interpreter's own pip instead.
+"$PY" -m ensurepip
+"$PY" -m pip install --quiet --no-cache-dir -r "$WORK/requirements.txt"
+"$PY" -m pip install --quiet --no-cache-dir --no-deps "$WORK"/dist/*.whl
 
 echo "• trimming"
 LIB="$(echo "$OUT"/python/lib/python3.*)"

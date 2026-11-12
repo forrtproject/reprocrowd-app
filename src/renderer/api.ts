@@ -61,6 +61,11 @@ export interface Config {
   defaultBackendConfig: string;
 }
 export type BackendCheck = { ok: true; url: string; version: string } | { ok: false; url: string; code: string; message: string };
+export type UpdateStatus =
+  | { state: "disabled"; reason: string }
+  | { state: "not-available"; current: string }
+  | { state: "available"; version: string }
+  | { state: "error"; message: string };
 export interface JatsAvailability { doi: string; available: boolean; pmcid: string | null; url: string | null; title: string | null; reason: string | null }
 export const JATS_ONLY = "Only articles with JATS XML full text (the open-access subset of PubMed Central) are supported at this time.";
 export interface Work { doi: string; title: string | null; authors: string[]; year: number | null; venue: string | null; license: string | null; open_access: boolean | null }
@@ -96,6 +101,7 @@ export const pkg = {
 export const host = {
   // library
   appInfo: () => call<{ version: string; platform: string; backend: BackendStatus }>("appInfo"),
+  checkForUpdates: () => call<UpdateStatus>("checkForUpdates"),
   listPackages: () => call<LibraryEntry[]>("listPackages"),
   packageDeposits: (id: string) => call<ZenodoDeposit[]>("packageDeposits", id),
   lookupDoi: (doi: string) => call<Work>("lookupDoi", doi),

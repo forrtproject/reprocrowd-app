@@ -57,6 +57,11 @@ export async function settingsDialog(onSaved: (changed: boolean) => void, focus?
         <p class="hint">For example <code>uv run --project /path/to/backend python -m reprocrowd serve --host {host} --port {port}</code>. Empty: the backend that comes with the app.</p>
       </details>
     </fieldset>
+    <fieldset id="set-updates"><legend>Updates</legend>
+      <p class="hint">ReproCrowd checks the GitHub Releases feed for a newer version. Updates are only available in an installed build, not a development checkout.</p>
+      <div class="actions"><button type="button" id="upd-check">Check for updates…</button></div>
+      <p class="upd-status small" id="upd-status" aria-live="polite"></p>
+    </fieldset>
     <p class="save-error warn-inline" hidden></p>
     <menu><button value="cancel">Cancel</button><button value="save" class="primary">Save</button></menu></form>`);
   const q = <T extends HTMLElement = HTMLInputElement>(sel: string) => dlg.querySelector<T>(sel)!;
@@ -139,6 +144,21 @@ export async function settingsDialog(onSaved: (changed: boolean) => void, focus?
     b.disabled = false;
     showBackend();
   });
+  // ---------- updates ----------
+  q("#upd-check").addEventListener("click", async () => {
+    const el = q<HTMLElement>("#upd-status");
+    el.textContent = "Checking…";
+    try {
+      const s = await host.checkForUpdates();
+      if (s.state === "not-available") el.innerHTML = `<span class="muted">You're up to date (${esc(s.current)}).</span>`;
+      else if (s.state === "available") el.innerHTML = `<span class="ok">✓ Version ${esc(s.version)} is available — downloading…</span>`;
+      else if (s.state === "disabled") el.innerHTML = `<span class="muted">${esc(s.reason)}</span>`;
+      else if (s.state === "error") el.innerHTML = `<span class="warn-inline">${esc(s.message)}</span>`;
+    } catch (err) {
+      el.innerHTML = `<span class="warn-inline">${esc((err as Error).message)}</span>`;
+    }
+  });
+
   if (focus) dlg.querySelector(`#set-${focus === "zenodo" ? "you" : "backend"}`)?.scrollIntoView();
 
   q<HTMLFormElement>("form").addEventListener("submit", async (e) => {

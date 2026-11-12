@@ -9,9 +9,9 @@
   "license": "UNLICENSED",
   "scripts": {
     "typecheck": "tsc --noEmit -p src/renderer && tsc --noEmit -p src/main",
-    "build": "scripts/build.sh",
+    "build": "node scripts/build.mjs",
     "start": "npm run build && electron .",
-    "bundle-backend": "scripts/bundle-backend.sh",
+    "bundle-backend": "node scripts/bundle-backend.mjs",
     "dist": "npm run build && npm run bundle-backend && electron-builder",
     "test:e2e": "node test/e2e.mjs",
     "test:backend": "cd backend && uv run pytest -q",
@@ -30,5 +30,8 @@
     "typescript": "^7.0.2",
     "vite": "^6.4.6"
   },
-  "desktopName": "reprocrowd.desktop"
+  "desktopName": "reprocrowd.desktop",
+  "dependencies": {
+    "electron-updater": "^6.8.11"
+  }
 }
