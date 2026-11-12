@@ -100,7 +100,7 @@ class Prepared:
         template = next((r.reprocrowd.template for r in m.by_kind("script")), None)
         from .scripts import templates
 
-        self.m, self.doi, self.work = m, doi, work
+        self.pkg, self.m, self.doi, self.work = pkg, m, doi, work
         self.template = templates().get(template or "")
         self.authors = [a["author"].get("display_name", "") for a in work.get("authorships") or [] if a.get("author")]
         self.year = work.get("publication_year") if isinstance(work.get("publication_year"), int) else None

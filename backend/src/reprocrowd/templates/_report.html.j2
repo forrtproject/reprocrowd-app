@@ -32,6 +32,18 @@ Pipeline: {{ tpl.label }}, <code>{{ tpl.command }}</code>{% if run %}, last run 
 {% if cmp.output_warnings %}<details><summary>{{ cmp.output_warnings|length }} coverage warning(s)</summary><p>{% for e in cmp.output_warnings %}{{ e }}<br>{% endfor %}</p></details>{% endif %}
 <p>Package validation: {% if validation.valid %}passed{% else %}<span class="warn">{{ validation.errors|length }} error(s)</span>{% endif %}{% if validation.warnings %}, {{ validation.warnings|length }} warning(s){% endif %}.</p>
 
+{% if claims %}
+<h2>Claims</h2>
+<p>Each claim's result pools all of its evidence values (and its sub-claims'); the sub-claims' own results are listed beside it. <code>claims_trace.json</code> has the full trace.</p>
+<table><tr><th>ID</th><th>Claim</th><th>Status</th><th>Sub-claims</th><th>Assumptions made by the coding agent</th></tr>
+{% for c in claims.claims %}{% set subs = {} %}{% for s in (c.result.by_sub_claim if c.result else []) %}{% set _ = subs.update({s.id: s}) %}{% endfor %}
+<tr><td><b>{{ c.claim_id }}</b></td><td>{{ c.main_claim }}{% if c.mode == "paraphrase" and c.original_quote %}<div class="quote">“{{ trunc(c.original_quote, 300) }}”</div>{% endif %}</td>
+<td class="st">{{ claim_words[c.claim_id] }}</td>
+<td>{% if c.sub_claims %}<ul>{% for s in c.sub_claims %}<li><b>{{ s.id }}</b> {{ trunc(s.claim, 200) }}{% if s.id in subs %}: {{ verdict_labels[subs[s.id].verdict] }} {{ subs[s.id].matched }}/{{ subs[s.id].tested }}{% endif %}</li>{% endfor %}</ul>{% endif %}</td>
+<td>{% if c.assumptions %}<ul>{% for a in c.assumptions %}<li>{{ a }}</li>{% endfor %}</ul>{% endif %}</td></tr>
+{% endfor %}</table>
+{% if claims.skipped %}<p>{{ claims.skipped|length }} sentence(s) of the paper were not treated as claims (background, study design); <code>claims_trace.json</code> lists them.</p>{% endif %}
+{% endif %}
 <h2>Results comparison</h2>
 <table><tr><th>ID</th><th>Result</th><th>Reported</th><th>Reproduced</th><th>Deviation</th><th>Status</th></tr>
 {% for r in cmp.rows %}{% set t = targets[r.target] %}

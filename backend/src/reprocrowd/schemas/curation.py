@@ -10,27 +10,13 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Generic, Literal, TypeVar
 
-from pydantic import ConfigDict, Field, field_validator, model_validator
+from pydantic import ConfigDict, Field, model_validator
 
 from .claims import ClaimResult
 from .common import LlmCall, Model
-from .document import ref_kind
+from .refs import Ref, SkippedSentence  # noqa: F401  (re-exported)
 
 # ---------- references into extractions ----------
-
-
-class Ref(Model):
-    """Points at one sentence, figure or table of an extraction."""
-
-    extraction: str = Field(description="resource name of the extraction, e.g. ex-grobid")
-    id: str = Field(description="sentence (sec3.p2.s1, fig1.s1), figure (fig1) or table (tab1) id in that extraction")
-
-    @field_validator("id")
-    @classmethod
-    def _kind(cls, v: str) -> str:
-        if ref_kind(v) is None:
-            raise ValueError(f"{v!r} is not a sentence, figure or table id")
-        return v
 
 
 class Referenced(Model):
@@ -156,13 +142,6 @@ class Claim(ClaimFields):
             if not s.id.startswith(f"{self.id}."):
                 raise ValueError(f"sub-claim {s.id} must start with {self.id}.")
         return self
-
-
-class SkippedSentence(Model):
-    """A sentence the LLM considered and did not turn into a claim."""
-
-    ref: Ref
-    reason: Literal["background", "study_design", "other"]
 
 
 class ClaimRunRecord(Model):

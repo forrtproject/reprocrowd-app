@@ -64,6 +64,7 @@ flowchart LR
   inputs/…                    input files (data / code / other); zip archives unpacked under inputs/<stem>/
   targets.json                curated targets (manual + LLM runs with overlays)
   actions.json                curated actions (the former "analysis plan" steps)
+  claims.json                 curated claims (manual + LLM runs with overlays), skipped sentences, run records
   results_schema.json         \  written by the script step: enabled targets, the resolved plan
   analysis_plan.json          /  (load steps + actions + results step), the master script, README.md
   <master script>, README.md
@@ -73,7 +74,9 @@ flowchart LR
   AGENT_PROMPT.md             instructions for a coding agent (written by the script step)
   .git/                       created by the first job: commits before and after every agent run
   targets/figures/<id>.png    originals: published images, crops, or full pages (PUT …/figures)
+  claims/<id>.py|.R, prepare.*  claims mode: one script file per ticked claim and the shared preparation
   report.html, comparison.json  the reproduction report (PUT …/report)
+  claims_trace.json           claims mode: the claims trace (written with the report and the archive)
   archive/<doi>-reproduction.zip  the package as a ZIP (PUT …/archive; not itself a resource)
 ```
 
@@ -167,6 +170,8 @@ clients) works without special cases.
 | `GET` / `PATCH` / `DELETE …/targets/{id}` | merge patch incl. `disabled` | `{item, origin}` · 204 | `schema_invalid`, `invalid_reference`, `manual_item`, `llm_entry`, `in_use` |
 | `DELETE …/targets/{id}/edit` | | restored LLM version | `manual_item` |
 | `…/actions…` | same as targets | | |
+| `…/claims…` | same as targets (claim fields; `checked` is the tick) | | `in_use` also for claims that others `depends_on` / are `traced_under` |
+| `GET …/claims:status` · `GET …/claims:trace` | | every claim's state and (last) result · the claims trace (`claims_trace.json`) | |
 | `GET` / `PUT …/script` | `{template, on_modified?: refuse\|keep\|overwrite}` | template, TODO status, files · 201 / 200 `{created, files, command}` | `unknown_template`, `template_not_claims_ready`, `nothing_to_script`, `script_modified`, `job_running` |
 | `GET /v1/agent-profiles` | | agent profiles (argv, tools read-only) | |
 | `POST …/extractions:preview` · `POST …/targets/runs:preview` · `POST …/jobs:preview` | the body of the call they preview | `{prompt, argv, profile, model, effort, output_schema}`; runs and stores nothing | the call's input errors |
@@ -185,7 +190,7 @@ clients) works without special cases.
 | `POST …/submissions` | `{note?, database_token?}` | 201 submission (`finish_url` to confirm in the browser; published at once with a token) | `no_doi`, `run_not_succeeded`, `archive_missing`, `archive_stale`, `duplicate_submission`, `submission_rejected`, `database_token_invalid`, `database_forbidden`, … |
 | `GET …/submissions[/{id}]` | | submissions · one, status refreshed from the database | |
 | `GET /v1/zenodo` · `POST /v1/zenodo:verify-token` · `GET /v1/zenodo/records?doi=` | `?sandbox` · `{zenodo_token, sandbox?}` | server status · token accepted · published ReproCrowd records for a DOI | `zenodo_token_invalid`, `zenodo_unreachable` |
-| `POST …/deposits:preview` · `POST …/deposits` | `{note?, exclude?, creators?, community?}` + `{zenodo_token?, sandbox?, publish?}` | metadata and file groups · 201 deposit (a draft with a reserved DOI, or published) | the submission preconditions, `duplicate_submission`, `zenodo_token_missing`, `zenodo_creators_missing`, `zenodo_rejected`, … |
+| `POST …/deposits:preview` · `POST …/deposits` | `{note?, exclude?, creators?, community?}` + `{zenodo_token?, sandbox?, publish?}` | metadata and file groups · 201 deposit (a draft with a reserved DOI, or published) | the submission preconditions, `duplicate_submission`, `no_claim_run`, `zenodo_token_missing`, `zenodo_creators_missing`, `zenodo_rejected`, … |
 | `GET …/deposits[/{id}]` · `POST …/deposits/{id}:refresh` · `:publish` · `:discard` | `{zenodo_token?}` | deposits · status from Zenodo · publish a draft · delete a draft | `deposit_not_draft` |
 | `GET …/files` · `GET …/files/{path}` · `POST …/{pkg}:sync` | | files on disk with their resource · one file's content · `{added, updated, removed}` | `not_found`, `job_running` |
 
@@ -283,6 +288,63 @@ Targets and actions share one generic structure (`schemas/targets.schema.json`, 
 > **Implemented in:** `schemas/curation.py` (models), `curation.py` (`Curation`: add, patch, drop_overlay,
 > delete, generate, patch_run; `Context` semantic checks; `find_cycle`), `prompts/targets.md`,
 > `prompts/actions.md`.
+
+## Claims
+
+A paper's results are grouped into **claims**: the statements of the abstract that the reproduction checks, one at a
+time, in one package. A claim is *broad* (C1, C2, …), either atomic or broken down into **sub-claims** (C2.1, …).
+Its **evidence** is targets and its **method** is an action, so the comparison, the plan and the master script work
+on claims without a second data model. A package without claims (no effective claim) behaves exactly as before.
+
+```
+claims.json  { schema_version, kind: "claims", manual: [Claim], llm_runs: [LlmRun[Claim]],
+               skipped: {run id: [{ref, reason}]},       sentences the claims run passed over
+               ran: {claim id: {job, at, content_hash, result}} }
+Claim        { id: C1, text, mode: quote|paraphrase, original_quote, testable, refs, method?, evidence[],
+               sub_claims: [{id: C1.1, text, refs, method?, evidence[]}], depends_on[], traced_under[], checked, notes }
+```
+
+- **Extraction**: one LLM call (`POST …/claims/runs`, prompt `prompts/claims.md`, output `claim-llm-output`) writes a
+  run to each of `claims.json`, `targets.json` (the evidence) and `actions.json` (methods and preparation steps), under
+  one lock. Items that fail validation are rejected one by one. Disabling a claims run disables the targets and actions
+  it made. A new run's claims arrive switched off when another run is enabled.
+- **Curation** is the generic structure of targets and actions: the LLM's version is kept, edits are an overlay.
+  Untestable claims (recommendations, interpretations) have no evidence or method and list the claims they rest on
+  (`depends_on`). A paraphrase keeps the paper's `original_quote`. Evidence traced under another claim is linked
+  (`traced_under`), not counted twice.
+- **The tick** (`checked`) approves a claim's content and the targets and actions it points to. Editing any of them
+  resets it (`claims.RESET_FIELDS`, `content_hash`, `uncheck_users`); notes, refs and the tick itself don't. Targets
+  and actions a claim uses can't be deleted (`in_use`).
+- **Scripts and runs**: only ticked, testable claims with evidence are scripted and run (`claim_scope`; see Code
+  generation, "Claims mode"). `POST …/jobs {type: codegen, claim}` implements one claim's file. After a run,
+  `record_run` stores a run record per claim it covered, with the claim's result then.
+- **Results** (`GET …/claims:status`): a claim's verdict **pools** every evidence value of the claim and its
+  sub-claims (`reproduced`: all tested values match or are within tolerance; `partly`: some; `not_reproduced`:
+  none), with matched/tested counts; each sub-claim's own result is listed beside it (`by_sub_claim`), so a failed
+  sub-claim is not hidden. Values are compared with the package's rule (rounded to the printed decimals, comparator,
+  deviation threshold): there is no per-value tolerance. States: `not_testable`, `running`, the verdict, or `ready`
+  (ticked) / `review`. A claim changed since its run is `stale` and keeps its last result.
+- **The trace** (`GET …/claims:trace`, schema `claims-trace`): `paper {doi, title}`, `skipped` (the enabled claims
+  run's) and per claim the user's format: `id` (the DOI), `title`, `claim_id`, `main_claim`, `mode`,
+  `original_quote`, `testable`, `depends_on`, `traced_under`, `sub_claims [{id, claim, method, quantitative_evidence}]`,
+  `quantitative_evidence` (atomic claims) as `{id, label, value, comparator, unit, decimals, source}` (`source`: the
+  readable location of the target's first reference), `methods [{id, summary, quote}]`, `assumptions` (the coding
+  agent's `# ASSUMPTION:` comments in the claim's file and the prepare file), `status` and `result`. No `tolerance`
+  key. `PUT …/report` and `PUT …/archive` write it to `claims_trace.json` (kind `report`), so the archive's trace
+  covers every claim run so far.
+- **Report and deposit**: the report has a Claims section before the comparison table (status in words, sub-claim
+  results, assumptions). Depositing needs at least one claim run (409 `no_claim_run`); the Zenodo description gets a
+  table of every claim with its status (`Reproduced 14/18`, `Partly reproduced 14/18`, `Not run`, `Not testable`), and
+  the deposit records the claims run (`claims`). Depositing again after a published deposit makes a new version of the
+  same record (see Deposits on Zenodo).
+
+**Problem codes**: `template_not_claims_ready` (400), `claim_not_checked`, `claim_not_testable`, `claim_no_evidence`,
+`no_claim_run` (409), plus the curation codes (`schema_invalid`, `invalid_reference`, `in_use`, …) and the LLM codes.
+
+> **Implemented in:** `claims.py` (tick rules, `claim_scope`, `results`, `statuses`, `record_run`, `trace`,
+> `generate`), `schemas/curation.py` (`Claim`, `ClaimsFile`), `schemas/claims.py` (results, statuses, trace),
+> `schemas/refs.py` (`Ref`, `SkippedSentence`, shared by both), `prompts/claims.md`, `scripts.py` (`_write_claims`),
+> `report.py`, `zenodo.py`, routes in `api/app.py`. Tested in `tests/test_claims*.py`.
 
 ## Master-script templates
 
@@ -600,6 +662,11 @@ sequenceDiagram
   and `[zenodo] community` if set. `GET /v1/zenodo/records?doi=` finds published records by that DOI and keyword.
 - Deposits are recorded in the manifest (`reprocrowd.deposits`); the same archive and exclusions on the same
   server again is `duplicate_submission`.
+- **Claims mode**: at least one claim must have been run (`no_claim_run`); the description has a table of the claims
+  with their status, and the deposit lists the claims run (`claims`). When the package already has a published deposit
+  on the server, the deposit is a **new version** of that record (`version_of`): `POST …/depositions/{id}/actions/newversion`,
+  `GET` its `links.latest_draft`, delete the files the draft inherited, upload the new ZIP, `PUT` the metadata. It is
+  a draft like any other, published the same way. Packages without claims deposit a new record, as before.
 
 > **Implemented in:** `zenodo.py`, `schemas/manifest.py` (`ZenodoDeposit`), CLI `rc zenodo …`. Tested with a
 > mocked Zenodo (`tests/test_zenodo.py`); not yet against the real sandbox (needs a token).

@@ -224,6 +224,8 @@ A deposit of the package on Zenodo: a draft until it is published (then it has i
 | `created_at` | string (date-time) | yes |  |
 | `published_at` | string (date-time) \| null |  |  |
 | `checked_at` | string (date-time) \| null |  |  |
+| `version_of` | string \| null |  | id of the published deposit this one is a new version of (same Zenodo record) |
+| `claims` | list of string |  | claims mode: the claims that had been run (the ones this version covers) |
 
 ## `document`: extractions/<id>.json
 
@@ -955,3 +957,77 @@ GET …/comparison, and comparison.json written with the report.
 |---|---|---|---|
 | `rounding` | `"reported"` \| integer |  | "reported": round to the decimals printed in the paper; or a number of decimals (0–10); default `reported` |
 | `threshold` | number |  | deviation in % up to which a numeric result counts as within tolerance; default `5` |
+
+## `claims-trace`: claims_trace.json (written with the report and the archive; also GET …/claims:trace)
+
+File: `schemas/claims-trace.schema.json`
+
+### Root
+
+claims_trace.json: every effective claim's trace, and the sentences the enabled claims run passed over.
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `paper` | [TracePaper](#tracepaper) | yes |  |
+| `claims` | list of [ClaimTrace](#claimtrace) | yes |  |
+| `skipped` | list of [SkippedSentence](#skippedsentence) | yes |  |
+
+### ClaimTrace
+
+A broad claim in the user's trace format, with ids, mode, links, methods, flagged assumptions and its result.
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `id` | string \| null |  | the paper's DOI |
+| `title` | string \| null |  | the paper's title |
+| `claim_id` | string | yes |  |
+| `main_claim` | string | yes |  |
+| `mode` | `"quote"` \| `"paraphrase"` | yes |  |
+| `original_quote` | string | yes |  |
+| `testable` | boolean | yes |  |
+| `depends_on` | list of string | yes |  |
+| `traced_under` | list of string | yes |  |
+| `sub_claims` | list of [TraceSubClaim](#tracesubclaim) | yes |  |
+| `quantitative_evidence` | list of [TraceEvidence](#traceevidence) | yes | an atomic claim's own evidence |
+| `methods` | list of [TraceMethod](#tracemethod) | yes |  |
+| `assumptions` | list of string | yes | the coding agent's `# ASSUMPTION:` comments in the claim's file and the prepare file |
+| `status` | `"review"` \| `"ready"` \| `"running"` \| `"reproduced"` \| `"partly"` \| `"not_reproduced"` \| `"not_testable"` | yes |  |
+| `result` | [ClaimResult](#claimresult) \| null |  | the last run's result; absent when the claim has not run |
+
+### TraceEvidence
+
+One reported value. There is no per-value tolerance: values are compared with the package-wide rule.
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `id` | string | yes | the target's id |
+| `label` | string | yes | the target's description |
+| `value` | number \| integer \| string \| list of list of string \| null |  | the value as the paper reports it |
+| `comparator` | string | yes | how the paper states it: "=", "<", … |
+| `unit` | string \| null |  |  |
+| `decimals` | integer \| null |  | decimals as printed |
+| `source` | string \| null |  | readable location of the target's first reference (section, table, figure) |
+
+### TraceMethod
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `id` | string | yes |  |
+| `summary` | string | yes |  |
+| `quote` | string | yes |  |
+
+### TracePaper
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `doi` | string \| null |  |  |
+| `title` | string \| null |  |  |
+
+### TraceSubClaim
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `id` | string | yes |  |
+| `claim` | string | yes |  |
+| `method` | string \| null |  | id of the method in the claim's `methods` |
+| `quantitative_evidence` | list of [TraceEvidence](#traceevidence) | yes |  |

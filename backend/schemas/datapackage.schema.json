@@ -1024,6 +1024,27 @@
           ],
           "default": null,
           "title": "Checked At"
+        },
+        "version_of": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "id of the published deposit this one is a new version of (same Zenodo record)",
+          "title": "Version Of"
+        },
+        "claims": {
+          "description": "claims mode: the claims that had been run (the ones this version covers)",
+          "items": {
+            "type": "string"
+          },
+          "title": "Claims",
+          "type": "array"
         }
       },
       "required": [

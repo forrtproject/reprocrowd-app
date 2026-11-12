@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from dataclasses import dataclass
 from typing import Literal
 
@@ -18,8 +19,22 @@ from .extractions import Scope, check_scope, listing
 from .extractions import get as get_extraction
 from .package import Package
 from .schemas import json_schema
-from .schemas.claims import ClaimResult, ClaimState, ClaimStatus, EvidenceResult, SubClaimResult, Verdict
+from .schemas.claims import (
+    ClaimResult,
+    ClaimState,
+    ClaimStatus,
+    ClaimsTrace,
+    ClaimTrace,
+    EvidenceResult,
+    SubClaimResult,
+    TraceEvidence,
+    TraceMethod,
+    TracePaper,
+    TraceSubClaim,
+    Verdict,
+)
 from .schemas.common import now
+from .schemas.document import Document, ref_kind
 from .schemas.comparison import CompareSettings, Comparison, Status
 from .schemas.curation import (
     Action,
@@ -238,6 +253,110 @@ def statuses(pkg: Package) -> list[ClaimStatus]:
             state = result.verdict
         out.append(ClaimStatus(claim=c.id, state=state, stale=stale, ran_at=rec.at if rec else None, result=result))
     return out
+
+
+# ---------- the claims trace ----------
+
+ASSUMPTION_RE = re.compile(r"^\s*#\s*ASSUMPTION:\s*(.*?)\s*$", re.MULTILINE)
+
+
+def assumptions(pkg: Package, claim_id: str) -> list[str]:
+    """The coding agent's flagged guesses: `# ASSUMPTION:` comment lines in the claim's file and the prepare file."""
+    m = pkg.load()
+    paths = claim_files(pkg, claim_id) + [r.path for r in m.by_kind("script") if getattr(r.reprocrowd, "claims_role", None) == "prepare"]
+    out: list[str] = []
+    for path in paths:
+        f = pkg.path(path)
+        if f.is_file():
+            out += [a for a in ASSUMPTION_RE.findall(f.read_text(errors="replace")) if a]
+    return list(dict.fromkeys(out))
+
+
+def _location(docs: dict[str, Document | None], ref: Ref) -> str:
+    """A readable location of a reference: the table's or figure's label, or the sentence's section title."""
+    doc = docs.get(ref.extraction)
+    head = ref.id.split(".")[0]
+    if doc is not None:
+        for x in [*doc.figures, *doc.tables]:
+            if x.id == head and x.label:
+                return x.label
+        if ref_kind(ref.id) == "sentence":
+            sec = next((s for s in doc.sections if s.id == head), None)
+            if sec is not None and sec.title:
+                return sec.title
+    return ref.id
+
+
+VERDICT_LABEL: dict[str, str] = {"reproduced": "Reproduced", "partly": "Partly reproduced", "not_reproduced": "Not reproduced"}
+
+
+def status_words(c: ClaimTrace) -> str:
+    """A claim's status in words for the report and the deposit: "Reproduced 14/18", "Not run", "Not testable"."""
+    if not c.testable:
+        return "Not testable"
+    if c.result is None:
+        return "Not run"
+    words = f"{VERDICT_LABEL[c.result.verdict]} {c.result.matched}/{c.result.tested}"
+    return words if c.status in VERDICT_LABEL else words + " (claim changed since)"
+
+
+def ran(pkg: Package) -> list[str]:
+    """Ids of the effective claims that have been run (have a run record), in id order."""
+    from .curation import Curation
+
+    cur = Curation(pkg, "claims")
+    done = cur.load().ran
+    return sorted((c.id for c, _ in cur.effective() if c.id in done), key=lambda i: int(i[1:]))
+
+
+def mode(pkg: Package) -> bool:
+    """Claims mode: the package has at least one effective claim."""
+    from .curation import Curation
+
+    return bool(Curation(pkg, "claims").effective())
+
+
+def trace(pkg: Package) -> ClaimsTrace:
+    """Every effective claim in the trace format, with its state and (last) result. No `tolerance`: values are compared
+    with the package-wide rule."""
+    from .curation import Curation
+
+    m = pkg.load()
+    doi = m.reprocrowd.identifiers.get("doi") or (m.reprocrowd.identifier.value if m.reprocrowd.identifier and m.reprocrowd.identifier.scheme == "doi" else None)
+    work = pkg.read_json("metadata/openalex.json") if m.get("metadata-openalex") else {}
+    title = (work.get("title") if isinstance(work, dict) else None) or m.title
+    cur = Curation(pkg, "claims")
+    f = cur.load()
+    claims = sorted((c for c, _ in cur.effective()), key=lambda c: int(c.id[1:]))
+    targets = {t.id: t for t, _ in Curation(pkg, "targets").effective()}
+    actions = {a.id: a for a, _ in Curation(pkg, "actions").effective()}
+    docs: dict[str, Document | None] = {}
+    for t in targets.values():
+        for r in t.refs[:1]:
+            if r.extraction not in docs:
+                try:
+                    docs[r.extraction] = get_extraction(pkg, r.extraction)[1]
+                except Exception:  # unreadable or removed extraction: the ref id is the location
+                    docs[r.extraction] = None
+    state = {s.claim: s for s in statuses(pkg)}
+
+    def ev(ids: list[str]) -> list[TraceEvidence]:
+        return [TraceEvidence(id=t.id, label=t.description, value=t.expected, comparator=t.comparator or "=", unit=t.unit,
+                              decimals=t.decimals, source=_location(docs, t.refs[0]) if t.refs else t.note)
+                for t in (targets[i] for i in dict.fromkeys(ids) if i in targets)]
+
+    out = []
+    for c in claims:
+        st = state[c.id]
+        out.append(ClaimTrace(
+            id=doi, title=title, claim_id=c.id, main_claim=c.text, mode=c.mode, original_quote=c.original_quote,
+            testable=c.testable, depends_on=c.depends_on, traced_under=c.traced_under,
+            sub_claims=[TraceSubClaim(id=sc.id, claim=sc.text, method=sc.method, quantitative_evidence=ev(sc.evidence)) for sc in c.sub_claims],
+            quantitative_evidence=ev(c.evidence),
+            methods=[TraceMethod(id=a.id, summary=a.summary, quote=a.quote) for a in (actions[i] for i in methods(c) if i in actions)],
+            assumptions=assumptions(pkg, c.id), status=st.state, result=st.result))
+    skipped = [s for r in f.llm_runs if not r.disabled for s in f.skipped.get(r.id, [])]
+    return ClaimsTrace(paper=TracePaper(doi=doi, title=title), claims=out, skipped=skipped)
 
 
 # ---------- extraction: one LLM call writes claims, targets and actions ----------

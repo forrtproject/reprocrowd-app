@@ -176,6 +176,8 @@ class ZenodoDeposit(Model):
     created_at: datetime
     published_at: datetime | None = None
     checked_at: datetime | None = None
+    version_of: str | None = Field(default=None, description="id of the published deposit this one is a new version of (same Zenodo record)")
+    claims: list[str] = Field(default_factory=list, description="claims mode: the claims that had been run (the ones this version covers)")
 
 
 class PackageMeta(Model):

@@ -100,6 +100,7 @@ CATALOG: dict[str, tuple[int, str]] = {
     "zenodo_unreachable": (502, "Zenodo could not be reached"),
     "zenodo_error": (502, "Zenodo returned an unexpected answer"),
     "deposit_not_draft": (409, "Only a draft deposit can be published or discarded"),
+    "no_claim_run": (409, "The package has claims and none has been run yet; run at least one before depositing"),
     # jobs
     "job_running": (409, "Another job is running in this package"),
     "job_finished": (409, "The job is not running"),

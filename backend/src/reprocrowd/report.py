@@ -28,11 +28,23 @@ from .validation import validate_package
 
 REPORT = "report.html"
 COMPARISON = "comparison.json"
+CLAIMS_TRACE = "claims_trace.json"
 ARCHIVE_DIR = "archive"
 
 def _last_run(pkg: Package):
     runs = [j for j in jobs.list_jobs(pkg) if j.type == "run"]
     return runs[-1] if runs else None
+
+
+def _claims_trace(pkg: Package):
+    """The claims trace in claims mode, else None (packages without claims get no claims_trace.json)."""
+    from . import claims
+
+    return claims.trace(pkg) if claims.mode(pkg) else None
+
+
+def _write_trace(pkg: Package, m, trace) -> None:
+    pkg.write_json(m, "claims-trace", CLAIMS_TRACE, trace, schema="claims-trace", meta=OtherMeta(kind="report", added_at=now()))
 
 
 def write_report(pkg: Package, st: CompareSettings) -> dict[str, Any]:
@@ -74,6 +86,9 @@ def write_report(pkg: Package, st: CompareSettings) -> dict[str, Any]:
     traces = {t.id: provenance.trace(graph, t.id) for t in targets}
     validation = validate_package(pkg)
     numeric = [r for r in cmp.rows if r.type != "figure"]
+    trace = _claims_trace(pkg)
+    from .claims import VERDICT_LABEL, status_words
+
     env = Environment(loader=PackageLoader("reprocrowd", "templates"), undefined=StrictUndefined, autoescape=True, trim_blocks=True, lstrip_blocks=True)
     html = env.get_template("_report.html.j2").render(
         title=m.title or "(untitled)", identifiers=m.reprocrowd.identifiers,
@@ -82,11 +97,14 @@ def write_report(pkg: Package, st: CompareSettings) -> dict[str, Any]:
         reproduced=sum(r.status in ("match", "within") for r in numeric), numeric=len(numeric),
         plan=plan, svg=provenance.svg(graph), lineage=graph.lineage(), traces=traces, colors=provenance.COLORS, tpl=tpl, run=_last_run(pkg), codegen=codegen[-1] if codegen else None,
         inputs=m.by_kind("input"), extractions=m.by_kind("extraction"), fulltexts=m.by_kind("fulltext"), llm_runs=llm_runs,
-        figures=figures, validation=validation, resources=sorted(m.resources, key=lambda r: r.path))
+        figures=figures, validation=validation, resources=sorted(m.resources, key=lambda r: r.path),
+        claims=trace, claim_words={c.claim_id: status_words(c) for c in trace.claims} if trace else {}, verdict_labels=VERDICT_LABEL)
     with pkg.edit() as m:
         atomic_write(pkg.path(REPORT), html.encode())
         pkg.put(m, pkg.describe("report", REPORT, type="file", format="html", mediatype="text/html", meta=OtherMeta(kind="report", added_at=now())))
         pkg.write_json(m, "comparison", COMPARISON, cmp, schema="comparison", meta=OtherMeta(kind="report", added_at=now()))
+        if trace is not None:
+            _write_trace(pkg, m, trace)
     return {"path": REPORT, "comparison": COMPARISON, "summary": cmp.summary, "reproduced": f"{sum(r.status in ('match', 'within') for r in numeric)}/{len(numeric)}"}
 
 
@@ -99,11 +117,14 @@ def write_archive(pkg: Package) -> ArchiveInfo:
     m = pkg.load()
     if not m.get("report"):
         raise conflict("report_missing", "create the report first (PUT …/report)")
+    trace = _claims_trace(pkg)  # refreshed, so the archive's trace covers every claim run so far
     with pkg.edit() as m:  # inputs.json: the input list in the package database's format
         entries = [InputEntry(path=r.path, role=r.reprocrowd.role, note=r.reprocrowd.note, used=r.reprocrowd.used,
                               archive=m.get(r.reprocrowd.archive).path if r.reprocrowd.archive and m.get(r.reprocrowd.archive) else None)
                    for r in m.by_kind("input")]
         pkg.write_json(m, "inputs-list", "inputs.json", InputsList(inputs=entries), schema="inputs", meta=OtherMeta(kind="export", added_at=now()))
+        if trace is not None:
+            _write_trace(pkg, m, trace)
     stem = slug(m.reprocrowd.identifiers.get("doi") or m.name).replace(".", "-")
     rel = f"{ARCHIVE_DIR}/{stem}-reproduction.zip"
     out = pkg.path(rel)

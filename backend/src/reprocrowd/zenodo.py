@@ -32,6 +32,7 @@ from typing import Any, Iterable, Literal
 import httpx
 
 from . import __version__
+from . import claims as claims_
 from .config import settings
 from .database import Prepared
 from .errors import ApiError, conflict, invalid, not_found
@@ -201,6 +202,15 @@ def _creators(given: list[ZenodoCreator] | None) -> list[ZenodoCreator]:
     return creators
 
 
+def _claims_table(pkg: Package) -> str:
+    """Claims mode: one row per claim with its status in words ("Not run" for claims not run yet); else ""."""
+    if not claims_.mode(pkg):
+        return ""
+    rows = "".join(f"<tr><td>{escape(c.claim_id)}</td><td>{escape(c.main_claim[:199] + '…' if len(c.main_claim) > 200 else c.main_claim)}</td>"
+                   f"<td>{escape(claims_.status_words(c))}</td></tr>" for c in claims_.trace(pkg).claims)
+    return f"<p><b>Claims:</b></p><table><tr><th>ID</th><th>Claim</th><th>Status</th></tr>{rows}</table>"
+
+
 def metadata(p: Prepared, creators: list[ZenodoCreator], note: str, excluded: list[str], community: str | None) -> dict[str, Any]:
     work, doi = p.work, p.doi
     summary = p.cmp.summary
@@ -211,6 +221,7 @@ def metadata(p: Prepared, creators: list[ZenodoCreator], note: str, excluded: li
         f"<p>A computational reproduction of {cite} <a href=\"https://doi.org/{escape(doi)}\">https://doi.org/{escape(doi)}</a></p>",
         f"<p><b>Result:</b> {summary.get('match', 0)} of {total} target results reproduced "
         f"({', '.join(f'{escape(k)}: {v}' for k, v in summary.items())}).</p>" if total else "",
+        _claims_table(p.pkg),
         f"<p><b>Master script:</b> {escape(p.template.label)} (<code>{escape(p.template.command)}</code>).</p>" if p.template else "",
         f"<p><b>Note:</b> {escape(note)}</p>" if note else "",
         "<p>The ZIP is a Frictionless data package (<code>datapackage.json</code>) made with ReproCrowd: the targets taken "
@@ -264,6 +275,29 @@ def preview(pkg: Package, exclude: list[str] | None, note: str, creators: list[Z
             "contents": c, "exclude": ex}
 
 
+def _new_version(url: str, tok: str, deposition_id: int) -> dict[str, Any]:
+    """A new version of a published record: Zenodo makes a draft that inherits the previous files, which are deleted so
+    the new ZIP can be uploaded. Returns the draft (its metadata is set after the upload)."""
+    r = _request("POST", f"{url}/api/deposit/depositions/{deposition_id}/actions/newversion", tok, timeout=60)
+    latest = (_body(r).get("links") or {}).get("latest_draft")
+    if not latest:
+        raise ApiError(502, "zenodo_error", "Zenodo's answer to the new-version request has no link to the new draft")
+    dep = _body(_request("GET", latest, tok, timeout=30))
+    if not dep.get("id"):
+        raise ApiError(502, "zenodo_error", "Zenodo's new-version draft has no id")
+    try:
+        for f in dep.get("files") or []:
+            link = (f.get("links") or {}).get("self") or f"{url}/api/deposit/depositions/{dep['id']}/files/{f.get('id')}"
+            _request("DELETE", link, tok, ok=(200, 204, 404), timeout=30)
+    except ApiError:
+        try:
+            _request("DELETE", f"{url}/api/deposit/depositions/{dep['id']}", tok, timeout=15)
+        except ApiError:
+            pass
+        raise
+    return dep
+
+
 def create(pkg: Package, *, token: str | None, sandbox: bool | None, exclude: list[str] | None, note: str,
            creators: list[ZenodoCreator] | None, community: str | None, publish: bool) -> ZenodoDeposit:
     url, sb = server(sandbox)
@@ -278,18 +312,29 @@ def create(pkg: Package, *, token: str | None, sandbox: bool | None, exclude: li
         if d.server == url and d.archive_sha256 == archive_sha and sorted(d.exclude) == sorted(ex) and d.status in ("draft", "published"):
             raise conflict("duplicate_submission", f"this archive is already on Zenodo ({d.status}, {d.url}); change the package "
                                                    "and create the archive again for a new deposit", {"existing": d.model_dump(mode="json")})
+    ran: list[str] = []
+    prev: ZenodoDeposit | None = None
+    if claims_.mode(pkg):
+        ran = claims_.ran(pkg)
+        if not ran:
+            raise conflict("no_claim_run", "run at least one claim before depositing (tick it, then POST …/jobs {type: run})")
+        prev = next((d for d in reversed(p.m.reprocrowd.deposits) if d.server == url and d.status == "published"), None)
     md = metadata(p, creators, note, ex, community)
     with tempfile.TemporaryDirectory() as tmp:
         zip_path, left_out = _publication_zip(pkg, archive_path(pkg), set(ex), Path(tmp))
         sha = sha256_file(zip_path)
-        r = _request("POST", f"{url}/api/deposit/depositions", tok, json={"metadata": md})
-        dep = _body(r)
+        if prev is not None:  # a new version of the same record
+            dep = _new_version(url, tok, prev.deposition_id)
+        else:
+            dep = _body(_request("POST", f"{url}/api/deposit/depositions", tok, json={"metadata": md}))
         try:
             bucket = (dep.get("links") or {}).get("bucket")
             if not bucket:
                 raise ApiError(502, "zenodo_error", "Zenodo's answer has no file bucket for the new deposit")
             with zip_path.open("rb") as f:
                 _request("PUT", f"{bucket}/{zip_path.name}", tok, content=f, headers={"Content-Type": "application/octet-stream"}, timeout=3600)
+            if prev is not None:
+                dep = _body(_request("PUT", f"{url}/api/deposit/depositions/{dep['id']}", tok, json={"metadata": md})) or dep
         except ApiError:
             # Don't leave an empty draft behind.
             try:
@@ -300,7 +345,8 @@ def create(pkg: Package, *, token: str | None, sandbox: bool | None, exclude: li
     page, doi = _links(url, dep)
     deposit = ZenodoDeposit(id=f"zen-{secrets.token_hex(4)}", server=url, sandbox=sb, deposition_id=int(dep["id"]), status="draft",
                             title=md["title"], doi=doi, url=page, file=zip_path.name, sha256=sha, archive_sha256=archive_sha,
-                            exclude=ex, excluded=[r.name for r in left_out], community=community, creators=creators, note=note, created_at=now())
+                            exclude=ex, excluded=[r.name for r in left_out], community=community, creators=creators, note=note, created_at=now(),
+                            version_of=prev.id if prev else None, claims=ran)
     with pkg.edit() as m:
         m.reprocrowd.deposits.append(deposit)
     if publish:

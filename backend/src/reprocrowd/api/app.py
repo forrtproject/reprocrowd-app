@@ -32,7 +32,7 @@ from ..identifiers import parse_identifier
 from ..package import MANIFEST, Package, Registry
 from ..events import EventReader, read_events
 from ..schemas.document import Document
-from ..schemas.claims import ClaimStatus
+from ..schemas.claims import ClaimStatus, ClaimsTrace
 from ..schemas.comparison import Comparison, CompareSettings
 from ..schemas.jobs import Job, JobEvent
 from ..schemas.manifest import ArchiveInfo, Resource, Submission, ZenodoDeposit
@@ -817,6 +817,16 @@ def claims_status(pkg: Pkg):
     return claims.statuses(pkg)
 
 
+@api.get("/packages/{pkg}/claims:trace", tags=["comparison"], response_model=ClaimsTrace, summary="The claims trace (claims_trace.json)",
+         description="Every claim in the trace format: the paper's DOI and title, the claim's id, text, mode, links, sub-claims "
+                     "and evidence (reported value, comparator, decimals, readable source; no tolerance: values are compared "
+                     "with the package-wide rule), methods, the coding agent's `# ASSUMPTION:` comments in the claim's file and "
+                     "the prepare file, its state and (last) result. `skipped`: the sentences the enabled claims run passed over. "
+                     "The report and the archive write the same object to `claims_trace.json`. Empty without claims.")
+def claims_trace(pkg: Pkg):
+    return claims.trace(pkg)
+
+
 # ---------- figure crops ----------
 
 CROP_ERRORS = errors("not_found", "not_a_figure_target", "no_figure_reference", "no_coordinates", "pdf_unknown", "not_convertible")
@@ -983,8 +993,10 @@ def preview_deposit(pkg: Pkg, body: M.DepositOptions = Body(default_factory=M.De
 @api.post("/packages/{pkg}/deposits", tags=["zenodo"], status_code=201, response_model=ZenodoDeposit, summary="Deposit the package on Zenodo",
           description="Creates a draft on Zenodo with the metadata (from OpenAlex, looked up now) and the package ZIP, without the excluded "
                       "groups of files, and reserves a DOI. With `publish: true` it is published at once; otherwise publish it on Zenodo "
-                      "or with `…/deposits/{id}:publish`. Same preconditions as a database submission.",
-          responses=errors(*DEPOSIT_PRECONDITIONS, "duplicate_submission", "zenodo_token_missing", "zenodo_token_invalid",
+                      "or with `…/deposits/{id}:publish`. Same preconditions as a database submission. With claims: at least "
+                      "one claim must have been run (`no_claim_run`), `claims` lists the ones that were, and a package with a "
+                      "published deposit on the server gets a new version of that record (`version_of`).",
+          responses=errors(*DEPOSIT_PRECONDITIONS, "duplicate_submission", "no_claim_run", "zenodo_token_missing", "zenodo_token_invalid",
                            "zenodo_creators_missing", "zenodo_rejected", "zenodo_unreachable", "zenodo_error"))
 def create_deposit(pkg: Pkg, response: Response, body: M.DepositCreate = Body(default_factory=M.DepositCreate)):
     d = zenodo.create(pkg, token=_tok(body), sandbox=body.sandbox, exclude=body.exclude, note=body.note, creators=body.creators,
