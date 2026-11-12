@@ -232,7 +232,7 @@ export function makeApi(wc: WebContents) {
       // The backend gets the Zenodo choices and its start command at start.
       if (before.backendCmd !== after.backendCmd || before.zenodo.sandbox !== after.zenodo.sandbox || before.zenodo.community !== after.zenodo.community) await backend.restart().catch(() => {});
     },
-    llmModels: async () => ({ available: await detectLlmModels(), disabled: loadSettings().llmDisabled }),
+    llmModels: async (refresh?: boolean) => ({ available: await detectLlmModels(refresh), disabled: loadSettings().llmDisabled }),
     setLlmModels: async (disabled: string[]) => {
       saveSettings({ llmDisabled: disabled });
     },

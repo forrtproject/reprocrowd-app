@@ -64,8 +64,8 @@ function modelOf(id: string): LlmModel {
   return { provider, id, name: displayName(short) };
 }
 
-export async function detectLlmModels(): Promise<LlmModel[]> {
-  if (cache && Date.now() - cache.at < TTL) return cache.value;
+export async function detectLlmModels(refresh = false): Promise<LlmModel[]> {
+  if (!refresh && cache && Date.now() - cache.at < TTL) return cache.value;
   const available = configuredProviders();
   available.add("opencode"); // OpenCode's free built-in models need no key
   const found: LlmModel[] = [];

@@ -116,7 +116,7 @@ export const host = {
   // settings and backend
   getConfig: () => call<Config>("getConfig"),
   setConfig: (patch: { packagesRoot?: string; editorCmd?: string; backendCmd?: string; zenodo?: { sandbox?: boolean; community?: string; creator?: Partial<Creator> } }) => call<void>("setConfig", patch),
-  llmModels: () => call<LlmModels>("llmModels"),
+  llmModels: (refresh?: boolean) => call<LlmModels>("llmModels", refresh),
   setLlmModels: (disabled: string[]) => call<void>("setLlmModels", disabled),
   setZenodoToken: (server: "zenodo" | "sandbox", token: string | null) => call<void>("setZenodoToken", server, token),
   verifyZenodoToken: (sandbox: boolean, token?: string) => call<{ ok: boolean; url: string; sandbox: boolean }>("verifyZenodoToken", sandbox, token),

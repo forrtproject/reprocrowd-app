@@ -77,16 +77,12 @@ async function setupNote() {
 
 /** The starting page: the LLM models the user can actually use, grouped by provider/family, so they can turn off whole
  * families or single models and not spend tokens on them by accident. */
-async function renderLlmModels() {
+async function renderLlmModels(refresh = false) {
   const el = $("#llm-models");
   let m: LlmModels;
   try {
-    m = await host.llmModels();
+    m = await host.llmModels(refresh);
   } catch {
-    el.innerHTML = "";
-    return;
-  }
-  if (!m.available.length) {
     el.innerHTML = "";
     return;
   }
@@ -106,8 +102,9 @@ async function renderLlmModels() {
         .join("")}</div>
     </div>`)
     .join("");
-  el.innerHTML = `<h2 class="section-title">LLM models</h2>
-    <div class="card llm-models-card">${familyHtml}</div>`;
+  el.innerHTML = `<h2 class="section-title">LLM models <button class="ghost" id="llm-recheck" title="Look again for models you've added">Recheck</button></h2>
+    <div class="card llm-models-card">${familyHtml || '<p class="muted">No models found. Add one to your agent\u2019s config, then Recheck.</p>'}</div>`;
+  el.querySelector("#llm-recheck")?.addEventListener("click", () => renderLlmModels(true));
   const syncFamilies = () => {
     el.querySelectorAll<HTMLInputElement>("[data-family-toggle]").forEach((f) => {
       const models = m.available.filter((x) => x.provider === f.dataset.familyToggle);
