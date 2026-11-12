@@ -16,7 +16,7 @@ You need [Node.js](https://nodejs.org) 20 or newer and [uv](https://docs.astral.
 (`curl -LsSf https://astral.sh/uv/install.sh | sh`). Then, in a terminal:
 
 ```sh
-git clone https://github.com/<org>/reprocrowd-app
+git clone https://github.com/forrtproject/reprocrowd-app
 reprocrowd-app/scripts/install.sh
 ```
 
