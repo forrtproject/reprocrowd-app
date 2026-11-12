@@ -17,16 +17,18 @@ def test_claim_rules(client, pkg):
     P = f"/v1/packages/{pkg}"
     base = {"text": "x", "refs": REF}
     sub = {"id": "C1.1", "text": "s", "refs": REF}
-    bad = (
-        {"mode": "paraphrase"},
-        {"sub_claims": [sub], "evidence": ["T001"]},
-        {"testable": False, "evidence": ["T001"]},
-        {"sub_claims": [sub | {"id": "C9.1"}]},
-    )
-    for extra in bad:  # a POST body is checked against the request schema first, as for targets; the id rule needs the new id
-        problem(client.post(P + "/claims", json=base | extra), 422, "schema_invalid" if "sub_claims" in extra and "evidence" not in extra else "request_invalid")
+    # (case, POST status/code, PATCH status/code). A POST body is checked against the request schema first, as for
+    # targets; the sub-claim id rule needs the new claim's id, so it is only caught by the model.
+    cases = [
+        ({"mode": "paraphrase"}, "request_invalid"),
+        ({"sub_claims": [sub], "evidence": ["T001"]}, "request_invalid"),
+        ({"testable": False, "evidence": ["T001"]}, "request_invalid"),
+        ({"sub_claims": [sub | {"id": "C9.1"}]}, "schema_invalid"),
+    ]
+    for extra, code in cases:
+        problem(client.post(P + "/claims", json=base | extra), 422, code)
     assert client.post(P + "/claims", json=base).status_code == 201
-    for extra in bad:  # a PATCH is merged into the stored claim and validated by the model
+    for extra, _ in cases:  # a PATCH is merged into the stored claim and validated by the model
         problem(client.patch(P + "/claims/C1", json=extra), 422, "schema_invalid")
     assert client.post(P + "/claims", json=base | {"sub_claims": [sub | {"id": "C2.1"}]}).status_code == 201
 
@@ -53,3 +55,16 @@ def test_old_package_without_claims_file(client, pkg):
     assert r.status_code == 200 and r.json() == []
     assert client.post(P + "/claims", json={"text": "x", "refs": REF}).status_code == 201
     assert (root / "claims.json").exists()
+
+
+def test_delete_target_or_action_used_by_claim(client, pkg):
+    package_with_targets(client, pkg)
+    P = f"/v1/packages/{pkg}"
+    assert client.post(P + "/claims", json={"text": "x", "refs": REF, "method": "A01", "evidence": ["T001"]}).status_code == 201
+    assert client.post(P + "/claims", json={"text": "y", "refs": REF, "sub_claims": [
+        {"id": "C2.1", "text": "s", "refs": REF, "evidence": ["T002"]}]}).status_code == 201
+    assert "C1" in problem(client.delete(P + "/targets/T001"), 409, "in_use")["used_by"]
+    assert "C2" in problem(client.delete(P + "/targets/T002"), 409, "in_use")["used_by"]
+    assert "C1" in problem(client.delete(P + "/actions/A01"), 409, "in_use")["used_by"]
+    assert client.delete(P + "/claims/C1").status_code == 204
+    assert client.delete(P + "/targets/T001").status_code == 409  # still produced by A01

@@ -244,11 +244,14 @@ class Curation:
 
     def _users(self, item_id: str) -> list[str]:
         actions = [a for a, _ in Curation(self.pkg, "actions").effective(include_disabled=True)]
+        if self.spec.kind in ("targets", "actions"):
+            claims = [c for c, _ in Curation(self.pkg, "claims").effective(include_disabled=True)]
+            refs = [c.id for c in claims if any(item_id in (o.evidence if self.spec.kind == "targets" else [o.method]) for o in [c, *c.sub_claims])]
         if self.spec.kind == "targets":
-            return [a.id for a in actions if item_id in a.produces]
+            return [a.id for a in actions if item_id in a.produces] + refs
         if self.spec.kind == "claims":
             return [c.id for c, _ in self.effective(include_disabled=True) if item_id in c.depends_on or item_id in c.traced_under]
-        return [a.id for a in actions if item_id in a.depends_on]
+        return [a.id for a in actions if item_id in a.depends_on] + refs
 
     # ----- edits (JSON merge patch) -----
 
