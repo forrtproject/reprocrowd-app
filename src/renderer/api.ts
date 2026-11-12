@@ -54,6 +54,7 @@ export interface Config {
   editorCmd: string;
   zenodo: { sandbox: boolean; community: string; creator: Creator };
   backendCmd: string;
+  checkUpdates: boolean;
   tokens: { zenodo: boolean; sandbox: boolean };
   secretStorage: "secure" | "weak" | "none";
   backend: BackendStatus;
@@ -62,10 +63,15 @@ export interface Config {
 }
 export type BackendCheck = { ok: true; url: string; version: string } | { ok: false; url: string; code: string; message: string };
 export type UpdateStatus =
-  | { state: "disabled"; reason: string }
-  | { state: "not-available"; current: string }
-  | { state: "available"; version: string }
-  | { state: "error"; message: string };
+  | { state: "idle"; current: string }
+  | { state: "disabled"; current: string; reason: string }
+  | { state: "checking"; current: string }
+  | { state: "not-available"; current: string; note?: string }
+  | { state: "downloading"; current: string; version: string; percent: number }
+  | { state: "ready"; current: string; version: string }
+  | { state: "manual"; current: string; version: string; url: string; howTo: string }
+  | { state: "error"; current: string; message: string; detail?: string; url?: string };
+export interface UpdateInfo { mode: "auto" | "notify" | "off"; explain: string; status: UpdateStatus }
 export interface JatsAvailability { doi: string; available: boolean; pmcid: string | null; url: string | null; title: string | null; reason: string | null }
 export const JATS_ONLY = "Only articles with JATS XML full text (the open-access subset of PubMed Central) are supported at this time.";
 export interface Work { doi: string; title: string | null; authors: string[]; year: number | null; venue: string | null; license: string | null; open_access: boolean | null }
@@ -102,6 +108,8 @@ export const host = {
   // library
   appInfo: () => call<{ version: string; platform: string; backend: BackendStatus }>("appInfo"),
   checkForUpdates: () => call<UpdateStatus>("checkForUpdates"),
+  updateInfo: () => call<UpdateInfo>("updateInfo"),
+  installUpdate: () => call<void>("installUpdate"),
   listPackages: () => call<LibraryEntry[]>("listPackages"),
   packageDeposits: (id: string) => call<ZenodoDeposit[]>("packageDeposits", id),
   lookupDoi: (doi: string) => call<Work>("lookupDoi", doi),
@@ -118,7 +126,7 @@ export const host = {
   openUrl: (url: string) => call<void>("openUrl", url),
   // settings and backend
   getConfig: () => call<Config>("getConfig"),
-  setConfig: (patch: { packagesRoot?: string; editorCmd?: string; backendCmd?: string; zenodo?: { sandbox?: boolean; community?: string; creator?: Partial<Creator> } }) => call<void>("setConfig", patch),
+  setConfig: (patch: { packagesRoot?: string; editorCmd?: string; backendCmd?: string; checkUpdates?: boolean; zenodo?: { sandbox?: boolean; community?: string; creator?: Partial<Creator> } }) => call<void>("setConfig", patch),
   setZenodoToken: (server: "zenodo" | "sandbox", token: string | null) => call<void>("setZenodoToken", server, token),
   verifyZenodoToken: (sandbox: boolean, token?: string) => call<{ ok: boolean; url: string; sandbox: boolean }>("verifyZenodoToken", sandbox, token),
   saveBackendConfig: (text: string) => call<void>("saveBackendConfig", text),

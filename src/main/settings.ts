@@ -23,6 +23,10 @@ export interface Settings {
   };
   /** Advanced: start the backend with this command instead of the bundled one ({host}, {port}). */
   backendCmd: string;
+  /** Look for a new version of ReproCrowd a little after start. */
+  checkUpdates: boolean;
+  /** The newest version the user was already told about (notify mode asks once per version). */
+  updateNotified: string;
 }
 
 export const userData = () => app.getPath("userData");
@@ -34,6 +38,8 @@ export const DEFAULTS: Settings = {
   editorCmd: "",
   zenodo: { sandbox: true, community: "", creator: { name: "", orcid: "", affiliation: "" } },
   backendCmd: "",
+  checkUpdates: true,
+  updateNotified: "",
 };
 
 function readJson(file: string): any {
@@ -66,6 +72,8 @@ export function loadSettings(): Settings {
       creator: { name: str(c.name, ""), orcid: str(c.orcid, ""), affiliation: str(c.affiliation, "") },
     },
     backendCmd: str(s.backendCmd, ""),
+    checkUpdates: typeof s.checkUpdates === "boolean" ? s.checkUpdates : DEFAULTS.checkUpdates,
+    updateNotified: str(s.updateNotified, ""),
   };
 }
 
