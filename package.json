@@ -13,7 +13,9 @@
     "start": "npm run build && electron .",
     "bundle-backend": "scripts/bundle-backend.sh",
     "dist": "npm run build && npm run bundle-backend && electron-builder",
-    "test:e2e": "node test/e2e.mjs"
+    "test:e2e": "node test/e2e.mjs",
+    "test:backend": "cd backend && uv run pytest -q",
+    "schemas": "cd backend && uv run reprocrowd-schemas export"
   },
   "devDependencies": {
     "@fontsource/domine": "^5.3.0",

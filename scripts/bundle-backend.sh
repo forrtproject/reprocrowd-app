@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # Bundle the ReproCrowd backend into build/backend: a relocatable CPython (python-build-standalone, as uv installs
-# it) with reprocrowd-cli and its locked dependencies installed into it. The packaged app runs
+# it) with the backend (backend/) and its locked dependencies installed into it. The packaged app runs
 # build/backend/python/bin/python3 -m reprocrowd serve, so users need neither Python nor uv.
 #
-#   scripts/bundle-backend.sh [path/to/reprocrowd-cli]      (default: ../reprocrowd-cli)
+#   scripts/bundle-backend.sh [path/to/backend]      (default: backend/)
 set -euo pipefail
 cd "$(dirname "$0")/.."
-CLI="$(realpath "${1:-../reprocrowd-cli}")"
+CLI="$(realpath "${1:-backend}")"
 PYVER="$(cat "$CLI/.python-version" 2>/dev/null || echo 3.13)"
 OUT=build/backend
 WORK="$(mktemp -d)"

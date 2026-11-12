@@ -9,7 +9,7 @@ export const TITLES: Record<string, string> = {
   backend_timeout: "The ReproCrowd backend isn't responding",
 };
 
-const KIND = { bundled: "the backend bundled with the app", development: "the development checkout (uv run, ../reprocrowd-cli)", custom: "the start command from Settings" };
+const KIND = { bundled: "the backend bundled with the app", development: "the source in backend/, through uv run", custom: "the start command from Settings" };
 
 export async function backendProblem(el: HTMLElement, onOk: () => void) {
   const render = async () => {

@@ -1,7 +1,7 @@
 // End-to-end check of the built app (npm run build first): library, a new reproduction from a DOI (real OpenAlex
 // lookup), every workflow step, and the Zenodo deposit (draft, then publish) against a fake Zenodo server in this
 // process. The package is brought to "ran successfully" through the backend API, with the fixtures and the fake
-// LLM of ../reprocrowd-cli/tests. Screenshots go to test-output/.
+// LLM of backend/tests. Screenshots go to test-output/.
 //
 //   node test/e2e.mjs
 import { _electron as electron } from "playwright-core";
@@ -14,7 +14,7 @@ import { fileURLToPath } from "node:url";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const APP = path.resolve(HERE, "..");
-const CLI_TESTS = path.resolve(APP, "../reprocrowd-cli/tests");
+const CLI_TESTS = path.join(APP, "backend/tests");
 const OUT = path.join(APP, "test-output");
 const DOI = "10.1371/journal.pbio.1002106";
 fs.mkdirSync(OUT, { recursive: true });
@@ -70,7 +70,9 @@ const ZURL = `http://127.0.0.1:${fake.address().port}`;
 // ---------- the app, with its own data folder ----------
 const userData = fs.mkdtempSync(path.join(os.tmpdir(), "rc-e2e-"));
 const packagesRoot = path.join(userData, "packages");
-const py = path.join(APP, "../reprocrowd-cli/.venv/bin/python");
+// The fake LLM and agent need only the standard library: any Python will do.
+const bundled = path.join(APP, "build/backend/python/bin/python3");
+const py = fs.existsSync(bundled) ? bundled : "python3";
 fs.writeFileSync(path.join(userData, "backend.toml"), `
 [zenodo]
 url = "${ZURL}"

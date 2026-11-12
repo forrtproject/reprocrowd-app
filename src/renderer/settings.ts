@@ -48,13 +48,13 @@ export async function settingsDialog(onSaved: (changed: boolean) => void, focus?
       <div class="actions"><button type="button" id="be-restart">Restart</button><button type="button" id="be-log">Show output</button></div>
       <pre class="log" id="be-log-text" hidden></pre>
       <details ${focus === "backend" ? "open" : ""}><summary>Configuration: LLM and coding-agent profiles, converters, OpenAlex</summary>
-        <p class="hint">TOML, as in reprocrowd-cli's <code>config.example.toml</code>, without <code>[server]</code> and <code>[database]</code> (the app sets those). LLM calls and the coding agent run the commands configured here, e.g. Claude Code (<code>claude</code>) on your PATH.</p>
+        <p class="hint">TOML, as in the backend's <code>config.example.toml</code>, without <code>[server]</code> and <code>[database]</code> (the app sets those). LLM calls and the coding agent run the commands configured here, e.g. Claude Code (<code>claude</code>) on your PATH.</p>
         <textarea class="mono big" name="becfg" spellcheck="false">${esc(cfg.backendConfig)}</textarea>
         <div class="actions"><button type="button" id="be-save" class="primary">Save configuration and restart</button><button type="button" id="be-reset">Reset to defaults</button></div>
       </details>
       <details><summary>Advanced: start command</summary>
         <label>Start the backend with <input name="becmd" value="${esc(cfg.backendCmd)}" placeholder="(the bundled backend)" spellcheck="false" /></label>
-        <p class="hint">For example <code>uv run --project /path/to/reprocrowd-cli python -m reprocrowd serve --host {host} --port {port}</code>. Empty: the backend that comes with the app.</p>
+        <p class="hint">For example <code>uv run --project /path/to/backend python -m reprocrowd serve --host {host} --port {port}</code>. Empty: the backend that comes with the app.</p>
       </details>
     </fieldset>
     <p class="save-error warn-inline" hidden></p>

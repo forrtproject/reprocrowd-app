@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Build ReproCrowd from source and install it for the current user, so it starts from the app menu / Launchpad.
 #
-#   scripts/install.sh [path/to/reprocrowd-cli]     build and install (default backend source: ../reprocrowd-cli)
+#   scripts/install.sh                              build and install
 #   scripts/install.sh --uninstall                  remove the app (your packages and settings stay)
 #
 # Needs: Node.js >= 20 (with npm) and uv. Linux and macOS; on Windows, use WSL.
@@ -31,8 +31,6 @@ case "$OS" in Linux | Darwin) ;; *) die "This script is for Linux and macOS. On 
 command -v node >/dev/null && command -v npm >/dev/null || die "Node.js is missing. Install Node.js 20 or newer: https://nodejs.org (macOS: brew install node)."
 [ "$(node -p 'process.versions.node.split(".")[0]')" -ge 20 ] || die "Node.js $(node -v) is too old; ReproCrowd needs 20 or newer: https://nodejs.org"
 command -v uv >/dev/null || die "uv is missing. Install it with:  curl -LsSf https://astral.sh/uv/install.sh | sh   (then open a new terminal)"
-CLI="${1:-../reprocrowd-cli}"
-[ -f "$CLI/pyproject.toml" ] || die "The ReproCrowd backend (reprocrowd-cli) isn't at $CLI. Clone it next to this folder, or pass its path."
 
 # ---------- build ----------
 say "Installing the build tools (npm)…"
@@ -40,7 +38,7 @@ npm ci --no-audit --no-fund --loglevel=error
 say "Building the app…"
 npm run --silent build
 say "Bundling the backend with its own Python (takes a minute)…"
-scripts/bundle-backend.sh "$CLI"
+scripts/bundle-backend.sh backend
 say "Packaging…"
 export CSC_IDENTITY_AUTO_DISCOVERY=false # a local build needs no signing certificate
 if [ "$OS" = Linux ]; then

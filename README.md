@@ -5,8 +5,9 @@
 A self-contained Electron app for AI-assisted computational reproductions of
 scholarly papers, in the visual identity of
 [forrt.org/reprocrowd](https://forrt.org/reprocrowd/). It brings together the
-ReproCrowd backend (`../reprocrowd-cli`, bundled) and the workflow UI of the
-Zotero plugin (`../reprocrowd-zotero`), without Zotero. Finished packages are
+ReproCrowd backend (`backend/`, a REST service and the `rc` command line, also
+usable on its own) and the workflow UI of the ReproCrowd Zotero plugin, without
+Zotero. Finished packages are
 **deposited on Zenodo** instead of the ReproCrowd Database.
 
 ## Install
@@ -15,7 +16,6 @@ You need [Node.js](https://nodejs.org) 20 or newer and [uv](https://docs.astral.
 (`curl -LsSf https://astral.sh/uv/install.sh | sh`). Then, in a terminal:
 
 ```sh
-git clone https://github.com/<org>/reprocrowd-cli
 git clone https://github.com/<org>/reprocrowd-app
 reprocrowd-app/scripts/install.sh
 ```
@@ -63,6 +63,7 @@ master script use your R / Python.
 ## How it fits together
 
 ```
+backend/        the ReproCrowd backend (Python: FastAPI service + `rc` CLI), see backend/README.md
 src/main/       Electron main process
   index.ts        windows, app:// protocol for the UI, IPC, quit guard (asks while jobs run)
   backend.ts      starts the bundled backend on a free port with a random token; writes its config
@@ -79,8 +80,7 @@ test/e2e.mjs    end-to-end check with a fake Zenodo and the backend tests' fake 
 
 The backend is chosen at start: Settings → Advanced start command; else the
 bundled Python runtime (`build/backend`, or `resources/backend` when
-packaged); else, in a development checkout, `uv run --project
-../reprocrowd-cli`. The app's data (settings, tokens, backend config, the
+packaged); else, in a development checkout, `uv run --project backend`. The app's data (settings, tokens, backend config, the
 package registry, per-package UI state) lives in Electron's userData folder
 (`~/.config/ReproCrowd` on Linux; `REPROCROWD_USER_DATA` overrides).
 
@@ -92,4 +92,15 @@ npm start                 # build and run (uses ../reprocrowd-cli through uv if 
 npm run bundle-backend    # build/backend: a standalone Python with reprocrowd installed
 npm run dist              # installers for this system in dist/ (with the bundled backend)
 node test/e2e.mjs         # after npm run build
+npm run test:backend      # the backend's tests (pytest)
+npm run schemas           # regenerate backend/schemas and docs after model or API changes
+```
+
+`backend/` came from the standalone reprocrowd-cli repository (which the
+ReproCrowd Zotero plugin also uses) with `git subtree`, history included.
+Changes can go either way:
+
+```sh
+git subtree pull --prefix=backend ../reprocrowd-cli master   # take the standalone repo's changes
+git subtree push --prefix=backend ../reprocrowd-cli app-sync # offer this repo's changes as a branch there
 ```

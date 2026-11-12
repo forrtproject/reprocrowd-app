@@ -1,10 +1,10 @@
-// The app's own ReproCrowd backend (reprocrowd-cli, `python -m reprocrowd serve`), started on demand on a free local
+// The app's own ReproCrowd backend (backend/, `python -m reprocrowd serve`), started on demand on a free local
 // port with a random bearer token, and stopped when the app quits. Nothing else can use it without the token.
 //
 // Which backend runs, in order:
 //   1. Settings → Advanced → start command, if set ({host}, {port} filled in)
 //   2. the bundled Python runtime with reprocrowd installed (resources/backend, made by scripts/bundle-backend.sh)
-//   3. in a development checkout: `uv run --project ../reprocrowd-cli python -m reprocrowd serve`
+//   3. in a development checkout: `uv run --project backend python -m reprocrowd serve`
 //
 // Its config (REPROCROWD_CONFIG) is written at every start from the user's part (userData/backend.toml: LLM and
 // agent profiles, OpenAlex, converters, run limits; editable in Settings) and the app's part ([server], no package
@@ -161,7 +161,7 @@ export const logTail = (n = 40) => log.slice(-n).join("\n");
 
 const bundleDir = () => (app.isPackaged ? path.join(process.resourcesPath, "backend") : path.join(app.getAppPath(), "build", "backend"));
 const bundledPython = () => path.join(bundleDir(), "python", process.platform === "win32" ? "python.exe" : path.join("bin", "python3"));
-const devProject = () => path.resolve(app.getAppPath(), "..", "reprocrowd-cli");
+const devProject = () => path.join(app.getAppPath(), "backend");
 
 function launch(host: string, port: number): { argv: string[]; kind: BackendStatus["kind"]; env: Record<string, string> } {
   const custom = loadSettings().backendCmd.trim();
@@ -175,7 +175,7 @@ function launch(host: string, port: number): { argv: string[]; kind: BackendStat
     const uv = which("uv");
     if (uv) return { argv: [uv, "run", "--project", devProject(), "python", ...serve], kind: "development", env: {} };
   }
-  throw new Error("No ReproCrowd backend found: this build has no bundled backend, and there is no reprocrowd-cli checkout with uv to run it. Set a start command in Settings → Advanced.");
+  throw new Error("No ReproCrowd backend found: this build has no bundled backend, and there is no backend/ source with uv to run it. Set a start command in Settings → Advanced.");
 }
 
 function freePort(): Promise<number> {

@@ -1,4 +1,4 @@
-// Shapes of the ReproCrowd backend's JSON (see reprocrowd-cli docs/schemas.md and docs/openapi.json).
+// Shapes of the ReproCrowd backend's JSON (see backend/docs/schemas.md and backend/docs/openapi.json).
 
 export interface Box { page: number; x0: number; y0: number; x1: number; y1: number; origin: "top" | "bottom" }
 export interface Sentence { id: string; text: string; boxes?: Box[] | null }
