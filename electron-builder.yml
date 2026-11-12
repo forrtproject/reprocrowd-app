@@ -1,0 +1,30 @@
+appId: org.forrt.reprocrowd
+productName: ReproCrowd
+copyright: ReproCrowd (FORRT)
+directories:
+  output: dist
+  buildResources: resources
+files:
+  - package.json
+  - build/main/**
+  - build/preload/**
+  - build/renderer/**
+  - "!build/backend/**"
+extraResources:
+  - from: build/backend
+    to: backend
+  - from: resources/hex-sticker.png
+    to: hex-sticker.png
+asarUnpack: []
+linux:
+  syncDesktopName: true
+  target: [AppImage, dir]
+  category: Science
+  icon: resources/hex-sticker.png
+  synopsis: Crowdsourcing AI reproductions
+  description: AI-assisted computational reproductions of scholarly papers, deposited on Zenodo.
+mac:
+  target: [dmg]
+  category: public.app-category.education
+win:
+  target: [nsis]

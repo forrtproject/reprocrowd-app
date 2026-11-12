@@ -53,6 +53,24 @@ const log: string[] = [];
 
 export const userConfigFile = () => path.join(userData(), "backend.toml");
 const configFile = () => path.join(userData(), "backend", "config.toml");
+const pidFile = () => path.join(userData(), "backend", "pid");
+
+/** A backend a previous run left behind (the app was killed): stop it, if it is still that process. Only where the
+ * command line can be checked (Linux), so an unrelated process that got the same pid is never touched. */
+function stopStale() {
+  try {
+    const pid = Number(fs.readFileSync(pidFile(), "utf8").trim());
+    fs.rmSync(pidFile(), { force: true });
+    if (!pid || process.platform !== "linux") return;
+    const cmd = fs.readFileSync(`/proc/${pid}/cmdline`, "utf8").split("\0").join(" ");
+    if (cmd.includes("reprocrowd") && cmd.includes(" serve ")) {
+      process.kill(pid, "SIGTERM");
+      remember(`(stopped a backend left over from an earlier run, pid ${pid})`);
+    }
+  } catch {
+    /* none, or already gone */
+  }
+}
 
 export const DEFAULT_USER_CONFIG = `# ReproCrowd backend configuration (the part you can change). The app adds [server], and the Zenodo
 # choices from Settings, when it starts the backend. Saving here restarts the backend.
@@ -217,6 +235,7 @@ async function start(): Promise<Running> {
   const host = "127.0.0.1";
   const port = await freePort();
   const token = crypto.randomBytes(24).toString("base64url");
+  stopStale();
   writeConfig(port, token);
   const { argv, kind, env } = launch(host, port);
   const exe = which(argv[0]);
@@ -229,6 +248,7 @@ async function start(): Promise<Running> {
     stdio: ["ignore", "pipe", "pipe"],
     windowsHide: true,
   });
+  if (proc.pid) fs.writeFileSync(pidFile(), String(proc.pid));
   const base = `http://${host}:${port}`;
   const me: Running = { proc, base, token, argv, kind, ready: Promise.resolve() };
   drain(proc.stdout);
@@ -236,6 +256,7 @@ async function start(): Promise<Running> {
   const spawnError = new Promise<Error>((resolve) => proc.on("error", resolve));
   proc.on("exit", (code, signal) => {
     me.exited = code;
+    if (fs.existsSync(pidFile()) && fs.readFileSync(pidFile(), "utf8").trim() === String(proc.pid)) fs.rmSync(pidFile(), { force: true });
     remember(`(exited with ${code !== null ? `code ${code}` : `signal ${signal}`})`);
     if (running === me) running = undefined;
   });

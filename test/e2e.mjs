@@ -93,7 +93,9 @@ model = "fake-agent-1"
 fs.writeFileSync(path.join(userData, "settings.json"), JSON.stringify({ packagesRoot, zenodo: { sandbox: true, creator: { name: "Doe, Jane", orcid: "0000-0002-1825-0097", affiliation: "" } } }));
 
 const env = Object.fromEntries(Object.entries(process.env).filter(([k]) => k !== "ELECTRON_RUN_AS_NODE"));
-const app = await electron.launch({ args: [APP], env: { ...env, REPROCROWD_USER_DATA: userData, REPROCROWD_MULTI_INSTANCE: "1" } });
+// APP_EXECUTABLE: check a packaged build instead (e.g. dist/linux-unpacked/reprocrowd-app).
+const exe = process.env.APP_EXECUTABLE;
+const app = await electron.launch({ ...(exe ? { executablePath: path.resolve(exe), args: [] } : { args: [APP] }), env: { ...env, REPROCROWD_USER_DATA: userData, REPROCROWD_MULTI_INSTANCE: "1" } });
 let win = await app.firstWindow();
 const errors = [];
 const watch = (w) => {
@@ -215,6 +217,9 @@ json.dump({"results": [{"id": "T001", "value": 2.3149}, {"id": "T002", "value": 
   await win.click("#settings-btn");
   await win.waitForSelector(".dlg-settings .backend-line .ok", { timeout: 20_000 });
   await shot("07-settings");
+  const line = await win.locator(".dlg-settings .backend-line").innerText();
+  if (exe) assert.match(line, /bundled with the app/);
+  console.log(`  backend: ${line}`);
   await win.click(".dlg-settings button[value=cancel]");
   await Promise.all([win.waitForEvent("load"), win.click("#library-btn")]);
   await win.waitForSelector(".pkg-card .badge.st-published", { timeout: 20_000 });
