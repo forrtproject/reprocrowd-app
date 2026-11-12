@@ -145,3 +145,72 @@ def test_prepare_error_marks_every_claim(client, pkg):
     assert p.returncode == 0, p.stderr
     rows = ReproducedOutput.model_validate_json((root / "outputs" / "results.json").read_text()).results
     assert len(rows) == 3 and all(r.value is None and "prepare.py failed: no data" in r.note for r in rows)
+
+
+def _extract_and_tick(client, pkg, tick=("C1",)):
+    P = f"/v1/packages/{pkg}"
+    assert client.post(P + "/claims/runs", json={"extraction": "ex-paper-tei"}).status_code == 201
+    for cid in tick:
+        assert client.patch(f"{P}/claims/{cid}", json={"checked": True}).status_code == 200
+    return P
+
+
+def test_edited_monolith_refused_kept_or_overwritten(client, pkg):
+    root = package_with_targets(client, pkg)
+    (root / "analysis.py").write_text("print('agent code')\n")
+    P = _extract_and_tick(client, pkg)
+    assert problem(client.put(P + "/script", json={"template": "python"}), 409, "script_modified")["files"] == ["analysis.py"]
+    assert (root / "analysis.py").read_text() == "print('agent code')\n"
+
+    r = client.put(P + "/script", json={"template": "python", "on_modified": "keep"})
+    assert r.status_code == 200, r.text
+    assert "analysis.pre-claims.py" in r.json()["kept"]
+    assert (root / "analysis.pre-claims.py").read_text() == "print('agent code')\n"
+    assert "CLAIMS = {" in (root / "analysis.py").read_text()
+    files = {f["path"]: f["kind"] for f in client.get(P + "/files").json()}
+    assert files["analysis.pre-claims.py"] == "code"
+    # the runner itself is not "modified": a plain PUT goes through
+    assert client.put(P + "/script", json={"template": "python"}).status_code == 200
+    assert client.get(P + "/validation").json()["valid"]
+
+
+def test_edited_monolith_overwritten(client, pkg):
+    root = package_with_targets(client, pkg)
+    (root / "analysis.py").write_text("print('agent code')\n")
+    P = _extract_and_tick(client, pkg)
+    r = client.put(P + "/script", json={"template": "python", "on_modified": "overwrite"})
+    assert r.status_code == 200, r.text
+    assert "CLAIMS = {" in (root / "analysis.py").read_text() and not (root / "analysis.pre-claims.py").exists()
+
+
+def test_unedited_prepare_regenerated(client, pkg):
+    P, root, *_ = _claims(client, pkg)
+    REF = [{"extraction": "ex-paper-tei", "id": "sec3.p1.s1"}]
+    assert client.put(P + "/script", json={"template": "python"}).status_code == 200
+    r = client.post(P + "/actions", json={"kind": "transform", "summary": "Winsorize reaction times", "refs": REF})
+    assert r.status_code == 201, r.text
+    new = r.json()["id"]
+    assert client.put(P + "/script", json={"template": "python"}).status_code == 200
+    prep = (root / "prepare.py").read_text()
+    assert f"==== {new} [transform]" in prep and f"TODO(LLM): implement {new}" in prep
+    (root / "prepare.py").write_text("base = 1\n")
+    r = client.put(P + "/script", json={"template": "python"})
+    assert "prepare.py" in r.json()["kept"] and (root / "prepare.py").read_text() == "base = 1\n"
+
+
+def test_run_uses_current_ticks(client, pkg):
+    from test_jobs import wait
+
+    P, root, claims, _ = _claims(client, pkg, tick=("C1", "C2"))
+    assert client.put(P + "/script", json={"template": "python"}).status_code == 200
+    (root / "prepare.py").write_text("")
+    assert client.patch(P + "/claims/C2", json={"checked": False}).status_code == 200
+    r = client.post(P + "/jobs", json={"type": "run"})
+    assert r.status_code == 202, r.text
+    job = wait(client, pkg, r.json()["id"])
+    assert job["status"] == "succeeded", job
+    runner = (root / "analysis.py").read_text()
+    assert '"C1"' in runner and '"C2"' not in runner
+    ids = {row["id"] for row in json.loads((root / "outputs" / "results.json").read_text())["results"]}
+    assert ids == set(claims["C1"]["evidence"]) and not ids & set(_evidence(claims["C2"]))
+    assert (root / "claims" / "C2.py").exists()

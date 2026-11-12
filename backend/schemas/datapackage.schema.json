@@ -632,6 +632,23 @@
           "title": "Generated Hash",
           "type": "string"
         },
+        "claims_role": {
+          "anyOf": [
+            {
+              "enum": [
+                "runner",
+                "prepare"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "claims mode: the generated runner (master) or the shared prepare file",
+          "title": "Claims Role"
+        },
         "claim": {
           "anyOf": [
             {

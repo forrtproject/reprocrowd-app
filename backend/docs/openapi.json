@@ -13689,6 +13689,22 @@
             "title": "Generated Hash",
             "description": "hash as generated; a different current hash means the file was edited (e.g. by the agent)"
           },
+          "claims_role": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "runner",
+                  "prepare"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Claims Role",
+            "description": "claims mode: the generated runner (master) or the shared prepare file"
+          },
           "claim": {
             "anyOf": [
               {

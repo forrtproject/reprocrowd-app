@@ -115,7 +115,7 @@ def write(pkg: Package, template_id: str, on_modified: OnModified = "refuse") ->
     jobs.ensure_idle(pkg)
     with pkg.locked():
         if (scope := claims_mod.claim_scope(pkg)) is not None:
-            return _write_claims(pkg, tpl, scope)
+            return _write_claims(pkg, tpl, scope, on_modified)
         targets = [t for t, _ in Curation(pkg, "targets").effective()]
         if not targets or not Curation(pkg, "actions").effective():
             raise invalid("nothing_to_script", "at least one enabled target and one enabled action are needed")
@@ -169,40 +169,90 @@ def _claim_dest(tpl: Template, claim_id: str) -> str:
     return tpl.claims["claim"]["dest"].replace("{id}", claim_id)
 
 
-def _write_claims(pkg: Package, tpl: Template, scope: claims_mod.ClaimScope) -> dict[str, Any]:
+def _claims_context(pkg: Package, tpl: Template, scope: claims_mod.ClaimScope) -> tuple[dict, list, Any]:
+    """(base template context, the scope's targets, claim -> [{id, step, type, description}] of its evidence)."""
+    plan = resolve_plan(pkg)
+    steps = {s.id: s for s in plan.steps}
+    targets = [t for t, _ in Curation(pkg, "targets").effective() if t.id in scope.targets]
+    target_of = {t.id: t for t in targets}
+
+    def claim_targets(c):
+        return [{"id": t, "step": o.method if o.method in steps else c.id, "type": target_of[t].type, "description": target_of[t].description}
+                for o in (c, *c.sub_claims) for t in o.evidence if t in target_of]
+
+    base = {"paper": _paper(pkg.load()), "plan": plan, "tpl": tpl, "marker": TODO_MARK, "steps_by_id": steps}
+    return base, targets, claim_targets
+
+
+def _put_runner(pkg: Package, m, tpl: Template, scope: claims_mod.ClaimScope) -> None:
+    base, targets, claim_targets = _claims_context(pkg, tpl, scope)
+    ctx = base | {"claims": [{"id": c.id, "targets": claim_targets(c)} for c in scope.claims],
+                  "fields": [{"id": t.id, "field": {"table": "table", "figure": "file"}[t.type]} for t in targets if t.type in ("table", "figure")]}
+    spec = tpl.claims["runner"]
+    _put_script(pkg, m, tpl, spec["dest"], _env().get_template(f"{tpl.id}/{spec['src']}").render(ctx), {"claims_role": "runner"})
+
+
+def refresh_runner(pkg: Package) -> None:
+    """Claims mode: re-render only the runner from the current claim_scope (ticked claims), e.g. before a run. Never
+    touches the prepare or claim files. A no-op unless the script was generated in claims mode with a claims-ready template."""
+    tpl = current_template(pkg)
+    if tpl is None or tpl.claims is None or not _claims_script(pkg):
+        return
+    with pkg.locked():
+        scope = claims_mod.claim_scope(pkg)
+        if scope is None:
+            return
+        with pkg.edit() as m:
+            _put_runner(pkg, m, tpl, scope)
+
+
+def _generated_unchanged(pkg: Package, r) -> bool:
+    return r is not None and isinstance(r.reprocrowd, ScriptMeta) and _current_hash(pkg, r.path) == r.reprocrowd.generated_hash
+
+
+def _backup_path(pkg: Package, rel: str) -> str:
+    stem, dot, ext = rel.rpartition(".") if "." in rel else (rel, "", "")
+    cand, n = f"{stem}.pre-claims{dot}{ext}", 2
+    while pkg.path(cand).exists():
+        cand, n = f"{stem}.pre-claims-{n}{dot}{ext}", n + 1
+    return cand
+
+
+def _write_claims(pkg: Package, tpl: Template, scope: claims_mod.ClaimScope, on_modified: OnModified) -> dict[str, Any]:
     """Claims mode (called under the package lock): the runner (always regenerated; the agent never edits it), the
-    prepare file (written if missing) and one file per ticked claim (written if missing or if the claim changed since).
-    Files of unticked claims stay on disk and are not run. on_modified does not apply: nothing the agent implemented
-    for a claim is rewritten unless that claim changed."""
+    prepare file (regenerated while unedited) and one file per ticked claim (written if missing or if the claim changed
+    since). Files of unticked claims stay on disk and are not run. on_modified applies only to an edited monolithic
+    master that the runner would replace: refuse (409), keep (moved to <stem>.pre-claims.<ext>) or overwrite."""
     if tpl.claims is None:
         raise ApiError(400, "template_not_claims_ready", f"template {tpl.id!r} has no claims mode; available: "
                        + ", ".join(t.id for t in templates().values() if t.claims))
     if not scope.claims:
         raise invalid("nothing_to_script", "tick at least one testable claim that has an enabled evidence target")
     m = pkg.load()
-    plan = resolve_plan(pkg)
-    paper = _paper(m)
-    steps = {s.id: s for s in plan.steps}
-    targets = [t for t, _ in Curation(pkg, "targets").effective() if t.id in scope.targets]
-    target_of = {t.id: t for t in targets}
-
-    def claim_targets(c):
-        owners = [c, *c.sub_claims]
-        return [{"id": t, "step": o.method if o.method in steps else c.id, "type": target_of[t].type, "description": target_of[t].description}
-                for o in owners for t in o.evidence if t in target_of]
-
+    base, targets, claim_targets = _claims_context(pkg, tpl, scope)
+    plan, steps = base["plan"], base["steps_by_id"]
     env = _env()
-    base = {"paper": paper, "plan": plan, "tpl": tpl, "marker": TODO_MARK, "steps_by_id": steps}
-    runner_ctx = base | {"claims": [{"id": c.id, "targets": claim_targets(c)} for c in scope.claims],
-                         "fields": [{"id": t.id, "field": {"table": "table", "figure": "file"}[t.type]} for t in targets if t.type in ("table", "figure")]}
     spec = tpl.claims
     runner, prepare = spec["runner"]["dest"], spec["prepare"]["dest"]
-    # (dest, src, context, ScriptMeta extras); the runner, README and prompt always, the others only when due
-    out: list[tuple[str, str, dict, dict]] = [(runner, f"{tpl.id}/{spec['runner']['src']}", runner_ctx, {})]
     kept: list[str] = []
-    if not pkg.path(prepare).exists():
+
+    # an edited master that is not a claims runner (e.g. the implemented monolithic script)
+    old_master = m.get(f"script-{_rname(runner)}")
+    backup = None
+    if pkg.path(runner).exists() and not _generated_unchanged(pkg, old_master) and not (
+            old_master is not None and isinstance(old_master.reprocrowd, ScriptMeta) and old_master.reprocrowd.claims_role == "runner"):
+        if on_modified == "refuse":
+            raise conflict("script_modified", "these files changed since they were generated; keep them (on_modified=keep, "
+                           "moved aside) or overwrite them", {"files": [runner]})
+        if on_modified == "keep":
+            backup = _backup_path(pkg, runner)
+            kept.append(backup)
+
+    # (dest, src, context, ScriptMeta extras) of the prepare and claim files due
+    out: list[tuple[str, str, dict, dict]] = []
+    if not pkg.path(prepare).exists() or _generated_unchanged(pkg, m.get(f"script-{_rname(prepare)}")):
         prep_steps = [s for s in plan.steps if s.kind == "load" or s.id in scope.preparation]
-        out.append((prepare, f"{tpl.id}/{spec['prepare']['src']}", base | {"steps": prep_steps}, {}))
+        out.append((prepare, f"{tpl.id}/{spec['prepare']['src']}", base | {"steps": prep_steps}, {"claims_role": "prepare"}))
     else:
         kept.append(prepare)
     for c in scope.claims:
@@ -216,9 +266,16 @@ def _write_claims(pkg: Package, tpl: Template, scope: claims_mod.ClaimScope) -> 
         ctx = base | {"claim": c, "targets": claim_targets(c), "steps": [steps[a] for a in claims_mod.methods(c) if a in steps]}
         out.append((dest, f"{tpl.id}/{spec['claim']['src']}", ctx, {"claim": c.id, "claim_hash": digest}))
 
-    keep_paths = {d for d, *_ in out} | set(kept) | {"README.md", AGENT_PROMPT}
+    keep_paths = {d for d, *_ in out} | set(kept) | {runner, "README.md", AGENT_PROMPT}
     with pkg.edit() as m:
         created = not m.by_kind("script")
+        if backup is not None:
+            added = old_master.reprocrowd.added_at if old_master is not None else now()
+            if old_master is not None:
+                pkg.remove(m, old_master.name, delete_file=False)
+            pkg.path(runner).replace(pkg.path(backup))
+            pkg.put(m, pkg.describe(Package.free_name(m, "code-" + slug(backup, 60)), backup, type="file", format=backup.rsplit(".", 1)[-1].lower(),
+                                    mediatype="text/plain", meta=OtherMeta(kind="code", added_at=added)))
         for r in m.by_kind("script"):
             if r.path in keep_paths or (r.reprocrowd.claim and r.reprocrowd.template == tpl.id):
                 continue  # files of unticked claims stay
@@ -226,7 +283,8 @@ def _write_claims(pkg: Package, tpl: Template, scope: claims_mod.ClaimScope) -> 
                 r.reprocrowd = OtherMeta(kind="code", added_at=r.reprocrowd.added_at)  # edited: no longer a generated file
             else:
                 pkg.remove(m, r.name)
-        written = []
+        _put_runner(pkg, m, tpl, scope)
+        written = [runner]
         for dest, src, ctx, extra in out:
             _put_script(pkg, m, tpl, dest, env.get_template(src).render(ctx), extra)
             written.append(dest)
@@ -237,7 +295,7 @@ def _write_claims(pkg: Package, tpl: Template, scope: claims_mod.ClaimScope) -> 
         _put_script(pkg, m, tpl, AGENT_PROMPT, agent_prompt(pkg, tpl, claims=_claim_todo(pkg, tpl, scope)), {})
         written += ["README.md", AGENT_PROMPT]
         meta = OtherMeta(kind="export", added_at=now())
-        pkg.write_json(m, "results-schema", "results_schema.json", ResultsSchema(paper=paper, results=targets), schema="results-schema", meta=meta)
+        pkg.write_json(m, "results-schema", "results_schema.json", ResultsSchema(paper=base["paper"], results=targets), schema="results-schema", meta=meta)
         pkg.write_json(m, "analysis-plan", "analysis_plan.json", plan, schema="analysis-plan", meta=meta)
     return {"created": created, "template": tpl.id, "command": tpl.command, "master": runner,
             "files": sorted(written) + ["analysis_plan.json", "results_schema.json"], "kept": sorted(kept)}

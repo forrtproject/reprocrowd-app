@@ -396,12 +396,15 @@ sequenceDiagram
   an agent changes them, validation reports it.
 - **Claims mode** (`scripts.py` `_write_claims`, `claims.py` `claim_scope`): when the package has claims, the plan
   holds the ticked, testable claims' methods and evidence plus every transform action. Templates with a `[claims]`
-  table (python, r) write a runner as the master file (always regenerated, never edited by the agent), a shared
-  prepare file (written only if missing) and one file per ticked claim (`claims/C1.py`, `ScriptMeta.claim` /
+  table (python, r) write a runner as the master file (always regenerated, never edited by the agent; `run.start`
+  re-renders it from the current ticks via `refresh_runner`), a shared prepare file (regenerated while unedited) and
+  one file per ticked claim (`claims/C1.py`, `ScriptMeta.claim` /
   `claim_hash`), rewritten only when `claims.content_hash` changed. The runner runs the prepare file, then each claim
   file with a `record(id, value, step)` function and the preparation's variables, catching each claim's errors: a
   failed claim's targets get `value: null` and `note: "claim C1 failed: …"`, unrecorded ones `"not recorded by …"`.
-  Files of unticked claims stay and are not run. `on_modified` does not apply. Other templates: 400
+  Files of unticked claims stay and are not run. `on_modified` applies only to an edited master that is not a
+  claims runner (`ScriptMeta.claims_role`), e.g. the implemented monolithic script: refuse (409 `script_modified`),
+  keep (moved to `<stem>.pre-claims.<ext>` as a `code` file) or overwrite. Other templates: 400
   `template_not_claims_ready`.
 - **One job per package** (409 `job_running`); script writes and `:sync` also wait for it. Job records
   (`jobs/<id>.json`, schema `job`) survive restarts. When the service shuts down it ends its running jobs

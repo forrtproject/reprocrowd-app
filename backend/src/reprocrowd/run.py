@@ -18,7 +18,7 @@ from .schemas.comparison import Comparison, CompareSettings
 from .schemas.curation import Target
 from .schemas.exports import ResultsSchema
 from .schemas.jobs import Job, RunResult
-from .scripts import current_template
+from .scripts import current_template, refresh_runner
 
 RESULTS = "outputs/results.json"
 
@@ -35,6 +35,7 @@ def start(pkg: Package) -> Job:
     if tpl is None:
         raise conflict("script_missing", "create the master script first (PUT …/script)")
     jobs.ensure_idle(pkg)
+    refresh_runner(pkg)  # claims mode: run only the claims ticked now
     targets = frozen_targets(pkg)
     jid = jobs.new_id()
     pkg.path(RESULTS).unlink(missing_ok=True)
