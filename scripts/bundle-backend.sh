@@ -16,7 +16,7 @@ echo "• standalone Python $PYVER"
 uv python install --quiet "$PYVER"
 PYBIN="$(cd "$WORK" && UV_MANAGED_PYTHON=1 uv python find --no-project "$PYVER")"
 PYHOME="$(dirname "$(dirname "$(realpath "$PYBIN")")")"
-case "$PYHOME" in "$(uv python dir)"/*) ;; *) echo "not a uv-managed Python: $PYHOME" >&2; exit 1 ;; esac
+[ ! -f "$PYHOME/pyvenv.cfg" ] || { echo "found a virtualenv instead of a standalone Python: $PYHOME" >&2; exit 1; }
 
 rm -rf "$OUT"
 mkdir -p "$OUT"

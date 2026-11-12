@@ -10,7 +10,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-DATA="${XDG_DATA_HOME:-$HOME/.local/share}"
+DATA="${REPROCROWD_DATA_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}}"
 LINUX_DIR="$DATA/reprocrowd/app"
 DESKTOP="$DATA/applications/reprocrowd.desktop"
 BIN="${REPROCROWD_BIN_DIR:-$HOME/.local/bin}/reprocrowd"
