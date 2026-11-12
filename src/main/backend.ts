@@ -199,8 +199,14 @@ function writeConfig(port: number, token: string) {
     throw new Error(`The backend configuration (Settings → Backend) isn't valid TOML: ${(e as Error).message}`);
   }
   const s = loadSettings();
+  const llm = (user.llm ?? {}) as Record<string, any>;
+  const profiles = { ...((llm.profiles ?? {}) as Record<string, any>) };
+  // The OpenCode profile is the model-capable profile the "LLM models" feature relies on; keep it present even if the
+  // user's config was written by an older version or edited to drop it.
+  if (!profiles.opencode) profiles.opencode = { argv: ["opencode", "run", "--format", "json", "-m", "{model}", "--variant", "{effort}"], output: "opencode-json", model: "", effort: "", timeout_s: 1800 };
   const cfg = {
     ...user,
+    llm: { ...llm, profiles },
     server: { host: "127.0.0.1", port, token, registry: path.join(userData(), "registry.json"), allowed_roots: [] },
     database: { url: "" },
     zenodo: { ...(user.zenodo ?? {}), sandbox: s.zenodo.sandbox, community: s.zenodo.community, token: "" },

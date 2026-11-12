@@ -473,21 +473,20 @@ export class CurationStep implements Step {
     const claudeLogin = form.querySelector<HTMLElement>(".claude-login")!;
     const showArgv = () => (form.querySelector(".argv")!.textContent = this.profiles.find((p) => p.name === profileSel.value)?.argv.join(" ") ?? "");
     /** The model row is for profiles that take a chosen model (an agent CLI with a model list, e.g. OpenCode, Claude Code). */
-    const profileUsesModel = () => ["opencode-json", "claude-json"].includes(this.profiles.find((p) => p.name === profileSel.value)?.output ?? "");
-    const showModelRow = () => {
-      modelRow.hidden = !profileUsesModel();
-      if (modelRow.hidden) modelSel.value = "";
-    };
-    // Available models, with the ones the user turned off left out, grouped by provider. For a Claude profile only the
-    // detected Claude Code models are offered; for the OpenCode family everything else (OpenCode, Ollama, uniGPT…).
+    /** The profile that runs a given model: Claude Code models → the Claude profile, everything else (OpenCode, Ollama, uniGPT…) → the OpenCode profile. */
+    const profileForModel = (id: string) =>
+      (id.startsWith("claude/")
+        ? this.profiles.find((p) => p.output === "claude-json")
+        : this.profiles.find((p) => p.output === "opencode-json"))?.name;
+    // Available models, with the ones the user turned off left out, grouped by provider. The list is always taken from
+    // the detected models (never hard-coded), and picking one selects the matching profile.
     let models: LlmModels | undefined;
     const fillModels = () => {
-      if (!models) return;
-      const claude = this.profiles.find((p) => p.name === profileSel.value)?.output === "claude-json";
-      claudeLogin.hidden = !(claude && models.claudeNeedsLogin);
+      const m = models;
+      if (!m) return;
+      claudeLogin.hidden = !(m.claudeNeedsLogin && m.available.some((x) => x.provider === "claude" && !m.disabled.includes(x.id)));
       const byProv = new Map<string, LlmModel[]>();
-      for (const x of models.available) if (!models.disabled.includes(x.id)) {
-        if (claude ? x.provider !== "claude" : x.provider === "claude") continue;
+      for (const x of m.available) if (!m.disabled.includes(x.id)) {
         const a = byProv.get(x.provider) ?? [];
         a.push(x);
         byProv.set(x.provider, a);
@@ -495,11 +494,19 @@ export class CurationStep implements Step {
       modelSel.innerHTML = `<option value="">(the CLI's default)</option>${[...byProv.entries()]
         .map(([p, arr]) => `<optgroup label="${esc(p)}">${arr.map((x) => `<option value="${esc(x.id)}">${esc(x.name)}</option>`).join("")}</optgroup>`)
         .join("")}`;
-      showModelRow();
+      modelRow.hidden = false;
+      const p = profileForModel(modelSel.value);
+      if (p && profileSel.value !== p) profileSel.value = p;
+      showArgv();
     };
     profileSel.addEventListener("change", () => {
       showArgv();
       fillModels();
+    });
+    modelSel.addEventListener("change", () => {
+      const p = profileForModel(modelSel.value);
+      if (p) profileSel.value = p;
+      showArgv();
     });
     claudeLogin.querySelector("button")!.addEventListener("click", async () => {
       try {
@@ -511,13 +518,13 @@ export class CurationStep implements Step {
       }
     });
     showArgv();
-    host.llmModels().then((m) => { models = m; fillModels(); }).catch(() => showModelRow());
+    host.llmModels().then((m) => { models = m; fillModels(); }).catch(() => {});
     let picker: Awaited<ReturnType<CurationStep["sourcePicker"]>> | undefined;
     /** The request, once the text source has loaded. */
     const runRequest = () => {
       const scope = picker?.tree?.scope;
       if (!picker || !scope) return undefined;
-      return { extraction: picker.name, scope, instructions: (form.elements.namedItem("instructions") as HTMLTextAreaElement).value.trim(), profile: profileSel.value || undefined, model: profileUsesModel() && modelSel.value ? modelSel.value : undefined };
+      return { extraction: picker.name, scope, instructions: (form.elements.namedItem("instructions") as HTMLTextAreaElement).value.trim(), profile: profileSel.value || undefined, model: modelSel.value || undefined };
     };
     form.querySelector(".show-prompt")!.addEventListener("click", () => {
       const request = runRequest();
