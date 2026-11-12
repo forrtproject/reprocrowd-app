@@ -216,9 +216,9 @@ export class ClaimsStep implements Step {
       .join("");
   }
 
-  private evidenceHtml(ids: string[]) {
-    if (!ids.length) return `<p class="muted small">No evidence values.</p>`;
-    return `<table class="tbl-list cl-ev"><thead><tr><th>Value</th><th>Reported</th><th>Cmp</th><th>Unit</th></tr></thead><tbody>${ids
+  private evidenceHtml(ids: string[], label = "") {
+    if (!ids.length) return `<p class="muted small">${label ? `<b>${esc(label)}</b> ` : ""}No evidence values.</p>`;
+    return `${label ? `<div class="small"><b>${esc(label)}</b></div>` : ""}<table class="tbl-list cl-ev"><thead><tr><th>Value</th><th>Reported</th><th>Cmp</th><th>Unit</th></tr></thead><tbody>${ids
       .map((id) => {
         const t = this.targets.get(id);
         if (!t) return `<tr><td><b>${esc(id)}</b></td><td colspan="3" class="warn-inline">missing target</td></tr>`;
@@ -245,17 +245,19 @@ export class ClaimsStep implements Step {
         ? `<label class="small muted">Claim (paraphrase)<textarea rows="3" data-claim="${esc(c.id)}" data-f="text">${esc(c.text)}</textarea></label>
            <label class="small muted">Original quote<textarea rows="3" data-claim="${esc(c.id)}" data-f="original_quote">${esc(c.original_quote)}</textarea></label>`
         : `<label class="small muted">Claim (quoted from the paper)<textarea rows="3" data-claim="${esc(c.id)}" data-f="text">${esc(c.text)}</textarea></label>`;
+    const numbers = c.sub_claims.length ? c.sub_claims.map((sc) => this.evidenceHtml(sc.evidence, sc.id)).join("") : c.testable ? this.evidenceHtml(c.evidence) : "";
     const subs = c.sub_claims.length
-      ? c.sub_claims.map((s) => `<div class="cl-sub"><div><b>${esc(s.id)}</b> ${esc(s.text)}</div>${this.methodHtml(s.method)}${this.evidenceHtml(s.evidence)}</div>`).join("")
+      ? c.sub_claims.map((sc) => `<div class="cl-sub"><label class="small muted"><b>${esc(sc.id)}</b> quote<textarea rows="2" data-claim="${esc(c.id)}" data-sub="${esc(sc.id)}" data-f="text">${esc(sc.text)}</textarea></label>${this.methodHtml(sc.method)}</div>`).join("")
       : c.testable
-        ? `${this.methodHtml(c.method)}${this.evidenceHtml(c.evidence)}`
+        ? this.methodHtml(c.method)
         : `<p class="muted small">This claim is not testable by computation, so it is not run.</p>`;
     const ready = st?.state === "ready";
     const result = st?.result;
     return `<div class="cl-detail-head"><h4>${esc(c.id)}</h4><span class="badge">${esc(c.mode)}</span>${pill(st?.state, st?.stale)}<span class="spacer"></span>
         <button data-act="switch" data-claim="${esc(c.id)}" ${r.run?.disabled ? "disabled" : ""} title="${r.off ? "Use this claim again" : "Leave this claim out"}">${r.off ? "Switch on" : "Switch off"}</button></div>
+      ${c.testable ? `<section><h5>Numbers</h5>${numbers}</section>` : ""}
       <section>${quote}</section>
-      <section><h5>${c.sub_claims.length ? "Sub-claims, methods and evidence" : "Method and evidence"}</h5>${subs}</section>
+      <section><h5>${c.sub_claims.length ? "Sub-claims and methods" : "Method"}</h5>${subs}</section>
       <section><label class="small muted">Notes<textarea rows="2" data-claim="${esc(c.id)}" data-f="notes" placeholder="Your notes; they do not untick the claim">${esc(c.notes)}</textarea></label></section>
       <section class="cl-actions"><label><input type="checkbox" data-claim="${esc(c.id)}" data-f="checked" ${c.checked ? "checked" : ""} ${c.testable ? "" : "disabled"} /> Reviewed (ticked claims are run)</label>
         <span class="spacer"></span><button data-act="run" data-claim="${esc(c.id)}" class="primary" ${ready && !this.w.running.has(`claim-${c.id}`) ? "" : "disabled"} title="${ready ? "Generate and run the code for this claim" : "Tick the claim first"}">Run this claim</button></section>
@@ -285,6 +287,12 @@ export class ClaimsStep implements Step {
       const f = el.dataset.f;
       if (!f) return;
       if (el.dataset.claim) {
+        if (el.dataset.sub) {
+          const cl = this.rows().find((x) => x.claim.id === el.dataset.claim)?.claim;
+          if (!cl) return;
+          const sub_claims = cl.sub_claims.map((x) => (x.id === el.dataset.sub ? { ...x, text: el.value } : x));
+          return void this.edit(`Changing ${el.dataset.sub}`, () => pkg.patch(`/claims/${encodeURIComponent(cl.id)}`, { sub_claims }));
+        }
         const value = f === "checked" ? el.checked : el.value;
         return void this.edit(`Changing ${el.dataset.claim}`, () => pkg.patch(`/claims/${encodeURIComponent(el.dataset.claim!)}`, { [f]: value }));
       }
@@ -293,7 +301,10 @@ export class ClaimsStep implements Step {
         const t = this.targets.get(el.dataset.target);
         const v = el.value.trim();
         const value = t?.type === "number" ? Number(v) : v;
-        if (typeof value === "number" && Number.isNaN(value)) return showError(`Changing ${el.dataset.target}`, new Error("The value of a number must be a number."));
+        if (t?.type === "number" && (v === "" || !Number.isFinite(value))) {
+          el.value = String(t.expected ?? "");
+          return showError(`Changing ${el.dataset.target}`, new Error("The value of a number must be a number (it can't be empty)."));
+        }
         return void this.edit(`Changing ${el.dataset.target}`, () => pkg.patch(`/targets/${encodeURIComponent(el.dataset.target!)}`, { [f]: value }));
       }
     });
