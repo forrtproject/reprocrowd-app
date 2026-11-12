@@ -2,7 +2,7 @@
 // backend: items added by hand, plus LLM runs whose entries keep the LLM's version and store the user's changes on
 // top (restorable). Two views: Reader, the paper with each item as a card next to the passage it comes from (marking
 // sentences there leads to new items), and Table, manual items first, then one group per LLM run.
-import { ApiError, host, pkg } from "../api";
+import { ApiError, host, LlmModel, pkg } from "../api";
 import { refText } from "../doc";
 import { COMPARATORS, type Action, type CurationFile, type Document, type Item, type LlmEntry, type LlmProfile, type LlmRun, type PromptPreview, type Resource, type Target } from "../types";
 import { choose, confirmDialog, esc, list, modal, seconds, showError, showPrompt, trunc, when } from "../util";
@@ -476,13 +476,19 @@ export class CurationStep implements Step {
       if (modelRow.hidden) modelSel.value = "";
     };
     showArgv();
-    // Available models, with the ones the user turned off left out.
-    const enabledModels = new Set<string>();
+    // Available models, with the ones the user turned off left out, grouped by provider.
     host
       .llmModels()
       .then((m) => {
-        for (const x of m.available) if (!m.disabled.includes(x.id)) enabledModels.add(x.id);
-        modelSel.innerHTML = `<option value="">(the CLI's default)</option>${[...enabledModels].map((id) => `<option value="${esc(id)}">${esc(id)}</option>`).join("")}`;
+        const byProv = new Map<string, LlmModel[]>();
+        for (const x of m.available) if (!m.disabled.includes(x.id)) {
+          const a = byProv.get(x.provider) ?? [];
+          a.push(x);
+          byProv.set(x.provider, a);
+        }
+        modelSel.innerHTML = `<option value="">(the CLI's default)</option>${[...byProv.entries()]
+          .map(([p, arr]) => `<optgroup label="${esc(p)}">${arr.map((x) => `<option value="${esc(x.id)}">${esc(x.name)}</option>`).join("")}</optgroup>`)
+          .join("")}`;
         showModelRow();
       })
       .catch(() => showModelRow());

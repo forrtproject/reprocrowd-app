@@ -49,7 +49,7 @@ export interface BackendStatus {
   configFile: string;
   userConfigFile: string;
 }
-export interface LlmModel { provider: string; id: string }
+export interface LlmModel { provider: string; id: string; name: string }
 export interface LlmModels { available: LlmModel[]; disabled: string[] }
 export interface Config {
   packagesRoot: string;
