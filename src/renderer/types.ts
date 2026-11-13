@@ -84,6 +84,8 @@ export interface Action extends Referenced {
   produces: string[];
 }
 export type Item = Target | Action;
+/** Where a curated item came from (`origin` of a target, action or claim view). */
+export interface ItemOrigin { source: "manual" | "llm"; run?: string | null; edited?: boolean; disabled?: boolean }
 
 export interface LlmCall {
   id: string;

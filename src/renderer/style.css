@@ -492,6 +492,10 @@ body.view-library .lib-header { padding-right: 96px; }
 .al-card.off { opacity: .55; border-left-color: var(--border); }
 .al-card.dim { opacity: .45; }
 .al-card.open { border-color: var(--accent); }
+.al-card.on { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft), var(--shadow); }
+.al-fields { display: flex; flex-direction: column; gap: 3px; margin: 3px 0 2px; }
+.al-fields label { display: block; }
+.al-fields textarea, .al-fields input { width: 100%; box-sizing: border-box; font: inherit; font-size: 12.5px; }
 .al-chip { padding: 3px 8px; border-radius: 999px; font-size: 12px; }
 .al-card.hot { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft), var(--shadow); opacity: 1; }
 .al-card-head { display: flex; gap: 6px; align-items: center; }

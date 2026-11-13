@@ -118,6 +118,14 @@ const call = (method, ...args) =>
     return r.ok;
   }, [method, args]);
 const step = (msg) => console.log(`• ${msg}`);
+/** Poll until fn() is true (the backend has caught up), or fail saying what was waited for. */
+const until = async (what, fn, tries = 100) => {
+  for (let i = 0; i < tries; i++) {
+    if (await fn()) return;
+    await new Promise((r) => setTimeout(r, 100));
+  }
+  assert.fail(`timed out waiting for ${what}`);
+};
 
 try {
   step("library");
@@ -277,6 +285,59 @@ json.dump({"results": [{"id": "T001", "value": 2.3149}, {"id": "T002", "value": 
   await win.click(".dlg-wide button[value=ok]");
   await win.waitForSelector(".cl-tree .cl-item", { timeout: 60_000 });
   assert.equal(await win.locator(".cl-tree .cl-item").count(), 3);
+
+  step("claims reader: focus on one claim, its methods, and the cleanup controls");
+  // The fixture: A01 manual analysis ("everything"), used by no claim; A02 the extraction's preparation step (P1);
+  // A03 its method (M1), used by C1, C2.1 and C2.2; C3 untestable.
+  await win.click("#cl-view [data-view=reader]");
+  await win.waitForSelector(".al-card[data-id=C1]");
+  // C1 is focused by default (Review's fallback): its method is an open card, the rest are dimmed chips
+  assert.equal(await win.locator(".al-card.open[data-id=A03]").count(), 1);
+  assert.match(await win.locator(".al-chip[data-id=A02]").innerText(), /preparation/);
+  assert.match(await win.locator(".al-chip[data-id=A01]").innerText(), /not used by any claim/);
+  assert.ok(await win.locator(".al-chip[data-id=A01]").evaluate((e) => e.classList.contains("dim")));
+  assert.match(await win.locator(".al-card.open[data-id=A03]").innerText(), /C1/);
+  assert.match(await win.locator(".al-card.open[data-id=A03]").innerText(), /C2\.1/);
+  // highlight-only links, both ways; no extra lines
+  await win.locator(".al-card[data-id=C1]").hover();
+  assert.ok(await win.locator(".al-card[data-id=A03]").evaluate((e) => e.classList.contains("hot")));
+  await win.locator(".al-card[data-id=A03]").hover();
+  assert.ok(await win.locator(".al-card[data-id=C2]").evaluate((e) => e.classList.contains("hot")));
+  assert.equal(await win.locator(".al-lines path").count(), await win.locator(".al-cards > .al-card").count());
+  await win.locator(".al-card[data-id=C1]").scrollIntoViewIfNeeded();
+  await shot("04d-claims-reader");
+  // Review Focus 1: selecting doesn't move the page
+  await win.locator(".al-card[data-id=C2] .al-desc").scrollIntoViewIfNeeded();
+  const y0 = await win.locator(".al-card[data-id=C2] .al-desc").evaluate((e) => e.getBoundingClientRect().top);
+  await win.locator(".al-card[data-id=C2] .al-desc").click();
+  const y1 = await win.locator(".al-card[data-id=C2] .al-desc").evaluate((e) => e.getBoundingClientRect().top);
+  assert.ok(Math.abs(y1 - y0) < 40, `C2 moved ${y1 - y0}px`);
+  // deselect: clicking the focused claim again
+  await win.locator(".al-card[data-id=C2] .al-desc").click();
+  assert.equal(await win.locator(".al-card.open").count(), 0);
+  // Review Focus 3: switch the preparation step off and on from its card
+  await win.locator(".al-chip[data-id=A02]").click();
+  assert.match(await win.locator(".al-card.open[data-id=A02]").innerText(), /preparation · used by all claims/);
+  await win.click(".al-card.open[data-id=A02] [data-act=switch-off]");
+  await win.waitForFunction(() => /switched off/.test(document.querySelector('.al-card[data-id="A02"]')?.textContent ?? ""));
+  await win.click('.al-card[data-id="A02"] [data-act=switch-on]');
+  await win.waitForFunction(() => !/switched off/.test(document.querySelector('.al-card[data-id="A02"]')?.textContent ?? ""));
+  // preparation is edited in place
+  await win.fill(".al-card.open[data-id=A02] textarea[data-f=summary]", "Exclude incomplete records (edited)");
+  const p0 = await win.locator(".al-card[data-id=A02]").evaluate((e) => e.getBoundingClientRect().top);
+  await win.locator(".al-card.open[data-id=A02] textarea[data-f=summary]").blur();
+  await until("the edited preparation summary", async () => (await P("/actions/A02")).data.item.summary === "Exclude incomplete records (edited)");
+  await win.waitForSelector(".al-card.open[data-id=A02]"); // the open chip survives the reload
+  const p1 = await win.locator(".al-card[data-id=A02]").evaluate((e) => e.getBoundingClientRect().top);
+  assert.ok(Math.abs(p1 - p0) < 40, `an edit moved the page by ${p1 - p0}px`);
+  // the unused manual method can be deleted
+  await win.locator(".al-chip[data-id=A01]").click();
+  await win.click(".al-card.open[data-id=A01] [data-act=delete]");
+  await win.waitForFunction(() => !document.querySelector('.al-card[data-id="A01"]'));
+  assert.ok(!(await P("/actions")).data.some((a) => a.item.id === "A01"));
+  await win.click("#cl-view [data-view=review]");
+  await win.waitForSelector(".cl-tree .cl-item[data-id=C1]");
+
   await win.locator(".cl-tree .cl-item[data-id=C1]").click();
   await win.waitForSelector(".cl-detail input[data-claim=C1][data-f=checked]");
   await win.check(".cl-detail input[data-claim=C1][data-f=checked]");

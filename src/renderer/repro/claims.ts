@@ -4,11 +4,12 @@
 // coding agent flagged. Four views: Review (this), Reader (the paper with a card per claim), Table, JSON (the claim's
 // trace). Edits of evidence and methods untick the claims using them in the backend, so everything reloads after one.
 import { host, pkg } from "../api";
-import { type Action, type Claim, type ClaimResult, type ClaimsFile, type ClaimsTrace, type ClaimState, type ClaimStatus, type ClaimTrace, type Document, type LlmProfile, type LlmRun, type Resource, type ScriptState, type Target, type AcquireResult } from "../types";
+import { type Action, type Claim, type ClaimResult, type ClaimsFile, type ClaimsTrace, type ClaimState, type ClaimStatus, type ClaimTrace, type Document, type ItemOrigin, type LlmProfile, type LlmRun, type Resource, type ScriptState, type Target, type AcquireResult } from "../types";
 import { choose, confirmDialog, esc, modal, showError, trunc } from "../util";
-import { AlignedItem, AlignedView } from "./aligned";
 import { runClaim, stageLabel } from "./claimrun";
+import { ClaimsReader } from "./claimsreader";
 import { CurationStep } from "./curation";
+import { methodIndex } from "./methods";
 import type { Step, Wizard } from "./wizard";
 
 type View = "review" | "reader" | "table" | "json";
@@ -33,7 +34,7 @@ export const PILL: Record<ClaimState, string> = {
   not_testable: "Not testable",
 };
 export const pill = (s: ClaimState | undefined, stale = false) => (s ? `<span class="pill st-${s}">${PILL[s]}${stale ? " (stale)" : ""}</span>` : "");
-const modeText = (c: Claim) => (!c.testable ? "Not testable" : c.sub_claims.length ? `${c.sub_claims.length} sub-claim${c.sub_claims.length > 1 ? "s" : ""}` : "Atomic");
+export const modeText = (c: Claim) => (!c.testable ? "Not testable" : c.sub_claims.length ? `${c.sub_claims.length} sub-claim${c.sub_claims.length > 1 ? "s" : ""}` : "Atomic");
 
 export class ClaimsStep implements Step {
   title = "Claims";
@@ -43,31 +44,39 @@ export class ClaimsStep implements Step {
   private file?: ClaimsFile;
   private status = new Map<string, ClaimStatus>();
   private targets = new Map<string, Target>();
-  private actions = new Map<string, Action>();
+  private actions = new Map<string, { item: Action; origin: ItemOrigin }>();
+  private inputs: Resource[] = [];
   private trace?: ClaimsTrace;
   private doc?: Document;
   private profiles: LlmProfile[] = [];
   private selected = "";
   private view: View = "review";
   private marked = new Set<string>();
+  /** The Reader's own state: no claim focused (any selection clears it), and the step opened on its own. */
+  private readerNone = false;
+  private openChip = "";
+  private reader?: ClaimsReader;
   /** The old targets or analysis steps table, for packages made before claims; shown in place of the claims. */
   private legacy?: { kind: "targets" | "actions"; step: CurationStep };
 
   constructor(private w: Wizard) {}
 
   async load() {
-    const [file, status, targets, actions, trace, doc] = await Promise.all([
+    const [file, status, targets, actions, inputs, trace, doc] = await Promise.all([
       pkg.get<ClaimsFile>("/claims", { view: "raw" }),
       pkg.get<ClaimStatus[]>("/claims:status", this.compare()),
       pkg.get<{ item: Target }[]>("/targets"),
-      pkg.get<{ item: Action }[]>("/actions"),
+      // Switched-off steps too: the Reader shows them as switched off, and switching one back on happens there.
+      pkg.get<{ item: Action; origin: ItemOrigin }[]>("/actions", { include_disabled: true }),
+      pkg.get<Resource[]>("/inputs").catch(() => []),
       pkg.get<ClaimsTrace>("/claims:trace", this.compare()).catch(() => undefined),
       this.w.app.loadDoc(this.w.app.jats()).catch(() => undefined),
     ]);
     this.file = file;
     this.status = new Map(status.map((s) => [s.claim, s]));
     this.targets = new Map(targets.map((t) => [t.item.id, t.item]));
-    this.actions = new Map(actions.map((a) => [a.item.id, a.item]));
+    this.actions = new Map(actions.map((a) => [a.item.id, a]));
+    this.inputs = inputs;
     this.trace = trace;
     this.doc = doc;
     if (!this.profiles.length) this.profiles = await host.service<LlmProfile[]>("/v1/llm-profiles").catch(() => []);
@@ -141,6 +150,7 @@ export class ClaimsStep implements Step {
         <button id="cl-extract" class="primary" ${generating ? "disabled" : ""}>${generating ? "Extracting…" : rows.length ? "Extract again…" : "Extract claims…"}</button></div>
       <p class="hint">The paper's claims, broken into testable sub-claims with the values that report them and the method that tests them. Review each claim and tick it when you are happy; only ticked claims are run. Edits to evidence or methods untick the claims that use them.</p>
       ${this.banners()}
+      <datalist id="rp-input-names">${this.inputs.map((i) => `<option value="${esc(i.name)}">${esc(i.path)}</option>`).join("")}</datalist>
       <div id="cl-main"></div></div>`;
     body.querySelector("#cl-view")!.addEventListener("click", (e) => {
       const b = (e.target as HTMLElement).closest<HTMLButtonElement>("[data-view]");
@@ -162,7 +172,7 @@ export class ClaimsStep implements Step {
       main.innerHTML = last ? `<div class="warn-soft">${this.emptyRunHtml(last)}</div>` : `<p class="muted">No claims yet. Extract them from the paper's text with an LLM.</p>`;
       return;
     }
-    if (this.view === "reader") return this.drawReader(main, live);
+    if (this.view === "reader") return this.drawReader(main);
     if (this.view === "table") return this.drawTable(main, rows);
     if (this.view === "json") return this.drawJson(main, cur);
     main.innerHTML = `<div class="cl-split"><div class="cl-tree">${this.treeHtml(rows)}<div class="cl-skipped muted small">${skipped} sentence${skipped === 1 ? "" : "s"} passed over as background or study design</div></div>
@@ -276,7 +286,7 @@ export class ClaimsStep implements Step {
 
   private methodHtml(id: string | null | undefined) {
     if (!id) return `<div class="muted small">No method yet. It is written when the claim is run.</div>`;
-    const a = this.actions.get(id);
+    const a = this.actions.get(id)?.item;
     if (!a) return `<div class="warn-inline small">${esc(id)}: missing step</div>`;
     return `<label class="small muted">Method ${esc(a.id)}<textarea rows="2" data-action="${esc(a.id)}" data-f="summary">${esc(a.summary)}</textarea></label>`;
   }
@@ -417,41 +427,38 @@ export class ClaimsStep implements Step {
 
   // ---------- other views ----------
 
-  private drawReader(main: HTMLElement, live: Row[]) {
-    const jats = this.w.app.jats();
-    const items: AlignedItem[] = live.map((r) => {
-      const c = r.claim;
-      const st = this.status.get(c.id);
-      const refs = [...c.refs, ...c.sub_claims.flatMap((s) => s.refs)].filter((x) => x.extraction === jats).map((x) => x.id);
-      return {
-        id: c.id,
-        anchors: [...new Set(refs)],
-        cls: r.off ? "off" : "",
-        html: `<div class="al-card-head"><b>${esc(c.id)}</b><span class="badge">${esc(modeText(c))}</span>${c.checked ? `<span class="cl-tick">✓</span>` : ""}<span class="spacer"></span>${pill(st?.state, st?.stale)}
-          <button data-act="open" title="Review this claim">Review</button></div><div class="al-desc">${esc(trunc(c.text, 220))}</div>`,
-      };
-    });
+  private drawReader(main: HTMLElement) {
+    const rows = this.rows().map((r) => ({ claim: r.claim, off: r.off }));
+    if (this.openChip && !this.actions.has(this.openChip)) this.openChip = ""; // the step was deleted
     const host = document.createElement("div");
     host.className = "al-host";
     main.append(host);
-    new AlignedView(host, {
+    this.reader = new ClaimsReader(host, {
       doc: this.doc,
       meta: this.w.app.meta(),
-      items,
+      jats: this.w.app.jats(),
+      rows,
+      index: methodIndex([...this.actions.values()], rows),
+      status: this.status,
       marked: this.marked,
-      unlinkedLabel: "Not linked to a passage of the text",
-      onMark: () => {},
-      barHtml: (n) => `<span><b>${n}</b> marked</span><span class="spacer"></span><button data-act="clear">Clear marks</button>`,
-      onBar: () => {
-        this.marked.clear();
-        this.w.draw();
+      focus: () => (this.readerNone ? "" : this.selected),
+      openChip: () => this.openChip,
+      select: (claimId) => {
+        this.readerNone = !claimId;
+        if (claimId) this.selected = claimId;
+        this.reader?.refocus();
       },
-      onCard: (id, act) => {
-        if (act !== "open") return;
-        this.selected = id;
+      setOpenChip: (actionId) => {
+        this.openChip = actionId;
+        this.reader?.refocus();
+      },
+      review: (claimId) => {
+        this.selected = claimId;
+        this.readerNone = false;
         this.view = "review";
         this.w.draw();
       },
+      edit: (label, fn) => this.edit(label, fn),
     });
   }
 
