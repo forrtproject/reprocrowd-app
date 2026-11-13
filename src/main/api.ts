@@ -246,12 +246,13 @@ export function makeApi(wc: WebContents) {
       const dir = examplesDir();
       if (!fs.existsSync(dir)) return [];
       const out: any[] = [];
-      for (const d of fs.readdirSync(dir, { withFileTypes: true })) {
+      // Sorted by folder name, so the first one (opened by "Try an example") doesn't depend on the file system.
+      for (const d of fs.readdirSync(dir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
         if (!d.isDirectory()) continue;
         const meta = path.join(dir, d.name, "example.json");
         if (!fs.existsSync(meta)) continue;
         try {
-          out.push(JSON.parse(fs.readFileSync(meta, "utf8")));
+          out.push({ ...JSON.parse(fs.readFileSync(meta, "utf8")), id: d.name }); // the folder is what openExample opens
         } catch {
           /* skip a malformed example */
         }
@@ -259,6 +260,7 @@ export function makeApi(wc: WebContents) {
       return out;
     },
     openExample: async (id: string) => {
+      if (!/^[\w.-]+$/.test(id) || id.startsWith(".")) throw new Error(`No bundled example ${id}`);
       const src = path.join(examplesDir(), id);
       if (!fs.existsSync(path.join(src, "datapackage.json"))) throw new Error(`No bundled example ${id}`);
       const all = await get<any[]>("/v1/packages");
@@ -267,7 +269,8 @@ export function makeApi(wc: WebContents) {
       const root = loadSettings().packagesRoot;
       let dest = path.join(root, slug(id));
       for (let i = 2; fs.existsSync(dest); i++) dest = path.join(root, `${slug(id)}-${i}`);
-      fs.cpSync(src, dest, { recursive: true });
+      // example.json only describes the example for the library; it isn't part of the package
+      fs.cpSync(src, dest, { recursive: true, filter: (f) => f !== path.join(src, "example.json") });
       fs.writeFileSync(exampleMarker(dest), id);
       return ((await request("POST", "/v1/packages", { json: { path: dest, adopt: true } })).data as any).id as string;
     },

@@ -54,8 +54,7 @@ export async function start() {
     if (!examples.length) examples = await host.listExamples().catch(() => []);
     if (!examples.length) return showError("Examples", "No bundled examples are available.");
     try {
-      const r = await host.openExample(examples[0].id);
-      openPackage(r.id);
+      openPackage(await host.openExample(examples[0].id));
     } catch (e) {
       showError("Opening the example", e);
     }
@@ -256,8 +255,7 @@ function bindExamples(body: HTMLElement) {
   body.querySelectorAll<HTMLElement>("[data-open-example]").forEach((b) =>
     b.addEventListener("click", async () => {
       try {
-        const r = await host.openExample(b.dataset.openExample!);
-        openPackage(r.id);
+        openPackage(await host.openExample(b.dataset.openExample!));
       } catch (e) {
         showError("Opening the example", e);
       }
