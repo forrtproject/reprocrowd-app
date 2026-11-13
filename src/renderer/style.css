@@ -431,6 +431,7 @@ button.ghost:hover:not(:disabled) { border-color: var(--border); color: var(--ac
 .update-banner { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 8px 14px; background: var(--accent-soft); border-bottom: 1px solid var(--accent-line); color: var(--accent-dark); font-size: 13.5px; }
 @media (prefers-color-scheme: dark) { .update-banner { color: var(--accent); } }
 .update-banner .upd-actions { margin-left: auto; display: flex; gap: 8px; }
+.update-banner .upd-how { display: block; color: var(--muted); margin-top: 2px; }
 .note { color: var(--muted); font-size: 14px; }
 .ribbon { position: fixed; top: 18px; right: -62px; transform: rotate(45deg); background: #c0392b; color: #fff; padding: 6px 54px; font-size: 11.5px; font-weight: 700; letter-spacing: .02em; white-space: nowrap; z-index: 80; box-shadow: 0 2px 8px rgba(0,0,0,.25); pointer-events: none; }
 .badge.sandbox { background: #fde7e4; color: #a12a1e; }

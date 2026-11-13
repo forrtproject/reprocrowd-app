@@ -60,6 +60,7 @@ export interface Config {
   zenodo: { sandbox: boolean; community: string; creator: Creator };
   backendCmd: string;
   checkUpdates: boolean;
+  autoUpdate: boolean;
   tokens: { zenodo: boolean; sandbox: boolean };
   secretStorage: "secure" | "weak" | "none";
   backend: BackendStatus;
@@ -72,11 +73,12 @@ export type UpdateStatus =
   | { state: "disabled"; current: string; reason: string }
   | { state: "checking"; current: string }
   | { state: "not-available"; current: string; note?: string }
-  | { state: "downloading"; current: string; version: string; percent: number }
-  | { state: "ready"; current: string; version: string }
+  | { state: "available"; current: string; version: string; url: string }
+  | { state: "downloading"; current: string; version: string; percent: number; url: string }
+  | { state: "ready"; current: string; version: string; url: string }
   | { state: "manual"; current: string; version: string; url: string; howTo: string }
-  | { state: "error"; current: string; message: string; detail?: string; url?: string };
-export interface UpdateInfo { mode: "auto" | "notify" | "off"; explain: string; status: UpdateStatus }
+  | { state: "error"; current: string; message: string; detail?: string; url?: string; during?: "download" };
+export interface UpdateInfo { mode: "auto" | "notify" | "off"; explain: string; status: UpdateStatus; pending: boolean; installOnQuit: boolean }
 export interface JatsAvailability { doi: string; available: boolean; pmcid: string | null; url: string | null; title: string | null; reason: string | null }
 export const JATS_ONLY = "Only articles with JATS XML full text (the open-access subset of PubMed Central) are supported at this time.";
 export interface Work { doi: string; title: string | null; authors: string[]; year: number | null; venue: string | null; license: string | null; open_access: boolean | null }
@@ -134,7 +136,7 @@ export const host = {
   openUrl: (url: string) => call<void>("openUrl", url),
   // settings and backend
   getConfig: () => call<Config>("getConfig"),
-    setConfig: (patch: { packagesRoot?: string; editorCmd?: string; backendCmd?: string; checkUpdates?: boolean; zenodo?: { sandbox?: boolean; community?: string; creator?: Partial<Creator> } }) => call<void>("setConfig", patch),
+    setConfig: (patch: { packagesRoot?: string; editorCmd?: string; backendCmd?: string; checkUpdates?: boolean; autoUpdate?: boolean; zenodo?: { sandbox?: boolean; community?: string; creator?: Partial<Creator> } }) => call<void>("setConfig", patch),
     llmModels: (refresh?: boolean) => call<LlmModels>("llmModels", refresh),
     setLlmModels: (disabled: string[]) => call<void>("setLlmModels", disabled),
     claudeLogin: () => call<string>("claudeLogin"),

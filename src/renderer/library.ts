@@ -61,27 +61,17 @@ export async function start() {
   await renderLlmModels();
 }
 
-let updateChecked = false;
-let updateDismissed = false;
 let updateTimer: number | undefined;
+const DISMISSED = "reprocrowd-update-dismissed"; // "Later": that version stays quiet for the rest of the session
 
-/** The update prompt lives here, on the starting screen, instead of a pop-up: a banner with the version and a
- * "Download" / "Restart & install" action. Nothing is downloaded until the user asks. */
+/** The update prompt lives here, on the starting screen, instead of a pop-up: a banner with the new version, its release
+ * notes, and "Download" / "Restart & install" (or the release page, where ReproCrowd can't install it itself). It only
+ * shows what the update check found (the one at start runs only with the "check for updates" setting), and nothing is
+ * downloaded unless the user asks (or turned on automatic updates). */
 async function renderUpdate() {
   window.clearTimeout(updateTimer);
   const el = $("#update-banner");
-  if (!el || updateDismissed) {
-    if (el) el.hidden = true;
-    return;
-  }
-  if (!updateChecked) {
-    updateChecked = true;
-    try {
-      await host.checkForUpdates();
-    } catch {
-      return;
-    }
-  }
+  if (!el) return;
   let info: UpdateInfo;
   try {
     info = await host.updateInfo();
@@ -89,40 +79,58 @@ async function renderUpdate() {
     return;
   }
   const s = info.status;
-  const show = s.state === "manual" || s.state === "downloading" || s.state === "ready";
-  if (!show) {
+  // Follow the check at start and a download.
+  if (info.pending || s.state === "checking" || s.state === "downloading") updateTimer = window.setTimeout(renderUpdate, s.state === "downloading" ? 1000 : 2000);
+  const version = "version" in s ? s.version : "";
+  const key = version || s.state; // what "Later" / "Close" quiets
+  const shown = s.state === "available" || s.state === "downloading" || s.state === "ready" || s.state === "manual" || (s.state === "error" && s.during === "download");
+  if (!shown || sessionStorage.getItem(DISMISSED) === key) {
     el.hidden = true;
     return;
   }
-  const version = "version" in s ? s.version : "";
-  const auto = info.mode === "auto";
+  const btn = (act: string, label: string, cls = "") => `<button type="button" data-upd="${act}" class="small-btn ${cls}">${label}</button>`;
+  const notes = "url" in s && s.url ? btn("page", s.state === "manual" || s.state === "error" ? "Open the release page" : "Release notes") : "";
+  let msg = "";
   const actions: string[] = [];
-  if (s.state === "manual") {
-    actions.push(auto ? `<button data-upd="download" class="btn">Download</button>` : `<button data-upd="page" class="btn">Open release page</button>`);
+  if (s.state === "available") {
+    msg = `ReproCrowd <b>${esc(s.version)}</b> is available (you have ${esc(s.current)}).`;
+    actions.push(btn("download", "Download", "primary"), notes);
+  } else if (s.state === "downloading") {
+    msg = `Downloading ReproCrowd <b>${esc(s.version)}</b>… ${s.percent} %`;
+    actions.push(notes);
   } else if (s.state === "ready") {
-    actions.push(`<button data-upd="install" class="btn primary">Restart &amp; install</button>`);
+    msg = `ReproCrowd <b>${esc(s.version)}</b> is downloaded. Restart to install it${info.installOnQuit ? " (or it installs when you quit)" : ""}.`;
+    actions.push(btn("install", "Restart &amp; install", "primary"), notes);
+  } else if (s.state === "manual") {
+    msg = `ReproCrowd <b>${esc(s.version)}</b> is available (you have ${esc(s.current)}). <span class="upd-how">${esc(s.howTo)}</span>`;
+    actions.push(notes);
+  } else if (s.state === "error") {
+    msg = `<span class="warn-inline">${esc(s.message)}</span>`;
+    actions.push(btn("retry", "Try again"), notes);
   }
-  actions.push(`<button data-upd="dismiss" class="btn">Later</button>`);
-  el.innerHTML = `<span class="upd-msg">A new version <b>${esc(version)}</b> is available${s.state === "downloading" ? ` (downloading… ${s.percent} %)` : ""}.</span><span class="upd-actions">${actions.join(" ")}</span>`;
+  actions.push(btn("dismiss", s.state === "error" ? "Close" : "Later", "ghost"));
+  el.innerHTML = `<span class="upd-msg">${msg}</span><span class="upd-actions">${actions.join("")}</span>`;
   el.hidden = false;
-  el.querySelectorAll<HTMLElement>("[data-upd]").forEach((b) =>
+  el.querySelectorAll<HTMLButtonElement>("[data-upd]").forEach((b) =>
     b.addEventListener("click", async () => {
       const act = b.dataset.upd!;
-      if (act === "download") {
-        await host.downloadUpdate().catch((e) => showError("Downloading the update", e));
-        renderUpdate();
-      } else if (act === "page") {
-        const url = "url" in s ? s.url : "";
-        if (url) host.openUrl(url).catch(() => {});
-      } else if (act === "install") {
-        await host.installUpdate().catch((e) => showError("Installing the update", e));
-      } else if (act === "dismiss") {
-        updateDismissed = true;
-        el.hidden = true;
+      if (act === "page") {
+        if ("url" in s && s.url) host.openUrl(s.url).catch((e) => showError("Opening the release page", e));
+        return;
       }
+      if (act === "dismiss") {
+        sessionStorage.setItem(DISMISSED, key);
+        window.clearTimeout(updateTimer);
+        el.hidden = true;
+        return;
+      }
+      el.querySelectorAll<HTMLButtonElement>("button").forEach((x) => (x.disabled = true));
+      if (act === "download") await host.downloadUpdate().catch((e) => showError("Downloading the update", e));
+      else if (act === "retry") await host.checkForUpdates().catch((e) => showError("Checking for updates", e));
+      else if (act === "install") await host.installUpdate().catch((e) => showError("Installing the update", e));
+      void renderUpdate();
     }),
   );
-  if (s.state === "downloading") updateTimer = window.setTimeout(renderUpdate, 1000);
 }
 
 async function setupNote() {

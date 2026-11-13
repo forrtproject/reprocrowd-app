@@ -127,6 +127,9 @@ try {
   await win.reload();
   await win.waitForSelector(".lib-list h2");
   assert.ok(await win.locator("#setup-note").isHidden(), "name and token are set");
+  // checkUpdates is off: no update check at start, and so no update banner.
+  assert.equal((await call("updateInfo")).status.state, "idle", "no update check with checkUpdates off");
+  assert.ok(await win.locator("#update-banner").isHidden());
   await shot("01-library-empty");
 
   step("new reproduction: a paper without JATS XML is refused");
@@ -313,7 +316,13 @@ json.dump({"results": [{"id": "T001", "value": 2.3149}, {"id": "T002", "value": 
   await win.click(".dlg-settings button[value=cancel]");
   await Promise.all([win.waitForEvent("load"), win.click("#library-btn")]);
   await win.waitForSelector(".pkg-card .badge.st-published", { timeout: 20_000 });
+  // The check in the settings found 99.0.0: the starting screen says so, with the release page (no installing here).
+  await win.waitForSelector("#update-banner:not([hidden])", { timeout: 10_000 });
+  assert.match(await win.locator("#update-banner").innerText(), /ReproCrowd 99\.0\.0 is available/);
+  assert.equal(await win.locator("#update-banner [data-upd=page]").isVisible(), true);
   await shot("08-library");
+  await win.click("#update-banner [data-upd=dismiss]");
+  assert.ok(await win.locator("#update-banner").isHidden(), "Later hides the update banner");
 
   assert.deepEqual(errors, [], "no errors in the page");
   console.log("✓ end-to-end check passed");
