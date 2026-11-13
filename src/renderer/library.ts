@@ -9,7 +9,7 @@ import { $, confirmDialog, esc, modal, showError } from "./util";
 import sticker from "../../resources/hex-sticker.png";
 
 const STEPS: [string, string][] = [
-  ["Choose an article", "A paper with open data and code, in the open-access subset of PubMed Central. Start from its DOI; ReproCrowd fetches its metadata and its JATS XML."],
+  ["Choose an article", "A paper with openly available data, in the open-access subset of PubMed Central. Start from its DOI; ReproCrowd fetches its metadata and its JATS XML."],
   ["Run the reproducibility check", "Extract the results to reproduce, plan the analysis, let a coding agent write the script, run it and compare."],
   ["Check and sign it", "Look at every number and its provenance in the report. The deposit carries your name and ORCID."],
   ["Deposit on Zenodo", "The package becomes a citable record with a DOI that links to the paper, for anyone to find, re-run or compare."],
@@ -31,7 +31,7 @@ export async function start() {
     <section class="hero"><div class="hero-grid container">
       <div class="hero-copy">
         <h1 class="hero-title">Crowdsourcing AI reproductions</h1>
-        <p class="hero-sub">Check whether a paper's numbers reproduce from its own data and code, with an AI-assisted workflow you stay in control of. Sign the result with your name and deposit it on Zenodo, so the community can find it.</p>
+        <p class="hero-sub">Use an AI-assisted workflow to rebuild a paper's analysis from the procedures it describes, run it on its published data, and check whether the numbers reproduce. You stay in control at every step. Sign the result with your name and deposit it on Zenodo, so the community can find it.</p>
         <div class="hero-actions"><button id="new-btn" class="btn-primary">New reproduction</button><button id="adopt-btn" class="btn-secondary">Open a package folder…</button></div>
         <p id="setup-note" class="notice" hidden></p>
       </div>

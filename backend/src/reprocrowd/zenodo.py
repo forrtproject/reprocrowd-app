@@ -208,7 +208,8 @@ def metadata(p: Prepared, creators: list[ZenodoCreator], note: str, excluded: li
     authors = ", ".join(p.authors[:6]) + (" et al." if len(p.authors) > 6 else "")
     cite = f"{escape(authors)}{f' ({p.year})' if p.year else ''}. <i>{escape(work['title'])}</i>.{f' {escape(p.venue)}.' if p.venue else ''}"
     parts = [
-        f"<p>A computational reproduction of {cite} <a href=\"https://doi.org/{escape(doi)}\">https://doi.org/{escape(doi)}</a></p>",
+        f"<p>A computational reproduction of {cite} <a href=\"https://doi.org/{escape(doi)}\">https://doi.org/{escape(doi)}</a>, "
+        "based on its published data and the procedures described in the text.</p>",
         f"<p><b>Result:</b> {summary.get('match', 0)} of {total} target results reproduced "
         f"({', '.join(f'{escape(k)}: {v}' for k, v in summary.items())}).</p>" if total else "",
         f"<p><b>Master script:</b> {escape(p.template.label)} (<code>{escape(p.template.command)}</code>).</p>" if p.template else "",
