@@ -149,6 +149,21 @@ try {
   assert.match(await win.locator("#nd-jats").innerText(), /PMC4359000/);
   assert.equal(await win.inputValue(".dlg-new [name=folder]"), path.join(packagesRoot, "10-1371-journal-pbio-1002106"));
   await shot("02-new-dialog");
+
+  step("new reproduction: cancelling the creation undoes it");
+  const cancelledFolder = await win.inputValue(".dlg-new [name=folder]");
+  await win.click("#nd-create:not([disabled])");
+  await win.click(".dlg-new button[value=cancel]");
+  await win.waitForSelector(".dlg-new", { state: "detached", timeout: 120_000 });
+  assert.equal((await call("listPackages")).length, 0, "no package after cancelling");
+  assert.ok(!fs.existsSync(cancelledFolder), "the cancelled package's folder is removed");
+  assert.equal(await win.evaluate(() => location.hash), "", "still in the library");
+
+  step("new reproduction: created");
+  await win.click("#new-btn");
+  await win.fill(".dlg-new [name=doi]", DOI);
+  await win.click("#nd-lookup");
+  await win.waitForSelector("#nd-jats .ok", { timeout: 60_000 });
   await Promise.all([win.waitForEvent("load"), win.click("#nd-create:not([disabled])")]);
   await win.waitForSelector("#route button", { timeout: 120_000 });
   await win.waitForFunction(() => document.querySelector("#paper-title")?.textContent?.match(/p-hacking/i));
