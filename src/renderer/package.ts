@@ -1,5 +1,5 @@
-// The package view: one paper's numbered workflow. The paper's text is its JATS XML, which the app retrieves; steps 2
-// and 3 show it with the extracted items aligned next to it.
+// The package view: one paper's numbered workflow. The paper's text is its JATS XML, which the app retrieves; step 3
+// (Claims) shows it with the extracted claims and their methods aligned next to it.
 import { brandHtml } from "./brand";
 import { ApiError, host, Info, isBackendDown, pkg } from "./api";
 import { backendProblem, TITLES } from "./backend";

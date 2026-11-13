@@ -405,6 +405,33 @@ json.dump({"results": [{"id": "T001", "value": 2.3149}, {"id": "T002", "value": 
   await win.locator(`${m3} textarea[data-f=quote]`).blur();
   await until("the edited method quote", async () => (await P("/actions/A03")).data.item.quote === "Run the t-test (quote edited)");
   await win.waitForSelector(`${m3} input[data-f=inputs]`);
+  // The array-typed fields: depends_on goes to the backend as an array of real action ids. (The fixture has no input
+  // resource to name in "inputs", so depends_on is the one covered here.) A03 depends on A02; add the other method.
+  const other = (await P("/actions")).data.map((a) => a.item.id).find((id) => id !== "A02" && id !== "A03");
+  assert.ok(other, "a second method exists to depend on");
+  assert.deepEqual((await P("/actions/A03")).data.item.depends_on, ["A02"]);
+  await win.fill(`${m3} input[data-f=depends_on]`, `A02, ${other}`);
+  await win.locator(`${m3} input[data-f=depends_on]`).blur();
+  await until("the edited depends_on", async () => (await P("/actions/A03")).data.item.depends_on.length === 2);
+  const deps = (await P("/actions/A03")).data.item.depends_on;
+  assert.ok(Array.isArray(deps));
+  assert.deepEqual(deps, ["A02", other]);
+  await win.waitForSelector(`${m3} input[data-f=depends_on]`);
+  // A switched-off method is labelled in the Review pane, not shown as an ordinary one.
+  assert.equal(await win.locator(`${m3} .badge`, { hasText: /^off$/ }).count(), 0, "A03 is in use: no off badge");
+  await P("/actions/A03", "PATCH", { disabled: true });
+  await win.locator("#route button").nth(0).click(); // leave the step and come back, so it loads the actions again
+  await win.locator("#route button").nth(2).click();
+  await win.click("#cl-view [data-view=review]");
+  await win.locator(".cl-tree .cl-item[data-id=C1]").click();
+  await win.waitForSelector(`${m3} .badge`);
+  assert.equal(await win.locator(`${m3} .badge`, { hasText: /^off$/ }).count(), 1, "a switched-off method says so");
+  await P("/actions/A03", "PATCH", { disabled: false });
+  await win.locator("#route button").nth(0).click();
+  await win.locator("#route button").nth(2).click();
+  await win.click("#cl-view [data-view=review]");
+  await win.locator(".cl-tree .cl-item[data-id=C1]").click();
+  await win.waitForSelector(`${m3} input[data-f=depends_on]`);
 
   await win.click("#cl-view [data-view=review]");
   await win.waitForSelector(".cl-tree .cl-item[data-id=C1]");

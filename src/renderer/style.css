@@ -472,7 +472,7 @@ body.view-library .lib-header { padding-right: 96px; }
 #route::-webkit-scrollbar { display: none; }
 #paper-title { flex: 0 1 300px; font-size: 13.5px; }
 
-/* ---------- targets and analysis plan: the paper with the items aligned next to it ---------- */
+/* ---------- targets and analysis steps (legacy tables): the paper with the items aligned next to it ---------- */
 .cur-reader > .card-head { position: sticky; top: -10px; z-index: 4; background: var(--panel); padding: 8px 0 4px; margin-top: -8px; }
 .card-head .seg { margin-left: 8px; }
 .al-host { position: relative; margin-top: 6px; }

@@ -256,7 +256,9 @@ export class ClaimsReader {
 
   private field(i: MethodInfo, el: HTMLInputElement) {
     const f = el.dataset.f!;
-    const was = (i.action as unknown as Record<string, unknown>)[f];
+    const stored = (i.action as unknown as Record<string, unknown>)[f];
+    // The value is trimmed, so trim the stored text too: a stored value with stray whitespace must not look changed.
+    const was = typeof stored === "string" ? stored.trim() : stored;
     const value = f === "inputs" || f === "depends_on" ? list(el.value) : el.value.trim();
     // A click on a textarea arrives here too (AlignedView passes any [data-act]); only a real change is saved, and an
     // edit of an action unticks the claims using it, so a no-op must never be sent.

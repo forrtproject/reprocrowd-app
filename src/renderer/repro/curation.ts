@@ -1,4 +1,5 @@
-// The analysis steps table (actions) and the targets table, both reached from the Claims step (step 3). Both are curated lists in the
+// The analysis steps table (actions) and the targets table, legacy views reached from the Claims step (step 3) for packages
+// made before claims. Both are curated lists in the
 // backend: items added by hand, plus LLM runs whose entries keep the LLM's version and store the user's changes on
 // top (restorable). Two views: Reader, the paper with each item as a card next to the passage it comes from (marking
 // sentences there leads to new items), and Table, manual items first, then one group per LLM run.
@@ -33,7 +34,7 @@ export class CurationStep implements Step {
   private marked = new Set<string>();
 
   constructor(private w: Wizard, private kind: Kind) {
-    this.title = kind === "targets" ? "Targets" : "Analysis plan";
+    this.title = kind === "targets" ? "Targets" : "Analysis steps";
   }
 
   async load() {
@@ -156,12 +157,12 @@ export class CurationStep implements Step {
     const view = this.state.curationView;
     body.innerHTML = `
     <div class="card ${view === "reader" ? "cur-reader" : ""}">
-      <div class="card-head"><h3>${isT ? "Reproduction targets" : "Analysis plan"}</h3><span class="muted">${enabled} in use</span>
+      <div class="card-head"><h3>${isT ? "Reproduction targets" : "Analysis steps"}</h3><span class="muted">${enabled} in use</span>
         <div class="seg" id="rp-view"><button data-view="reader" class="${view === "reader" ? "on" : ""}" title="The paper, with each ${NOUN[this.kind]} next to its passage">Reader</button><button data-view="table" class="${view === "table" ? "on" : ""}" title="All fields, grouped by LLM run">Table</button></div>
         <span class="spacer"></span>
         <button id="rp-add">+ Add ${NOUN[this.kind]}…</button>
         <button id="rp-llm" class="primary" ${generating || !sources.length ? "disabled" : ""}>${generating ? "Generating…" : "Generate with LLM…"}</button></div>
-      <p class="hint">${isT ? "The reported results the reproduction should recompute." : "The analysis steps described in the paper, linked to input files (step 2) and to the targets they produce. Load steps (one per data file) and the final results step are added when the master script is created."}
+      <p class="hint">${isT ? "The reported results the reproduction should recompute." : "The analysis steps described in the paper, linked to input files (Inputs) and to the targets they produce. Load steps (one per data file) and the final results step are added when the master script is created."}
         ${view === "reader" ? `Each ${NOUN[this.kind]} sits next to the passage it comes from. Click sentences, figures or tables to mark them, then add a ${NOUN[this.kind]} or let the LLM read just those.` : "Rows from an LLM run are grouped under it."} Your changes to LLM entries are stored on top of the LLM's version and can be restored. Unticked ${NOUN[this.kind]}s are not used.</p>
       <datalist id="rp-input-names">${this.inputs.map((i) => `<option value="${esc(i.name)}">${esc(i.path)}</option>`).join("")}</datalist>
       ${view === "reader" ? `<div class="al-host"></div>` : `<table class="tbl-list rp-items"><thead><tr><th>Use</th><th>ID</th>${this.head().map((h) => `<th>${h}</th>`).join("")}<th></th></tr></thead>
@@ -452,7 +453,7 @@ export class CurationStep implements Step {
     const dlg = modal("dlg-wide", `<form method="dialog"><h3>Generate ${NOUN[this.kind]}s with an LLM</h3>
       <div class="grid2"><section class="picker"></section>
       <section>
-        <p class="hint">${isT ? "The LLM reads the marked part of the text source (nothing marked: the whole document) and returns one target per reported result, with references to the sentences, tables and figures it comes from." : "The LLM turns the marked methods text (nothing marked: the whole document) into ordered analysis steps, linked to the input files of step 2 and the targets of step 3."}</p>
+        <p class="hint">${isT ? "The LLM reads the marked part of the text source (nothing marked: the whole document) and returns one target per reported result, with references to the sentences, tables and figures it comes from." : "The LLM turns the marked methods text (nothing marked: the whole document) into ordered analysis steps, linked to the input files of the Inputs step and the targets table."}</p>
         <label>LLM profile <select name="profile">${this.profiles.map((p) => `<option value="${esc(p.name)}" ${(st.llmProfile ? p.name === st.llmProfile : p.default) ? "selected" : ""}>${esc(p.name)}: ${esc(p.model || "default model")}${p.effort ? `, effort ${esc(p.effort)}` : ""}</option>`).join("")}</select></label>
         <p class="hint">Command (configured in the backend): <code class="argv"></code></p>
         <div class="form-row"><button type="button" class="show-prompt">Show prompt</button></div>

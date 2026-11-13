@@ -291,7 +291,8 @@ export class ClaimsStep implements Step {
     const others = [...new Set((this.methodUsers().get(id)?.usedBy ?? []).map((l) => l.claim).filter((c) => c !== claimId))];
     const shared = others.length ? `<p class="cl-shared warn-inline small">Also used by ${others.map(esc).join(", ")}: editing this unticks them too</p>` : "";
     const d = `data-action="${esc(a.id)}"`;
-    return `<div class="cl-method" data-action="${esc(a.id)}"><div class="small muted"><b>Method ${esc(a.id)}</b> <span class="badge">${esc(a.kind)}</span></div>
+    const off = this.actions.get(id)?.origin.disabled ? ` <span class="badge" title="This method is switched off, so it is not in use. Switch it on in the Reader.">off</span>` : "";
+    return `<div class="cl-method" data-action="${esc(a.id)}"><div class="small muted"><b>Method ${esc(a.id)}</b> <span class="badge">${esc(a.kind)}</span>${off}</div>
       <label class="small muted">Summary<textarea rows="2" ${d} data-f="summary">${esc(a.summary)}</textarea></label>
       <label class="small muted">Quote<textarea rows="2" ${d} data-f="quote">${esc(a.quote)}</textarea></label>
       <label class="small muted">Inputs<input ${d} data-f="inputs" list="rp-input-names" value="${esc(a.inputs.join(", "))}" title="input resource names, comma-separated" /></label>
