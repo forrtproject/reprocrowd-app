@@ -15,7 +15,7 @@ from .common import Identifier, Model
 
 RESOURCE_NAME = r"^[a-z0-9][a-z0-9._-]*$"
 
-Flavor = Literal["pdf", "tei", "jats", "docling"]
+Flavor = Literal["pdf", "tei", "jats", "docling", "docx", "md"]
 Role = Literal["data", "code", "other"]
 
 

@@ -1,14 +1,19 @@
-"""PDF: integrity check only. PDFs are not parsed directly; they are inputs to reconcile (and, later, to
-GROBID / docling conversion)."""
+"""PDF: integrity check, and a plain-text extraction for local files. A PDF has no structure of its own, so the
+direct parse is lossy (no sections, tables or coordinates); the structured routes are GROBID / docling conversion
+and the reconcile LLM call."""
 from __future__ import annotations
 
 import logging
+import re
 from pathlib import Path
 
 from pypdf import PdfReader
 from pypdf.errors import PdfReadError
 
+from ..schemas.document import DocumentDraft, DraftSection
 from .base import CheckReport, Format
+from .builder import paragraph_from_text
+from .segment import clean
 
 logging.getLogger("pypdf").setLevel(logging.ERROR)
 
@@ -36,6 +41,27 @@ def check(path: Path) -> CheckReport:
     return r
 
 
+def parse(path: Path) -> DocumentDraft:
+    """Extract the text of each page (PyMuPDF) into paragraphs, sentence-segmented. No sections, tables or figures:
+    PDFs carry no structure, so this is a plain-text first pass. Headers, footers and page numbers are kept."""
+    import pymupdf
+
+    sections: list[DraftSection] = []
+    current: DraftSection | None = None
+    with pymupdf.open(str(path)) as doc:
+        for page in doc:
+            text = page.get_text("text")
+            for block in re.split(r"\n\s*\n", text):
+                p = paragraph_from_text(clean(block))
+                if p is None:
+                    continue
+                if current is None:
+                    sections.append(DraftSection(title="", level=1))
+                    current = sections[-1]
+                current.paragraphs.append(p)
+    return DocumentDraft(title=None, sections=sections)
+
+
 FORMAT = Format(
     name="pdf",
     description="PDF",
@@ -45,4 +71,5 @@ FORMAT = Format(
     resource_type="file",
     sniff=lambda head: b"%PDF-" in head[:1024],
     check=check,
+    parse=parse,
 )

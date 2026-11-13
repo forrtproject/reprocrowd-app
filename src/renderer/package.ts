@@ -141,7 +141,7 @@ export async function start(id: string) {
     $("#paper-title").textContent = info.title;
     document.title = `ReproCrowd — ${info.title}`;
     state = loadUiState(await host.loadState().catch(() => null));
-    status("Opening the package (retrieving the paper's JATS XML if needed)…");
+    status("Opening the package (retrieving the paper's text if needed)…");
     summary = await host.connect();
     if (summary.metadata_error) status(`OpenAlex metadata: ${summary.metadata_error}`, "error");
     else status("");

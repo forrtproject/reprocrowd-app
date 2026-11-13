@@ -48,8 +48,54 @@ def test_docling():
 
 def test_pdf_check():
     fmt, report = formats.check(FIXTURES / "paper.pdf")
-    assert fmt.name == "pdf" and report.passed and fmt.parse is None
+    assert fmt.name == "pdf" and report.passed and fmt.parse is not None
     assert "1 page(s)" in report.notes
+
+
+def test_markdown(tmp_path: Path):
+    p = tmp_path / "paper.md"
+    p.write_text("# A Test Paper\n\n## Methods\n\nWe ran a t-test on 40 participants. Data were cleaned first.\n\n## Results\n\nIt was significant.\n", encoding="utf-8")
+    fmt, report = formats.check(p, p.name)
+    assert report.passed, report.problems
+    d = build_document(fmt.parse(p), DocumentSource(method="parse", format=fmt.name, fulltexts=["ft"]))
+    assert d.title == "A Test Paper"
+    assert [s.title for s in d.sections] == ["Methods", "Results"]
+    assert [s.text for s in d.sections[0].paragraphs[0].sentences] == ["We ran a t-test on 40 participants.", "Data were cleaned first."]
+
+
+def test_docx(tmp_path: Path):
+    import docx
+
+    d = docx.Document()
+    d.add_heading("A Test Paper", 0)
+    d.add_heading("Methods", level=1)
+    d.add_paragraph("We ran a t-test on 40 participants. Data were cleaned first.")
+    p = tmp_path / "paper.docx"
+    d.save(str(p))
+    fmt, report = formats.check(p, p.name)
+    assert report.passed, report.problems
+    doc = build_document(fmt.parse(p), DocumentSource(method="parse", format=fmt.name, fulltexts=["ft"]))
+    assert doc.title == "A Test Paper"
+    assert [s.title for s in doc.sections] == ["Methods"]
+    assert [s.text for s in doc.sections[0].paragraphs[0].sentences] == ["We ran a t-test on 40 participants.", "Data were cleaned first."]
+
+
+def test_pdf_parse(tmp_path: Path):
+    import pymupdf
+
+    doc = pymupdf.open()
+    page = doc.new_page()
+    page.insert_text((72, 72), "We ran a t-test on 40 participants.")
+    doc.new_page().insert_text((72, 72), "The effect was significant.")
+    p = tmp_path / "paper.pdf"
+    doc.save(str(p))
+    doc.close()
+    fmt, report = formats.check(p, p.name)
+    assert report.passed, report.problems
+    out = build_document(fmt.parse(p), DocumentSource(method="parse", format=fmt.name, fulltexts=["ft"]))
+    sents = [s.text for sec in out.sections for para in sec.paragraphs for s in para.sentences]
+    assert "We ran a t-test on 40 participants." in sents
+    assert "The effect was significant." in sents
 
 
 def test_rejects(tmp_path: Path):

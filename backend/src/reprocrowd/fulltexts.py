@@ -29,7 +29,7 @@ def _stem(filename: str) -> str:
 def _accept(pkg: Package, tmp: Path, filename: str, origin, name: str | None) -> Resource:
     """Check the file in ``tmp`` (inside the package) and register it, or delete it and raise."""
     try:
-        fmt, report = formats.check(tmp)
+        fmt, report = formats.check(tmp, filename)
         if not report.passed:
             raise invalid("integrity_check_failed", f"{filename} failed the integrity check",
                           {"format": fmt.name if fmt else None, "problems": report.problems})

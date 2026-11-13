@@ -9,7 +9,7 @@ import { $, confirmDialog, esc, modal, showError } from "./util";
 import sticker from "../../resources/hex-sticker.png";
 
 const STEPS: [string, string][] = [
-  ["Choose an article", "A paper with open data and code, in the open-access subset of PubMed Central. Start from its DOI; ReproCrowd fetches its metadata and its JATS XML."],
+  ["Choose an article", "A paper with open data and code. Start from its DOI (ReproCrowd fetches the metadata and its JATS XML) or from a local PDF, DOCX or Markdown file."],
   ["Run the reproducibility check", "Extract the results to reproduce, plan the analysis, let a coding agent write the script, run it and compare."],
   ["Check and sign it", "Look at every number and its provenance in the report. The deposit carries your name and ORCID."],
   ["Deposit on Zenodo", "The package becomes a citable record with a DOI that links to the paper, for anyone to find, re-run or compare."],
@@ -32,7 +32,7 @@ export async function start() {
       <div class="hero-copy">
         <h1 class="hero-title">Crowdsourcing AI reproductions</h1>
         <p class="hero-sub">Check whether a paper's numbers reproduce from its own data and code, with an AI-assisted workflow you stay in control of. Sign the result with your name and deposit it on Zenodo, so the community can find it.</p>
-        <div class="hero-actions"><button id="new-btn" class="btn-primary">New reproduction</button><button id="adopt-btn" class="btn-secondary">Open a package folder…</button></div>
+        <div class="hero-actions"><button id="new-btn" class="btn-primary">New from DOI</button><button id="file-btn" class="btn-secondary">New from file</button><button id="adopt-btn" class="btn-secondary">Open a package folder…</button></div>
         <p id="setup-note" class="notice" hidden></p>
       </div>
       <div class="hero-visual"><img src="${sticker}" alt="ReproCrowd" class="hero-sticker" /></div>
@@ -47,6 +47,7 @@ export async function start() {
     host.openUrl("https://forrt.org/reprocrowd/");
   });
   $("#new-btn").addEventListener("click", () => newDialog());
+  $("#file-btn").addEventListener("click", () => newFileDialog());
   $("#adopt-btn").addEventListener("click", async () => {
     try {
       const id = await host.adoptFolder();
@@ -224,7 +225,7 @@ async function render() {
 
 function newDialog() {
   const dlg = modal("dlg-new", `<form method="dialog">
-    <h3>New reproduction</h3>
+    <h3>New from DOI</h3>
     <label>DOI of the paper <span class="row"><input name="doi" placeholder="10.1371/journal.pbio.1002106 or https://doi.org/…" spellcheck="false" autofocus /><button type="button" id="nd-lookup">Look up</button></span></label>
     <div id="nd-work" class="work-box" hidden></div>
     <div id="nd-jats" hidden></div>
@@ -339,6 +340,67 @@ function newDialog() {
     err("");
     try {
       const r = await host.createPackage({ doi: work.doi, folder: folderIn.value.trim() });
+      dlg.close("create");
+      openPackage(r.id);
+    } catch (e2) {
+      create.disabled = false;
+      create.textContent = "Create";
+      err((e2 as Error).message);
+    }
+  });
+}
+
+/** A reproduction from a paper the user already has on disk: a PDF, DOCX or Markdown file. No DOI or JATS needed. */
+function newFileDialog() {
+  const dlg = modal("dlg-new", `<form method="dialog">
+    <h3>New from file</h3>
+    <p class="hint">Point ReproCrowd at a paper you already have. The text is extracted (PDF, DOCX and Markdown) and you work from it; no DOI or JATS XML is needed.</p>
+    <label>Paper file <span class="row"><input name="file" placeholder="paper.pdf, paper.docx or paper.md" spellcheck="false" /><button type="button" id="nf-file">Choose…</button></span></label>
+    <label>Folder <span class="row"><input name="folder" spellcheck="false" /><button type="button" id="nf-folder">Choose…</button></span></label>
+    <p class="hint">The package is a folder of plain files (a Frictionless data package); the folder must be new or empty.</p>
+    <p class="nd-error warn-inline" hidden></p>
+    <menu><button value="cancel">Cancel</button><button value="create" class="primary" id="nf-create" disabled>Create</button></menu></form>`);
+  const q = <T extends HTMLElement = HTMLInputElement>(s: string) => dlg.querySelector<T>(s)!;
+  const fileIn = q("[name=file]");
+  const folderIn = q("[name=folder]");
+  const create = q<HTMLButtonElement>("#nf-create");
+  let folderTouched = false;
+  const err = (msg: string) => {
+    q<HTMLElement>(".nd-error").textContent = msg;
+    q<HTMLElement>(".nd-error").hidden = !msg;
+  };
+  const canCreate = () => {
+    create.disabled = !(fileIn.value.trim() && folderIn.value.trim());
+  };
+  fileIn.addEventListener("input", canCreate);
+  folderIn.addEventListener("input", () => {
+    folderTouched = true;
+    canCreate();
+  });
+  q("#nf-file").addEventListener("click", async () => {
+    const f = await host.chooseFile();
+    if (!f) return;
+    fileIn.value = f;
+    if (!folderTouched) folderIn.value = await host.suggestFolder(f.split(/[\\/]/).pop()!.replace(/\.[^.]+$/, "") || "paper").catch(() => folderIn.value);
+    canCreate();
+  });
+  q("#nf-folder").addEventListener("click", async () => {
+    const dir = await host.chooseFolder(folderIn.value);
+    if (dir) {
+      folderIn.value = dir;
+      folderTouched = true;
+      canCreate();
+    }
+  });
+  q<HTMLFormElement>("form").addEventListener("submit", async (e) => {
+    if ((e.submitter as HTMLButtonElement | null)?.value !== "create") return;
+    e.preventDefault();
+    if (!fileIn.value.trim() || !folderIn.value.trim()) return;
+    create.disabled = true;
+    create.textContent = "Creating…";
+    err("");
+    try {
+      const r = await host.createPackageFromFile({ path: fileIn.value.trim(), folder: folderIn.value.trim() });
       dlg.close("create");
       openPackage(r.id);
     } catch (e2) {

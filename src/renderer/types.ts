@@ -23,7 +23,7 @@ export type Origin =
   | { type: "upload"; filename: string }
   | { type: "fetched"; url: string; repo: string; id: string; label: string };
 export type ResourceMeta =
-  | { kind: "fulltext"; added_at: string; flavor: "pdf" | "tei" | "jats" | "docling"; origin: Origin; check: CheckResult }
+  | { kind: "fulltext"; added_at: string; flavor: "pdf" | "tei" | "jats" | "docling" | "docx" | "md"; origin: Origin; check: CheckResult }
   | { kind: "extraction"; added_at: string; method: "parse" | "reconcile"; fulltexts: string[]; llm_call?: string | null }
   | { kind: "input"; added_at: string; role: Role; note: string; used: boolean; archive?: string | null; origin: Origin }
   | { kind: "script"; added_at: string; template: string; generated_hash: string }

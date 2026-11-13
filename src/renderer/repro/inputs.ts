@@ -108,7 +108,7 @@ export class InputsStep implements Step {
 
     body.innerHTML = `
     <div class="card">
-      <div class="card-head"><h3>The paper's text</h3><span class="ok small">✓ JATS XML${ids.pmcid ? ` from Europe PMC (${esc(ids.pmcid)})` : ""}</span></div>
+      <div class="card-head"><h3>The paper's text</h3><span class="ok small">✓ ${ids.pmcid ? `JATS XML from Europe PMC (${esc(ids.pmcid)})` : "Text extracted"}</span></div>
       <p class="small">${contents}</p>
       <p class="hint">Targets (step 2) and analysis steps (step 3) are extracted from this text and point into it.</p>
     </div>

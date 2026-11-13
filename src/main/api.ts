@@ -113,29 +113,30 @@ async function uploadPath(id: string, file: string, fields: Record<string, unkno
 }
 
 /**
- * The paper's text: its JATS XML from Europe PMC, parsed into the common document schema. Returns the extraction's name,
- * retrieving and parsing the XML first if the package has none yet. Throws `jats_unavailable` if there is no JATS XML.
+ * The paper's text: a full text parsed into the common document schema. Returns the extraction's name, retrieving and
+ * parsing the JATS XML first if the package has no full text yet. Throws `jats_unavailable` if there is no JATS XML.
  */
-export async function ensureJats(id: string): Promise<string> {
+export async function ensureText(id: string): Promise<string> {
   const P = `/v1/packages/${enc(id)}`;
   const [fulltexts, extractions] = await Promise.all([get<any[]>(`${P}/fulltexts`), get<any[]>(`${P}/extractions`)]);
-  const jatsFt = fulltexts.filter((f) => f.reprocrowd?.flavor === "jats").map((f) => f.name as string);
-  const parsed = extractions.find((x) => x.reprocrowd?.method === "parse" && (x.reprocrowd.fulltexts ?? []).some((n: string) => jatsFt.includes(n)));
+  // An extraction already made from a full text (a local PDF/DOCX/MD, or the JATS XML): use it.
+  const parsed = extractions.find((x) => x.reprocrowd?.method === "parse");
   if (parsed) return parsed.name;
-  let ft = jatsFt[0];
-  if (!ft) {
-    const { candidates, notes } = await get<{ candidates: any[]; notes: string[] }>(`${P}/fulltexts/candidates`, undefined, 60_000);
-    const c = candidates.find((x) => x.format === "jats");
-    if (!c) throw new ServiceError(`${JATS_ONLY} ${notes.find((n) => /PMCID/.test(n)) ?? "There is no JATS XML for this paper."}`, { status: 409, code: "jats_unavailable" });
-    try {
-      ft = ((await request("POST", `${P}/fulltexts`, { json: { candidate: c.id, name: "ft-jats" }, timeout: 300_000 })).data as any).name;
-    } catch (e) {
-      const code = (e as ServiceError).problem?.code;
-      if (code === "download_failed" || code === "integrity_check_failed") throw new ServiceError(`${JATS_ONLY} Europe PMC has no JATS XML for this paper (${(e as Error).message}).`, { status: 409, code: "jats_unavailable" });
-      throw e;
-    }
+  // A full text present but not yet parsed: parse the most structured one (a plain PDF last).
+  const ft = fulltexts.find((f) => f.reprocrowd?.flavor !== "pdf") ?? fulltexts[0];
+  if (ft) return ((await request("POST", `${P}/extractions`, { json: { method: "parse", fulltext: ft.name }, timeout: 300_000 })).data as any).name;
+  // No full text: fetch the paper's JATS XML (a DOI package).
+  const { candidates, notes } = await get<{ candidates: any[]; notes: string[] }>(`${P}/fulltexts/candidates`, undefined, 60_000);
+  const c = candidates.find((x) => x.format === "jats");
+  if (!c) throw new ServiceError(`${JATS_ONLY} ${notes.find((n) => /PMCID/.test(n)) ?? "There is no JATS XML for this paper."}`, { status: 409, code: "jats_unavailable" });
+  try {
+    const ftName = ((await request("POST", `${P}/fulltexts`, { json: { candidate: c.id, name: "ft-jats" }, timeout: 300_000 })).data as any).name;
+    return ((await request("POST", `${P}/extractions`, { json: { method: "parse", fulltext: ftName }, timeout: 300_000 })).data as any).name;
+  } catch (e) {
+    const code = (e as ServiceError).problem?.code;
+    if (code === "download_failed" || code === "integrity_check_failed") throw new ServiceError(`${JATS_ONLY} Europe PMC has no JATS XML for this paper (${(e as Error).message}).`, { status: 409, code: "jats_unavailable" });
+    throw e;
   }
-  return ((await request("POST", `${P}/extractions`, { json: { method: "parse", fulltext: ft }, timeout: 300_000 })).data as any).name;
 }
 
 export function makeApi(wc: WebContents) {
@@ -187,7 +188,7 @@ export function makeApi(wc: WebContents) {
       const created = (await request("POST", "/v1/packages", { json: { path: target, identifier: doi }, timeout: 60_000 })).data as any;
       try {
         await request("POST", `/v1/packages/${enc(created.id)}/metadata`, { json: {}, timeout: 60_000 });
-        await ensureJats(created.id);
+        await ensureText(created.id);
       } catch (e) {
         await request("DELETE", `/v1/packages/${enc(created.id)}`).catch(() => {});
         if (existed) for (const f of fs.readdirSync(target)) fs.rmSync(path.join(target, f), { recursive: true, force: true });
@@ -195,6 +196,35 @@ export function makeApi(wc: WebContents) {
         throw e;
       }
       return { id: created.id as string };
+    },
+    /** A package from a local paper file (PDF, DOCX or Markdown), with its text parsed. No DOI or JATS needed. */
+    createPackageFromFile: async (opts: { path: string; folder: string }) => {
+      const target = path.resolve(opts.folder);
+      const existed = fs.existsSync(target);
+      if (existed && fs.readdirSync(target).length) throw new Error(`${target} isn't empty; choose another folder.`);
+      const created = (await request("POST", "/v1/packages", { json: { path: target }, timeout: 60_000 })).data as any;
+      try {
+        const ft = ((await request("POST", `/v1/packages/${enc(created.id)}/fulltexts`, { json: { path: opts.path, name: "ft-local" }, timeout: 300_000 })).data as any).name;
+        await request("POST", `/v1/packages/${enc(created.id)}/extractions`, { json: { method: "parse", fulltext: ft }, timeout: 300_000 });
+      } catch (e) {
+        await request("DELETE", `/v1/packages/${enc(created.id)}`).catch(() => {});
+        if (existed) for (const f of fs.readdirSync(target)) fs.rmSync(path.join(target, f), { recursive: true, force: true });
+        else fs.rmSync(target, { recursive: true, force: true });
+        throw e;
+      }
+      return { id: created.id as string };
+    },
+    /** A local paper file the user picked (PDF, DOCX, Markdown) to run ReproCrowd on. */
+    chooseFile: async () => {
+      const r = await dialog.showOpenDialog(win(), {
+        title: "The paper file",
+        properties: ["openFile"],
+        filters: [
+          { name: "Papers (PDF, DOCX, Markdown)", extensions: ["pdf", "docx", "md", "markdown", "txt"] },
+          { name: "All files", extensions: ["*"] },
+        ],
+      });
+      return r.canceled ? null : r.filePaths[0];
     },
     adoptFolder: async () => {
       const r = await dialog.showOpenDialog(win(), { title: "Open a package folder (with datapackage.json)", properties: ["openDirectory"] });
@@ -286,7 +316,7 @@ export function makeApi(wc: WebContents) {
     },
     connect: async () => {
       let s = await summary();
-      const jats = await ensureJats(s.id);
+      const jats = await ensureText(s.id);
       let metadata_error: string | undefined;
       const doi = s.identifier?.scheme === "doi" ? s.identifier.value : "";
       if (doi && !s.metadata_fetched_at) {
