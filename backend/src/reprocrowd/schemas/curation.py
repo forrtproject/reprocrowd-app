@@ -4,6 +4,8 @@ A curated file (targets.json, actions.json) holds
 - ``manual``: items added by hand (edited in place, deletable), and
 - ``llm_runs``: one entry per LLM call with the call's metadata and its extractions. Each extraction keeps
   the LLM's version (``base``); user changes go into ``edit`` and ``disabled``, so they can be restored.
+- ``last_item`` / ``last_run``: the highest item and run numbers ever issued, so the ids of deleted items and runs
+  are never handed out again (stopgap until ids are content-based, see issue #65).
 """
 from __future__ import annotations
 
@@ -137,6 +139,8 @@ class TargetsFile(Model):
     kind: Literal["targets"] = "targets"
     manual: list[Target] = Field(default_factory=list)
     llm_runs: list[LlmRun[Target]] = Field(default_factory=list)
+    last_item: int = Field(0, ge=0, description="highest item number ever issued; ids of deleted items are not reused")
+    last_run: int = Field(0, ge=0, description="highest run number ever issued; numbers of deleted runs are not reused")
 
 
 class ActionsFile(Model):
@@ -146,6 +150,8 @@ class ActionsFile(Model):
     kind: Literal["actions"] = "actions"
     manual: list[Action] = Field(default_factory=list)
     llm_runs: list[LlmRun[Action]] = Field(default_factory=list)
+    last_item: int = Field(0, ge=0, description="highest item number ever issued; ids of deleted items are not reused")
+    last_run: int = Field(0, ge=0, description="highest run number ever issued; numbers of deleted runs are not reused")
 
 
 # ---------- what the LLM is asked to return ----------
