@@ -312,6 +312,12 @@ json.dump({"results": [{"id": "T001", "value": 2.3149}, {"id": "T002", "value": 
   await win.locator(".al-card[data-id=C2] .al-desc").click();
   const y1 = await win.locator(".al-card[data-id=C2] .al-desc").evaluate((e) => e.getBoundingClientRect().top);
   assert.ok(Math.abs(y1 - y0) < 40, `C2 moved ${y1 - y0}px`);
+  // A method card of the focused claim belongs to that claim: clicking it must not hand the focus to another user
+  // of the same step (A03 is C1's method too), and must not close the card either.
+  assert.ok(await win.locator(".al-card[data-id=C2]").evaluate((e) => e.classList.contains("on")), "C2 is focused");
+  await win.locator(".al-card[data-id=A03] .al-desc").click();
+  assert.ok(await win.locator(".al-card[data-id=C2]").evaluate((e) => e.classList.contains("on")), "the focus stays on the claim whose method was clicked");
+  assert.equal(await win.locator(".al-card.open[data-id=A03]").count(), 1, "the method card stays open");
   // deselect: clicking the focused claim again
   await win.locator(".al-card[data-id=C2] .al-desc").click();
   assert.equal(await win.locator(".al-card.open").count(), 0);
@@ -426,12 +432,31 @@ json.dump({"results": [{"id": "T001", "value": 2.3149}, {"id": "T002", "value": 
   await win.locator(".cl-tree .cl-item[data-id=C1]").click();
   await win.waitForSelector(`${m3} .badge`);
   assert.equal(await win.locator(`${m3} .badge`, { hasText: /^off$/ }).count(), 1, "a switched-off method says so");
+  // Review Focus 3, for a method (the round trip above it uses a preparation step): a switched-off method keeps its
+  // card in the Reader, labelled, and the claim that points at it still links to it.
+  await win.click("#cl-view [data-view=reader]");
+  await win.waitForSelector(".al-card[data-id=A03]");
+  assert.ok(await win.locator(".al-card[data-id=A03]").evaluate((e) => e.classList.contains("off")), "the switched-off method is faded");
+  assert.match(await win.locator(".al-card[data-id=A03]").innerText(), /switched off/);
+  await win.locator(".al-card[data-id=C1]").hover();
+  assert.ok(await win.locator(".al-card[data-id=A03]").evaluate((e) => e.classList.contains("hot")), "C1 still links to its switched-off method");
   await P("/actions/A03", "PATCH", { disabled: false });
   await win.locator("#route button").nth(0).click();
   await win.locator("#route button").nth(2).click();
   await win.click("#cl-view [data-view=review]");
   await win.locator(".cl-tree .cl-item[data-id=C1]").click();
   await win.waitForSelector(`${m3} input[data-f=depends_on]`);
+
+  // Review saves a method's fields through the same compare-and-patch as the Reader: retyping the stored text with
+  // a trailing space is not a change, and a stray PATCH would untick every claim using the method.
+  await P("/claims/C1", "PATCH", { checked: true });
+  assert.equal((await P("/claims/C1")).data.item.checked, true, "C1 is ticked before the no-op edit");
+  const q3 = (await P("/actions/A03")).data.item.quote;
+  await win.fill(`${m3} textarea[data-f=quote]`, `${q3}  `);
+  await win.locator(`${m3} textarea[data-f=quote]`).blur();
+  await win.waitForTimeout(1500); // a stray PATCH would land well within this
+  assert.equal((await P("/actions/A03")).data.item.quote, q3, "retyping the same text with a trailing space saves nothing");
+  assert.equal((await P("/claims/C1")).data.item.checked, true, "and so does not untick the claims using the method");
 
   // A bare click into a field whose stored text has stray whitespace must not save: the Reader compares the trimmed
   // value, and a stray PATCH would untick every claim using the method.
@@ -451,6 +476,29 @@ json.dump({"results": [{"id": "T001", "value": 2.3149}, {"id": "T002", "value": 
   await win.waitForTimeout(1500); // a stray PATCH would land well within this
   assert.equal((await P("/actions/A02")).data.item.summary, padded, "a click does not rewrite the field");
   assert.equal((await P("/claims/C1")).data.item.checked, true, "a click does not untick the claims using the method");
+
+  step("claims reader: attach a method to a leaf that has none");
+  // Review Focus 4's other half. Every leaf of the fixture has a method, so take C2.2's away first (the UI has no
+  // way to do that; this is the setup, not what is under test). C2.2 is used rather than C1's, which is run below.
+  const c2b = (await P("/claims/C2")).data.item;
+  await P("/claims/C2", "PATCH", { sub_claims: c2b.sub_claims.map((s) => (s.id === "C2.2" ? { ...s, method: null } : s)) });
+  assert.equal((await P("/claims/C2")).data.item.sub_claims.find((s) => s.id === "C2.2").method ?? null, null, "C2.2 has no method");
+  await win.locator("#route button").nth(0).click(); // reload the step, so the reader sees it
+  await win.locator("#route button").nth(2).click();
+  await win.click("#cl-view [data-view=reader]");
+  await win.waitForSelector(".al-card[data-id=C2]");
+  await win.locator(".al-card[data-id=C2] .al-desc").click();
+  const free3 = sents.find((id) => !picks.includes(id) && id !== free && id !== free2);
+  await win.locator(`.al-text .sent[data-hid="${free3}"]`).scrollIntoViewIfNeeded();
+  await win.locator(`.al-text .sent[data-hid="${free3}"]`).click();
+  await win.waitForSelector(".al-bar:not([hidden])");
+  const before3 = (await P("/actions")).data.map((a) => a.item.id);
+  await win.click(".al-bar [data-act=attach][data-leaf='C2.2']");
+  await until("the marks to be used up", async () => await win.locator(".al-bar").isHidden());
+  const made = (await P("/actions")).data.map((a) => a.item).find((a) => !before3.includes(a.id));
+  assert.ok(made, "attaching to a leaf with no method adds the step");
+  assert.deepEqual(made.inputs, [], "there is no old method to carry inputs over from");
+  assert.equal((await P("/claims/C2")).data.item.sub_claims.find((s) => s.id === "C2.2").method, made.id);
 
   await win.click("#cl-view [data-view=review]");
   await win.waitForSelector(".cl-tree .cl-item[data-id=C1]");

@@ -5,9 +5,9 @@
 // trace). Edits of evidence and methods untick the claims using them in the backend, so everything reloads after one.
 import { host, pkg } from "../api";
 import { type Action, type Claim, type ClaimResult, type ClaimsFile, type ClaimsTrace, type ClaimState, type ClaimStatus, type ClaimTrace, type Document, type ItemOrigin, type LlmProfile, type LlmRun, type Resource, type ScriptState, type Target, type AcquireResult } from "../types";
-import { choose, confirmDialog, esc, list, modal, showError, trunc } from "../util";
+import { choose, confirmDialog, esc, modal, showError, trunc } from "../util";
 import { runClaim, stageLabel } from "./claimrun";
-import { ClaimsReader } from "./claimsreader";
+import { ClaimsReader, saveMethodField } from "./claimsreader";
 import { CurationStep } from "./curation";
 import { methodIndex } from "./methods";
 import type { Step, Wizard } from "./wizard";
@@ -365,8 +365,11 @@ export class ClaimsStep implements Step {
         return void this.edit(`Changing ${el.dataset.claim}`, () => pkg.patch(`/claims/${encodeURIComponent(el.dataset.claim!)}`, { [f]: value }));
       }
       if (el.dataset.action) {
-        const value = f === "inputs" || f === "depends_on" ? list(el.value) : el.value;
-        return void this.edit(`Changing ${el.dataset.action}`, () => pkg.patch(`/actions/${encodeURIComponent(el.dataset.action!)}`, { [f]: value }));
+        // The same four fields of the same actions as the Reader's preparation card, saved the same way: trimmed,
+        // and never as a no-op, which would untick every claim using the method for nothing.
+        const info = this.methodUsers().get(el.dataset.action);
+        if (info) saveMethodField(info, el, (label, run) => void this.edit(label, run));
+        return;
       }
       if (el.dataset.target) {
         const t = this.targets.get(el.dataset.target);

@@ -53,9 +53,12 @@ function usedLine(i: MethodInfo) {
 }
 
 /**
- * The scroll offset to put back after a full redraw. `ClaimsStep.edit` goes through `Wizard.busy`, which redraws the
- * step (and so rebuilds this reader) both when the request starts and when it ends; the module keeps the offset for
- * the length of that edit, so neither redraw moves the page under the user.
+ * The scroll offset to put back once the redrawn cards have been placed. `Wizard.draw` already restores the body's
+ * scrollTop around a same-step redraw, so the synchronous half is its business; what it cannot do is correct an
+ * offset the browser clamped because the cards were still stacked at the top when it restored it (`AlignedView`
+ * places them a frame later, in its layout). `ClaimsStep.edit` goes through `Wizard.busy`, which redraws the step
+ * (and so rebuilds this reader) both when the request starts and when it ends, so the offset is kept for the length
+ * of that edit and put back after each redraw's layout.
  */
 let keptScroll: number | null = null;
 
@@ -89,10 +92,11 @@ export class ClaimsReader {
       onCard: (id, act, el) => this.cardAction(id, act, el),
       onSelect: (id) => this.select(id),
     });
+    // After AlignedView's own layout frame, scheduled just above: by then .al-side has its real height again, so an
+    // offset Wizard.draw had to clamp against a momentarily short page can be put back.
     const s = scroller(root);
     if (s && keptScroll !== null) {
       const top = keptScroll;
-      s.scrollTop = top;
       requestAnimationFrame(() => {
         if (keptScroll !== null && s.isConnected) s.scrollTop = top;
       });
@@ -154,8 +158,10 @@ export class ClaimsReader {
   // ---------- cards ----------
 
   private items(): AlignedItem[] {
-    const focus = this.ctx.focus();
     const focused = this.focusedClaim();
+    // Review lets a switched-off claim be selected, and it has no card here: that is no focus, or every chip would
+    // be dimmed around a claim the reader cannot show.
+    const focus = focused?.id ?? "";
     const open = this.ctx.openChip();
     const methods = focused ? claimMethods(focused) : [];
     const items = this.ctx.rows.filter((r) => !r.off).map((r) => this.claimItem(r.claim, r.claim.id === focus));
@@ -230,9 +236,15 @@ export class ClaimsReader {
   private select(id: string) {
     const info = this.ctx.index.get(id);
     if (!info) return this.ctx.select(id === this.ctx.focus() ? "" : id);
+    // A method of the focused claim is already drawn as a full card because that claim is focused, not because of
+    // the open chip: the chip can neither open nor close it, so the click changes nothing at all. Recording the chip
+    // anyway would look like nothing happened, and would then make the next click (which drops it again) look
+    // broken in the same way.
+    if (info.usedBy.some((l) => l.claim === this.ctx.focus())) return;
     if (this.ctx.openChip() === id) return this.ctx.setOpenChip("");
     this.ctx.setOpenChip(id);
     // Opening an analysis method that claims use also focuses the first of them, so the link is visible at once.
+    // The focused claim is never one of them: a click on a step it uses was handled above.
     if (info.role === "method") this.ctx.select(info.usedBy[0].claim);
   }
 
@@ -245,25 +257,13 @@ export class ClaimsReader {
     if (act === "switch-off") return void this.edit(`Leaving out ${id}`, () => pkg.patch(path, { disabled: true }));
     if (act === "switch-on") return void this.edit(`Using ${id}`, () => pkg.patch(path, { disabled: false }));
     if (act === "delete") return void this.remove(id, path);
-    if (act === "field") return this.field(info, el as HTMLInputElement);
+    if (act === "field") return saveMethodField(info, el as HTMLInputElement, (l, fn) => void this.edit(l, fn));
   }
 
   /** Deleting is destructive and cannot be undone, so it is confirmed first, like every other delete in the app. */
   private async remove(id: string, path: string) {
     if (!(await confirmDialog("Delete step", `Delete <b>${esc(id)}</b>?`, "Delete", true))) return;
     await this.edit(`Deleting ${id}`, () => deleteAction(id, path));
-  }
-
-  private field(i: MethodInfo, el: HTMLInputElement) {
-    const f = el.dataset.f!;
-    const stored = (i.action as unknown as Record<string, unknown>)[f];
-    // The value is trimmed, so trim the stored text too: a stored value with stray whitespace must not look changed.
-    const was = typeof stored === "string" ? stored.trim() : stored;
-    const value = f === "inputs" || f === "depends_on" ? list(el.value) : el.value.trim();
-    // A click on a textarea arrives here too (AlignedView passes any [data-act]); only a real change is saved, and an
-    // edit of an action unticks the claims using it, so a no-op must never be sent.
-    if (Array.isArray(was) ? was.join("\u0000") === (value as string[]).join("\u0000") : was === value) return;
-    void this.edit(`Changing ${i.action.id}`, () => pkg.patch(`/actions/${encodeURIComponent(i.action.id)}`, { [f]: value }));
   }
 
   /** ctx.edit redraws the step twice; keep the scroll offset for both redraws. */
@@ -273,9 +273,29 @@ export class ClaimsReader {
     try {
       await this.ctx.edit(label, fn);
     } finally {
-      keptScroll = null;
+      // Not in this micro-task: the closing redraw has only rebuilt the reader, and the frame that lays its cards
+      // out and puts the offset back has not run yet. It is the next one, so the offset is dropped after that.
+      requestAnimationFrame(() => {
+        keptScroll = null;
+      });
     }
   }
+}
+
+/**
+ * Save one edited field of an action from either editor of it: the Reader's preparation card and the Review pane's
+ * method block show the same four fields of the same actions, so they save them the same way. The value is trimmed
+ * (and the stored text with it, so stray whitespace does not look like a change), and only a real change is sent: an
+ * edit of an action unticks every claim that uses it as its method, so a no-op must never reach the backend. A bare
+ * click into a field arrives here too, in the Reader, where AlignedView passes on any [data-act].
+ */
+export function saveMethodField(i: MethodInfo, el: HTMLInputElement, edit: (label: string, fn: () => Promise<unknown>) => void) {
+  const f = el.dataset.f!;
+  const stored = (i.action as unknown as Record<string, unknown>)[f];
+  const was = typeof stored === "string" ? stored.trim() : stored;
+  const value = f === "inputs" || f === "depends_on" ? list(el.value) : el.value.trim();
+  if (Array.isArray(was) ? was.join("\u0000") === (value as string[]).join("\u0000") : was === value) return;
+  edit(`Changing ${i.action.id}`, () => pkg.patch(`/actions/${encodeURIComponent(i.action.id)}`, { [f]: value }));
 }
 
 /**
@@ -300,9 +320,12 @@ export async function attachMethod(ctx: ReaderCtx, leaf: Leaf): Promise<string> 
   try {
     await pkg.patch(`/claims/${encodeURIComponent(leaf.claim)}`, claimPatch(ctx, leaf, created.id));
   } catch (e) {
-    // The step is only ever a method of this leaf: a half-attach would leave it behind, used by nothing.
-    await pkg.del(`/actions/${encodeURIComponent(created.id)}`).catch(() => {});
-    throw e;
+    // The step is only ever a method of this leaf: a half-attach would leave it behind, used by nothing. If even
+    // that fails, say so with the error, or the step stays in the package with nothing to point the user at it.
+    const undone = await pkg.del(`/actions/${encodeURIComponent(created.id)}`).then(() => true, () => false);
+    if (undone) throw e;
+    const msg = `${(e as Error).message} The step ${created.id}, just added, could not be removed again: it is now in the package, used by no claim.`;
+    throw e instanceof ApiError ? new ApiError(msg, e.problem) : new Error(msg);
   }
   return created.id;
 }
