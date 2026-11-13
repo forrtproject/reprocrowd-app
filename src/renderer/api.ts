@@ -65,7 +65,6 @@ export interface Config {
   backend: BackendStatus;
   backendConfig: string;
   defaultBackendConfig: string;
-  llmModels: LlmModels;
 }
 export type BackendCheck = { ok: true; url: string; version: string } | { ok: false; url: string; code: string; message: string };
 export type UpdateStatus =

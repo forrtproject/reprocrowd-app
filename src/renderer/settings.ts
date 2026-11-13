@@ -9,10 +9,20 @@ const ORCID = /^\d{4}-\d{4}-\d{4}-\d{3}[\dX]$/;
 
 export async function settingsDialog(onSaved: (changed: boolean) => void, focus?: "zenodo" | "backend") {
   let cfg: Config;
+  // Reading the settings asks the system keyring and the backend; if that takes a moment, say so.
+  let waiting: HTMLDialogElement | undefined;
+  const slow = setTimeout(() => {
+    waiting = modal("dlg-waiting", `<p class="waiting"><span class="spinner" aria-hidden="true"></span> Opening the settings…</p>
+      <p class="hint">Reading your saved settings, the tokens in the system keyring, and the backend's status.</p>`);
+    waiting.addEventListener("cancel", (e) => e.preventDefault());
+  }, 250);
   try {
     cfg = await host.getConfig();
   } catch (e) {
     return showError("Opening the settings", e);
+  } finally {
+    clearTimeout(slow);
+    waiting?.close();
   }
   const z = cfg.zenodo;
   const dlg = modal("dlg-settings", `<form method="dialog">

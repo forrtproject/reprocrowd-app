@@ -79,6 +79,9 @@ async function setupNote() {
  * families or single models and not spend tokens on them by accident. */
 async function renderLlmModels(refresh = false) {
   const el = $("#llm-models");
+  // Detecting asks each installed agent CLI (OpenCode, T3 Code, Claude Code), which can take a few seconds.
+  el.innerHTML = `<h2 class="section-title">LLM models</h2>
+    <div class="card llm-models-card"><p class="waiting muted"><span class="spinner" aria-hidden="true"></span> Looking for the models your coding agents offer (OpenCode, T3 Code, Claude Code)…</p></div>`;
   let m: LlmModels;
   try {
     m = await host.llmModels(refresh);

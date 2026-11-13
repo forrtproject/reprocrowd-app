@@ -229,7 +229,6 @@ export function makeApi(wc: WebContents) {
         backend: backend.status(),
         backendConfig: backend.readUserConfig(),
         defaultBackendConfig: backend.DEFAULT_USER_CONFIG,
-        llmModels: { ...(await detectLlmModels()), disabled: s.llmDisabled },
       };
     },
     setConfig: async (patch: Parameters<typeof saveSettings>[0]) => {
