@@ -230,7 +230,7 @@
         "used": true,
         "origin": {
           "type": "local",
-          "path": "C:\\Users\\lroesele.IVV5NET\\AppData\\Local\\Temp\\opencode\\gummy_data\\extracted\\Foerster_etal_Gummybearperceptions_Data-Code-Supplements\\data\\gummibear_trials.csv"
+          "path": "gummibear_trials.csv"
         }
       }
     },
@@ -250,7 +250,7 @@
         "used": true,
         "origin": {
           "type": "local",
-          "path": "C:\\Users\\lroesele.IVV5NET\\AppData\\Local\\Temp\\opencode\\gummy_data\\extracted\\Foerster_etal_Gummybearperceptions_Data-Code-Supplements\\data\\Gummibear_data.xlsx"
+          "path": "Gummibear_data.xlsx"
         }
       }
     },
@@ -270,7 +270,7 @@
         "used": true,
         "origin": {
           "type": "local",
-          "path": "C:\\Users\\lroesele.IVV5NET\\AppData\\Local\\Temp\\opencode\\gummy_data\\extracted\\Foerster_etal_Gummybearperceptions_Data-Code-Supplements\\data\\gummibear_apriori_long.csv"
+          "path": "gummibear_apriori_long.csv"
         }
       }
     },
@@ -290,7 +290,7 @@
         "used": true,
         "origin": {
           "type": "local",
-          "path": "C:\\Users\\lroesele.IVV5NET\\AppData\\Local\\Temp\\opencode\\gummy_data\\extracted\\Foerster_etal_Gummybearperceptions_Data-Code-Supplements\\data\\codebook.md"
+          "path": "codebook.md"
         }
       }
     },
@@ -310,7 +310,7 @@
         "used": true,
         "origin": {
           "type": "local",
-          "path": "C:\\Users\\lroesele.IVV5NET\\AppData\\Local\\Temp\\opencode\\gummy_data\\extracted\\Foerster_etal_Gummybearperceptions_Data-Code-Supplements\\data\\info_gummibear_data.txt"
+          "path": "info_gummibear_data.txt"
         }
       }
     },
@@ -330,7 +330,7 @@
         "used": true,
         "origin": {
           "type": "local",
-          "path": "C:\\Users\\lroesele.IVV5NET\\AppData\\Local\\Temp\\opencode\\gummy_data\\extracted\\Foerster_etal_Gummybearperceptions_Data-Code-Supplements\\data\\gummibear_apriori.csv"
+          "path": "gummibear_apriori.csv"
         }
       }
     },
@@ -350,7 +350,7 @@
         "used": true,
         "origin": {
           "type": "local",
-          "path": "C:\\Users\\lroesele.IVV5NET\\AppData\\Local\\Temp\\opencode\\gummy_data\\extracted\\Foerster_etal_Gummybearperceptions_Data-Code-Supplements\\analysis\\gummibear_analyses.py"
+          "path": "gummibear_analyses.py"
         }
       }
     },
@@ -370,7 +370,7 @@
         "used": true,
         "origin": {
           "type": "local",
-          "path": "C:\\Users\\lroesele.IVV5NET\\AppData\\Local\\Temp\\opencode\\gummy_data\\extracted\\Foerster_etal_Gummybearperceptions_Data-Code-Supplements\\analysis\\build_dataset.py"
+          "path": "build_dataset.py"
         }
       }
     },
@@ -390,7 +390,7 @@
         "used": true,
         "origin": {
           "type": "local",
-          "path": "C:\\Users\\lroesele.IVV5NET\\AppData\\Local\\Temp\\opencode\\gummy_data\\extracted\\Foerster_etal_Gummybearperceptions_Data-Code-Supplements\\analysis\\make_figures.py"
+          "path": "make_figures.py"
         }
       }
     },
@@ -410,7 +410,7 @@
         "used": true,
         "origin": {
           "type": "local",
-          "path": "C:\\Users\\lroesele.IVV5NET\\AppData\\Local\\Temp\\opencode\\gummy_data\\extracted\\Foerster_etal_Gummybearperceptions_Data-Code-Supplements\\analysis\\control_analyses.R"
+          "path": "control_analyses.R"
         }
       }
     },
@@ -430,7 +430,7 @@
         "used": true,
         "origin": {
           "type": "local",
-          "path": "C:\\Users\\lroesele.IVV5NET\\AppData\\Local\\Temp\\opencode\\gummy_data\\extracted\\Foerster_etal_Gummybearperceptions_Data-Code-Supplements\\analysis\\make_supplement.sh"
+          "path": "make_supplement.sh"
         }
       }
     },
@@ -450,7 +450,7 @@
         "used": true,
         "origin": {
           "type": "local",
-          "path": "C:\\Users\\lroesele.IVV5NET\\AppData\\Local\\Temp\\opencode\\gummy_data\\extracted\\Foerster_etal_Gummybearperceptions_Data-Code-Supplements\\analysis\\setup-r-sandbox.sh"
+          "path": "setup-r-sandbox.sh"
         }
       }
     },
@@ -470,7 +470,7 @@
         "used": true,
         "origin": {
           "type": "local",
-          "path": "C:\\Users\\lroesele.IVV5NET\\AppData\\Local\\Temp\\opencode\\gummy_data\\extracted\\Foerster_etal_Gummybearperceptions_Data-Code-Supplements\\analysis\\py_auc_by_cell.csv"
+          "path": "py_auc_by_cell.csv"
         }
       }
     },
@@ -490,7 +490,7 @@
         "used": true,
         "origin": {
           "type": "local",
-          "path": "C:\\Users\\lroesele.IVV5NET\\AppData\\Local\\Temp\\opencode\\gummy_data\\extracted\\Foerster_etal_Gummybearperceptions_Data-Code-Supplements\\analysis\\r_auc_by_cell.csv"
+          "path": "r_auc_by_cell.csv"
         }
       }
     },
@@ -510,7 +510,7 @@
         "used": true,
         "origin": {
           "type": "local",
-          "path": "C:\\Users\\lroesele.IVV5NET\\AppData\\Local\\Temp\\opencode\\gummy_data\\extracted\\Foerster_etal_Gummybearperceptions_Data-Code-Supplements\\analysis\\r_controls_summary.csv"
+          "path": "r_controls_summary.csv"
         }
       }
     },
@@ -530,7 +530,7 @@
         "used": true,
         "origin": {
           "type": "local",
-          "path": "C:\\Users\\lroesele.IVV5NET\\AppData\\Local\\Temp\\opencode\\gummy_data\\extracted\\Foerster_etal_Gummybearperceptions_Data-Code-Supplements\\analysis\\results_2026-08-17.md"
+          "path": "results_2026-08-17.md"
         }
       }
     },
@@ -550,7 +550,7 @@
         "used": true,
         "origin": {
           "type": "local",
-          "path": "C:\\Users\\lroesele.IVV5NET\\AppData\\Local\\Temp\\opencode\\gummy_data\\extracted\\Foerster_etal_Gummybearperceptions_Data-Code-Supplements\\analysis\\r_sessioninfo.txt"
+          "path": "r_sessioninfo.txt"
         }
       }
     },
@@ -570,7 +570,7 @@
         "used": true,
         "origin": {
           "type": "local",
-          "path": "C:\\Users\\lroesele.IVV5NET\\AppData\\Local\\Temp\\opencode\\gummy_data\\extracted\\Foerster_etal_Gummybearperceptions_Data-Code-Supplements\\README.md"
+          "path": "README.md"
         }
       }
     },
@@ -594,8 +594,8 @@
       "type": "json",
       "format": "json",
       "mediatype": "application/json",
-      "bytes": 923726,
-      "hash": "sha256:60d9cb5fc8b01924bbae8b68b882af9a0365aa1c2a3deb6de862d24f4c13ff27",
+      "bytes": 922658,
+      "hash": "sha256:3066ca4ec8783fd8a5e8151da24b3d42e27ad4f40829774a46c30f4102769e8d",
       "jsonSchema": "schemas/actions.schema.json",
       "reprocrowd": {
         "kind": "curation",
@@ -638,8 +638,8 @@
       "type": "file",
       "format": "md",
       "mediatype": "text/plain",
-      "bytes": 3384,
-      "hash": "sha256:17b9ac90d4553568cf040158e56f1e7c65c54b34a2e471f4bda06d47f578964e",
+      "bytes": 3359,
+      "hash": "sha256:04eeaff56890a86e2643d45cea5cdac2a4ffc777d01f11bea319c3912e202275",
       "reprocrowd": {
         "kind": "script",
         "added_at": "2026-11-13T13:12:57Z",

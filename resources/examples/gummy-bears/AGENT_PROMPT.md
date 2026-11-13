@@ -1,5 +1,5 @@
 You are working in a computational reproduction package at:
-C:\Users\lroesele.IVV5NET\AppData\Local\Temp\opencode\reprocrowd-issue22\resources\examples\gummy-bears
+C:\Users\user\ReproCrowd\gummy-bears
 
 Goal: implement the analysis so that running `python3 analysis.py` from the package root reproduces the paper's results.
 
