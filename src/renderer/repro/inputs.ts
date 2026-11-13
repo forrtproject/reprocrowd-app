@@ -1,6 +1,6 @@
 // Step 1: the inputs of the reproduction.
 //   The paper's text: its JATS XML from Europe PMC, parsed (retrieved by the app; shown here, nothing to choose).
-//   Input files:      the study's data and, if available, the authors' code (POST …/inputs; zip archives are unpacked).
+//   Input files:      the study's published data (POST …/inputs; zip archives are unpacked).
 import { ApiError, host, pkg } from "../api";
 import { countSentences } from "../doc";
 import { ROLES, type AcquireFailure, type AcquireResult, type Document, type Resource, type Role } from "../types";
@@ -116,7 +116,7 @@ export class InputsStep implements Step {
       <div class="card-head"><h3>Input files</h3><span class="muted">${counts}</span><span class="spacer"></span>
         <button id="rp-fetch" ${busy ? "disabled" : ""} title="Find data/code repository links in the manuscript and download them here">Fetch supplemental materials…</button>
         <label class="btn primary ${busy ? "disabled" : ""}">Add files…<input type="file" multiple hidden id="rp-add-files" /></label><button id="rp-add-dir" ${busy ? "disabled" : ""}>Add a folder…</button></div>
-      <p class="hint">The study's data and, if available, the authors' original code. The backend guesses the role from the file type; notes are passed on to the LLM and the report. Zip archives are unpacked; files in an archive can be left out (unticked) without changing it. You can also drop files here. <b>Fetch supplemental materials…</b> looks for data/code links (Zenodo, GitHub, GitLab, OSF, Figshare) in the manuscript and downloads them here.</p>
+      <p class="hint">The study's published data. The analysis is rebuilt from the procedures described in the paper, so the authors' code isn't needed. The backend guesses the role from the file type; notes are passed on to the LLM and the report. Zip archives are unpacked; files in an archive can be left out (unticked) without changing it. You can also drop files here. <b>Fetch supplemental materials…</b> looks for data/code links (Zenodo, GitHub, GitLab, OSF, Figshare) in the manuscript and downloads them here.</p>
       <table class="tbl-list rp-inputs"><thead><tr><th title="Used">Use</th><th>File</th><th>Role</th><th>Note</th><th>Size</th><th></th></tr></thead>
         <tbody>${rows || `<tr><td colspan="6" class="muted">No input files yet.</td></tr>`}</tbody></table>
     </div>${this.fetchList()}`;

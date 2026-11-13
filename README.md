@@ -42,8 +42,9 @@ run reproductions you also need what the paper's analysis uses (R, Python, …).
 - **A reproduction** is a numbered workflow: 1 Inputs, 2 Targets, 3 Analysis
   plan, 4 Master script, 5 Code generation, 6 Run & compare, 7 Report &
   deposit. The paper's text is its JATS XML; there is no PDF view. The study's
-  data and code are added as input files from this computer (file dialogs, drag
-  and drop, folders).
+  published data are added as input files from this computer (file dialogs, drag
+  and drop, folders). The analysis is rebuilt from the procedures described in
+  the paper; the authors' code is not used in this version.
 - **Steps 2 and 3, Reader view**: the paper, with each target (or analysis
   step) as a card in a sidebar, level with the passage it comes from and joined
   to it by a line. Hovering a card lights up its passage, and the other way
