@@ -5,7 +5,7 @@
 // Every open card carries the cleanup controls: Switch off/on for LLM entries, Delete for manual ones.
 import { ApiError, pkg } from "../api";
 import type { Claim, ClaimStatus, Document } from "../types";
-import { esc, list, trunc } from "../util";
+import { confirmDialog, esc, list, trunc } from "../util";
 import { AlignedItem, AlignedView } from "./aligned";
 import { modeText, pill } from "./claims";
 import { claimMethods, type MethodInfo, type MethodRole } from "./methods";
@@ -162,7 +162,9 @@ export class ClaimsReader {
   /** Preparation steps are edited here: Review is organised by claim, and they belong to all of them. */
   private fieldsHtml(i: MethodInfo) {
     const a = i.action;
-    return `<div class="al-fields">
+    // data-act="fields": a click on a label or on the blank space between the editors must reach onCard (where it is
+    // ignored) rather than fall through to onSelect, which would close the card the user is typing in.
+    return `<div class="al-fields" data-act="fields">
       <label class="small muted">Summary<textarea rows="2" data-act="field" data-f="summary">${esc(a.summary)}</textarea></label>
       <label class="small muted">Quote<textarea rows="2" data-act="field" data-f="quote">${esc(a.quote)}</textarea></label>
       <label class="small muted">Inputs<input data-act="field" data-f="inputs" list="rp-input-names" value="${esc(a.inputs.join(", "))}" title="input resource names, comma-separated" /></label>
@@ -191,11 +193,18 @@ export class ClaimsReader {
     const info = this.ctx.index.get(id);
     if (act === "review") return this.ctx.review(info ? this.reviewClaim(info) : id);
     if (!info) return;
+    if (act === "fields") return; // a click beside the editors: not a toggle, and nothing to save
     const path = `/actions/${encodeURIComponent(id)}`;
     if (act === "switch-off") return void this.edit(`Leaving out ${id}`, () => pkg.patch(path, { disabled: true }));
     if (act === "switch-on") return void this.edit(`Using ${id}`, () => pkg.patch(path, { disabled: false }));
-    if (act === "delete") return void this.edit(`Deleting ${id}`, () => remove(id, path));
+    if (act === "delete") return void this.remove(id, path);
     if (act === "field") return this.field(info, el as HTMLInputElement);
+  }
+
+  /** Deleting is destructive and cannot be undone, so it is confirmed first, like every other delete in the app. */
+  private async remove(id: string, path: string) {
+    if (!(await confirmDialog("Delete step", `Delete <b>${esc(id)}</b>?`, "Delete", true))) return;
+    await this.edit(`Deleting ${id}`, () => deleteAction(id, path));
   }
 
   private field(i: MethodInfo, el: HTMLInputElement) {
@@ -221,7 +230,7 @@ export class ClaimsReader {
 }
 
 /** Only manual steps can be deleted, and the backend refuses while anything still uses one. */
-async function remove(id: string, path: string) {
+async function deleteAction(id: string, path: string) {
   try {
     await pkg.del(path);
   } catch (e) {

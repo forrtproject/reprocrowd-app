@@ -322,6 +322,9 @@ json.dump({"results": [{"id": "T001", "value": 2.3149}, {"id": "T002", "value": 
   await win.waitForFunction(() => /switched off/.test(document.querySelector('.al-card[data-id="A02"]')?.textContent ?? ""));
   await win.click('.al-card[data-id="A02"] [data-act=switch-on]');
   await win.waitForFunction(() => !/switched off/.test(document.querySelector('.al-card[data-id="A02"]')?.textContent ?? ""));
+  // a click on a field's label (the usual way to focus it) must not collapse the card back to a chip
+  await win.locator(".al-card.open[data-id=A02] .al-fields label").first().click({ position: { x: 4, y: 4 } });
+  assert.equal(await win.locator(".al-card.open[data-id=A02]").count(), 1, "a click on a label keeps the card open");
   // preparation is edited in place
   await win.fill(".al-card.open[data-id=A02] textarea[data-f=summary]", "Exclude incomplete records (edited)");
   const p0 = await win.locator(".al-card[data-id=A02]").evaluate((e) => e.getBoundingClientRect().top);
@@ -330,9 +333,11 @@ json.dump({"results": [{"id": "T001", "value": 2.3149}, {"id": "T002", "value": 
   await win.waitForSelector(".al-card.open[data-id=A02]"); // the open chip survives the reload
   const p1 = await win.locator(".al-card[data-id=A02]").evaluate((e) => e.getBoundingClientRect().top);
   assert.ok(Math.abs(p1 - p0) < 40, `an edit moved the page by ${p1 - p0}px`);
-  // the unused manual method can be deleted
+  // the unused manual method can be deleted, after confirming
   await win.locator(".al-chip[data-id=A01]").click();
   await win.click(".al-card.open[data-id=A01] [data-act=delete]");
+  await win.waitForSelector(".dlg-confirm button[value=ok]");
+  await win.click(".dlg-confirm button[value=ok]");
   await win.waitForFunction(() => !document.querySelector('.al-card[data-id="A01"]'));
   assert.ok(!(await P("/actions")).data.some((a) => a.item.id === "A01"));
   await win.click("#cl-view [data-view=review]");
