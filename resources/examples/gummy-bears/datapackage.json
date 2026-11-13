@@ -212,7 +212,7 @@
         "flavor": "pdf",
         "origin": {
           "type": "local",
-          "path": "C:\\Users\\lroesele.IVV5NET\\AppData\\Local\\Temp\\opencode\\reprocrowd-issue22\\resources\\examples\\gummy-bears\\fulltext\\gummy-bears.pdf"
+          "path": "gummy-bears.pdf"
         },
         "check": {
           "passed": true,
