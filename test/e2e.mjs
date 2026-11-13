@@ -355,6 +355,9 @@ json.dump({"results": [{"id": "T001", "value": 2.3149}, {"id": "T002", "value": 
   // focus C2: one button per sub-claim
   await win.locator(".al-card[data-id=C2] .al-desc").click();
   assert.equal(await win.locator(".al-bar [data-act=attach]").count(), 2);
+  // Tick C2 first, so the unticking below is a real change: a new method means the claim needs reviewing again.
+  await P("/claims/C2", "PATCH", { checked: true });
+  assert.equal((await P("/claims/C2")).data.item.checked, true, "C2 is ticked before the attach");
   const before = (await P("/actions")).data.map((a) => a.item.id);
   await win.click(".al-bar [data-act=attach][data-leaf='C2.1']");
   await until("the marks to be used up", async () => await win.locator(".al-bar").isHidden());
@@ -368,12 +371,12 @@ json.dump({"results": [{"id": "T001", "value": 2.3149}, {"id": "T002", "value": 
   assert.equal(c2.sub_claims.find((s) => s.id === "C2.1").method, created.id);
   assert.equal(c2.sub_claims.find((s) => s.id === "C2.2").method, "A03", "the other sub-claim keeps its method");
   assert.deepEqual(created.produces, c2.sub_claims.find((s) => s.id === "C2.1").evidence);
-  assert.equal(c2.checked, false);
+  assert.equal(c2.checked, false, "a new method unticks the claim");
   assert.ok((await P("/actions")).data.some((a) => a.item.id === "A03"), "the old method is kept");
   assert.match(await win.locator("#status").innerText(), new RegExp(`Attached ${created.id} to C2\\.1`));
   await win.waitForSelector(`.al-card.open[data-id="${created.id}"]`);
   // Review Focus 2: attaching again from a figure or table replaces the method, and the new step always has a summary
-  // (this paper's floats all have captions, so the empty-text fallback itself isn't reached here).
+  // (refText renders a float as "<label>: <caption>", so a marked float never falls back to a generated summary).
   const fl = await win.locator(".al-text figure[data-hid]").first().getAttribute("data-hid").catch(() => null);
   if (fl) {
     await win.locator(`.al-text figure[data-hid="${fl}"]`).scrollIntoViewIfNeeded();

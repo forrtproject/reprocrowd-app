@@ -289,7 +289,7 @@ export async function attachMethod(ctx: ReaderCtx, leaf: Leaf): Promise<string> 
     kind: "analysis",
     refs: ids.map((id) => ({ extraction: ctx.jats, id })),
     quote: text,
-    // A marked figure or table without a label or caption has no text at all, and a step needs a summary.
+    // A step needs a summary: marks that resolve to nothing in the document (or to an empty sentence) have no text.
     summary: text || `Implement the marked passage for ${leaf.id}`,
     inputs: old?.action.inputs ?? [],
     depends_on: [...ctx.index.values()].filter((i) => i.role === "preparation" && !i.origin.disabled).map((i) => i.action.id),
