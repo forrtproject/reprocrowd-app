@@ -3,7 +3,7 @@
 //
 // Which backend runs, in order:
 //   1. Settings → Advanced → start command, if set ({host}, {port} filled in)
-//   2. the bundled Python runtime with reprocrowd installed (resources/backend, made by scripts/bundle-backend.sh)
+//   2. the bundled Python runtime with reprocrowd installed (resources/backend, made by scripts/bundle-backend.mjs)
 //   3. in a development checkout: `uv run --project backend python -m reprocrowd serve`
 //
 // Its config (REPROCROWD_CONFIG) is written at every start from the user's part (userData/backend.toml: LLM and

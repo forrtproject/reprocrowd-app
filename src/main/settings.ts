@@ -25,6 +25,10 @@ export interface Settings {
   backendCmd: string;
   /** LLM models (from OpenCode / T3 Code) the user turned off, so they don't accidentally spend tokens on them. */
   llmDisabled: string[];
+  /** Look for a new version of ReproCrowd a little after start. */
+  checkUpdates: boolean;
+  /** The newest version the user was already told about (notify mode asks once per version). */
+  updateNotified: string;
 }
 
 export const userData = () => app.getPath("userData");
@@ -37,6 +41,8 @@ export const DEFAULTS: Settings = {
   zenodo: { sandbox: true, community: "", creator: { name: "", orcid: "", affiliation: "" } },
   backendCmd: "",
   llmDisabled: [],
+  checkUpdates: true,
+  updateNotified: "",
 };
 
 function readJson(file: string): any {
@@ -70,6 +76,8 @@ export function loadSettings(): Settings {
     },
     backendCmd: str(s.backendCmd, ""),
     llmDisabled: Array.isArray(s.llmDisabled) ? s.llmDisabled.map(String) : [],
+    checkUpdates: typeof s.checkUpdates === "boolean" ? s.checkUpdates : DEFAULTS.checkUpdates,
+    updateNotified: str(s.updateNotified, ""),
   };
 }
 

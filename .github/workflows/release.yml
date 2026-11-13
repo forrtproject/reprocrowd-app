@@ -1,0 +1,101 @@
+name: Release
+
+# Build ReproCrowd for Windows, Linux and macOS and attach the installers to a GitHub Release. Installed copies look
+# for updates there (src/main/updater.ts):
+#   Windows  ReproCrowd-<version>-setup.exe + latest.yml        installs itself (electron-updater)
+#   Linux    ReproCrowd-<version>.AppImage  + latest-linux.yml  replaces itself (electron-updater)
+#   macOS    ReproCrowd-<version>-arm64.dmg                     unsigned: the app points users to the download
+# Trigger: push a tag v<version> matching package.json's version (e.g. v0.2.0), or run it by hand from the Actions
+# tab (builds only; no release).
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            builder: --win nsis
+            files: |
+              dist/*.exe
+              dist/*.exe.blockmap
+              dist/latest.yml
+          - os: ubuntu-latest
+            builder: --linux AppImage
+            files: |
+              dist/*.AppImage
+              dist/latest-linux.yml
+          - os: macos-latest
+            builder: --mac dmg
+            files: |
+              dist/*.dmg
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: The tag matches package.json's version
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        run: |
+          want="$(node -p 'require("./package.json").version')"
+          [ "${GITHUB_REF_NAME#v}" = "$want" ] || { echo "::error::Tag $GITHUB_REF_NAME doesn't match package.json version $want; installed copies would never see this update."; exit 1; }
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build renderer / main / preload
+        run: npm run build
+
+      - name: Bundle the backend
+        run: npm run bundle-backend
+
+      - name: Build the installer
+        run: npx electron-builder ${{ matrix.builder }} --publish never
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false" # no signing certificates (yet)
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: reprocrowd-${{ runner.os }}
+          path: ${{ matrix.files }}
+          if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Attach to the GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          files: |
+            dist/*.exe
+            dist/*.exe.blockmap
+            dist/latest.yml
+            dist/*.AppImage
+            dist/latest-linux.yml
+            dist/*.dmg

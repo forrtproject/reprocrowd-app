@@ -202,7 +202,11 @@ class AcquireResult(BaseModel):
 
     links: list[dict[str, Any]] = Field(description="detected repository links, with their repo, id, kind and label")
     resources: list[Resource] = Field(description="input resources added")
-    failures: list[dict[str, Any]] = Field(default_factory=list, description="per-repository failures: repo, id, url, error")
+    failures: list[dict[str, Any]] = Field(default_factory=list, description="what could not be fetched: per link (repo, id, url, code, error) when the repository itself "
+                                          "couldn't be read, or per file (the same plus file and file_url) when one file couldn't be downloaded "
+                                          "or was skipped; the link's other files are still added. code: acquire_too_large (skipped for the "
+                                          "download limit, max_download_mb per link), acquire_not_found, acquire_failed, unknown_repository "
+                                          "or unexpected")
 
 
 # ---------- targets and actions ----------

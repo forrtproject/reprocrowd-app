@@ -85,7 +85,7 @@ src/preload/    the bridge: call(method, args), pathForFile(file)
 src/renderer/   the UI (vite): main.ts routes to library.ts or package.ts (the workflow,
                 from reprocrowd-zotero/ui), repro/report.ts is the Zenodo step, style.css the theme
 resources/      the ReproCrowd hex sticker (app icon and logo)
-scripts/        build.sh, bundle-backend.sh
+scripts/        build.mjs, bundle-backend.mjs, install.sh
 test/e2e.mjs    end-to-end check with a fake Zenodo and the backend tests' fake LLM
 ```
 
@@ -106,6 +106,19 @@ node test/e2e.mjs         # after npm run build
 npm run test:backend      # the backend's tests (pytest)
 npm run schemas           # regenerate backend/schemas and docs after model or API changes
 ```
+
+## Releases and updates
+
+Bump `version` in package.json, commit, and push a tag `v<version>`: the Release
+workflow builds the Windows installer, the Linux AppImage and the macOS dmg and
+attaches them to a GitHub Release. Installed copies check that release a little
+after start (Settings → Updates; Help → Check for Updates…):
+
+- Windows (installer) and Linux (AppImage) download the new version and install it on restart.
+- macOS (unsigned builds can't replace themselves) and Linux installs from `scripts/install.sh`
+  are told about the new version and where to get it.
+- A development checkout doesn't check. `REPROCROWD_UPDATES=off` turns checks off;
+  `REPROCROWD_UPDATE_SERVER=<url>` points them at a test server (see `src/main/updater.ts`).
 
 `backend/` came from the standalone reprocrowd-cli repository (which the
 ReproCrowd Zotero plugin also uses) with `git subtree`, history included.
