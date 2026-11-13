@@ -1,8 +1,9 @@
 // The library: your reproductions (packages the app's backend knows), a new one from a DOI, or a package folder
 // opened from disk. Opening one switches the window to its numbered workflow (package.ts).
-import { host, isBackendDown, JATS_ONLY, JatsAvailability, LibraryEntry, LlmModel, LlmModels, UpdateInfo, Work, ZenodoRecord } from "./api";
+import { ApiError, host, isBackendDown, JATS_ONLY, JatsAvailability, LibraryEntry, LlmModel, LlmModels, UpdateInfo, Work, ZenodoRecord } from "./api";
 import { backendProblem } from "./backend";
 import { brandHtml } from "./brand";
+import { withProgress } from "./progress";
 import { settingsDialog } from "./settings";
 import type { ZenodoDeposit } from "./types";
 import { $, confirmDialog, esc, modal, showError } from "./util";
@@ -301,6 +302,35 @@ async function render() {
 
 // ---------- a new reproduction ----------
 
+/**
+ * Creates the package with `run`, showing its progress in the dialog (retrieving and converting the paper's text can
+ * take a while). Meanwhile the dialog's fields are locked, and Cancel or Esc cancel the creation instead of closing
+ * the dialog: it stops at the end of the running step and is undone, and `run` fails with a `cancelled` error.
+ */
+async function creating<T>(dlg: HTMLDialogElement, run: () => Promise<T>): Promise<T> {
+  const cancel = dlg.querySelector<HTMLButtonElement>("button[value=cancel]")!;
+  const locked = [...dlg.querySelectorAll<HTMLInputElement | HTMLButtonElement>("input, button[type=button]")].filter((x) => !x.disabled);
+  const stop = (e: Event) => {
+    e.preventDefault();
+    if (cancel.disabled) return;
+    cancel.disabled = true;
+    cancel.textContent = "Cancelling…";
+    host.cancelText().catch(() => {});
+  };
+  locked.forEach((x) => (x.disabled = true));
+  cancel.addEventListener("click", stop);
+  dlg.addEventListener("cancel", stop);
+  try {
+    return await withProgress(dlg.querySelector<HTMLElement>(".nd-progress")!, run());
+  } finally {
+    cancel.removeEventListener("click", stop);
+    dlg.removeEventListener("cancel", stop);
+    cancel.disabled = false;
+    cancel.textContent = "Cancel";
+    locked.forEach((x) => (x.disabled = false));
+  }
+}
+
 function newDialog() {
   const dlg = modal("dlg-new", `<form method="dialog">
     <h3>New from DOI</h3>
@@ -310,6 +340,7 @@ function newDialog() {
     <div id="nd-records" hidden></div>
     <label>Folder <span class="row"><input name="folder" spellcheck="false" /><button type="button" id="nd-folder">Choose…</button></span></label>
     <p class="hint">The package is a folder of plain files (a Frictionless data package); the folder must be new or empty.</p>
+    <div class="nd-progress" hidden></div>
     <p class="nd-error warn-inline" hidden></p>
     <menu><button value="cancel" formnovalidate>Cancel</button><button value="create" class="primary" id="nd-create" disabled>Create</button></menu></form>`);
   const q = <T extends HTMLElement = HTMLInputElement>(s: string) => dlg.querySelector<T>(s)!;
@@ -417,10 +448,11 @@ function newDialog() {
     create.textContent = "Creating…";
     err("");
     try {
-      const r = await host.createPackage({ doi: work.doi, folder: folderIn.value.trim() });
+      const r = await creating(dlg, () => host.createPackage({ doi: work!.doi, folder: folderIn.value.trim() }));
       dlg.close("create");
       openPackage(r.id);
     } catch (e2) {
+      if (e2 instanceof ApiError && e2.code === "cancelled") return dlg.close("cancel");
       create.disabled = false;
       create.textContent = "Create";
       err((e2 as Error).message);
@@ -437,6 +469,7 @@ function newFileDialog() {
     <label>Paper file <span class="row"><input name="file" placeholder="paper.pdf, paper.docx or paper.md" spellcheck="false" /><button type="button" id="nf-file">Choose…</button></span></label>
     <label>Folder <span class="row"><input name="folder" spellcheck="false" /><button type="button" id="nf-folder">Choose…</button></span></label>
     <p class="hint">The package is a folder of plain files (a Frictionless data package); the folder must be new or empty.</p>
+    <div class="nd-progress" hidden></div>
     <p class="nd-error warn-inline" hidden></p>
     <menu><button value="cancel" formnovalidate>Cancel</button><button value="create" class="primary" id="nf-create" disabled>Create</button></menu></form>`);
   const q = <T extends HTMLElement = HTMLInputElement>(s: string) => dlg.querySelector<T>(s)!;
@@ -479,10 +512,11 @@ function newFileDialog() {
     create.textContent = "Creating…";
     err("");
     try {
-      const r = await host.createPackageFromFile({ path: fileIn.value.trim(), folder: folderIn.value.trim() });
+      const r = await creating(dlg, () => host.createPackageFromFile({ path: fileIn.value.trim(), folder: folderIn.value.trim() }));
       dlg.close("create");
       openPackage(r.id);
     } catch (e2) {
+      if (e2 instanceof ApiError && e2.code === "cancelled") return dlg.close("cancel");
       create.disabled = false;
       create.textContent = "Create";
       err((e2 as Error).message);
