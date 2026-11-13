@@ -390,6 +390,22 @@ json.dump({"results": [{"id": "T001", "value": 2.3149}, {"id": "T002", "value": 
   }
   await shot("04e-claims-attach");
 
+  step("claims review: the method's full fields");
+  // By now C2.1 has its own new method, so A03 is shared by C1 and C2.2 only: C1's pane warns about C2.
+  await win.click("#cl-view [data-view=review]");
+  await win.locator(".cl-tree .cl-item[data-id=C1]").click();
+  const m3 = ".cl-detail .cl-method[data-action=A03]";
+  await win.waitForSelector(`${m3} input[data-f=inputs]`);
+  assert.equal(await win.locator(`${m3} textarea[data-f=quote]`).count(), 1);
+  assert.equal(await win.locator(`${m3} input[data-f=depends_on]`).count(), 1);
+  assert.equal(await win.locator(`${m3} .badge`).count(), 1);
+  assert.equal((await win.locator(".cl-detail .cl-shared").innerText()).trim(), "Also used by C2: editing this unticks them too");
+  // A03 already depends on A02 from the extraction, so edit its quote: a change only a real PATCH can produce.
+  await win.fill(`${m3} textarea[data-f=quote]`, "Run the t-test (quote edited)");
+  await win.locator(`${m3} textarea[data-f=quote]`).blur();
+  await until("the edited method quote", async () => (await P("/actions/A03")).data.item.quote === "Run the t-test (quote edited)");
+  await win.waitForSelector(`${m3} input[data-f=inputs]`);
+
   await win.click("#cl-view [data-view=review]");
   await win.waitForSelector(".cl-tree .cl-item[data-id=C1]");
 

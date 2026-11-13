@@ -5,7 +5,7 @@
 // trace). Edits of evidence and methods untick the claims using them in the backend, so everything reloads after one.
 import { host, pkg } from "../api";
 import { type Action, type Claim, type ClaimResult, type ClaimsFile, type ClaimsTrace, type ClaimState, type ClaimStatus, type ClaimTrace, type Document, type ItemOrigin, type LlmProfile, type LlmRun, type Resource, type ScriptState, type Target, type AcquireResult } from "../types";
-import { choose, confirmDialog, esc, modal, showError, trunc } from "../util";
+import { choose, confirmDialog, esc, list, modal, showError, trunc } from "../util";
 import { runClaim, stageLabel } from "./claimrun";
 import { ClaimsReader } from "./claimsreader";
 import { CurationStep } from "./curation";
@@ -284,11 +284,23 @@ export class ClaimsStep implements Step {
       .join("")}</tbody></table>`;
   }
 
-  private methodHtml(id: string | null | undefined) {
+  private methodHtml(id: string | null | undefined, claimId: string) {
     if (!id) return `<div class="muted small">No method yet. It is written when the claim is run.</div>`;
     const a = this.actions.get(id)?.item;
     if (!a) return `<div class="warn-inline small">${esc(id)}: missing step</div>`;
-    return `<label class="small muted">Method ${esc(a.id)}<textarea rows="2" data-action="${esc(a.id)}" data-f="summary">${esc(a.summary)}</textarea></label>`;
+    const others = [...new Set((this.methodUsers().get(id)?.usedBy ?? []).map((l) => l.claim).filter((c) => c !== claimId))];
+    const shared = others.length ? `<p class="cl-shared warn-inline small">Also used by ${others.map(esc).join(", ")}: editing this unticks them too</p>` : "";
+    const d = `data-action="${esc(a.id)}"`;
+    return `<div class="cl-method" data-action="${esc(a.id)}"><div class="small muted"><b>Method ${esc(a.id)}</b> <span class="badge">${esc(a.kind)}</span></div>
+      <label class="small muted">Summary<textarea rows="2" ${d} data-f="summary">${esc(a.summary)}</textarea></label>
+      <label class="small muted">Quote<textarea rows="2" ${d} data-f="quote">${esc(a.quote)}</textarea></label>
+      <label class="small muted">Inputs<input ${d} data-f="inputs" list="rp-input-names" value="${esc(a.inputs.join(", "))}" title="input resource names, comma-separated" /></label>
+      <label class="small muted">Depends on<input ${d} data-f="depends_on" value="${esc(a.depends_on.join(", "))}" title="step ids, comma-separated" /></label>
+      ${shared}</div>`;
+  }
+
+  private methodUsers() {
+    return methodIndex([...this.actions.values()], this.rows());
   }
 
   private detailHtml(r: Row) {
@@ -302,9 +314,9 @@ export class ClaimsStep implements Step {
         : `<label class="small muted">Claim (quoted from the paper)<textarea rows="3" data-claim="${esc(c.id)}" data-f="text">${esc(c.text)}</textarea></label>`;
     const numbers = c.sub_claims.length ? c.sub_claims.map((sc) => this.evidenceHtml(sc.evidence, sc.id)).join("") : c.testable ? this.evidenceHtml(c.evidence) : "";
     const subs = c.sub_claims.length
-      ? c.sub_claims.map((sc) => `<div class="cl-sub"><label class="small muted"><b>${esc(sc.id)}</b> quote<textarea rows="2" data-claim="${esc(c.id)}" data-sub="${esc(sc.id)}" data-f="text">${esc(sc.text)}</textarea></label>${this.methodHtml(sc.method)}</div>`).join("")
+      ? c.sub_claims.map((sc) => `<div class="cl-sub"><label class="small muted"><b>${esc(sc.id)}</b> quote<textarea rows="2" data-claim="${esc(c.id)}" data-sub="${esc(sc.id)}" data-f="text">${esc(sc.text)}</textarea></label>${this.methodHtml(sc.method, c.id)}</div>`).join("")
       : c.testable
-        ? this.methodHtml(c.method)
+        ? this.methodHtml(c.method, c.id)
         : `<p class="muted small">This claim is not testable by computation, so it is not run.</p>`;
     const ready = st?.state === "ready";
     const result = st?.result;
@@ -351,7 +363,10 @@ export class ClaimsStep implements Step {
         const value = f === "checked" ? el.checked : el.value;
         return void this.edit(`Changing ${el.dataset.claim}`, () => pkg.patch(`/claims/${encodeURIComponent(el.dataset.claim!)}`, { [f]: value }));
       }
-      if (el.dataset.action) return void this.edit(`Changing ${el.dataset.action}`, () => pkg.patch(`/actions/${encodeURIComponent(el.dataset.action!)}`, { [f]: el.value }));
+      if (el.dataset.action) {
+        const value = f === "inputs" || f === "depends_on" ? list(el.value) : el.value;
+        return void this.edit(`Changing ${el.dataset.action}`, () => pkg.patch(`/actions/${encodeURIComponent(el.dataset.action!)}`, { [f]: value }));
+      }
       if (el.dataset.target) {
         const t = this.targets.get(el.dataset.target);
         const v = el.value.trim();

@@ -536,6 +536,10 @@ body.view-library .lib-header { padding-right: 96px; }
 .cl-detail h4, .cl-detail h5 { margin: 0 0 4px; }
 .cl-detail textarea { width: 100%; box-sizing: border-box; font: inherit; }
 .cl-detail input[data-f="expected"] { width: 100%; min-width: 80px; box-sizing: border-box; }
+.cl-method { margin: 6px 0; }
+.cl-method label { display: block; margin-top: 4px; }
+.cl-method input { width: 100%; box-sizing: border-box; }
+.cl-shared { margin: 6px 0 0; }
 .cl-sub { border-left: 2px solid var(--accent-line); padding-left: 10px; margin: 8px 0; }
 .cl-actions { display: flex; align-items: center; gap: 8px; }
 .cl-assume { margin: 0; padding-left: 18px; font-size: 12.5px; }
