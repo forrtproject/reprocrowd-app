@@ -168,7 +168,7 @@ def test_parse_and_reconcile(client, pkg):
     assert r.json()["jsonSchema"] == "schemas/document.schema.json"
     problem(client.post(f"/v1/packages/{pkg}/extractions", json={"method": "parse", "fulltext": "ft-paper-tei"}), 409, "extraction_exists")
     assert client.put(f"/v1/packages/{pkg}/extractions/ex-paper-tei", json={"method": "parse", "fulltext": "ft-paper-tei"}).status_code == 200
-    problem(client.post(f"/v1/packages/{pkg}/extractions", json={"method": "parse", "fulltext": "ft-paper-pdf"}), 422, "not_parseable")
+    assert client.post(f"/v1/packages/{pkg}/extractions", json={"method": "parse", "fulltext": "ft-paper-pdf"}).status_code == 201
     doc = client.get(f"/v1/packages/{pkg}/extractions/ex-paper-tei").json()
     assert doc["sections"][2]["paragraphs"][0]["sentences"][1]["id"] == "sec3.p1.s2"
     outline = client.get(f"/v1/packages/{pkg}/extractions/ex-paper-tei", params={"view": "outline"})

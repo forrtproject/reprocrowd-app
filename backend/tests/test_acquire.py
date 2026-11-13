@@ -433,9 +433,9 @@ def test_manuscript_text_uses_the_jats_full_text(tmp_path):
             fulltexts.add_upload(pkg, name, f)
     text = acquire.manuscript_text(pkg)
     assert text.strip()
-    with pytest.raises(ApiError) as e:
-        acquire.manuscript_text(pkg, pkg.load().by_kind("fulltext")[0].name)
-    assert e.value.code == "no_fulltext" and "not XML" in e.value.message
+    # A non-XML full text (Docling JSON) is scanned too, not just the JATS XML.
+    docling = pkg.load().by_kind("fulltext")[0].name
+    assert acquire.manuscript_text(pkg, docling).strip()
 
 
 def test_manuscript_text_without_jats(tmp_path):
@@ -443,9 +443,19 @@ def test_manuscript_text_without_jats(tmp_path):
     pkg = _make_pkg(tmp_path)
     with open(FIXTURES / "paper.docling.json", "rb") as f:
         fulltexts.add_upload(pkg, "paper.docling.json", f)
-    with pytest.raises(ApiError) as e:
-        acquire.manuscript_text(pkg)
-    assert e.value.code == "no_fulltext"
+    assert acquire.manuscript_text(pkg).strip()
+
+
+def test_manuscript_text_from_local_files(tmp_path):
+    """A Markdown or PDF full text added from disk is scanned for links, like the JATS XML."""
+    from reprocrowd import fulltexts
+    pkg = _make_pkg(tmp_path)
+    md = tmp_path / "paper.md"
+    md.write_text("# Methods\n\nSee the data at https://zenodo.org/records/123 and the code at https://github.com/forrt/a.\n", encoding="utf-8")
+    fulltexts.add_local(pkg, str(md))
+    text = acquire.manuscript_text(pkg)
+    assert "zenodo.org/records/123" in text and "github.com/forrt/a" in text
+    assert any(l.repo == "zenodo" for l in acquire.detect(text))
 
 
 # ---------------------------------------------------------------- preview & selection

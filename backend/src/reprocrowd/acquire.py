@@ -567,20 +567,46 @@ def preview(pkg: Package, fulltext: str | None = None, repos: Iterable[str] | No
 
 
 def manuscript_text(pkg: Package, fulltext: str | None = None) -> str:
-    """Extract all text from a full-text resource (default: the JATS XML), for scanning."""
-    from . import fulltexts
+    """All the text of a full-text resource (default: the one behind a parse extraction, else the JATS XML, else the
+    first), for scanning for repository links. Any format the app can read is scanned."""
+    from . import formats, fulltexts
     m = pkg.load()
     if fulltext:
         r = fulltexts.get(pkg, fulltext)
     else:
-        r = next((r for r in m.by_kind("fulltext") if r.reprocrowd.flavor == "jats"), None)
+        parsed = {ft for ex in m.by_kind("extraction") for ft in (ex.reprocrowd.fulltexts or [])}
+        r = (
+            next((x for x in m.by_kind("fulltext") if x.name in parsed), None)
+            or next((x for x in m.by_kind("fulltext") if x.reprocrowd.flavor == "jats"), None)
+            or next((x for x in m.by_kind("fulltext") if x.reprocrowd.flavor in formats.BY_NAME), None)
+        )
         if r is None:
-            raise ApiError(409, "no_fulltext", "add a full text (JATS XML) first")
-    try:
-        root = etree.parse(str(pkg.path(r.path))).getroot()
-    except etree.XMLSyntaxError as e:
-        raise ApiError(409, "no_fulltext", f"{r.name} is not XML and can't be scanned for links; use the JATS full text") from e
-    return " ".join(t for t in root.itertext() if t and t.strip())
+            raise ApiError(409, "no_fulltext", "add a full text first")
+    return _fulltext_text(pkg, r)
+
+
+def _fulltext_text(pkg: Package, r: Resource) -> str:
+    """The plain text of one full-text resource, as the app reads it (XML, Docling JSON, Markdown, DOCX or PDF)."""
+    from . import formats
+    flavor = r.reprocrowd.flavor
+    p = pkg.path(r.path)
+    if flavor in ("jats", "tei"):
+        root = etree.parse(str(p)).getroot()
+        return " ".join(t for t in root.itertext() if t and t.strip())
+    if flavor == "docling":
+        import json
+        doc = json.loads(p.read_text(encoding="utf-8"))
+        return " ".join(t.get("text", "") for t in doc.get("texts") or [] if t.get("text"))
+    if flavor == "md":
+        return p.read_text(encoding="utf-8")
+    if flavor == "docx":
+        import docx
+        d = docx.Document(str(p))
+        return " ".join(para.text for para in d.paragraphs if para.text.strip())
+    if flavor == "pdf":
+        from .formats import pdf
+        return " ".join(pdf.page_texts(p))
+    raise ApiError(409, "no_fulltext", f"{r.name} ({formats.BY_NAME[flavor].description}) can't be scanned for links")
 
 
 def acquire(pkg: Package, fulltext: str | None = None, role: str | None = None,

@@ -25,6 +25,22 @@ async function inlineImages(html: string): Promise<string> {
   return `<!doctype html>${doc.documentElement.outerHTML}`;
 }
 
+/**
+ * The full texts that came from the user's disk (a local file, an upload, or a conversion of one), as the backend
+ * judges them for `local_paper_text`: such a package may be unpublished research and isn't deposited on Zenodo.
+ */
+function localFulltexts(resources: any[]): string[] {
+  const fts = new Map<string, any>(resources.filter((r) => r.reprocrowd?.kind === "fulltext").map((r) => [r.name, r]));
+  const local = (r: any, seen: Set<string>): boolean => {
+    const o = r.reprocrowd.origin;
+    if (o?.type === "local" || o?.type === "upload") return true;
+    if (o?.type !== "conversion") return false;
+    const src = fts.get(o.source);
+    return !src || seen.has(src.name) || local(src, new Set([...seen, r.name]));
+  };
+  return [...fts.values()].filter((r) => local(r, new Set())).map((r) => r.name);
+}
+
 const DEPOSIT_STATUS: Record<ZenodoDeposit["status"], string> = { draft: "Draft", published: "Published", discarded: "Discarded", gone: "Deleted on Zenodo" };
 const GROUP_LABEL: Record<string, string> = { paper: "The paper's full texts, extractions and original figures", inputs: "The input files (the original data and code)" };
 
@@ -32,7 +48,7 @@ export class ReportStep implements Step {
   title = "Report & deposit";
   private report?: string;
   private reportResult?: ReportResult;
-  private manifest?: { reprocrowd: { archive?: ArchiveInfo | null; identifiers?: Record<string, string> } };
+  private manifest?: { resources?: any[]; reprocrowd: { archive?: ArchiveInfo | null; identifiers?: Record<string, string> } };
   private validation?: ValidationReport;
   private deposits: ZenodoDeposit[] = [];
   private lastRun?: Job;
@@ -80,8 +96,11 @@ export class ReportStep implements Step {
     const a = this.account;
     const errs = this.validation?.errors ?? [];
     const server = a?.sandbox ? "the Zenodo sandbox" : "Zenodo";
+    const local = localFulltexts(this.manifest?.resources ?? []);
     const checks: [boolean, string, string?][] = [
-      [!!doi, doi ? `DOI ${doi}` : "The paper has a DOI (the record links to it, and OpenAlex provides its metadata)"],
+      local.length
+        ? [false, "The paper's text comes from a file on your computer. Only reproductions of published papers, started from their DOI, can be deposited on Zenodo; the report and the ZIP are yours to keep."]
+        : [!!doi, doi ? `DOI ${doi}` : "The paper has a DOI (the record links to it, and OpenAlex provides its metadata)"],
       [this.lastRun?.status === "succeeded", this.lastRun ? `Last run: ${this.lastRun.status}${this.lastRun.status === "succeeded" ? "" : " (step 7)"}` : "The master script ran successfully (step 7)"],
       [!!this.report, "Report created"],
       [!!archive, archive ? `ZIP created ${when(archive.created_at)}` : "ZIP created"],
@@ -126,7 +145,7 @@ export class ReportStep implements Step {
           <label>Note for the record (optional) <textarea id="rp-note" rows="2" placeholder="e.g. what didn't reproduce and why">${esc(this.note)}</textarea></label>
           <div class="actions"><button id="rp-deposit" class="primary big" ${ready ? "" : "disabled"}>${this.w.running.has("deposit") ? "Uploading…" : `Upload to ${server} as a draft`}</button><button id="rp-metadata">Show metadata</button></div>
           ${already ? `<p class="hint">This ZIP is already on Zenodo (${already.status === "draft" ? "as a draft" : "published"}). A changed package (new run or report, then a new ZIP) or another choice of files makes a new deposit.</p>` : ""}
-          ` : this.preview instanceof Error && !stale ? `<p class="hint">${esc(this.preview.message)}</p>` : ""}
+          ` : this.preview instanceof Error && !stale && !local.length ? `<p class="hint">${esc(this.preview.message)}</p>` : ""}
           ${this.deposits.length ? `<h4>Deposits of this package</h4><ul class="deposits">${this.deposits.map((d) => this.depositRow(d)).join("")}</ul>` : ""}
           ${others.length ? `<h4>Other ReproCrowd records for this paper</h4><ul class="small">${others.map((r) => `<li><a href="#" data-open="${esc(r.url)}">${esc(r.creators.join("; ") || "unknown")}, ${esc(r.published ?? "")}</a>${r.doi ? ` · <code>${esc(r.doi)}</code>` : ""}</li>`).join("")}</ul>` : this.records instanceof Error ? `<p class="warn-soft small">Couldn't search ${server} for other records of this paper.</p>` : ""}
         </section>

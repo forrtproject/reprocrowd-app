@@ -7645,7 +7645,7 @@
           "zenodo"
         ],
         "summary": "Deposit the package on Zenodo",
-        "description": "Creates a draft on Zenodo with the metadata (from OpenAlex, looked up now) and the package ZIP, without the excluded groups of files, and reserves a DOI. With `publish: true` it is published at once; otherwise publish it on Zenodo or with `…/deposits/{id}:publish`. Same preconditions as a database submission.",
+        "description": "Creates a draft on Zenodo with the metadata (from OpenAlex, looked up now) and the package ZIP, without the excluded groups of files, and reserves a DOI. With `publish: true` it is published at once; otherwise publish it on Zenodo or with `…/deposits/{id}:publish`. Same preconditions as a database submission, and the paper's text must have been retrieved for its DOI, not added from a local file or uploaded (`local_paper_text`).",
         "operationId": "create_deposit_v1_packages__pkg__deposits_post",
         "security": [
           {
@@ -7716,7 +7716,7 @@
                 }
               }
             },
-            "description": "`no_doi`: Only packages for a paper with a DOI can be submitted; `run_not_succeeded`: The last run of the master script must have succeeded; `archive_missing`: Create the archive first; `archive_stale`: The package changed since the archive was made; `openalex_record_missing`: No OpenAlex record (with a title) for the DOI; `job_running`: Another job is running in this package; `duplicate_submission`: An identical package was submitted before"
+            "description": "`local_paper_text`: The paper's text comes from a local file; only reproductions of published papers, started from their DOI, can be deposited; `no_doi`: Only packages for a paper with a DOI can be submitted; `run_not_succeeded`: The last run of the master script must have succeeded; `archive_missing`: Create the archive first; `archive_stale`: The package changed since the archive was made; `openalex_record_missing`: No OpenAlex record (with a title) for the DOI; `job_running`: Another job is running in this package; `duplicate_submission`: An identical package was submitted before"
           },
           "400": {
             "content": {
@@ -7831,7 +7831,7 @@
                 }
               }
             },
-            "description": "`no_doi`: Only packages for a paper with a DOI can be submitted; `run_not_succeeded`: The last run of the master script must have succeeded; `archive_missing`: Create the archive first; `archive_stale`: The package changed since the archive was made; `openalex_record_missing`: No OpenAlex record (with a title) for the DOI; `job_running`: Another job is running in this package"
+            "description": "`local_paper_text`: The paper's text comes from a local file; only reproductions of published papers, started from their DOI, can be deposited; `no_doi`: Only packages for a paper with a DOI can be submitted; `run_not_succeeded`: The last run of the master script must have succeeded; `archive_missing`: Create the archive first; `archive_stale`: The package changed since the archive was made; `openalex_record_missing`: No OpenAlex record (with a title) for the DOI; `job_running`: Another job is running in this package"
           }
         }
       }
@@ -10746,7 +10746,9 @@
               "pdf",
               "tei",
               "jats",
-              "docling"
+              "docling",
+              "docx",
+              "md"
             ],
             "title": "Flavor"
           },

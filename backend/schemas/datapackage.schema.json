@@ -216,7 +216,9 @@
             "pdf",
             "tei",
             "jats",
-            "docling"
+            "docling",
+            "docx",
+            "md"
           ],
           "title": "Flavor",
           "type": "string"

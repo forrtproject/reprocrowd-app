@@ -77,7 +77,7 @@ The last ZIP of the package (PUT …/archive).
 |---|---|---|---|
 | `kind` | `"fulltext"` |  | default `fulltext` |
 | `added_at` | string (date-time) | yes |  |
-| `flavor` | `"pdf"` \| `"tei"` \| `"jats"` \| `"docling"` | yes |  |
+| `flavor` | `"pdf"` \| `"tei"` \| `"jats"` \| `"docling"` \| `"docx"` \| `"md"` | yes |  |
 | `origin` | [LocalOrigin](#localorigin) \| [UrlOrigin](#urlorigin) \| [ConvertedOrigin](#convertedorigin) \| [UploadOrigin](#uploadorigin) | yes |  |
 | `check` | [CheckResult](#checkresult) | yes |  |
 
