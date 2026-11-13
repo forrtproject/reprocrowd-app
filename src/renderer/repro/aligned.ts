@@ -15,6 +15,10 @@ export interface AlignedItem {
   html: string;
   /** Extra classes of the card, e.g. "off" for items not used. */
   cls?: string;
+  /** Ids of other items lit up together with this one (one level, not recursive). */
+  links?: string[];
+  /** Drawn as a compact chip instead of a full card. */
+  chip?: boolean;
 }
 
 export interface AlignedOptions {
@@ -30,6 +34,8 @@ export interface AlignedOptions {
   /** Clicks on [data-act] elements inside a card. */
   onCard(id: string, act: string, el: HTMLElement): void;
   unlinkedLabel: string;
+  /** A click on a card (not on a [data-act] inside it) calls this instead of scrolling to its passage. */
+  onSelect?(id: string): void;
 }
 
 const GAP = 8;
@@ -42,16 +48,11 @@ export class AlignedView {
   private frame = 0;
 
   constructor(private root: HTMLElement, private o: AlignedOptions) {
-    const linked = o.items.filter((i) => i.anchors.length);
-    const unlinked = o.items.filter((i) => !i.anchors.length);
     root.innerHTML = `
       <div class="al-grid">
         <div class="al-text">${paperHtml(o.doc, o.meta)}</div>
         <div class="al-gutter"><svg class="al-lines"></svg></div>
-        <div class="al-side">
-          ${unlinked.length ? `<div class="al-unlinked"><h4>${esc(o.unlinkedLabel)} <span class="muted">${unlinked.length}</span></h4>${unlinked.map((i) => this.card(i)).join("")}</div>` : ""}
-          <div class="al-cards">${linked.map((i) => this.card(i)).join("")}</div>
-        </div>
+        <div class="al-side">${this.sideHtml()}</div>
       </div>
       <div class="al-bar" hidden></div>`;
     this.grid = root.querySelector(".al-grid")!;
@@ -66,8 +67,29 @@ export class AlignedView {
     document.fonts?.ready.then(() => this.schedule());
   }
 
+  private sideHtml() {
+    const linked = this.o.items.filter((i) => i.anchors.length);
+    const unlinked = this.o.items.filter((i) => !i.anchors.length);
+    return `${unlinked.length ? `<div class="al-unlinked"><h4>${esc(this.o.unlinkedLabel)} <span class="muted">${unlinked.length}</span></h4>${unlinked.map((i) => this.card(i)).join("")}</div>` : ""}
+          <div class="al-cards">${linked.map((i) => this.card(i)).join("")}</div>`;
+  }
+
+  /** Replace the items; only the side is re-rendered, so the text, marks, bar and scroll position stay. */
+  setItems(items: AlignedItem[]) {
+    this.o.items = items;
+    this.side.innerHTML = this.sideHtml();
+    this.markRefs();
+    this.hot([]);
+    this.schedule();
+  }
+
+  /** Re-render the bar (e.g. when what it offers changed while something is marked). */
+  refreshBar() {
+    this.showMarks();
+  }
+
   private card(i: AlignedItem) {
-    return `<div class="al-card ${i.cls ?? ""}" data-id="${esc(i.id)}">${i.html}</div>`;
+    return `<div class="al-card ${i.chip ? "al-chip " : ""}${i.cls ?? ""}" data-id="${esc(i.id)}">${i.html}</div>`;
   }
 
   /** The elements an id stands for in the text. */
@@ -77,6 +99,7 @@ export class AlignedView {
 
   /** Underline every passage some item refers to (dimmed if only unused items do). */
   private markRefs() {
+    this.grid.querySelectorAll(".al-text .ref, .al-text .ref-off").forEach((e) => e.classList.remove("ref", "ref-off"));
     const used = new Set<string>();
     const any = new Set<string>();
     for (const i of this.o.items) for (const a of i.anchors) (i.cls?.includes("off") ? any : used).add(a);
@@ -121,7 +144,10 @@ export class AlignedView {
       if (!c) return;
       const act = (e.target as HTMLElement).closest<HTMLElement>("[data-act]");
       if (act && act.tagName !== "INPUT") return this.o.onCard(c.dataset.id!, act.dataset.act!, act);
-      if (!act) this.reveal(c.dataset.id!);
+      if (!act) {
+        if (this.o.onSelect) this.o.onSelect(c.dataset.id!);
+        else this.reveal(c.dataset.id!);
+      }
     });
     this.side.addEventListener("change", (e) => {
       const el = e.target as HTMLElement;
@@ -143,7 +169,8 @@ export class AlignedView {
     });
   }
 
-  private hot(ids: string[]) {
+  private hot(hovered: string[]) {
+    const ids = [...new Set(hovered.flatMap((id) => [id, ...(this.o.items.find((i) => i.id === id)?.links ?? [])]))];
     this.grid.querySelectorAll(".hot").forEach((e) => e.classList.remove("hot"));
     for (const id of ids) {
       this.side.querySelector(`.al-card[data-id="${CSS.escape(id)}"]`)?.classList.add("hot");

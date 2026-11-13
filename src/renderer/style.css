@@ -490,6 +490,9 @@ body.view-library .lib-header { padding-right: 96px; }
 .al-card { background: var(--panel); border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: 10px; padding: 6px 10px 7px; box-shadow: var(--shadow); font-size: 13px; cursor: pointer; transition: box-shadow .15s, border-color .15s; }
 .al-card.manual { border-left-color: var(--ink-soft); }
 .al-card.off { opacity: .55; border-left-color: var(--border); }
+.al-card.dim { opacity: .45; }
+.al-card.open { border-color: var(--accent); }
+.al-chip { padding: 3px 8px; border-radius: 999px; font-size: 12px; }
 .al-card.hot { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft), var(--shadow); opacity: 1; }
 .al-card-head { display: flex; gap: 6px; align-items: center; }
 .al-card-head button { padding: 0 7px; font-size: 12px; }
