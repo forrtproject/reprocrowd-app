@@ -126,6 +126,13 @@ const until = async (what, fn, tries = 100) => {
   }
   assert.fail(`timed out waiting for ${what}`);
 };
+/** Hover `source` and wait for `target` to light up. The cards are positioned in a requestAnimationFrame, so a
+ *  layout pass can move one out from under the cursor and clear the highlight again: re-hover on every try. */
+const lights = (source, target, what) =>
+  until(what, async () => {
+    await win.locator(source).hover().catch(() => false);
+    return win.locator(target).evaluate((e) => e.classList.contains("hot")).catch(() => false);
+  }, 30);
 
 try {
   step("library");
@@ -231,8 +238,7 @@ json.dump({"results": [{"id": "T001", "value": 2.3149}, {"id": "T002", "value": 
   const anchors = await win.evaluate((ids) => ids.map((id) => document.querySelector(`.al-text [data-hid="${CSS.escape(id)}"]`).getBoundingClientRect().top), picks);
   for (const [i, g] of geo.sort((a, b) => a.id.localeCompare(b.id)).entries()) assert.ok(g.top >= anchors[i] - 1 && g.top < anchors[i] + 200, `${g.id} at ${g.top}, its passage at ${anchors[i]}`);
   assert.equal(await win.locator(".al-lines path").count(), 3);
-  await win.locator(`.al-cards .al-card[data-id="T002"]`).hover();
-  assert.ok(await win.locator(`.al-text [data-hid="${picks[1]}"]`).evaluate((e) => e.classList.contains("hot")), "hovering a card lights up its passage");
+  await lights(`.al-cards .al-card[data-id="T002"]`, `.al-text [data-hid="${picks[1]}"]`, "hovering a card to light up its passage");
   await win.locator(`.al-cards .al-card[data-id="T002"]`).scrollIntoViewIfNeeded();
   await shot("04a-targets-reader");
 
@@ -299,10 +305,8 @@ json.dump({"results": [{"id": "T001", "value": 2.3149}, {"id": "T002", "value": 
   assert.match(await win.locator(".al-card.open[data-id=A03]").innerText(), /C1/);
   assert.match(await win.locator(".al-card.open[data-id=A03]").innerText(), /C2\.1/);
   // highlight-only links, both ways; no extra lines
-  await win.locator(".al-card[data-id=C1]").hover();
-  assert.ok(await win.locator(".al-card[data-id=A03]").evaluate((e) => e.classList.contains("hot")));
-  await win.locator(".al-card[data-id=A03]").hover();
-  assert.ok(await win.locator(".al-card[data-id=C2]").evaluate((e) => e.classList.contains("hot")));
+  await lights(".al-card[data-id=C1]", ".al-card[data-id=A03]", "hovering a claim to light up its method");
+  await lights(".al-card[data-id=A03]", ".al-card[data-id=C2]", "hovering a method to light up the other claim using it");
   assert.equal(await win.locator(".al-lines path").count(), await win.locator(".al-cards > .al-card").count());
   await win.locator(".al-card[data-id=C1]").scrollIntoViewIfNeeded();
   await shot("04d-claims-reader");
@@ -438,8 +442,7 @@ json.dump({"results": [{"id": "T001", "value": 2.3149}, {"id": "T002", "value": 
   await win.waitForSelector(".al-card[data-id=A03]");
   assert.ok(await win.locator(".al-card[data-id=A03]").evaluate((e) => e.classList.contains("off")), "the switched-off method is faded");
   assert.match(await win.locator(".al-card[data-id=A03]").innerText(), /switched off/);
-  await win.locator(".al-card[data-id=C1]").hover();
-  assert.ok(await win.locator(".al-card[data-id=A03]").evaluate((e) => e.classList.contains("hot")), "C1 still links to its switched-off method");
+  await lights(".al-card[data-id=C1]", ".al-card[data-id=A03]", "C1 to still link to its switched-off method");
   await P("/actions/A03", "PATCH", { disabled: false });
   await win.locator("#route button").nth(0).click();
   await win.locator("#route button").nth(2).click();
