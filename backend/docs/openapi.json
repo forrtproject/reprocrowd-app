@@ -7134,7 +7134,7 @@
           "comparison"
         ],
         "summary": "State and result of every claim",
-        "description": "`state` is `not_testable`; `running` (a claim's codegen job, or any run job for the ticked claims); the verdict (`reproduced`, `partly`, `not_reproduced`) when the claim ran and has not changed since; otherwise `ready` (ticked) or `review`. A changed claim is `stale` and keeps its last `result`. A claim's verdict pools all the evidence of the claim and its sub-claims; `by_sub_claim` lists theirs. A ticked claim whose file still has `TODO(LLM):` markers is not run. `rounding` and `threshold` work as in `GET …/comparison`; left out, they are the last report's settings (the defaults without a report), so the app, the report, the trace and the deposit agree.",
+        "description": "`state` is `not_testable`; `running` (a claim's codegen job, or any run job for the ticked claims); the verdict (`reproduced`, `partly`, `not_reproduced`, `not_computed` when no value was computed) when the claim ran and has not changed since; otherwise `ready` (ticked) or `review`. A changed claim is `stale` and keeps its last `result`. A claim's verdict pools all the evidence of the claim and its sub-claims; `by_sub_claim` lists theirs. A ticked claim whose file still has `TODO(LLM):` markers is not run. `rounding` and `threshold` work as in `GET …/comparison`; left out, they are the last report's settings (the defaults without a report), so the app, the report, the trace and the deposit agree.",
         "operationId": "claims_status_v1_packages__pkg__claims_status_get",
         "security": [
           {
@@ -9761,7 +9761,7 @@
               }
             ],
             "title": "Repos",
-            "description": "restrict detection to these repositories (zenodo, github, gitlab, osf, figshare)"
+            "description": "restrict detection to these sources (zenodo, github, gitlab, osf, figshare, supplementary: the article's own supplementary files via Europe PMC)"
           }
         },
         "additionalProperties": false,
@@ -10878,7 +10878,8 @@
             "enum": [
               "reproduced",
               "partly",
-              "not_reproduced"
+              "not_reproduced",
+              "not_computed"
             ],
             "title": "Verdict"
           },
@@ -10972,6 +10973,7 @@
               "reproduced",
               "partly",
               "not_reproduced",
+              "not_computed",
               "not_testable"
             ],
             "title": "State"
@@ -11118,6 +11120,7 @@
               "reproduced",
               "partly",
               "not_reproduced",
+              "not_computed",
               "not_testable"
             ],
             "title": "Status"
@@ -14879,7 +14882,8 @@
             "enum": [
               "reproduced",
               "partly",
-              "not_reproduced"
+              "not_reproduced",
+              "not_computed"
             ],
             "title": "Verdict"
           },

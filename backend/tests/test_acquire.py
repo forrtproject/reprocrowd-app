@@ -426,3 +426,70 @@ def test_manuscript_text_without_jats(tmp_path):
     with pytest.raises(ApiError) as e:
         acquire.manuscript_text(pkg)
     assert e.value.code == "no_fulltext"
+
+
+# ---------- the article's own supplementary files (JATS <supplementary-material>, served by Europe PMC as a zip) ----------
+
+JATS_WITH_SUPPLEMENTS = b"""<?xml version="1.0"?>
+<article xmlns:xlink="http://www.w3.org/1999/xlink"><front><article-meta>
+  <article-id pub-id-type="pmcid">PMC10473475</article-id><article-id pub-id-type="doi">10.1371/journal.pgph.0001995</article-id>
+</article-meta></front><body><p>All relevant data are within the manuscript and its Supporting Information files.</p>
+<supplementary-material id="pgph.0001995.s001" content-type="local-data"><label>S1 Data</label><caption><p>(XLSX)</p></caption><media xlink:href="pgph.0001995.s001.xlsx"/></supplementary-material>
+<supplementary-material id="s2" xlink:href="pgph.0001995.s002.docx"><label>Attachment</label></supplementary-material>
+</body><sub-article><front-stub><article-id pub-id-type="pmcid">PMC99999999</article-id></front-stub></sub-article></article>"""
+EPMC_SUPP = "https://www.ebi.ac.uk/europepmc/webservices/rest/PMC10473475/supplementaryFiles"
+
+
+def _zip(files: dict[str, bytes]) -> bytes:
+    import io
+    import zipfile
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as z:
+        for name, data in files.items():
+            z.writestr(name, data)
+    return buf.getvalue()
+
+
+def test_detect_supplementary_files():
+    from lxml import etree
+    links = acquire.supplementary_detect(etree.fromstring(JATS_WITH_SUPPLEMENTS))
+    assert len(links) == 1
+    link = links[0]
+    assert (link.repo, link.id, link.url, link.kind) == ("supplementary", "PMC10473475", EPMC_SUPP, "data")
+    assert "S1 Data" in link.title and "PMC10473475" in link.label
+    assert link.files == ["pgph.0001995.s001.xlsx", "pgph.0001995.s002.docx"]
+
+
+def test_detect_supplementary_files_none():
+    from lxml import etree
+    no_supp = b'<article><front><article-meta><article-id pub-id-type="pmcid">PMC1</article-id></article-meta></front><body><p>x</p></body></article>'
+    assert acquire.supplementary_detect(etree.fromstring(no_supp)) == []
+    no_pmcid = JATS_WITH_SUPPLEMENTS.replace(b'<article-id pub-id-type="pmcid">PMC10473475</article-id>', b"")
+    assert acquire.supplementary_detect(etree.fromstring(no_pmcid)) == []
+
+
+@respx.mock
+def test_fetch_supplementary_files(tmp_path):
+    respx.get(EPMC_SUPP).mock(return_value=httpx.Response(200, content=_zip({
+        "pgph.0001995.s001.xlsx": b"PK-fake-xlsx", "pgph.0001995.s002.docx": b"doc", "pgph.0001995.g001.jpg": b"figure"})))
+    pkg = _make_pkg(tmp_path)
+    link = acquire.Link(repo="supplementary", url=EPMC_SUPP, id="PMC10473475", kind="data", label="supplementary files (PMC10473475)",
+                        files=["pgph.0001995.s001.xlsx", "pgph.0001995.s002.docx"])
+    acquire.fetch(pkg, link)
+    got = {r.path: r.reprocrowd for r in pkg.load().by_kind("input")}
+    base = "inputs/PMC10473475-supplementary/"
+    assert got[base + "pgph.0001995.s001.xlsx"].role == "data" and got[base + "pgph.0001995.s001.xlsx"].used
+    assert got[base + "pgph.0001995.s002.docx"].used
+    # Europe PMC's zip also carries the article's own figure images: kept, but not used
+    assert not got[base + "pgph.0001995.g001.jpg"].used
+
+
+@respx.mock
+def test_acquire_includes_supplementary_files(tmp_path, monkeypatch):
+    from lxml import etree
+    monkeypatch.setattr(acquire, "manuscript_text", lambda pkg, fulltext=None: "All data are in the Supporting Information.")
+    monkeypatch.setattr(acquire, "jats_root", lambda pkg, fulltext=None: etree.fromstring(JATS_WITH_SUPPLEMENTS))
+    respx.get(EPMC_SUPP).mock(return_value=httpx.Response(200, content=_zip({"pgph.0001995.s001.xlsx": b"x"})))
+    out = acquire.acquire(_make_pkg(tmp_path))
+    assert [l["repo"] for l in out["links"]] == ["supplementary"] and out["failures"] == []
+    assert any(r.path.endswith("pgph.0001995.s001.xlsx") for r in out["resources"])

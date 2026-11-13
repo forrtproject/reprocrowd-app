@@ -559,7 +559,7 @@ A claim's result from the comparison: every evidence value of the claim and its 
 | Field | Type | Req. | Description |
 |---|---|---|---|
 | `claim` | string | yes |  |
-| `verdict` | `"reproduced"` \| `"partly"` \| `"not_reproduced"` | yes |  |
+| `verdict` | `"reproduced"` \| `"partly"` \| `"not_reproduced"` \| `"not_computed"` | yes |  |
 | `matched` | integer | yes |  |
 | `tested` | integer | yes |  |
 | `by_sub_claim` | list of [SubClaimResult](#subclaimresult) | yes | results of the sub-claims, beside the pooled one |
@@ -632,7 +632,7 @@ One narrower, testable piece of a broad claim.
 | Field | Type | Req. | Description |
 |---|---|---|---|
 | `id` | string | yes |  |
-| `verdict` | `"reproduced"` \| `"partly"` \| `"not_reproduced"` | yes |  |
+| `verdict` | `"reproduced"` \| `"partly"` \| `"not_reproduced"` \| `"not_computed"` | yes |  |
 | `matched` | integer | yes | evidence values that match or are within tolerance |
 | `tested` | integer | yes | evidence values that were computed (match, within or deviation) |
 | `evidence` | list of [EvidenceResult](#evidenceresult) | yes |  |
@@ -1001,7 +1001,7 @@ A broad claim in the user's trace format, with ids, mode, links, methods, flagge
 | `quantitative_evidence` | list of [TraceEvidence](#traceevidence) | yes | an atomic claim's own evidence |
 | `methods` | list of [TraceMethod](#tracemethod) | yes |  |
 | `assumptions` | list of string | yes | the coding agent's `# ASSUMPTION:` comments in the claim's file and the prepare file |
-| `status` | `"review"` \| `"ready"` \| `"running"` \| `"reproduced"` \| `"partly"` \| `"not_reproduced"` \| `"not_testable"` | yes |  |
+| `status` | `"review"` \| `"ready"` \| `"running"` \| `"reproduced"` \| `"partly"` \| `"not_reproduced"` \| `"not_computed"` \| `"not_testable"` | yes |  |
 | `result` | [ClaimResult](#claimresult) \| null |  | the last run's result; absent when the claim has not run |
 
 ### TraceEvidence

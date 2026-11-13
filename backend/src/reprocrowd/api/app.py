@@ -831,7 +831,7 @@ CLAIM_SETTINGS = ("`rounding` and `threshold` work as in `GET …/comparison`; l
 
 @api.get("/packages/{pkg}/claims:status", tags=["comparison"], response_model=list[ClaimStatus], summary="State and result of every claim",
          description="`state` is `not_testable`; `running` (a claim's codegen job, or any run job for the ticked claims); the "
-                     "verdict (`reproduced`, `partly`, `not_reproduced`) when the claim ran and has not changed since; "
+                     "verdict (`reproduced`, `partly`, `not_reproduced`, `not_computed` when no value was computed) when the claim ran and has not changed since; "
                      "otherwise `ready` (ticked) or `review`. A changed claim is `stale` and keeps its last `result`. A "
                      "claim's verdict pools all the evidence of the claim and its sub-claims; `by_sub_claim` lists theirs. A "
                      "ticked claim whose file still has `TODO(LLM):` markers is not run. " + CLAIM_SETTINGS)

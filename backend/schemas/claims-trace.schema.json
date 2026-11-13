@@ -15,7 +15,8 @@
           "enum": [
             "reproduced",
             "partly",
-            "not_reproduced"
+            "not_reproduced",
+            "not_computed"
           ],
           "title": "Verdict",
           "type": "string"
@@ -162,6 +163,7 @@
             "reproduced",
             "partly",
             "not_reproduced",
+            "not_computed",
             "not_testable"
           ],
           "title": "Status",
@@ -291,7 +293,8 @@
           "enum": [
             "reproduced",
             "partly",
-            "not_reproduced"
+            "not_reproduced",
+            "not_computed"
           ],
           "title": "Verdict",
           "type": "string"

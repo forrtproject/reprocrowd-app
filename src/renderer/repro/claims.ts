@@ -4,7 +4,7 @@
 // coding agent flagged. Four views: Review (this), Reader (the paper with a card per claim), Table, JSON (the claim's
 // trace). Edits of evidence and methods untick the claims using them in the backend, so everything reloads after one.
 import { host, pkg } from "../api";
-import { type Action, type Claim, type ClaimResult, type ClaimsFile, type ClaimsTrace, type ClaimState, type ClaimStatus, type ClaimTrace, type Document, type LlmProfile, type LlmRun, type ScriptState, type Target } from "../types";
+import { type Action, type Claim, type ClaimResult, type ClaimsFile, type ClaimsTrace, type ClaimState, type ClaimStatus, type ClaimTrace, type Document, type LlmProfile, type LlmRun, type Resource, type ScriptState, type Target } from "../types";
 import { choose, confirmDialog, esc, modal, showError, trunc } from "../util";
 import { AlignedItem, AlignedView } from "./aligned";
 import { runClaim, stageLabel } from "./claimrun";
@@ -29,6 +29,7 @@ export const PILL: Record<ClaimState, string> = {
   reproduced: "Reproduced",
   partly: "Partly reproduced",
   not_reproduced: "Not reproduced",
+  not_computed: "Not computed",
   not_testable: "Not testable",
 };
 export const pill = (s: ClaimState | undefined, stale = false) => (s ? `<span class="pill st-${s}">${PILL[s]}${stale ? " (stale)" : ""}</span>` : "");
@@ -370,6 +371,12 @@ export class ClaimsStep implements Step {
   private async runOne(id: string) {
     const key = `claim-${id}`;
     if (this.w.running.has(key)) return;
+    // Without the study's data the agent can only report every value as not computed: say so before an agent run.
+    const data = await pkg.get<Resource[]>("/inputs").then((rs) => rs.filter((r) => r.reprocrowd.kind === "input" && r.reprocrowd.used && r.reprocrowd.role === "data")).catch(() => undefined);
+    if (data && !data.length && !(await confirmDialog("No data to analyse",
+      `Step 2 (Inputs) has no data files in use, so the coding agent can't compute claim <b>${esc(id)}</b>'s values: they would all come back "not computed".<br><br>
+       Add the study's data first: <b>Fetch supplemental materials…</b> in step 2 also downloads the article's own supplementary files (such as an "S1 Data" spreadsheet), or use <b>Add files…</b>.`,
+      "Run anyway"))) return;
     const before = this.status.get(id)?.ran_at;
     this.w.running.add(key);
     this.w.draw();
@@ -381,9 +388,13 @@ export class ClaimsStep implements Step {
       this.w.running.delete(key);
       await this.w.render();
     }
-    const st = this.status.get(id);
+    // Ask the backend: the step's own reload may have been dropped, or another step may be on screen by now.
+    const fresh = await pkg.get<ClaimStatus[]>("/claims:status", this.compare()).catch(() => undefined);
+    const st = fresh?.find((x) => x.claim === id) ?? this.status.get(id);
     const ran = !!st?.ran_at && st.ran_at !== before;
-    this.w.setStatus(ran ? `Claim ${id}: ${st!.result ? PILL[st!.result.verdict] : "ran"}` : `Claim ${id} did not run`, ran ? "info" : "error");
+    const r = st?.result;
+    const words = r ? `${PILL[r.verdict]} ${r.matched}/${r.tested}${r.verdict === "not_computed" ? " (no value was computed; see each value's note, and check the data in step 2)" : ""}` : "ran";
+    this.w.setStatus(ran ? `Claim ${id}: ${words}` : `Claim ${id} did not run`, ran && r?.verdict !== "not_computed" ? "info" : "error");
   }
 
   // ---------- other views ----------

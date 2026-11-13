@@ -40,6 +40,7 @@ class Link:
     kind: str  # "data" | "code" | "other" — best guess from the surrounding text
     label: str  # human-readable description
     title: str = ""
+    files: list[str] = field(default_factory=list)  # supplementary: the file names the article lists
 
 
 def _client() -> httpx.Client:
@@ -435,12 +436,52 @@ def figshare_fetch(job: _Job) -> None:
         job.add(name, dl, size)
 
 
+XLINK = "{http://www.w3.org/1999/xlink}href"
+EPMC_SUPPLEMENTS = "https://www.ebi.ac.uk/europepmc/webservices/rest/{pmcid}/supplementaryFiles"
+
+
+def supplementary_detect(root) -> list[Link]:
+    """The article's own supplementary files (JATS ``<supplementary-material>``, e.g. a PLOS "S1 Data" XLSX), which
+    Europe PMC serves together as one zip for an open-access article. They are listed in the XML, not linked in the
+    text, so this reads the parsed JATS rather than the text the repository adapters scan."""
+    def href(el) -> str:  # on the element itself, or (as Europe PMC writes it) on a <media> inside it
+        return el.get(XLINK) or next((x.get(XLINK) for x in el.iter() if x.get(XLINK)), "") or ""
+
+    files = [el for el in root.iter("supplementary-material") if href(el)]
+    meta = root.find("front/article-meta")  # the article's own ids, not those of its peer-review sub-articles
+    ids: dict[str, str] = {}
+    for el in (meta.iter("article-id") if meta is not None else ()):
+        ids.setdefault((el.get("pub-id-type") or "").lower(), (el.text or "").strip())
+    pmcid = ids.get("pmcid") or ids.get("pmc") or ""
+    if not files or not pmcid:
+        return []
+    pmcid = pmcid if pmcid.upper().startswith("PMC") else f"PMC{pmcid}"
+    names = [" ".join((el.findtext("label") or href(el)).split()) for el in files]
+    return [Link(repo="supplementary", url=EPMC_SUPPLEMENTS.format(pmcid=pmcid), id=pmcid, kind="data",
+                 label=f"the article's supplementary files ({pmcid}, Europe PMC)", title=", ".join(n for n in names if n),
+                 files=[href(el).rsplit("/", 1)[-1] for el in files])]
+
+
+def supplementary_fetch(job: _Job) -> None:
+    """One zip with every supplementary file; unpacked into inputs/<pmcid>-supplementary/ like any archive. Europe PMC
+    also puts the article's own figure and table images in it: files the article doesn't list stay, but unused."""
+    job.add(f"{job.link.id}-supplementary.zip", job.link.url)
+    listed = set(job.link.files)
+    if not listed:
+        return
+    for r in job.resources:
+        if r.reprocrowd.archive and r.path.rsplit("/", 1)[-1] not in listed:
+            inputs.patch(job.pkg, r.name, {"used": False})
+
+
 ADAPTERS: dict[str, tuple[Callable[[str], list[Link]], Callable]] = {
     "zenodo": (zenodo_detect, zenodo_fetch),
     "github": (github_detect, github_fetch),
     "gitlab": (gitlab_detect, gitlab_fetch),
     "osf": (osf_detect, osf_fetch),
     "figshare": (figshare_detect, figshare_fetch),
+    # detected from the JATS XML in acquire() (see supplementary_detect), not from the text
+    "supplementary": (lambda text: [], supplementary_fetch),
 }
 
 
@@ -480,8 +521,8 @@ def fetch(pkg: Package, link: Link, role: str | None = None, note: str = "",
     return job.resources
 
 
-def manuscript_text(pkg: Package, fulltext: str | None = None) -> str:
-    """Extract all text from a full-text resource (default: the JATS XML), for scanning."""
+def jats_root(pkg: Package, fulltext: str | None = None):
+    """The parsed full-text XML (default: the JATS XML)."""
     from . import fulltexts
     m = pkg.load()
     if fulltext:
@@ -494,7 +535,12 @@ def manuscript_text(pkg: Package, fulltext: str | None = None) -> str:
         root = etree.parse(str(pkg.path(r.path))).getroot()
     except etree.XMLSyntaxError as e:
         raise ApiError(409, "no_fulltext", f"{r.name} is not XML and can't be scanned for links; use the JATS full text") from e
-    return " ".join(t for t in root.itertext() if t and t.strip())
+    return root
+
+
+def manuscript_text(pkg: Package, fulltext: str | None = None) -> str:
+    """Extract all text from a full-text resource (default: the JATS XML), for scanning."""
+    return " ".join(t for t in jats_root(pkg, fulltext).itertext() if t and t.strip())
 
 
 def acquire(pkg: Package, fulltext: str | None = None, role: str | None = None,
@@ -505,6 +551,11 @@ def acquire(pkg: Package, fulltext: str | None = None, role: str | None = None,
     ``acquire_too_large`` for skips). A failure never stops the other links or files."""
     text = manuscript_text(pkg, fulltext)
     links = detect(text, repos)
+    if not repos or "supplementary" in repos:
+        try:
+            links += supplementary_detect(jats_root(pkg, fulltext))
+        except ApiError:  # no XML full text to read the list from: the repository links above still count
+            pass
     resources: list[Resource] = []
     failures: list[dict[str, str]] = []
     for link in links:

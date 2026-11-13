@@ -542,6 +542,7 @@ body.view-library .lib-header { padding-right: 96px; }
 .pill.st-reproduced { background: var(--ok-soft); color: var(--ok); }
 .pill.st-partly { background: var(--caution-soft); color: var(--caution); }
 .pill.st-not_reproduced { background: var(--warn-soft); color: var(--warn-ink); }
+.pill.st-not_computed { background: var(--caution-soft); color: var(--caution); }
 .pill.st-not_testable { background: var(--surface-3); color: var(--muted); }
 .pill.st-stale { background: var(--caution-soft); color: var(--caution); }
 

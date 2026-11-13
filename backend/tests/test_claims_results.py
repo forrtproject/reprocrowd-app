@@ -10,7 +10,9 @@ from reprocrowd import claims
 
 def test_verdict_rule():
     assert claims.verdict(["match"] * 14 + ["deviation"] * 4) == ("partly", 14, 18)
-    assert claims.verdict(["missing", "missing"]) == ("not_reproduced", 0, 0)
+    assert claims.verdict(["missing", "missing"]) == ("not_computed", 0, 0)  # nothing computed is not a failed reproduction
+    assert claims.verdict([]) == ("not_computed", 0, 0)
+    assert claims.verdict(["missing", "deviation"]) == ("not_reproduced", 0, 1)
     assert claims.verdict(["match", "within"]) == ("reproduced", 2, 2)
     assert claims.verdict(["figure", "unparsable", "match"]) == ("reproduced", 1, 1)
     assert claims.verdict(["deviation"]) == ("not_reproduced", 0, 1)
@@ -234,3 +236,11 @@ def test_status_words_unticked_or_changed(client, pkg):
     assert client.patch(P + "/claims/C1", json={"text": claims_["C1"]["text"] + " (edited)"}).status_code == 200
     w = words()
     assert "(claim changed since)" in w and "unticked since" not in w
+
+
+def test_claim_with_nothing_computed_reads_not_computed(client, pkg):
+    """A run whose claim file records no value (e.g. no data in the inputs) is "Not computed 0/0", never "Not reproduced"."""
+    from reprocrowd.schemas.claims import ClaimResult, ClaimTrace
+    t = ClaimTrace.model_construct(testable=True, status="not_computed",
+                                   result=ClaimResult(claim="C1", verdict="not_computed", matched=0, tested=0, by_sub_claim=[], evidence=[]))
+    assert claims.status_words(t) == "Not computed 0/0"

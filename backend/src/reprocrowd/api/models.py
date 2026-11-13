@@ -192,7 +192,7 @@ class AcquireCreate(Req):
     role: Role | None = Field(default=None, description="default role for fetched files; default: guessed per file")
     note: str = ""
     unpack: bool = Field(default=True, description="unpack zip archives into inputs/<stem>/")
-    repos: list[str] | None = Field(default=None, description="restrict detection to these repositories (zenodo, github, gitlab, osf, figshare)")
+    repos: list[str] | None = Field(default=None, description="restrict detection to these sources (zenodo, github, gitlab, osf, figshare, supplementary: the article's own supplementary files via Europe PMC)")
 
 
 class AcquireResult(BaseModel):

@@ -11,8 +11,8 @@ from .common import Model
 from .comparison import Status
 from .refs import SkippedSentence
 
-Verdict = Literal["reproduced", "partly", "not_reproduced"]
-ClaimState = Literal["review", "ready", "running", "reproduced", "partly", "not_reproduced", "not_testable"]
+Verdict = Literal["reproduced", "partly", "not_reproduced", "not_computed"]
+ClaimState = Literal["review", "ready", "running", "reproduced", "partly", "not_reproduced", "not_computed", "not_testable"]
 
 
 class EvidenceResult(Model):

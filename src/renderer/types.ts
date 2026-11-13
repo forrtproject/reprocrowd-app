@@ -211,8 +211,8 @@ export interface Claim extends Referenced {
   checked: boolean;
   notes: string;
 }
-export type Verdict = "reproduced" | "partly" | "not_reproduced";
-export type ClaimState = "review" | "ready" | "running" | "reproduced" | "partly" | "not_reproduced" | "not_testable";
+export type Verdict = "reproduced" | "partly" | "not_reproduced" | "not_computed";
+export type ClaimState = "review" | "ready" | "running" | "reproduced" | "partly" | "not_reproduced" | "not_computed" | "not_testable";
 export interface EvidenceResult { target: string; status: Status; expected_text: string; reproduced_text: string }
 export interface SubClaimResult { id: string; verdict: Verdict; matched: number; tested: number; evidence: EvidenceResult[] }
 export interface ClaimResult { claim: string; verdict: Verdict; matched: number; tested: number; by_sub_claim: SubClaimResult[]; evidence: EvidenceResult[] }

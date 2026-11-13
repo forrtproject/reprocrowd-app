@@ -7,7 +7,7 @@ import { ROLES, type AcquireFailure, type AcquireResult, type Document, type Res
 import { confirmDialog, esc, sizeText } from "../util";
 import type { Step, Wizard } from "./wizard";
 
-const REPOSITORIES = "Zenodo, OSF, GitHub, GitLab, Figshare";
+const REPOSITORIES = "Zenodo, OSF, GitHub, GitLab, Figshare, and the article's own supplementary files";
 /** The failure code of a file left out because it didn't fit in the download limit. */
 const SKIPPED = "acquire_too_large";
 
@@ -49,7 +49,7 @@ export class InputsStep implements Step {
     if (!f.links.length)
       return `<div class="card rp-fetch">
       <div class="card-head"><h3>No data or code links found</h3></div>
-      <p>The manuscript doesn't link to a record on a supported repository (${REPOSITORIES}).</p>
+      <p>Nothing to fetch: the article lists no supplementary files and doesn't link to a record on a supported repository (${REPOSITORIES}).</p>
       <p class="hint">If the data or code is elsewhere (another repository, the journal's supplementary files, or "available on request"), download it yourself and add it with <b>Add files…</b> or <b>Add a folder…</b>.</p>
     </div>`;
     const rows = f.links.map((l) => {
@@ -114,9 +114,9 @@ export class InputsStep implements Step {
     </div>
     <div class="card rp-drop">
       <div class="card-head"><h3>Input files</h3><span class="muted">${counts}</span><span class="spacer"></span>
-        <button id="rp-fetch" ${busy ? "disabled" : ""} title="Find data/code repository links in the manuscript and download them here">Fetch supplemental materials…</button>
+        <button id="rp-fetch" ${busy ? "disabled" : ""} title="Download the article's own supplementary files and the data/code repositories the manuscript links to">Fetch supplemental materials…</button>
         <label class="btn primary ${busy ? "disabled" : ""}">Add files…<input type="file" multiple hidden id="rp-add-files" /></label><button id="rp-add-dir" ${busy ? "disabled" : ""}>Add a folder…</button></div>
-      <p class="hint">The study's data and, if available, the authors' original code. The backend guesses the role from the file type; notes are passed on to the LLM and the report. Zip archives are unpacked; files in an archive can be left out (unticked) without changing it. You can also drop files here. <b>Fetch supplemental materials…</b> looks for data/code links (Zenodo, GitHub, GitLab, OSF, Figshare) in the manuscript and downloads them here.</p>
+      <p class="hint">The study's data and, if available, the authors' original code. The backend guesses the role from the file type; notes are passed on to the LLM and the report. Zip archives are unpacked; files in an archive can be left out (unticked) without changing it. You can also drop files here. <b>Fetch supplemental materials…</b> downloads the article's own supplementary files (such as an "S1 Data" spreadsheet, from Europe PMC) and the data/code repositories the manuscript links to (Zenodo, GitHub, GitLab, OSF, Figshare).</p>
       <table class="tbl-list rp-inputs"><thead><tr><th title="Used">Use</th><th>File</th><th>Role</th><th>Note</th><th>Size</th><th></th></tr></thead>
         <tbody>${rows || `<tr><td colspan="6" class="muted">No input files yet.</td></tr>`}</tbody></table>
     </div>${this.fetchList()}`;

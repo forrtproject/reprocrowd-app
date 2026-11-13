@@ -152,10 +152,13 @@ _TESTED = {"match", "within", "deviation"}
 
 
 def verdict(statuses: list[Status]) -> tuple[Verdict, int, int]:
-    """(verdict, matched, tested): missing, unparsable and figure rows are not computed, so they are not tested."""
+    """(verdict, matched, tested): missing, unparsable and figure rows are not computed, so they are not tested. With
+    nothing tested the verdict is "not_computed" (e.g. the run had no data), which is not a failed reproduction."""
     tested = sum(s in _TESTED for s in statuses)
     matched = sum(s in ("match", "within") for s in statuses)
-    if tested == 0 or matched == 0:
+    if tested == 0:
+        return "not_computed", matched, tested
+    if matched == 0:
         return "not_reproduced", matched, tested
     return ("reproduced" if matched == tested else "partly"), matched, tested
 
@@ -295,7 +298,7 @@ def _location(docs: dict[str, Document | None], ref: Ref) -> str:
     return ref.id
 
 
-VERDICT_LABEL: dict[str, str] = {"reproduced": "Reproduced", "partly": "Partly reproduced", "not_reproduced": "Not reproduced"}
+VERDICT_LABEL: dict[str, str] = {"reproduced": "Reproduced", "partly": "Partly reproduced", "not_reproduced": "Not reproduced", "not_computed": "Not computed"}
 
 
 def status_words(c: ClaimTrace, changed: bool = True) -> str:
