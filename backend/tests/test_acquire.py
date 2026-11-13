@@ -468,3 +468,17 @@ def test_acquire_selected(tmp_path, monkeypatch):
     respx.get("https://zenodo.org/api/files/1/data.csv").mock(return_value=httpx.Response(200, content=b"a,b\n1,2\n"))
     out = acquire.acquire(_make_pkg(tmp_path), selected=["zenodo:1:data.csv"])
     assert [r.name for r in out["resources"]] == ["in-data.csv"]
+
+
+@respx.mock
+def test_preview_osf_same_name_in_two_folders(tmp_path, monkeypatch):
+    """OSF keys use the path inside the project, so same-named files in different folders stay apart."""
+    monkeypatch.setattr(acquire, "manuscript_text", lambda pkg, fulltext=None: "https://osf.io/ab3cd/")
+    respx.get("https://api.osf.io/v2/nodes/ab3cd/files/").mock(return_value=httpx.Response(200, json={"data": [
+        {"attributes": {"kind": "file", "name": "data.csv", "size": 3, "materialized_path": "/study1/data.csv"},
+         "links": {"download": "https://osf.io/download/one/"}},
+        {"attributes": {"kind": "file", "name": "data.csv", "size": 4, "materialized_path": "/study2/data.csv"},
+         "links": {"download": "https://osf.io/download/two/"}}]}))
+    out = acquire.preview(_make_pkg(tmp_path))
+    assert [f["key"] for f in out["files"]] == ["osf:ab3cd:study1/data.csv", "osf:ab3cd:study2/data.csv"]
+    assert out["limit_bytes"] == acquire.settings().max_download_mb * 2**20

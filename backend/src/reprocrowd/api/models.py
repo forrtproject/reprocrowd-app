@@ -205,7 +205,7 @@ class AcquireFile(BaseModel):
     id: str
     path: str
     name: str
-    size: int
+    size: int = Field(description="bytes, from the repository's metadata; 0 when the repository doesn't say")
     key: str = Field(description="stable selection key: repo:id:path")
     download_url: str
 
@@ -215,7 +215,8 @@ class AcquirePreview(BaseModel):
 
     links: list[dict[str, Any]] = Field(description="detected repository links, with their repo, id, kind and label")
     files: list[AcquireFile] = Field(description="files that would be downloaded, with their sizes")
-    total_bytes: int = Field(description="sum of the sizes of every file that would be downloaded")
+    total_bytes: int = Field(description="sum of the sizes of every file that would be downloaded (files of unknown size count as 0)")
+    limit_bytes: int = Field(description="the download limit, which applies to each link separately; files beyond it are skipped")
     failures: list[dict[str, Any]] = Field(default_factory=list, description="per-repository failures: repo, id, url, error")
 
 

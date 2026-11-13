@@ -432,7 +432,8 @@ def osf_fetch(job: _Job) -> None:
                 if not dl:
                     continue
                 size = int(attrs["size"]) if attrs.get("size") else 0
-                job.add(name, dl, size)
+                # The path inside the project keeps same-named files in different folders apart.
+                job.add(name, dl, size, (attrs.get("materialized_path") or "").strip("/") or None)
         next_url = (data.get("links") or {}).get("next")
         if next_url:
             todo.append(next_url)
@@ -521,7 +522,8 @@ def preview(pkg: Package, fulltext: str | None = None, repos: Iterable[str] | No
     """What an acquire would download: the detected links, their files with sizes, and the total.
 
     Reads the repositories' metadata only (no files are fetched), so the user can be warned about the
-    download size before ``acquire`` runs.
+    download size before ``acquire`` runs. ``limit_bytes`` is the download limit, which applies to each link
+    separately; a file of size 0 has an unknown size.
     """
     text = manuscript_text(pkg, fulltext)
     links = detect(text, repos)
@@ -537,6 +539,7 @@ def preview(pkg: Package, fulltext: str | None = None, repos: Iterable[str] | No
         "links": [l.__dict__ for l in links],
         "files": [f.__dict__ | {"key": f.key} for f in files],
         "total_bytes": sum(f.size for f in files),
+        "limit_bytes": settings().max_download_mb * 2**20,
         "failures": failures,
     }
 

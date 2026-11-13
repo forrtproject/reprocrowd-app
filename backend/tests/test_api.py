@@ -456,3 +456,25 @@ def test_jats_no_pmcid(client):
     j = r.json()
     assert r.status_code == 200, r.text
     assert not j["available"] and j["pmcid"] is None and "no PMCID" in j["reason"]
+
+
+@respx.mock
+def test_acquire_preview_and_selection(client, pkg, monkeypatch):
+    """`…/acquire:preview` lists the files with sizes without downloading; `selected` limits `…/acquire`."""
+    from reprocrowd import acquire
+    monkeypatch.setattr(acquire, "manuscript_text", lambda pkg, fulltext=None: "Data at https://doi.org/10.5281/zenodo.1")
+    respx.get("https://zenodo.org/api/records/1").mock(return_value=httpx.Response(200, json={"files": [
+        {"key": "data.csv", "size": 8, "links": {"self": "https://zenodo.org/api/files/1/data.csv"}},
+        {"key": "big.zip", "size": 10**9, "links": {"self": "https://zenodo.org/api/files/1/big.zip"}}]}))
+    data = respx.get("https://zenodo.org/api/files/1/data.csv").mock(return_value=httpx.Response(200, content=b"a,b\n1,2\n"))
+    big = respx.get("https://zenodo.org/api/files/1/big.zip").mock(return_value=httpx.Response(200, content=b"x"))
+    r = client.post(f"/v1/packages/{pkg}/acquire:preview", json={})
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["total_bytes"] == 10**9 + 8 and body["limit_bytes"] > 0
+    assert [f["key"] for f in body["files"]] == ["zenodo:1:data.csv", "zenodo:1:big.zip"]
+    assert not data.called and not big.called
+    r = client.post(f"/v1/packages/{pkg}/acquire", json={"selected": ["zenodo:1:data.csv"]})
+    assert r.status_code == 200, r.text
+    assert [x["name"] for x in r.json()["resources"]] == ["in-data.csv"]
+    assert data.called and not big.called

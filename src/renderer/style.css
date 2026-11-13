@@ -260,8 +260,12 @@ dialog pre { max-height: 300px; overflow: auto; white-space: pre-wrap; font-size
 .dlg-fetch { width: min(720px, 94vw); }
 .dlg-fetch .rp-fetch-list { max-height: 52vh; overflow: auto; border: 1px solid var(--border); border-radius: 5px; padding: 6px 8px; display: flex; flex-direction: column; gap: 8px; }
 .dlg-fetch .rp-group h4 { margin: 0 0 4px; }
-.dlg-fetch .rp-file { display: flex; align-items: baseline; gap: 6px; font-size: 12.5px; padding: 2px 0; }
+.dlg-fetch .rp-file { flex-direction: row; align-items: center; gap: 6px; font-size: 12.5px; padding: 1px 0; }
+.dlg-fetch .rp-file input { width: auto; margin: 0; }
 .dlg-fetch .rp-file code { word-break: break-all; }
+.dlg-fetch .rp-group p { margin: 2px 0; }
+.dlg-fetch .rp-group-files { padding-left: 18px; }
+.dlg-fetch .rp-fetch-warn { color: var(--warn); font-size: 12.5px; }
 .grid2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
 .grid2 > section { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .form-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-end; }
