@@ -45,6 +45,8 @@ export const ROLES: Role[] = ["data", "code", "other"];
 export interface AcquireLink { repo: string; id: string; kind: string; label: string; url: string }
 /** A link whose repository couldn't be read (no `file`), or one file of it that couldn't be downloaded. */
 export interface AcquireFailure { repo: string; id: string; url: string; code: string; error: string; file?: string; file_url?: string }
+export interface AcquireFile { repo: string; id: string; path: string; name: string; size: number; key: string; download_url: string }
+export interface AcquirePreview { links: AcquireLink[]; files: AcquireFile[]; total_bytes: number; failures: AcquireFailure[] }
 export interface AcquireResult { links: AcquireLink[]; resources: Resource[]; failures: AcquireFailure[] }
 
 export interface Identifier { scheme: string; value: string }

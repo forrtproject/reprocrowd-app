@@ -3,8 +3,8 @@
 //   Input files:      the study's data and, if available, the authors' code (POST …/inputs; zip archives are unpacked).
 import { ApiError, host, pkg } from "../api";
 import { countSentences } from "../doc";
-import { ROLES, type AcquireFailure, type AcquireResult, type Document, type Resource, type Role } from "../types";
-import { confirmDialog, esc, sizeText } from "../util";
+import { ROLES, type AcquireFailure, type AcquireFile, type AcquirePreview, type AcquireResult, type Document, type Resource, type Role } from "../types";
+import { confirmDialog, esc, modal, sizeText } from "../util";
 import type { Step, Wizard } from "./wizard";
 
 const REPOSITORIES = "Zenodo, OSF, GitHub, GitLab, Figshare";
@@ -27,6 +27,46 @@ function fetchStatus(r: AcquireResult): [string, "info" | "error"] {
 }
 
 type InputRes = Resource & { reprocrowd: Extract<Resource["reprocrowd"], { kind: "input" }> };
+
+/** Ask the user what to download: all files, only the checked ones, or nothing. */
+function fetchDialog(p: AcquirePreview): Promise<{ action: "all" } | { action: "selected"; keys: string[] } | null> {
+  return new Promise((resolve) => {
+    const groups = new Map<string, AcquireFile[]>();
+    for (const f of p.files) {
+      const key = `${f.repo}:${f.id}`;
+      groups.set(key, [...(groups.get(key) ?? []), f]);
+    }
+    const html = [...groups.entries()].map(([key, files]) => {
+      const link = p.links.find((l) => `${l.repo}:${l.id}` === key);
+      const rows = files.map((f) =>
+        `<label class="rp-file"><input type="checkbox" data-key="${esc(f.key)}" checked /><code>${esc(f.path)}</code> <span class="muted">${sizeText(f.size)}</span></label>`).join("");
+      return `<div class="rp-group"><h4>${link ? `<a href="${esc(link.url)}" target="_blank" rel="noopener">${esc(link.label)}</a> <span class="muted">(${esc(link.kind)})</span>` : esc(key)}</h4>${rows}</div>`;
+    }).join("");
+    const dlg = modal("dlg-fetch", `
+      <h3>Fetch supplemental materials</h3>
+      <p>Detected ${p.links.length} link(s) and ${p.files.length} file(s), <b>${sizeText(p.total_bytes)}</b> in total. Choose what to download:</p>
+      <div class="rp-fetch-list">${html || `<p class="muted">No files to download.</p>`}</div>
+      <menu>
+        <button value="cancel">Cancel</button>
+        <button value="selected" class="primary">Download selected</button>
+        <button value="all" class="primary">Download all</button>
+      </menu>`);
+    let keys: string[] = [];
+    dlg.querySelectorAll<HTMLButtonElement>("menu button").forEach((b) => {
+      b.addEventListener("click", () => {
+        if (b.value === "selected") {
+          keys = [...dlg.querySelectorAll<HTMLInputElement>("input[data-key]:checked")].map((c) => c.dataset.key!);
+        }
+        dlg.close(b.value);
+      });
+    });
+    dlg.addEventListener("close", () => {
+      if (dlg.returnValue === "all") resolve({ action: "all" });
+      else if (dlg.returnValue === "selected") resolve({ action: "selected", keys });
+      else resolve(null);
+    });
+  });
+}
 
 export class InputsStep implements Step {
   title = "Inputs";
@@ -131,8 +171,22 @@ export class InputsStep implements Step {
     });
     body.querySelector("#rp-add-dir")?.addEventListener("click", () => this.w.busy("upload", "Adding a folder", () => host.addFiles("inputs", true)));
     body.querySelector("#rp-fetch")?.addEventListener("click", async () => {
-      // Keep the result before busy() redraws the step, so the links card shows right away.
-      const r = await this.w.busy("fetch", "Fetching supplemental materials", async () => (this.fetch = await pkg.acquire({})));
+      let preview: AcquirePreview | undefined;
+      try {
+        preview = await this.w.busy("fetch", "Checking supplemental materials", () => pkg.acquirePreview({}));
+      } catch (e) {
+        this.w.setStatus(`Fetching supplemental materials failed: ${(e as Error).message}`, "error");
+        return;
+      }
+      if (!preview) return;
+      if (!preview.links.length) {
+        this.w.setStatus(`No data or code links found in the manuscript (looked for ${REPOSITORIES})`, "info");
+        return;
+      }
+      const choice = await fetchDialog(preview);
+      if (!choice) return;
+      const r = await this.w.busy("fetch", "Fetching supplemental materials", async () =>
+        (this.fetch = await pkg.acquire(choice.action === "selected" ? { selected: choice.keys } : {})));
       if (r) this.w.setStatus(...fetchStatus(r));
     });
     const card = body.querySelector<HTMLElement>(".rp-drop")!;

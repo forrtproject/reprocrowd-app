@@ -195,6 +195,28 @@ class AcquireCreate(Req):
     note: str = ""
     unpack: bool = Field(default=True, description="unpack zip archives into inputs/<stem>/")
     repos: list[str] | None = Field(default=None, description="restrict detection to these repositories (zenodo, github, gitlab, osf, figshare)")
+    selected: list[str] | None = Field(default=None, description="only fetch these files, by their key (repo:id:path); omit to fetch everything")
+
+
+class AcquireFile(BaseModel):
+    """One file an acquire run would download, with its size (before anything is fetched)."""
+
+    repo: str
+    id: str
+    path: str
+    name: str
+    size: int
+    key: str = Field(description="stable selection key: repo:id:path")
+    download_url: str
+
+
+class AcquirePreview(BaseModel):
+    """What an acquire would download: the detected links, their files with sizes, and the total."""
+
+    links: list[dict[str, Any]] = Field(description="detected repository links, with their repo, id, kind and label")
+    files: list[AcquireFile] = Field(description="files that would be downloaded, with their sizes")
+    total_bytes: int = Field(description="sum of the sizes of every file that would be downloaded")
+    failures: list[dict[str, Any]] = Field(default_factory=list, description="per-repository failures: repo, id, url, error")
 
 
 class AcquireResult(BaseModel):

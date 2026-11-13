@@ -426,3 +426,45 @@ def test_manuscript_text_without_jats(tmp_path):
     with pytest.raises(ApiError) as e:
         acquire.manuscript_text(pkg)
     assert e.value.code == "no_fulltext"
+
+
+# ---------------------------------------------------------------- preview & selection
+
+@respx.mock
+def test_preview_lists_files_with_sizes(tmp_path, monkeypatch):
+    """Preview returns the files with sizes and the total, without downloading anything."""
+    monkeypatch.setattr(acquire, "manuscript_text", lambda pkg, fulltext=None: ZENODO_TEXT)
+    respx.get("https://zenodo.org/api/records/1").mock(return_value=httpx.Response(200, json={
+        "files": [{"key": "data.csv", "size": 11, "links": {"self": "https://zenodo.org/api/files/1/data.csv"}},
+                  {"key": "notes.md", "size": 5, "links": {"self": "https://zenodo.org/api/files/1/notes.md"}}]}))
+    out = acquire.preview(_make_pkg(tmp_path))
+    assert out["total_bytes"] == 16
+    keys = {f["key"] for f in out["files"]}
+    assert "zenodo:1:data.csv" in keys
+    assert "zenodo:1:notes.md" in keys
+    assert out["failures"] == []
+    urls = " ".join(str(c.request.url) for c in respx.calls)
+    assert "api/files/" not in urls
+
+
+@respx.mock
+def test_fetch_selected(tmp_path):
+    """With ``selected`` only the chosen files are downloaded."""
+    respx.get("https://zenodo.org/api/records/1").mock(return_value=_zenodo_files("data.csv", "notes.md"))
+    respx.get("https://zenodo.org/api/files/1/data.csv").mock(return_value=httpx.Response(200, content=b"a,b\n1,2\n"))
+    pkg = _make_pkg(tmp_path)
+    link = acquire.Link(repo="zenodo", url="https://zenodo.org/records/1", id="1", kind="data",
+                        label="Zenodo record 1")
+    res = acquire.fetch(pkg, link, selected=["zenodo:1:data.csv"])
+    assert [r.name for r in res] == ["in-data.csv"]
+    urls = " ".join(str(c.request.url) for c in respx.calls)
+    assert "notes.md" not in urls
+
+
+@respx.mock
+def test_acquire_selected(tmp_path, monkeypatch):
+    monkeypatch.setattr(acquire, "manuscript_text", lambda pkg, fulltext=None: ZENODO_TEXT)
+    respx.get("https://zenodo.org/api/records/1").mock(return_value=_zenodo_files("data.csv", "notes.md"))
+    respx.get("https://zenodo.org/api/files/1/data.csv").mock(return_value=httpx.Response(200, content=b"a,b\n1,2\n"))
+    out = acquire.acquire(_make_pkg(tmp_path), selected=["zenodo:1:data.csv"])
+    assert [r.name for r in out["resources"]] == ["in-data.csv"]

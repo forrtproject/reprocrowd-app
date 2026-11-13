@@ -42,6 +42,23 @@ class Link:
     title: str = ""
 
 
+@dataclass
+class File:
+    """One file an acquire run would download, with its size, before anything is fetched."""
+
+    repo: str  # "zenodo", "github", ...
+    id: str  # the link's repository-specific identifier
+    path: str  # repository-relative path (or the file name for single-file repositories)
+    name: str  # local file name (basename of path)
+    size: int  # bytes, from the repository's metadata
+    download_url: str
+
+    @property
+    def key(self) -> str:
+        """A stable selection key: ``repo:id:path``."""
+        return f"{self.repo}:{self.id}:{self.path}"
+
+
 def _client() -> httpx.Client:
     return httpx.Client(timeout=60, follow_redirects=True, headers={"User-Agent": USER_AGENT})
 
@@ -191,12 +208,27 @@ class _Job:
     failures: list[dict[str, str]] = field(default_factory=list)
     error: str = ""  # set when the repository itself couldn't be read (listing, API record, ...)
     error_code: str = ""
+    preview: bool = False  # list the files (with sizes) instead of downloading them
+    selected: set[str] | None = None  # file keys (repo:id:path) to fetch; None fetches all
+    files: list[File] = field(default_factory=list)
 
     def fail(self, filename: str, url: str, code: str, error: str) -> None:
         self.failures.append({"file": filename, "url": url, "code": code, "error": error})
 
-    def add(self, filename: str, download_url: str, size: int = 0) -> None:
-        """Download one file and register it; on any failure record it in ``failures`` and return."""
+    def add(self, filename: str, download_url: str, size: int = 0, path: str | None = None) -> None:
+        """Download one file and register it; on any failure record it in ``failures`` and return.
+
+        ``path`` is the repository-relative path used to build the selection key (defaults to ``filename``).
+        In preview mode the file is only listed, never downloaded. ``selected`` restricts the download.
+        """
+        path = path or filename
+        key = f"{self.link.repo}:{self.link.id}:{path}"
+        if self.selected is not None and key not in self.selected:
+            return
+        if self.preview:
+            self.files.append(File(repo=self.link.repo, id=self.link.id, path=path, name=filename,
+                                   size=size, download_url=download_url))
+            return
         budget = self.budget = self.budget or _Budget(settings().max_download_mb * 2**20)
         if reason := budget.skip_reason(size):
             self.fail(filename, download_url, "acquire_too_large", reason)
@@ -298,7 +330,7 @@ def github_fetch(job: _Job) -> None:
         name = Path(path).name
         raw = f"https://raw.githubusercontent.com/{owner}/{repo}/{quote(branch)}/{quote(path)}"
         size = int(entry["size"]) if entry.get("size") else 0
-        job.add(name, raw, size)
+        job.add(name, raw, size, path)
 
 
 def _gitlab_id(text: str) -> list[tuple[str, str, str]]:
@@ -346,7 +378,7 @@ def gitlab_fetch(job: _Job) -> None:
                 continue
             path = entry["path"]
             raw = f"https://gitlab.com/{job.link.id}/-/raw/{urllib.parse.quote(branch)}/{urllib.parse.quote(path)}"
-            job.add(Path(path).name, raw, int(entry["size"]) if entry.get("size") else 0)
+            job.add(Path(path).name, raw, int(entry["size"]) if entry.get("size") else 0, path)
 
 
 def _osf_id(text: str) -> list[str]:
@@ -454,10 +486,14 @@ def detect(text: str, repos: Iterable[str] | None = None) -> list[Link]:
     return out
 
 
-def _run(pkg: Package, link: Link, role: str | None, note: str, unpack: bool) -> _Job:
+def _run(pkg: Package, link: Link, role: str | None, note: str, unpack: bool,
+         selected: Iterable[str] | None = None, preview: bool = False) -> _Job:
     """Fetch one link. Never raises: a failure to read the repository itself goes to ``job.error``,
-    single files that fail go to ``job.failures``, and files added before either are kept."""
-    job = _Job(pkg, link, role, note, unpack, _Budget(settings().max_download_mb * 2**20))
+    single files that fail go to ``job.failures``, and files added before either are kept.
+    ``preview`` lists the files without downloading; ``selected`` restricts the download to those keys."""
+    job = _Job(pkg, link, role, note, unpack,
+               _Budget(settings().max_download_mb * 2**20) if not preview else None,
+               preview=preview, selected=set(selected) if selected is not None else None)
     if link.repo not in ADAPTERS:
         job.error, job.error_code = f"no adapter for repository {link.repo!r}", "unknown_repository"
         return job
@@ -472,12 +508,37 @@ def _run(pkg: Package, link: Link, role: str | None, note: str, unpack: bool) ->
 
 
 def fetch(pkg: Package, link: Link, role: str | None = None, note: str = "",
-          unpack: bool = True) -> list[Resource]:
-    """Download the files of one detected link into the package as inputs; raises if nothing could be added."""
-    job = _run(pkg, link, role, note, unpack)
+          unpack: bool = True, selected: Iterable[str] | None = None) -> list[Resource]:
+    """Download the files of one detected link into the package as inputs; raises if nothing could be added.
+    ``selected`` restricts the download to those file keys (``repo:id:path``); ``None`` fetches all."""
+    job = _run(pkg, link, role, note, unpack, selected=selected)
     if job.error and not job.resources:
         raise ApiError(502, job.error_code if job.error_code.startswith("acquire_") else "acquire_failed", job.error)
     return job.resources
+
+
+def preview(pkg: Package, fulltext: str | None = None, repos: Iterable[str] | None = None) -> dict:
+    """What an acquire would download: the detected links, their files with sizes, and the total.
+
+    Reads the repositories' metadata only (no files are fetched), so the user can be warned about the
+    download size before ``acquire`` runs.
+    """
+    text = manuscript_text(pkg, fulltext)
+    links = detect(text, repos)
+    files: list[File] = []
+    failures: list[dict[str, str]] = []
+    for link in links:
+        job = _run(pkg, link, None, "", True, preview=True)
+        files += job.files
+        where = {"repo": link.repo, "id": link.id, "url": link.url}
+        if job.error:
+            failures.append({**where, "code": job.error_code, "error": job.error})
+    return {
+        "links": [l.__dict__ for l in links],
+        "files": [f.__dict__ | {"key": f.key} for f in files],
+        "total_bytes": sum(f.size for f in files),
+        "failures": failures,
+    }
 
 
 def manuscript_text(pkg: Package, fulltext: str | None = None) -> str:
@@ -498,17 +559,19 @@ def manuscript_text(pkg: Package, fulltext: str | None = None) -> str:
 
 
 def acquire(pkg: Package, fulltext: str | None = None, role: str | None = None,
-            note: str = "", unpack: bool = True, repos: Iterable[str] | None = None) -> dict:
+            note: str = "", unpack: bool = True, repos: Iterable[str] | None = None,
+            selected: Iterable[str] | None = None) -> dict:
     """Detect repository links in a manuscript and fetch them. Returns the links found, the resources added,
     and the failures: one per link whose repository couldn't be read (no ``file``), and one per file that
     couldn't be downloaded or was skipped for the download limit (with ``file`` and ``file_url``; ``code``
-    ``acquire_too_large`` for skips). A failure never stops the other links or files."""
+    ``acquire_too_large`` for skips). A failure never stops the other links or files.
+    ``selected`` restricts the download to those file keys (``repo:id:path``); ``None`` fetches all."""
     text = manuscript_text(pkg, fulltext)
     links = detect(text, repos)
     resources: list[Resource] = []
     failures: list[dict[str, str]] = []
     for link in links:
-        job = _run(pkg, link, role, note, unpack)
+        job = _run(pkg, link, role, note, unpack, selected=selected)
         resources += job.resources
         where = {"repo": link.repo, "id": link.id, "url": link.url}
         if job.error:
