@@ -1,7 +1,7 @@
 // The UI runs in a sandboxed window; every call goes to the main process (src/main/api.ts) through the preload's
 // bridge. Errors keep the backend's problem details (code, detail, extra members) so callers can react to specific
 // problems.
-import type { AcquireResult, PackageSummary, ZenodoDeposit } from "./types";
+import type { AcquirePreview, AcquireResult, PackageSummary, ZenodoDeposit } from "./types";
 
 export interface Problem { status: number; code: string; title?: string; detail?: string; [k: string]: unknown }
 
@@ -51,6 +51,9 @@ export interface BackendStatus {
 }
 export interface LlmModel { provider: string; id: string; name: string }
 export interface LlmModels { available: LlmModel[]; disabled: string[]; claudeNeedsLogin: boolean }
+/** The model as its CLI takes it: Claude Code models are listed as `claude/<alias>` (their own family), but `claude
+ * --model` takes the bare alias; OpenCode's ids (`provider/model`) are used as they are. */
+export const cliModel = (id: string) => (id.startsWith("claude/") ? id.slice("claude/".length) : id);
 export interface Config {
   packagesRoot: string;
   editorCmd: string;
@@ -62,7 +65,6 @@ export interface Config {
   backend: BackendStatus;
   backendConfig: string;
   defaultBackendConfig: string;
-  llmModels: LlmModels;
 }
 export type BackendCheck = { ok: true; url: string; version: string } | { ok: false; url: string; code: string; message: string };
 export type UpdateStatus =
@@ -104,7 +106,9 @@ export const pkg = {
   text: (sub: string) => call<string>("pkgText", sub),
   upload: async <T>(kind: "inputs", file: File, fields: Record<string, string | boolean | undefined> = {}) => call<T>("upload", kind, await fileArg(file), fields),
   /** Scan a full text for data/code repository links (Zenodo, GitHub, GitLab, OSF, Figshare) and fetch them as inputs. */
-  acquire: (opts: { fulltext?: string; role?: string; note?: string; unpack?: boolean; repos?: string[] } = {}) => pkg.post<AcquireResult>("/acquire", opts),
+  acquire: (opts: { fulltext?: string; role?: string; note?: string; unpack?: boolean; repos?: string[]; selected?: string[] } = {}) => pkg.post<AcquireResult>("/acquire", opts),
+  /** What an acquire would download: the files with their sizes and the total, without downloading anything. */
+  acquirePreview: (opts: { fulltext?: string; repos?: string[] } = {}) => pkg.post<AcquirePreview>("/acquire:preview", opts),
 };
 
 export const host = {

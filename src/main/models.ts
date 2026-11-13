@@ -36,15 +36,21 @@ function parseModels(out: string): string[] {
     .filter((l) => /^[^\s]+\/[^\s]+$/.test(l));
 }
 
-/** Claude Code's model list has one model id per line (no `provider/` prefix), e.g. `claude-sonnet-4-5`. It needs
- * a login; "Not logged in" yields nothing. We keep the CLI's own id and label it under the `claude` provider. */
-function parseClaudeModels(out: string): string[] {
-  const ids = new Set<string>();
-  for (const l of out.split(/\r?\n/)) {
-    const m = l.trim().match(/^(claude-[a-z0-9][a-z0-9.-]*)/i);
-    if (m) ids.add(m[1].toLowerCase());
+/** Claude Code has no command that lists its models; it takes these aliases, each the newest model of its tier. */
+const CLAUDE_MODELS: [string, string][] = [
+  ["opus", "Opus"],
+  ["sonnet", "Sonnet"],
+  ["haiku", "Haiku"],
+];
+
+/** Whether Claude Code is signed in (`claude auth status` prints JSON with `loggedIn`); undefined if it can't tell. */
+async function claudeLoggedIn(): Promise<boolean | undefined> {
+  try {
+    const st = JSON.parse(await run("claude auth status --json"));
+    return typeof st?.loggedIn === "boolean" ? st.loggedIn : undefined;
+  } catch {
+    return undefined;
   }
-  return [...ids];
 }
 
 /** Providers the user has configured in their agent's config (where they put their own API keys / local servers). */
@@ -76,40 +82,39 @@ function modelOf(id: string): LlmModel {
   return { provider, id, name: displayName(short) };
 }
 
-export async function detectLlmModels(refresh = false): Promise<ModelSet> {
-  if (!refresh && cache && Date.now() - cache.at < TTL) return cache.value;
+let pending: Promise<ModelSet> | undefined;
+
+/** The models the user can use. Cached for a few minutes; callers asking while a detection runs share it. */
+export function detectLlmModels(refresh = false): Promise<ModelSet> {
+  if (!refresh && cache && Date.now() - cache.at < TTL) return Promise.resolve(cache.value);
+  if (!pending) pending = detect().finally(() => (pending = undefined));
+  return pending;
+}
+
+async function detect(): Promise<ModelSet> {
   const available = configuredProviders();
   available.add("opencode"); // OpenCode's free built-in models need no key
-  const found: LlmModel[] = [];
-  const seen = new Set<string>();
-  let claudeNeedsLogin = false;
   const clis: string[] = [];
   if (which("opencode")) clis.push("opencode models");
   if (which("t3code")) clis.push("t3code models");
   else if (which("t3")) clis.push("t3 models");
-  for (const cmd of clis) {
-    for (const id of parseModels(await run(cmd))) {
+  // The CLIs are asked at the same time: each can take a while (it may check its providers over the network).
+  const [lists, claude] = await Promise.all([Promise.all(clis.map(run)), which("claude") ? claudeLoggedIn() : Promise.resolve(undefined)]);
+  const found: LlmModel[] = [];
+  const seen = new Set<string>();
+  for (const out of lists) {
+    for (const id of parseModels(out)) {
       const m = modelOf(id);
-      if (!available.has(m.provider)) continue;
-      if (seen.has(m.id)) continue;
+      if (!available.has(m.provider) || seen.has(m.id)) continue;
       seen.add(m.id);
       found.push(m);
     }
   }
-  // Claude Code (separate CLI from OpenCode). Listed only when installed and logged in; modelOf adds the `claude/`
-  // prefix so it appears as its own family and its own profile can use it. Not logged in → offer a login instead.
-  if (which("claude")) {
-    const out = await run("claude model list");
-    claudeNeedsLogin = /not logged in|login|authenticate/i.test(out) && !parseClaudeModels(out).length;
-    for (const id of parseClaudeModels(out)) {
-      const m = modelOf(`claude/${id}`);
-      if (seen.has(m.id)) continue;
-      seen.add(m.id);
-      found.push(m);
-    }
-  }
+  // Claude Code (a separate CLI from OpenCode): its models once it's signed in, else a login is offered. The `claude/`
+  // prefix makes it its own family; the renderer strips it before handing the model to the CLI (cliModel).
+  if (claude) for (const [alias, name] of CLAUDE_MODELS) found.push({ provider: "claude", id: `claude/${alias}`, name });
   found.sort((a, b) => a.provider.localeCompare(b.provider) || a.name.localeCompare(b.name));
-  const value: ModelSet = { available: found, claudeNeedsLogin };
+  const value: ModelSet = { available: found, claudeNeedsLogin: claude === false };
   cache = { at: Date.now(), value };
   return value;
 }

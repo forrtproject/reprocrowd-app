@@ -257,6 +257,15 @@ dialog pre { max-height: 300px; overflow: auto; white-space: pre-wrap; font-size
 .dlg-settings fieldset { border: 1px solid var(--border); border-radius: 10px; padding: 8px 12px 10px; display: flex; flex-direction: column; gap: 6px; }
 .dlg-wide { width: min(1150px, 95vw); }
 .dlg-sources { width: min(1100px, 95vw); }
+.dlg-fetch { width: min(720px, 94vw); }
+.dlg-fetch .rp-fetch-list { max-height: 52vh; overflow: auto; border: 1px solid var(--border); border-radius: 5px; padding: 6px 8px; display: flex; flex-direction: column; gap: 8px; }
+.dlg-fetch .rp-group h4 { margin: 0 0 4px; }
+.dlg-fetch .rp-file { flex-direction: row; align-items: center; gap: 6px; font-size: 12.5px; padding: 1px 0; }
+.dlg-fetch .rp-file input { width: auto; margin: 0; }
+.dlg-fetch .rp-file code { word-break: break-all; }
+.dlg-fetch .rp-group p { margin: 2px 0; }
+.dlg-fetch .rp-group-files { padding-left: 18px; }
+.dlg-fetch .rp-fetch-warn { color: var(--warn); font-size: 12.5px; }
 .grid2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
 .grid2 > section { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .form-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: flex-end; }
@@ -522,3 +531,10 @@ body.view-library .lib-header { padding-right: 96px; }
 .edit-grid textarea { width: 100%; }
 .refusal { border: 1px solid var(--warn); background: var(--warn-soft); color: var(--warn-ink); border-radius: 10px; padding: 8px 12px; font-size: 13.5px; margin: 4px 0; }
 @media (prefers-color-scheme: dark) { .al-text .marked { background: #8a6d1a; color: #fff; } }
+
+/* ---------- waiting ---------- */
+.spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--border); border-top-color: currentColor; border-radius: 50%; animation: spin 0.8s linear infinite; vertical-align: -2px; flex: none; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.waiting { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
+.dlg-waiting { max-width: 420px; }
+@media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 2.4s; } }

@@ -4,12 +4,12 @@
 // Package requests are restricted to that package and a few read-only backend endpoints. The Zenodo token is added
 // here, never handed to the renderer.
 import { BrowserWindow, dialog, shell, WebContents } from "electron";
-import { spawn } from "node:child_process";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import * as backend from "./backend";
 import { detectLlmModels, LlmModel } from "./models";
-import { spawnDetached, splitCommand, which } from "./processes";
+import { openInTerminal, spawnDetached, splitCommand, which } from "./processes";
 import { get, post, request, ResponseType, ServiceError } from "./service";
 import { loadSettings, saveSettings, secretStorageKind, serverOf, setSecret, getSecret, userData, zenodoKey, ZenodoServer } from "./settings";
 import * as updater from "./updater";
@@ -259,7 +259,6 @@ export function makeApi(wc: WebContents) {
         backend: backend.status(),
         backendConfig: backend.readUserConfig(),
         defaultBackendConfig: backend.DEFAULT_USER_CONFIG,
-        llmModels: { ...(await detectLlmModels()), disabled: s.llmDisabled },
       };
     },
     setConfig: async (patch: Parameters<typeof saveSettings>[0]) => {
@@ -275,13 +274,11 @@ export function makeApi(wc: WebContents) {
     claudeLogin: async () => {
       const exe = which("claude");
       if (!exe) throw new Error("Claude Code isn't installed, or not on the PATH.");
-      if (process.platform === "win32") {
-        // Claude Code's login is an OAuth flow (browser + a code typed back); it needs a visible terminal.
-        spawn("cmd.exe", ["/c", "start", "", "cmd", "/k", `"${exe}" auth login`], { detached: true, stdio: "ignore" }).unref();
-      } else {
-        spawnDetached([exe, "auth", "login"], process.cwd());
+      // The login is an OAuth flow in the browser that may ask for a code back, so it runs in a visible terminal.
+      if (!openInTerminal([exe, "auth", "login"], os.homedir())) {
+        throw new Error("No terminal app was found to run the login in. Run “claude auth login” in a terminal, then refresh the model list.");
       }
-      return "Opened Claude Code's login. Complete it in the terminal that opened, then refresh the model list.";
+      return "Claude Code's login opened in a terminal window. Finish it there, then refresh the model list.";
     },
     setZenodoToken: async (server: ZenodoServer, token: string | null) => setSecret(zenodoKey(server), token?.trim() || null),
     verifyZenodoToken: async (sandbox: boolean, token?: string) => {

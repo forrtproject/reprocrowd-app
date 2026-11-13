@@ -42,8 +42,9 @@ run reproductions you also need what the paper's analysis uses (R, Python, …).
 - **A reproduction** is a numbered workflow: 1 Inputs, 2 Targets, 3 Analysis
   plan, 4 Master script, 5 Code generation, 6 Run & compare, 7 Report &
   deposit. The paper's text is its JATS XML; there is no PDF view. The study's
-  data and code are added as input files from this computer (file dialogs, drag
-  and drop, folders).
+  published data are added as input files from this computer (file dialogs, drag
+  and drop, folders). The analysis is rebuilt from the procedures described in
+  the paper; the authors' code is not used in this version.
 - **Steps 2 and 3, Reader view**: the paper, with each target (or analysis
   step) as a card in a sidebar, level with the passage it comes from and joined
   to it by a line. Hovering a card lights up its passage, and the other way
@@ -117,6 +118,10 @@ after start (Settings → Updates; Help → Check for Updates…):
 - Windows (installer) and Linux (AppImage) download the new version and install it on restart.
 - macOS (unsigned builds can't replace themselves) and Linux installs from `scripts/install.sh`
   are told about the new version and where to get it.
+- The builds aren't code-signed yet. On Windows, SmartScreen asks first ("More info → Run
+  anyway"). On macOS (Apple silicon only), use System Settings → Privacy & Security → Open
+  Anyway, or, if the app is reported as "damaged", `xattr -cr /Applications/ReproCrowd.app`.
+  The release notes repeat this for users.
 - A development checkout doesn't check. `REPROCROWD_UPDATES=off` turns checks off;
   `REPROCROWD_UPDATE_SERVER=<url>` points them at a test server (see `src/main/updater.ts`).
 
@@ -128,3 +133,7 @@ Changes can go either way:
 git subtree pull --prefix=backend ../reprocrowd-cli master   # take the standalone repo's changes
 git subtree push --prefix=backend ../reprocrowd-cli app-sync # offer this repo's changes as a branch there
 ```
+
+## License
+
+MIT, see [LICENSE](LICENSE).

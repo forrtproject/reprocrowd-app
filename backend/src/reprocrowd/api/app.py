@@ -554,10 +554,19 @@ def delete_input(pkg: Pkg, name: str):
 
 @api.post("/packages/{pkg}/acquire", tags=["inputs"], response_model=M.AcquireResult, summary="Fetch data & code from the manuscript",
           description="Scans a full text for links to data/code repositories (Zenodo, OSF, GitHub, GitLab, Figshare) and downloads "
-                      "the files as inputs, so users don't have to upload anything by hand (metacheck-style).",
+                      "the files as inputs, so users don't have to upload anything by hand (metacheck-style). "
+                      "`selected` restricts the download to those file keys (`repo:id:path`); use `…/acquire:preview` first to see sizes.",
           responses=errors("no_fulltext", "acquire_failed", "acquire_not_found", "acquire_too_large"))
 def acquire_inputs(pkg: Pkg, body: M.AcquireCreate):
-    return acquire.acquire(pkg, body.fulltext, body.role, body.note, body.unpack, body.repos)
+    return acquire.acquire(pkg, body.fulltext, body.role, body.note, body.unpack, body.repos, body.selected)
+
+
+@api.post("/packages/{pkg}/acquire:preview", tags=["inputs"], response_model=M.AcquirePreview, summary="Preview data & code fetching",
+          description="Scans a full text for links and returns the files that would be downloaded (with their sizes) and the total, "
+                      "without downloading anything. Use it to warn the user about the download size before `POST …/acquire`.",
+          responses=errors("no_fulltext", "acquire_failed", "acquire_not_found"))
+def acquire_preview(pkg: Pkg, body: M.AcquireCreate):
+    return acquire.preview(pkg, body.fulltext, body.repos)
 
 
 # ---------- targets and actions (same routes, different models) ----------
