@@ -484,7 +484,7 @@ export class CurationStep implements Step {
     const fillModels = () => {
       const m = models;
       if (!m) return;
-      claudeLogin.hidden = !(m.claudeNeedsLogin && m.available.some((x) => x.provider === "claude" && !m.disabled.includes(x.id)));
+      claudeLogin.hidden = !m.claudeNeedsLogin;
       const byProv = new Map<string, LlmModel[]>();
       for (const x of m.available) if (!m.disabled.includes(x.id)) {
         const a = byProv.get(x.provider) ?? [];
@@ -510,9 +510,7 @@ export class CurationStep implements Step {
     });
     claudeLogin.querySelector("button")!.addEventListener("click", async () => {
       try {
-        await host.claudeLogin();
-        models = await host.llmModels(true);
-        fillModels();
+        claudeLogin.querySelector(".hint")!.textContent = await host.claudeLogin();
       } catch (e) {
         showError("Logging in to Claude Code", e);
       }

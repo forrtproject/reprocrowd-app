@@ -79,3 +79,47 @@ export function spawnDetached(argv: string[], cwd: string) {
   child.on("error", () => {});
   child.unref();
 }
+
+const shQuote = (s: string) => `'${s.replace(/'/g, `'\\''`)}'`;
+
+/** Run a command in a new, visible terminal window (for interactive CLI steps such as a login). The window stays
+ * open when the command ends, so its last message can be read. False if no terminal could be found. */
+export function openInTerminal(argv: string[], cwd: string): boolean {
+  const env = { ...process.env, PATH: searchPath() };
+  const start = (exe: string, args: string[]) => {
+    const child = spawn(exe, args, { cwd, detached: true, stdio: "ignore", env });
+    child.on("error", () => {});
+    child.unref();
+    return true;
+  };
+  if (process.platform === "win32") {
+    return start("cmd.exe", ["/c", "start", "", "cmd", "/k", argv.map((a) => `"${a}"`).join(" ")]);
+  }
+  const line = argv.map(shQuote).join(" ");
+  if (process.platform === "darwin") {
+    const script = `${line}; echo; read -n 1 -s -r -p "Press any key to close this window."`;
+    return start("osascript", ["-e", `tell application "Terminal" to do script ${JSON.stringify(script)}`, "-e", 'tell application "Terminal" to activate']);
+  }
+  const script = `${line}; echo; printf "Press Enter to close this window."; read _`;
+  const sh = ["sh", "-c", script];
+  // The user's choice ($TERMINAL) first, then the common terminals with the way each takes a command.
+  const candidates: [string, string[]][] = [
+    ...(process.env.TERMINAL ? [[process.env.TERMINAL, ["-e", ...sh]] as [string, string[]]] : []),
+    ["gnome-terminal", ["--", ...sh]],
+    ["konsole", ["-e", ...sh]],
+    ["xfce4-terminal", ["-x", ...sh]],
+    ["ptyxis", ["--", ...sh]],
+    ["kgx", ["--", ...sh]],
+    ["kitty", sh],
+    ["alacritty", ["-e", ...sh]],
+    ["wezterm", ["start", "--", ...sh]],
+    ["foot", sh],
+    ["x-terminal-emulator", ["-e", ...sh]],
+    ["xterm", ["-e", ...sh]],
+  ];
+  for (const [name, args] of candidates) {
+    const exe = which(name);
+    if (exe) return start(exe, args);
+  }
+  return false;
+}

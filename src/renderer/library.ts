@@ -108,8 +108,9 @@ async function renderLlmModels(refresh = false) {
   el.querySelector("#llm-recheck")?.addEventListener("click", () => renderLlmModels(true));
   el.querySelector("#claude-login")?.addEventListener("click", async () => {
     try {
-      await host.claudeLogin();
-      await renderLlmModels(true);
+      const msg = await host.claudeLogin();
+      const hint = el.querySelector(".claude-login .hint");
+      if (hint) hint.textContent = msg;
     } catch (e) {
       showError("Logging in to Claude Code", e);
     }
