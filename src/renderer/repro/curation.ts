@@ -148,7 +148,8 @@ export class CurationStep implements Step {
         <button data-act="collapse" class="twisty" title="${collapsed ? "Expand" : "Collapse"}">${collapsed ? "▸" : "▾"}</button>
         <b>LLM ${esc(g.run.id)}</b><span class="muted small">${this.runSummary(g.run)}</span><span class="spacer"></span>
         <button data-act="details">Call details</button>
-        <button data-act="run-toggle">${g.run.disabled ? "Use this run again" : "Don't use this run"}</button></div></td></tr>`;
+        <button data-act="run-toggle">${g.run.disabled ? "Use this run again" : "Don't use this run"}</button>
+        <button data-act="run-delete" class="danger" title="Delete this LLM run and its items">Delete</button></div></td></tr>`;
       if (!collapsed) tbody += g.rows.map((r) => this.rowHtml(r)).join("");
     }
     const sources = [this.w.app.jats()].filter(Boolean);
@@ -270,6 +271,19 @@ export class CurationStep implements Step {
     });
   }
 
+  private async deleteRun(run: LlmRun<Item>, runId: string) {
+    const n = run.entries.length;
+    if (!(await confirmDialog(`Delete LLM ${runId}`, `<p>Delete this LLM run and its <b>${n}</b> ${NOUN[this.kind]}${n === 1 ? "" : "s"}? This can't be undone.</p>`, "Delete", true))) return;
+    await this.w.busy("edit", `Deleting ${runId}`, async () => {
+      try {
+        await pkg.del(`/${this.kind}/runs/${encodeURIComponent(runId)}`);
+      } catch (e) {
+        if (e instanceof ApiError && e.code === "in_use") throw new ApiError(`This run's items are still used by a step; remove those references first.`, e.problem);
+        throw e;
+      }
+    });
+  }
+
   /** All fields of one item, saved as they change (the same editors as the table). */
   private editDialog(r: Row) {
     const id = r.value.id;
@@ -341,6 +355,7 @@ export class CurationStep implements Step {
         }
         if (act === "details") return callDetails(run, this.kind);
         if (act === "run-toggle") return void this.w.busy("edit", run.disabled ? `Using ${runId} again` : `Leaving out ${runId}`, () => pkg.patch(`${P}/runs/${runId}`, { disabled: !run.disabled }));
+        if (act === "run-delete") return this.deleteRun(run, runId);
       }
       if (!id) return;
       if (act === "restore") return void this.w.busy("edit", `Restoring ${id}`, () => pkg.del(`${P}/${encodeURIComponent(id)}/edit`));

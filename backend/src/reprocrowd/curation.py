@@ -219,11 +219,12 @@ class Curation:
             f.manual = [i for i in f.manual if i.id != item_id]
             self._save(f)
 
-    def _users(self, item_id: str) -> list[str]:
+    def _users(self, item_id: str, ignore: set[str] | None = None) -> list[str]:
+        ignore = ignore or set()
         actions = [a for a, _ in Curation(self.pkg, "actions").effective(include_disabled=True)]
         if self.spec.kind == "targets":
-            return [a.id for a in actions if item_id in a.produces]
-        return [a.id for a in actions if item_id in a.depends_on]
+            return [a.id for a in actions if item_id in a.produces and a.id not in ignore]
+        return [a.id for a in actions if item_id in a.depends_on and a.id not in ignore]
 
     # ----- edits (JSON merge patch) -----
 
@@ -287,6 +288,24 @@ class Curation:
                 raise invalid("invalid_reference", f"enabling {run_id} creates a dependency cycle", {"cycle": cycle})
             self._save(f)
             return run
+
+    def delete_run(self, run_id: str) -> None:
+        """Delete a whole LLM run and its entries (unlike disabling, this can't be undone)."""
+        with self.pkg.locked():
+            f = self.load()
+            run = next((r for r in f.llm_runs if r.id == run_id), None)
+            if run is None:
+                raise not_found("run", run_id)
+            ids = {e.base.id for e in run.entries}
+            # Actions inside the run are deleted with it, so they don't block the deletion.
+            same_run = ids if self.spec.kind == "actions" else set()
+            users: set[str] = set()
+            for item_id in ids:
+                users |= set(self._users(item_id, same_run))
+            if users:
+                raise conflict("in_use", f"run {run_id} contains items used by {', '.join(sorted(users))}", {"used_by": sorted(users)})
+            f.llm_runs = [r for r in f.llm_runs if r.id != run_id]
+            self._save(f)
 
     @property
     def output_schema(self) -> str:

@@ -293,6 +293,26 @@ def test_targets(client, pkg):
     assert client.post(T, json={"type": "figure", "description": "fig", "refs": [{"extraction": "ex-paper-tei", "id": "fig1"}]}).json()["id"] == "T006"
 
 
+def test_delete_run(client, pkg):
+    setup_paper(client, pkg)
+    T = f"/v1/packages/{pkg}/targets"
+    A = f"/v1/packages/{pkg}/actions"
+    ref = {"extraction": "ex-paper-tei", "id": "sec3.p1.s2"}
+    assert client.post(T, json={"type": "number", "description": "mean RT", "expected": 512.4, "decimals": 1, "unit": "ms", "refs": [ref]}).status_code == 201
+    assert client.post(T, json={"type": "categorical", "description": "from the authors", "expected": "yes", "unreferenced": True, "note": "email from the authors"}).status_code == 201
+    run = client.post(T + "/runs", json={"extraction": "ex-paper-tei", "scope": {"sections": ["sec3"]}}).json()
+    assert run["id"] == "run1" and [e["base"]["id"] for e in run["entries"]] == ["T003", "T004", "T005"]
+    # an action that produces T003 blocks deleting the run
+    a = client.post(A, json={"kind": "analysis", "summary": "compute T003", "produces": ["T003"], "refs": [ref]})
+    assert a.status_code == 201
+    problem(client.delete(T + "/runs/run1"), 409, "in_use")
+    # once nothing references the run's items, it is deleted
+    assert client.delete(A + "/" + a.json()["id"]).status_code == 204
+    assert client.delete(T + "/runs/run1").status_code == 204
+    assert client.get(T, params={"view": "raw"}).json()["llm_runs"] == []
+    problem(client.delete(T + "/runs/run1"), 404, "not_found")
+
+
 def test_actions_script_validation(client, pkg):
     setup_paper(client, pkg)
     P = f"/v1/packages/{pkg}"
