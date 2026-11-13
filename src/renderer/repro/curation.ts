@@ -2,7 +2,7 @@
 // backend: items added by hand, plus LLM runs whose entries keep the LLM's version and store the user's changes on
 // top (restorable). Two views: Reader, the paper with each item as a card next to the passage it comes from (marking
 // sentences there leads to new items), and Table, manual items first, then one group per LLM run.
-import { ApiError, host, pkg } from "../api";
+import { ApiError, cliModel, host, LlmModel, LlmModels, pkg } from "../api";
 import { refText } from "../doc";
 import { COMPARATORS, type Action, type CurationFile, type Document, type Item, type LlmEntry, type LlmProfile, type LlmRun, type PromptPreview, type Resource, type Target } from "../types";
 import { choose, confirmDialog, esc, list, modal, seconds, showError, showPrompt, trunc, when } from "../util";
@@ -448,11 +448,16 @@ export class CurationStep implements Step {
   private async generateDialog(marked?: { sections: string[]; items: string[] }) {
     const isT = this.kind === "targets";
     const st = this.state;
+    // The profile used last time, else the backend's default. The model list below is offered whatever the profile;
+    // picking a model switches to the profile that runs it.
+    const defaultProfile = (this.profiles.find((p) => p.name === st.llmProfile) ?? this.profiles.find((p) => p.default) ?? this.profiles[0])?.name;
     const dlg = modal("dlg-wide", `<form method="dialog"><h3>Generate ${NOUN[this.kind]}s with an LLM</h3>
       <div class="grid2"><section class="picker"></section>
       <section>
         <p class="hint">${isT ? "The LLM reads the marked part of the text source (nothing marked: the whole document) and returns one target per reported result, with references to the sentences, tables and figures it comes from." : "The LLM turns the marked methods text (nothing marked: the whole document) into ordered analysis steps, linked to the input files of step 2 and the targets of step 3."}</p>
-        <label>LLM profile <select name="profile">${this.profiles.map((p) => `<option value="${esc(p.name)}" ${(st.llmProfile ? p.name === st.llmProfile : p.default) ? "selected" : ""}>${esc(p.name)}: ${esc(p.model || "default model")}${p.effort ? `, effort ${esc(p.effort)}` : ""}</option>`).join("")}</select></label>
+        <label>LLM profile <select name="profile">${this.profiles.map((p) => `<option value="${esc(p.name)}" ${p.name === defaultProfile ? "selected" : ""}>${esc(p.name)}: ${esc(p.model || "default model")}${p.effort ? `, effort ${esc(p.effort)}` : ""}</option>`).join("")}</select></label>
+        <label class="model-row" hidden>Model <select name="model"><option value="">(the CLI's default)</option></select></label>
+        <div class="claude-login" hidden><p class="hint">Claude Code is installed but not signed in.</p><button type="button" id="claude-login">Log in to Claude Code</button></div>
         <p class="hint">Command (configured in the backend): <code class="argv"></code></p>
         <div class="form-row"><button type="button" class="show-prompt">Show prompt</button></div>
         <label>Extra instructions <textarea name="instructions" rows="4" placeholder="optional, e.g. only the main analyses"></textarea></label>
@@ -461,15 +466,64 @@ export class CurationStep implements Step {
       <menu><button value="cancel">Cancel</button><button value="ok" class="primary">Generate</button></menu></form>`);
     const form = dlg.querySelector("form")!;
     const profileSel = form.querySelector<HTMLSelectElement>("[name=profile]")!;
+    const modelRow = form.querySelector<HTMLElement>(".model-row")!;
+    const modelSel = form.querySelector<HTMLSelectElement>("[name=model]")!;
+    const claudeLogin = form.querySelector<HTMLElement>(".claude-login")!;
     const showArgv = () => (form.querySelector(".argv")!.textContent = this.profiles.find((p) => p.name === profileSel.value)?.argv.join(" ") ?? "");
-    profileSel.addEventListener("change", showArgv);
+    /** The profile that runs a given model: Claude Code models → the Claude profile, everything else (OpenCode, Ollama,
+     * uniGPT…) → the OpenCode profile. None for "the CLI's default". */
+    const profileForModel = (id: string) => {
+      if (!id) return undefined;
+      return (id.startsWith("claude/")
+        ? this.profiles.find((p) => p.output === "claude-json")
+        : this.profiles.find((p) => p.output === "opencode-json"))?.name;
+    };
+    // Available models, with the ones the user turned off left out, grouped by provider. The list is always taken from
+    // the detected models (never hard-coded), and picking one selects the matching profile.
+    let models: LlmModels | undefined;
+    const fillModels = () => {
+      const m = models;
+      if (!m) return;
+      claudeLogin.hidden = !m.claudeNeedsLogin;
+      const byProv = new Map<string, LlmModel[]>();
+      for (const x of m.available) if (!m.disabled.includes(x.id)) {
+        const a = byProv.get(x.provider) ?? [];
+        a.push(x);
+        byProv.set(x.provider, a);
+      }
+      modelSel.innerHTML = `<option value="">(the CLI's default)</option>${[...byProv.entries()]
+        .map(([p, arr]) => `<optgroup label="${esc(p)}">${arr.map((x) => `<option value="${esc(x.id)}">${esc(x.name)}</option>`).join("")}</optgroup>`)
+        .join("")}`;
+      modelRow.hidden = false;
+      // The model chosen last time, if it's still offered and runs with the selected profile.
+      if (st.llmModel && profileForModel(st.llmModel) === profileSel.value) modelSel.value = st.llmModel;
+      showArgv();
+    };
+    profileSel.addEventListener("change", () => {
+      // A model another profile runs doesn't go with this one.
+      if (profileForModel(modelSel.value) && profileForModel(modelSel.value) !== profileSel.value) modelSel.value = "";
+      showArgv();
+    });
+    modelSel.addEventListener("change", () => {
+      const p = profileForModel(modelSel.value);
+      if (p) profileSel.value = p;
+      showArgv();
+    });
+    claudeLogin.querySelector("button")!.addEventListener("click", async () => {
+      try {
+        claudeLogin.querySelector(".hint")!.textContent = await host.claudeLogin();
+      } catch (e) {
+        showError("Logging in to Claude Code", e);
+      }
+    });
     showArgv();
+    host.llmModels().then((m) => { models = m; fillModels(); }).catch(() => {});
     let picker: Awaited<ReturnType<CurationStep["sourcePicker"]>> | undefined;
     /** The request, once the text source has loaded. */
     const runRequest = () => {
       const scope = picker?.tree?.scope;
       if (!picker || !scope) return undefined;
-      return { extraction: picker.name, scope, instructions: (form.elements.namedItem("instructions") as HTMLTextAreaElement).value.trim(), profile: profileSel.value || undefined };
+      return { extraction: picker.name, scope, instructions: (form.elements.namedItem("instructions") as HTMLTextAreaElement).value.trim(), profile: profileSel.value || undefined, model: modelSel.value ? cliModel(modelSel.value) : undefined };
     };
     form.querySelector(".show-prompt")!.addEventListener("click", () => {
       const request = runRequest();
@@ -481,6 +535,7 @@ export class CurationStep implements Step {
       if (!request) return e.preventDefault(); // still loading the text source
       st.scopes[`${this.kind}:${request.extraction}`] = request.scope;
       st.llmProfile = profileSel.value;
+      st.llmModel = modelSel.value;
       this.w.app.save();
       this.w
         .busy(`llm-${this.kind}`, `Generating ${NOUN[this.kind]}s with ${profileSel.value}`, () => pkg.post<LlmRun<Item>>(`/${this.kind}/runs`, request))

@@ -404,7 +404,7 @@ Everything needed to understand (and repeat) one LLM call.
 | `instructions` | string |  | extra instructions appended to the template; default `` |
 | `prompt` | string | yes | the full prompt sent |
 | `output` | string | yes | raw stdout of the call |
-| `output_format` | `"text"` \| `"claude-json"` |  | how stdout was read; default `text` |
+| `output_format` | `"text"` \| `"claude-json"` \| `"opencode-json"` |  | how stdout was read; default `text` |
 | `output_schema` | string \| null |  | name of the JSON Schema the CLI was asked to constrain its output to (structured output) |
 | `started_at` | string (date-time) | yes |  |
 | `duration_ms` | integer | yes |  |
@@ -677,7 +677,7 @@ jobs/<id>.json
 | `exit_code` | integer \| null |  |  |
 | `stdout` | string | yes | package-relative path of the raw stdout |
 | `stderr` | string | yes |  |
-| `events_format` | `"claude-stream-json"` \| `"text"` | yes |  |
+| `events_format` | `"claude-stream-json"` \| `"opencode-json"` \| `"text"` | yes |  |
 | `result` | [CodegenResult](#codegenresult) \| [RunResult](#runresult) \| null |  |  |
 | `error` | string \| null |  |  |
 

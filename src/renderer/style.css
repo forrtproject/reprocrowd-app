@@ -301,6 +301,14 @@ textarea.big { width: 100%; height: 28vh; resize: vertical; }
 .card h4 { margin: 10px 0 4px; font-size: 13px; }
 .card-head { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 6px; }
 .card-head h3 { margin: 0; }
+.llm-models-card { margin-top: 6px; }
+.claude-login { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line-soft); display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.llm-model-family { margin-top: 10px; }
+.llm-model-family:first-child { margin-top: 0; }
+.llm-family { display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; }
+.llm-family .muted { font-weight: 400; }
+.llm-model-list { display: flex; flex-wrap: wrap; gap: 8px 18px; margin: 4px 0 0 22px; }
+.llm-model { font-size: 13px; }
 .cols { display: grid; gap: 10px; flex: 1; min-height: 0; }
 .cols > * { min-width: 0; min-height: 0; }
 .cols-script { grid-template-columns: minmax(320px, 0.75fr) minmax(0, 1.25fr); }
@@ -398,6 +406,9 @@ a { color: var(--accent-dark); }
 .brand-name { font-family: var(--serif); font-weight: 700; font-size: 17px; letter-spacing: -0.02em; }
 button.ghost { background: transparent; border-color: transparent; color: var(--ink-soft); }
 button.ghost:hover:not(:disabled) { border-color: var(--border); color: var(--accent-dark); }
+.icon-btn { display: inline-flex; align-items: center; justify-content: center; padding: 4px 6px; line-height: 0; }
+.icon-btn svg { vertical-align: middle; }
+.llm-models .section-title { display: flex; align-items: center; gap: 8px; }
 .navlink { color: var(--ink-soft); text-decoration: none; font-weight: 600; font-size: 14px; }
 .navlink:hover { color: var(--accent-dark); }
 .btn-primary, .btn-secondary { display: inline-block; padding: .62rem 1.2rem; border-radius: 999px; font-weight: 600; font-size: 15px; border: 1px solid transparent; cursor: pointer; }
@@ -511,3 +522,10 @@ body.view-library .lib-header { padding-right: 96px; }
 .edit-grid textarea { width: 100%; }
 .refusal { border: 1px solid var(--warn); background: var(--warn-soft); color: var(--warn-ink); border-radius: 10px; padding: 8px 12px; font-size: 13.5px; margin: 4px 0; }
 @media (prefers-color-scheme: dark) { .al-text .marked { background: #8a6d1a; color: #fff; } }
+
+/* ---------- waiting ---------- */
+.spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--border); border-top-color: currentColor; border-radius: 50%; animation: spin 0.8s linear infinite; vertical-align: -2px; flex: none; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.waiting { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
+.dlg-waiting { max-width: 420px; }
+@media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 2.4s; } }

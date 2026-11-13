@@ -14,7 +14,9 @@ export interface UiState {
   /** Last scope per "<kind>:<extraction>" chosen in the LLM dialogs. */
   scopes: Record<string, Scope>;
   llmProfile: string;
+  llmModel: string;
   agentProfile: string;
+  agentModel: string;
   allowExec: boolean;
   agentInstructions: string;
   template: string;
@@ -32,7 +34,9 @@ export function loadUiState(raw: any): UiState {
     curationView: s.curationView === "table" ? "table" : "reader",
     scopes: s.scopes && typeof s.scopes === "object" ? s.scopes : {},
     llmProfile: String(s.llmProfile ?? ""),
+    llmModel: String(s.llmModel ?? ""),
     agentProfile: String(s.agentProfile ?? ""),
+    agentModel: String(s.agentModel ?? ""),
     allowExec: s.allowExec !== false,
     agentInstructions: String(s.agentInstructions ?? ""),
     template: String(s.template ?? ""),

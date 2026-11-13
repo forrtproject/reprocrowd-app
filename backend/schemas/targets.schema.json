@@ -74,7 +74,8 @@
           "description": "how stdout was read",
           "enum": [
             "text",
-            "claude-json"
+            "claude-json",
+            "opencode-json"
           ],
           "title": "Output Format",
           "type": "string"

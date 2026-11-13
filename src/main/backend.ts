@@ -112,6 +112,16 @@ model = "haiku"
 effort = "low"
 timeout_s = 600
 
+# OpenCode (https://opencode.ai), with the models you have there. The prompt goes to stdin; output =
+# "opencode-json" reads its "run --format json" event stream. model = "" uses OpenCode's default; pick one of your
+# models on the starting page or in the "Generate with LLM" dialog.
+[llm.profiles.opencode]
+argv = ["opencode", "run", "--format", "json", "-m", "{model}", "--variant", "{effort}"]
+output = "opencode-json"
+model = ""
+effort = ""
+timeout_s = 1800
+
 # Coding agents for code generation. {tools}: the allowed tools, plus exec_tools when running the analysis is allowed.
 [agent]
 default_profile = "claude"
@@ -125,6 +135,15 @@ model = "sonnet"
 effort = "high"
 timeout_s = 7200
 events = "claude-stream-json"
+
+# OpenCode as a headless coding agent: --auto approves the tool calls it makes (Read/Write/Edit/Glob/Grep/Bash).
+# model = "" uses the CLI's default; pick one of your models on the starting page.
+[agent.profiles.opencode]
+argv = ["opencode", "run", "--format", "json", "-m", "{model}", "--variant", "{effort}", "--auto"]
+model = ""
+effort = ""
+timeout_s = 7200
+events = "opencode-json"
 `;
 
 export function readUserConfig(): string {
@@ -189,8 +208,19 @@ function writeConfig(port: number, token: string) {
     throw new Error(`The backend configuration (Settings → Backend) isn't valid TOML: ${(e as Error).message}`);
   }
   const s = loadSettings();
+  const llm = (user.llm ?? {}) as Record<string, any>;
+  const profiles = { ...((llm.profiles ?? {}) as Record<string, any>) };
+  // The OpenCode profile is the model-capable profile the "LLM models" feature relies on; keep it present even if the
+  // user's config was written by an older version or edited to drop it.
+  if (!profiles.opencode) profiles.opencode = { argv: ["opencode", "run", "--format", "json", "-m", "{model}", "--variant", "{effort}"], output: "opencode-json", model: "", effort: "", timeout_s: 1800 };
+  const agent = (user.agent ?? {}) as Record<string, any>;
+  const agentProfiles = { ...((agent.profiles ?? {}) as Record<string, any>) };
+  // Same for the headless coding agent: keep an OpenCode profile so the agent can use the user's OpenCode models.
+  if (!agentProfiles.opencode) agentProfiles.opencode = { argv: ["opencode", "run", "--format", "json", "-m", "{model}", "--variant", "{effort}", "--auto"], model: "", effort: "", timeout_s: 7200, events: "opencode-json" };
   const cfg = {
     ...user,
+    llm: { ...llm, profiles },
+    agent: { ...agent, profiles: agentProfiles },
     server: { host: "127.0.0.1", port, token, registry: path.join(userData(), "registry.json"), allowed_roots: [] },
     database: { url: "" },
     zenodo: { ...(user.zenodo ?? {}), sandbox: s.zenodo.sandbox, community: s.zenodo.community, token: "" },

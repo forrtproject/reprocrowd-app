@@ -5,9 +5,11 @@
 // here, never handed to the renderer.
 import { BrowserWindow, dialog, shell, WebContents } from "electron";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import * as backend from "./backend";
-import { spawnDetached, splitCommand, which } from "./processes";
+import { detectLlmModels, LlmModel } from "./models";
+import { openInTerminal, spawnDetached, splitCommand, which } from "./processes";
 import { get, post, request, ResponseType, ServiceError } from "./service";
 import { loadSettings, saveSettings, secretStorageKind, serverOf, setSecret, getSecret, userData, zenodoKey, ZenodoServer } from "./settings";
 import * as updater from "./updater";
@@ -234,6 +236,19 @@ export function makeApi(wc: WebContents) {
       const after = saveSettings(patch);
       // The backend gets the Zenodo choices and its start command at start.
       if (before.backendCmd !== after.backendCmd || before.zenodo.sandbox !== after.zenodo.sandbox || before.zenodo.community !== after.zenodo.community) await backend.restart().catch(() => {});
+    },
+    llmModels: async (refresh?: boolean) => ({ ...(await detectLlmModels(refresh)), disabled: loadSettings().llmDisabled }),
+    setLlmModels: async (disabled: string[]) => {
+      saveSettings({ llmDisabled: disabled });
+    },
+    claudeLogin: async () => {
+      const exe = which("claude");
+      if (!exe) throw new Error("Claude Code isn't installed, or not on the PATH.");
+      // The login is an OAuth flow in the browser that may ask for a code back, so it runs in a visible terminal.
+      if (!openInTerminal([exe, "auth", "login"], os.homedir())) {
+        throw new Error("No terminal app was found to run the login in. Run “claude auth login” in a terminal, then refresh the model list.");
+      }
+      return "Claude Code's login opened in a terminal window. Finish it there, then refresh the model list.";
     },
     setZenodoToken: async (server: ZenodoServer, token: string | null) => setSecret(zenodoKey(server), token?.trim() || null),
     verifyZenodoToken: async (sandbox: boolean, token?: string) => {

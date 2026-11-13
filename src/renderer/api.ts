@@ -49,6 +49,11 @@ export interface BackendStatus {
   configFile: string;
   userConfigFile: string;
 }
+export interface LlmModel { provider: string; id: string; name: string }
+export interface LlmModels { available: LlmModel[]; disabled: string[]; claudeNeedsLogin: boolean }
+/** The model as its CLI takes it: Claude Code models are listed as `claude/<alias>` (their own family), but `claude
+ * --model` takes the bare alias; OpenCode's ids (`provider/model`) are used as they are. */
+export const cliModel = (id: string) => (id.startsWith("claude/") ? id.slice("claude/".length) : id);
 export interface Config {
   packagesRoot: string;
   editorCmd: string;
@@ -126,7 +131,10 @@ export const host = {
   openUrl: (url: string) => call<void>("openUrl", url),
   // settings and backend
   getConfig: () => call<Config>("getConfig"),
-  setConfig: (patch: { packagesRoot?: string; editorCmd?: string; backendCmd?: string; checkUpdates?: boolean; zenodo?: { sandbox?: boolean; community?: string; creator?: Partial<Creator> } }) => call<void>("setConfig", patch),
+    setConfig: (patch: { packagesRoot?: string; editorCmd?: string; backendCmd?: string; checkUpdates?: boolean; zenodo?: { sandbox?: boolean; community?: string; creator?: Partial<Creator> } }) => call<void>("setConfig", patch),
+    llmModels: (refresh?: boolean) => call<LlmModels>("llmModels", refresh),
+    setLlmModels: (disabled: string[]) => call<void>("setLlmModels", disabled),
+    claudeLogin: () => call<string>("claudeLogin"),
   setZenodoToken: (server: "zenodo" | "sandbox", token: string | null) => call<void>("setZenodoToken", server, token),
   verifyZenodoToken: (sandbox: boolean, token?: string) => call<{ ok: boolean; url: string; sandbox: boolean }>("verifyZenodoToken", sandbox, token),
   saveBackendConfig: (text: string) => call<void>("saveBackendConfig", text),

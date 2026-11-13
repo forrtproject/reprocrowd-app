@@ -16,8 +16,9 @@ class LlmProfile(BaseModel):
     read_files_argv: list[str] = Field(default_factory=list, description="appended when the LLM must read package files (cwd = package root)")
     json_schema_argv: list[str] = Field(default_factory=list, description="appended with {schema} = the task's output JSON Schema, for CLIs "
                                                                           "that constrain output to a schema (claude: --json-schema)")
-    output: Literal["text", "claude-json"] = Field(default="text", description="how to read stdout: plain text, or Claude's --output-format json "
-                                                                               "envelope (structured_output / result)")
+    output: Literal["text", "claude-json", "opencode-json"] = Field(default="text", description="how to read stdout: plain text, Claude's --output-format json "
+                                                                                "envelope (structured_output / result), or OpenCode's run --format json "
+                                                                                "event stream (the answer is the text of the text events)")
     model: str = ""
     effort: str = ""
     timeout_s: int = 1800
@@ -34,7 +35,7 @@ class AgentProfile(BaseModel):
     model: str = ""
     effort: str = ""
     timeout_s: int = 7200
-    events: Literal["claude-stream-json", "text"] = Field(default="claude-stream-json", description="how to read the agent's stdout as events")
+    events: Literal["claude-stream-json", "opencode-json", "text"] = Field(default="claude-stream-json", description="how to read the agent's stdout as events")
 
 
 def expand_argv(argv: list[str], values: dict[str, str]) -> list[str]:
@@ -59,7 +60,18 @@ def _default_agents() -> dict[str, AgentProfile]:
                   "--model", "{model}", "--effort", "{effort}", "--allowedTools", "{tools}"],
             model="sonnet",
             effort="high",
-        )
+        ),
+        # OpenCode (https://opencode.ai) as a headless coding agent: --auto approves the tool calls it makes
+        # (Read/Write/Edit/Glob/Grep/Bash), so it can work without a terminal. --format json emits one event per
+        # line, read by events.py's opencode-json parser. model = "" uses the CLI's default; the app lets the user pick.
+        "opencode": AgentProfile(
+            argv=["opencode", "run", "--format", "json", "-m", "{model}", "--variant", "{effort}", "--auto"],
+            events="opencode-json",
+            model="",
+            effort="",
+            tools=[],
+            exec_tools=[],
+        ),
     }
 
 
@@ -72,7 +84,15 @@ def _default_profiles() -> dict[str, LlmProfile]:
             output="claude-json",
             model="sonnet",
             effort="medium",
-        )
+        ),
+        # OpenCode (https://opencode.ai): the prompt goes to stdin; --format json emits one event per line and the
+        # model's answer is read from the text events. model = "" uses the CLI's default; the app lets the user pick.
+        "opencode": LlmProfile(
+            argv=["opencode", "run", "--format", "json", "-m", "{model}", "--variant", "{effort}"],
+            output="opencode-json",
+            model="",
+            effort="",
+        ),
     }
 
 

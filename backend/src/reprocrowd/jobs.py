@@ -24,6 +24,7 @@ from typing import Any, Callable
 from pydantic import BaseModel
 
 from .errors import ApiError, conflict, not_found
+from .llm import resolve_argv
 from .package import Package, atomic_write, dump_json
 from .schemas.common import now
 from .schemas.jobs import Job, JobType
@@ -118,7 +119,7 @@ def start(pkg: Package, *, jid: str, type: JobType, argv: list[str], stdin: str,
             raise conflict("job_running", "another job is running in this package")
         out, err = open(pkg.path(job.stdout), "wb"), open(pkg.path(job.stderr), "wb")
         try:
-            proc = subprocess.Popen(argv, cwd=pkg.root, stdin=subprocess.PIPE, stdout=out, stderr=subprocess.STDOUT if merge_stderr else err,
+            proc = subprocess.Popen(resolve_argv(argv), cwd=pkg.root, stdin=subprocess.PIPE, stdout=out, stderr=subprocess.STDOUT if merge_stderr else err,
                                     start_new_session=True, env=job_env(env))
         except OSError as e:
             out.close(), err.close()
