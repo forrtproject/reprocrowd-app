@@ -9279,6 +9279,20 @@
             },
             "type": "array",
             "title": "Llm Runs"
+          },
+          "last_item": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Last Item",
+            "description": "highest item number ever issued; ids of deleted items are not reused",
+            "default": 0
+          },
+          "last_run": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Last Run",
+            "description": "highest run number ever issued; numbers of deleted runs are not reused",
+            "default": 0
           }
         },
         "additionalProperties": false,
@@ -13659,6 +13673,20 @@
             },
             "type": "array",
             "title": "Llm Runs"
+          },
+          "last_item": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Last Item",
+            "description": "highest item number ever issued; ids of deleted items are not reused",
+            "default": 0
+          },
+          "last_run": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Last Run",
+            "description": "highest run number ever issued; numbers of deleted runs are not reused",
+            "default": 0
           }
         },
         "additionalProperties": false,

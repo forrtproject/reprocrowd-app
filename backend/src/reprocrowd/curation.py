@@ -136,9 +136,10 @@ class Curation:
         return f"{self.spec.kind}.json"
 
     def load(self) -> Any:
-        return self.spec.file_model.model_validate(self.pkg.read_json(self.rel))
+        return self._mark_issued(self.spec.file_model.model_validate(self.pkg.read_json(self.rel)))
 
     def _save(self, f: BaseModel) -> None:
+        self._mark_issued(f)
         with self.pkg.edit() as m:
             meta = m.get(self.spec.kind).reprocrowd
             self.pkg.write_json(m, self.spec.kind, self.rel, f, schema=self.spec.kind, meta=meta)
@@ -163,10 +164,27 @@ class Curation:
     def _all_ids(self, f) -> set[str]:
         return {i.id for i in f.manual} | {e.base.id for r in f.llm_runs for e in r.entries}
 
-    def _next_ids(self, f, n: int) -> list[str]:
+    def _mark_issued(self, f) -> Any:
+        """Raise ``last_item``/``last_run`` to the numbers the file holds. Done on every load and save, so they are
+        recorded before anything is deleted and deleted ids are never issued again (files from before these fields
+        existed get them on their first save). A stopgap until ids are content-based, see issue #65."""
         nums = [int(i[1:]) for i in self._all_ids(f) if re.fullmatch(rf"{self.spec.prefix}\d+", i)]
-        start = max(nums, default=0) + 1  # ids are never reused
+        f.last_item = max([f.last_item, *nums])
+        f.last_run = max([f.last_run, *(int(r.id[3:]) for r in f.llm_runs)])
+        return f
+
+    def _next_ids(self, f, n: int) -> list[str]:
+        start = self._mark_issued(f).last_item + 1  # ids are never reused, not even those of deleted items
         return [f"{self.spec.prefix}{k:0{self.spec.width}d}" for k in range(start, start + n)]
+
+    def _drop_figures(self, ids: set[str]) -> None:
+        """Remove the cropped figures of deleted targets (figures.py stores them by target id)."""
+        names = {f"figure-{i.lower()}" for i in ids} if self.spec.kind == "targets" else set()
+        if names & {r.name for r in self.pkg.load().resources}:
+            with self.pkg.edit() as m:
+                for name in names:
+                    if m.get(name) is not None:
+                        self.pkg.remove(m, name)
 
     def _locate(self, f, item_id: str) -> tuple[Any, LlmRun | None, LlmEntry | None]:
         for i in f.manual:
@@ -218,6 +236,7 @@ class Curation:
                 raise conflict("in_use", f"{item_id} is used by {', '.join(users)}", {"used_by": users})
             f.manual = [i for i in f.manual if i.id != item_id]
             self._save(f)
+            self._drop_figures({item_id})
 
     def _users(self, item_id: str, ignore: set[str] | None = None) -> list[str]:
         ignore = ignore or set()
@@ -290,7 +309,8 @@ class Curation:
             return run
 
     def delete_run(self, run_id: str) -> None:
-        """Delete a whole LLM run and its entries (unlike disabling, this can't be undone)."""
+        """Delete a whole LLM run, its entries and their figures (unlike disabling, this can't be undone).
+        Their ids and the run's number are not issued again."""
         with self.pkg.locked():
             f = self.load()
             run = next((r for r in f.llm_runs if r.id == run_id), None)
@@ -306,6 +326,7 @@ class Curation:
                 raise conflict("in_use", f"run {run_id} contains items used by {', '.join(sorted(users))}", {"used_by": sorted(users)})
             f.llm_runs = [r for r in f.llm_runs if r.id != run_id]
             self._save(f)
+            self._drop_figures(ids)
 
     @property
     def output_schema(self) -> str:
@@ -362,7 +383,7 @@ class Curation:
                 else:
                     entries.append(LlmEntry[self.spec.item](base=item))
                     new_id = next(ids, None)
-            run_no = max((int(r.id[3:]) for r in f.llm_runs), default=0) + 1
+            run_no = self._mark_issued(f).last_run + 1  # numbers of deleted runs are not reused either
             run = LlmRun[self.spec.item](id=f"run{run_no}", request=request, call=call, entries=entries, rejected=rejected)
             f.llm_runs.append(run)
             self._save(f)

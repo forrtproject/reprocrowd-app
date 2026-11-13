@@ -387,6 +387,8 @@ targets.json
 | `kind` | `"targets"` |  | default `targets` |
 | `manual` | list of [Target](#target) |  |  |
 | `llm_runs` | list of [LlmRun_Target_](#llmrun_target_) |  |  |
+| `last_item` | integer |  | highest item number ever issued; ids of deleted items are not reused; default `0` |
+| `last_run` | integer |  | highest run number ever issued; numbers of deleted runs are not reused; default `0` |
 
 ### LlmCall
 
@@ -475,6 +477,8 @@ actions.json
 | `kind` | `"actions"` |  | default `actions` |
 | `manual` | list of [Action](#action) |  |  |
 | `llm_runs` | list of [LlmRun_Action_](#llmrun_action_) |  |  |
+| `last_item` | integer |  | highest item number ever issued; ids of deleted items are not reused; default `0` |
+| `last_run` | integer |  | highest run number ever issued; numbers of deleted runs are not reused; default `0` |
 
 ### Action
 
