@@ -222,6 +222,11 @@ json.dump({"results": [{"id": "T001", "value": 2.3149}, {"id": "T002", "value": 
   await win.locator(`.al-text .sent[data-hid="${free}"]`).click();
   await win.waitForSelector(".al-bar:not([hidden])");
   await shot("04b-marked");
+  // Cancel must close the dialog even while the required description is still empty.
+  await win.click(".al-bar [data-act=add]");
+  await win.waitForSelector(".dlg-wide [name=quote]");
+  await win.click(".dlg-wide button[value=cancel]");
+  await win.waitForSelector(".dlg-wide", { state: "detached", timeout: 5000 });
   await win.click(".al-bar [data-act=add]");
   await win.waitForSelector(".dlg-wide [name=quote]");
   await win.waitForFunction(() => document.querySelector(".dlg-wide [name=quote]")?.value.length > 0);

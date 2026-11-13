@@ -236,7 +236,7 @@ function newDialog() {
     <label>Folder <span class="row"><input name="folder" spellcheck="false" /><button type="button" id="nd-folder">Choose…</button></span></label>
     <p class="hint">The package is a folder of plain files (a Frictionless data package); the folder must be new or empty.</p>
     <p class="nd-error warn-inline" hidden></p>
-    <menu><button value="cancel">Cancel</button><button value="create" class="primary" id="nd-create" disabled>Create</button></menu></form>`);
+    <menu><button value="cancel" formnovalidate>Cancel</button><button value="create" class="primary" id="nd-create" disabled>Create</button></menu></form>`);
   const q = <T extends HTMLElement = HTMLInputElement>(s: string) => dlg.querySelector<T>(s)!;
   const doiIn = q("[name=doi]");
   const folderIn = q("[name=folder]");

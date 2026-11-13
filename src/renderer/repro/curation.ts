@@ -395,7 +395,7 @@ export class CurationStep implements Step {
         <label>Note <input name="note" /></label>
         <p class="hint">Mark the passages on the right; they become the ${NOUN[this.kind]}'s references.</p></section>
       <section class="picker"></section></div>
-      <menu><button value="cancel">Cancel</button><button value="ok" class="primary">Add</button></menu></form>`);
+      <menu><button value="cancel" formnovalidate>Cancel</button><button value="ok" class="primary">Add</button></menu></form>`);
     const form = dlg.querySelector("form")!;
     const q = form.querySelector<HTMLTextAreaElement>("[name=quote]")!;
     let touched = false;
@@ -463,7 +463,7 @@ export class CurationStep implements Step {
         <label>Extra instructions <textarea name="instructions" rows="4" placeholder="optional, e.g. only the main analyses"></textarea></label>
         <p class="hint">The backend builds the prompt from its template, the marked text with ids, and the JSON Schema of the answer. The full prompt and the raw answer are kept with the run (Call details).</p>
       </section></div>
-      <menu><button value="cancel">Cancel</button><button value="ok" class="primary">Generate</button></menu></form>`);
+      <menu><button value="cancel" formnovalidate>Cancel</button><button value="ok" class="primary">Generate</button></menu></form>`);
     const form = dlg.querySelector("form")!;
     const profileSel = form.querySelector<HTMLSelectElement>("[name=profile]")!;
     const modelRow = form.querySelector<HTMLElement>(".model-row")!;
