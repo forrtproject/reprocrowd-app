@@ -49,6 +49,9 @@ interface Running {
 let running: Running | undefined;
 let lastFailure: { at: number; message: string } | undefined;
 let starting: Promise<Running> | undefined;
+/** The half-started backend: spawned, but not yet healthy (not in `running`). `stop()` kills it too, so quitting
+ * while it is still starting doesn't leave it running behind the app. */
+let spawning: ChildProcess | undefined;
 const log: string[] = [];
 
 export const userConfigFile = () => path.join(userData(), "backend.toml");
@@ -269,6 +272,7 @@ async function start(): Promise<Running> {
     stdio: ["ignore", "pipe", "pipe"],
     windowsHide: true,
   });
+  spawning = proc;
   if (proc.pid) fs.writeFileSync(pidFile(), String(proc.pid));
   const base = `http://${host}:${port}`;
   const me: Running = { proc, base, token, argv, kind, ready: Promise.resolve() };
@@ -277,6 +281,7 @@ async function start(): Promise<Running> {
   const spawnError = new Promise<Error>((resolve) => proc.on("error", resolve));
   proc.on("exit", (code, signal) => {
     me.exited = code;
+    if (spawning === proc) spawning = undefined;
     if (fs.existsSync(pidFile()) && fs.readFileSync(pidFile(), "utf8").trim() === String(proc.pid)) fs.rmSync(pidFile(), { force: true });
     remember(`(exited with ${code !== null ? `code ${code}` : `signal ${signal}`})`);
     if (running === me) running = undefined;
@@ -288,6 +293,7 @@ async function start(): Promise<Running> {
     if (failed) throw new Error(`Couldn't run “${argv[0]}”: ${failed.message}`);
     if (me.exited !== undefined) throw new Error(`The backend stopped right away (exit code ${me.exited}).\n\n${logTail(20)}`);
     if (await healthy(base, token)) {
+      spawning = undefined;
       running = me;
       return me;
     }
@@ -339,10 +345,20 @@ export function status(): BackendStatus {
 export async function stop(): Promise<void> {
   const r = running;
   running = undefined;
-  if (!r || r.exited !== undefined) return;
-  const done = new Promise<void>((resolve) => r.proc.once("exit", () => resolve()));
-  r.proc.kill("SIGTERM");
-  const timer = setTimeout(() => r.proc.kill("SIGKILL"), 10_000);
+  if (r && r.exited === undefined) {
+    const done = new Promise<void>((resolve) => r.proc.once("exit", () => resolve()));
+    r.proc.kill("SIGTERM");
+    const timer = setTimeout(() => r.proc.kill("SIGKILL"), 10_000);
+    await done;
+    clearTimeout(timer);
+  }
+  // A backend that was still starting when the app quit: kill it too, so it doesn't outlive the app.
+  const p = spawning;
+  spawning = undefined;
+  if (!p) return;
+  const done = new Promise<void>((resolve) => p.once("exit", () => resolve()));
+  p.kill("SIGTERM");
+  const timer = setTimeout(() => p.kill("SIGKILL"), 10_000);
   await done;
   clearTimeout(timer);
 }
