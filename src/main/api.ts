@@ -161,9 +161,10 @@ export function makeApi(wc: WebContents) {
     // ---------- library ----------
     appInfo: async () => ({ version: (await import("electron")).app.getVersion(), platform: process.platform, backend: backend.status() }),
     // ---------- updates ----------
-    checkForUpdates: () => updater.checkForUpdates(),
-    updateInfo: async () => updater.updateInfo(),
-    installUpdate: async () => updater.installUpdate(),
+checkForUpdates: () => updater.checkForUpdates(),
+updateInfo: async () => updater.updateInfo(),
+downloadUpdate: async () => updater.downloadUpdate(),
+installUpdate: async () => updater.installUpdate(),
     listPackages: async () => {
       const all = await get<any[]>("/v1/packages");
       return all.map((p) => ({ ...p, missing: !fs.existsSync(path.join(p.path, "datapackage.json")) }));

@@ -116,6 +116,7 @@ export const host = {
   appInfo: () => call<{ version: string; platform: string; backend: BackendStatus }>("appInfo"),
   checkForUpdates: () => call<UpdateStatus>("checkForUpdates"),
   updateInfo: () => call<UpdateInfo>("updateInfo"),
+  downloadUpdate: () => call<UpdateStatus>("downloadUpdate"),
   installUpdate: () => call<void>("installUpdate"),
   listPackages: () => call<LibraryEntry[]>("listPackages"),
   packageDeposits: (id: string) => call<ZenodoDeposit[]>("packageDeposits", id),

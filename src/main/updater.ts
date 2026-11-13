@@ -19,7 +19,7 @@ import { app, BrowserWindow, dialog, net, shell } from "electron";
 import { autoUpdater, ProgressInfo, UpdateInfo } from "electron-updater";
 import fs from "node:fs";
 import path from "node:path";
-import { loadSettings, saveSettings } from "./settings";
+import { loadSettings } from "./settings";
 
 export type UpdateMode = "auto" | "notify" | "off";
 export type UpdateStatus =
@@ -172,8 +172,8 @@ function setupAuto() {
   if (autoReady) return;
   autoReady = true;
   if (server()) autoUpdater.setFeedURL({ provider: "generic", url: server() });
-  autoUpdater.autoDownload = true;
-  autoUpdater.autoInstallOnAppQuit = true; // "Later" still installs it when ReproCrowd quits
+  autoUpdater.autoDownload = false; // the starting screen offers the download; nothing is fetched until the user asks
+  autoUpdater.autoInstallOnAppQuit = false; // install only when the user chooses "Restart & install"
   autoUpdater.logger = null;
   // electron-updater also emits "error"; without a listener an EventEmitter "error" would throw.
   autoUpdater.on("error", (err) => {
@@ -185,7 +185,6 @@ function setupAuto() {
   });
   autoUpdater.on("update-downloaded", (info: UpdateInfo) => {
     set({ state: "ready", current: current(), version: info.version });
-    void offerRestart(info.version);
   });
 }
 
@@ -204,9 +203,8 @@ async function checkAuto(): Promise<UpdateStatus> {
   if (!result) return checkRelease(); // electron-updater considers itself inactive here
   if (!result.isUpdateAvailable) return { state: "not-available", current: current() };
   const version = result.updateInfo.version;
-  // `ready` may already be set (update-downloaded fires during the check when the file is in electron-updater's cache).
-  if ((status as UpdateStatus).state !== "ready") set({ state: "downloading", current: current(), version, percent: 0 });
-  result.downloadPromise?.catch((err) => set(errorStatus(err)));
+  // Don't download automatically: the starting screen offers it, and it installs only on the user's choice.
+  set({ state: "manual", current: current(), version, url: releasesPage(), howTo: howTo() });
   return status;
 }
 
@@ -229,6 +227,22 @@ export function checkForUpdates(): Promise<UpdateStatus> {
 export function installUpdate() {
   if (status.state !== "ready") throw new Error("No update has been downloaded yet.");
   setImmediate(() => autoUpdater.quitAndInstall(false, true));
+}
+
+/** Download the update the user accepted on the starting screen (auto mode only). */
+export async function downloadUpdate(): Promise<UpdateStatus> {
+  if (status.state === "ready") return status;
+  if (status.state !== "manual") throw new Error("No update to download yet.");
+  const version = (status as Extract<UpdateStatus, { state: "manual" }>).version;
+  setupAuto();
+  set({ state: "downloading", current: current(), version, percent: 0 });
+  try {
+    await autoUpdater.downloadUpdate();
+    return status;
+  } catch (err) {
+    set(errorStatus(err));
+    return status;
+  }
 }
 
 // ---------- dialogs ----------
@@ -309,9 +323,5 @@ export function initUpdater() {
   setTimeout(async () => {
     const s = await checkForUpdates();
     if (s.state === "error") console.error("reprocrowd update:", s.message, s.detail ?? "");
-    if (s.state === "manual" && loadSettings().updateNotified !== s.version) {
-      saveSettings({ updateNotified: s.version });
-      await offerDownload(s);
-    }
   }, STARTUP_DELAY).unref?.();
 }

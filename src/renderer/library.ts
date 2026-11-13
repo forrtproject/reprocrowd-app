@@ -1,6 +1,6 @@
 // The library: your reproductions (packages the app's backend knows), a new one from a DOI, or a package folder
 // opened from disk. Opening one switches the window to its numbered workflow (package.ts).
-import { host, isBackendDown, JATS_ONLY, JatsAvailability, LibraryEntry, LlmModel, LlmModels, Work, ZenodoRecord } from "./api";
+import { host, isBackendDown, JATS_ONLY, JatsAvailability, LibraryEntry, LlmModel, LlmModels, UpdateInfo, Work, ZenodoRecord } from "./api";
 import { backendProblem } from "./backend";
 import { brandHtml } from "./brand";
 import { settingsDialog } from "./settings";
@@ -27,6 +27,7 @@ export async function start() {
     <a href="#" id="about-link" class="navlink">About ReproCrowd</a>
     <button id="settings-btn" class="ghost" title="Settings">⚙ Settings</button></header>
   <div id="ribbon" class="ribbon" hidden>Zenodo sandbox</div>
+  <div id="update-banner" class="update-banner" hidden></div>
   <main class="library">
     <section class="hero"><div class="hero-grid container">
       <div class="hero-copy">
@@ -56,7 +57,72 @@ export async function start() {
     }
   });
   await render();
+  void renderUpdate();
   await renderLlmModels();
+}
+
+let updateChecked = false;
+let updateDismissed = false;
+let updateTimer: number | undefined;
+
+/** The update prompt lives here, on the starting screen, instead of a pop-up: a banner with the version and a
+ * "Download" / "Restart & install" action. Nothing is downloaded until the user asks. */
+async function renderUpdate() {
+  window.clearTimeout(updateTimer);
+  const el = $("#update-banner");
+  if (!el || updateDismissed) {
+    if (el) el.hidden = true;
+    return;
+  }
+  if (!updateChecked) {
+    updateChecked = true;
+    try {
+      await host.checkForUpdates();
+    } catch {
+      return;
+    }
+  }
+  let info: UpdateInfo;
+  try {
+    info = await host.updateInfo();
+  } catch {
+    return;
+  }
+  const s = info.status;
+  const show = s.state === "manual" || s.state === "downloading" || s.state === "ready";
+  if (!show) {
+    el.hidden = true;
+    return;
+  }
+  const version = "version" in s ? s.version : "";
+  const auto = info.mode === "auto";
+  const actions: string[] = [];
+  if (s.state === "manual") {
+    actions.push(auto ? `<button data-upd="download" class="btn">Download</button>` : `<button data-upd="page" class="btn">Open release page</button>`);
+  } else if (s.state === "ready") {
+    actions.push(`<button data-upd="install" class="btn primary">Restart &amp; install</button>`);
+  }
+  actions.push(`<button data-upd="dismiss" class="btn">Later</button>`);
+  el.innerHTML = `<span class="upd-msg">A new version <b>${esc(version)}</b> is available${s.state === "downloading" ? ` (downloading… ${s.percent} %)` : ""}.</span><span class="upd-actions">${actions.join(" ")}</span>`;
+  el.hidden = false;
+  el.querySelectorAll<HTMLElement>("[data-upd]").forEach((b) =>
+    b.addEventListener("click", async () => {
+      const act = b.dataset.upd!;
+      if (act === "download") {
+        await host.downloadUpdate().catch((e) => showError("Downloading the update", e));
+        renderUpdate();
+      } else if (act === "page") {
+        const url = "url" in s ? s.url : "";
+        if (url) host.openUrl(url).catch(() => {});
+      } else if (act === "install") {
+        await host.installUpdate().catch((e) => showError("Installing the update", e));
+      } else if (act === "dismiss") {
+        updateDismissed = true;
+        el.hidden = true;
+      }
+    }),
+  );
+  if (s.state === "downloading") updateTimer = window.setTimeout(renderUpdate, 1000);
 }
 
 async function setupNote() {
