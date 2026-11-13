@@ -49,7 +49,8 @@ ECACHE="${ELECTRON_CACHE:-$([ "$OS" = Darwin ] && echo "$HOME/Library/Caches" ||
 EZIP="$ECACHE/electron-v$EVER-$EPLAT-$EARCH.zip"
 EURL="${ELECTRON_MIRROR:-https://github.com/electron/electron/releases/download/}v$EVER"
 mkdir -p "$ECACHE"
-sha256() { shasum -a 256 "$1" | cut -d' ' -f1; }
+# sha256sum (coreutils) on Linux; shasum ships with Perl, which minimal Linux images lack, and is what macOS has.
+sha256() { if command -v sha256sum >/dev/null; then sha256sum "$1"; else shasum -a 256 "$1"; fi | cut -d' ' -f1; }
 EWANT="$(curl -fsSL --retry 5 "$EURL/SHASUMS256.txt" | grep " \*$(basename "$EZIP")\$" | cut -d' ' -f1)" ||
   die "Could not fetch Electron's checksums from $EURL"
 if [ ! -f "$EZIP" ] || [ "$(sha256 "$EZIP")" != "$EWANT" ]; then
@@ -75,7 +76,11 @@ rm -f "$LOG"
 if [ "$OS" = Linux ]; then
   rm -rf "$LINUX_DIR"
   mkdir -p "$(dirname "$LINUX_DIR")" "$(dirname "$DESKTOP")" "$(dirname "$BIN")"
-  cp -a dist/linux-unpacked "$LINUX_DIR"
+  # electron-builder names the folder linux-unpacked on x64 and linux-<arch>-unpacked on every other CPU
+  UNPACKED=dist/linux-unpacked
+  [ "$EARCH" = x64 ] || UNPACKED="dist/linux-$EARCH-unpacked"
+  [ -d "$UNPACKED" ] || die "The build produced no $UNPACKED."
+  cp -a "$UNPACKED" "$LINUX_DIR"
   ln -sf "$LINUX_DIR/reprocrowd-app" "$BIN"
   cat > "$DESKTOP" <<EOF
 [Desktop Entry]
