@@ -2537,7 +2537,7 @@
                 }
               }
             },
-            "description": "`not_a_file`: The path is not a readable file; `invalid_filename`: Unusable upload file name"
+            "description": "`not_a_file`: The path is not a readable file; `path_in_package`: The path is the package's own folder, inside it, or contains it; `invalid_filename`: Unusable upload file name"
           },
           "403": {
             "content": {

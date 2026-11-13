@@ -17,6 +17,7 @@ CATALOG: dict[str, tuple[int, str]] = {
     "invalid_path": (400, "Invalid package-relative path"),
     "path_not_allowed": (403, "Path is outside the configured allowed roots"),
     "not_a_file": (400, "The path is not a readable file"),
+    "path_in_package": (400, "The path is the package's own folder, inside it, or contains it"),
     "package_exists": (409, "A package is already registered or present at this path"),
     "folder_not_empty": (409, "The folder exists and is not empty"),
     "package_missing": (410, "The registered package folder no longer exists"),

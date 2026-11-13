@@ -56,11 +56,21 @@ def _source(path: str) -> Path:
 def add(pkg: Package, path: str, role: Role | None, note: str, unpack: bool) -> list[Resource]:
     """A local file (zip archives unpacked) or a whole directory."""
     src = _source(path)
+    _outside_package(pkg, src)
     if src.is_dir():
         return add_directory(pkg, src, role, note)
     if not src.is_file():
         raise ApiError(400, "not_a_file", f"{src} is not a readable file or directory")
     return _add_file(pkg, src.name, lambda dest: shutil.copyfile(src, dest), LocalOrigin(path=str(src)), role, note, unpack)
+
+
+def _outside_package(pkg: Package, src: Path) -> None:
+    """Inputs are the study's own material: never the package folder, anything in it, or a folder that holds it
+    (that would copy the package into itself)."""
+    root = pkg.root.resolve()
+    if src == root or src.is_relative_to(root) or root.is_relative_to(src):
+        raise ApiError(400, "path_in_package", f"{src} is this package's folder, inside it, or contains it ({root}); "
+                                               "add the study's data and code from where they are stored")
 
 
 def add_upload(pkg: Package, filename: str, data: BinaryIO, role: Role | None, note: str, unpack: bool) -> list[Resource]:

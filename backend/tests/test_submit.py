@@ -58,7 +58,9 @@ def test_submit(client, pkg):
     problem(client.post(P + "/submissions", json={}), 502, "database_unreachable")
 
     # any change after the archive makes it stale
-    client.post(P + "/inputs", json={"path": str(root / "results_schema.json")})
+    extra = root.parent / "extra-input.csv"  # outside the package: inputs may not come from the package itself
+    extra.write_text("a,b\n1,2\n")
+    assert client.post(P + "/inputs", json={"path": str(extra)}).status_code == 201
     problem(client.post(P + "/submissions", json={}), 409, "archive_stale")
 
 

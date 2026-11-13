@@ -524,7 +524,7 @@ def list_inputs(pkg: Pkg, page: Paged):
                       "files and symlinks skipped). multipart/form-data: an uploaded `file`. Files go into `inputs/`; zip archives "
                       "are unpacked, the archive and every member become resources.",
           openapi_extra=json_or_multipart("InputCreate", M.InputCreate, M.InputUploadForm),
-          responses=errors("not_a_file", "path_not_allowed", "invalid_archive", "directory_too_large", "directory_empty", "invalid_filename", "upload_too_large"))
+          responses=errors("not_a_file", "path_in_package", "path_not_allowed", "invalid_archive", "directory_too_large", "directory_empty", "invalid_filename", "upload_too_large"))
 async def add_input(pkg: Pkg, request: Request, response: Response):
     body, form = await json_or_upload(request, M.InputCreate, M.InputUploadForm)
     if form is not None:
