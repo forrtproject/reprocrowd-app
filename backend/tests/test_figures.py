@@ -322,6 +322,7 @@ def test_no_original_at_all_says_why(client, pkg, tmp_path):
     ('<alternatives><graphic xlink:href="pub.g001.tif"/><graphic xlink:href="pub.g001.jpg"/></alternatives>', {"pub.g001.jpg": image()}, [30, 20]),  # one image, two formats
     ('<graphic xlink:href="pub.g001.gif"/>', {"pub.g001.gif": image((5, 5), "GIF", "P")}, [5, 5]),  # what the full text names
     ('<graphic xlink:href="pub.g001.jpg"/>', {"PUB.G001.JPG": image((30, 20), "JPEG", "CMYK")}, [30, 20]),  # case, and a mode PNG can't hold
+    ('<graphic xlink:href="pub.g001.webp"/>', {"pub.g001.webp": image((30, 20), "WEBP"), "pub.g001.gif": image((5, 5), "GIF", "P")}, [30, 20]),  # webp, next to its gif thumbnail
 ])
 def test_which_file_of_the_archive(client, pkg, tmp_path, graphics, files, size):
     P = f"/v1/packages/{pkg}"
