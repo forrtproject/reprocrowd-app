@@ -627,6 +627,11 @@ def curation_routes(kind: str, fields: type, view: type, patch_model: type) -> N
     def patch_run(pkg: Pkg, run: str, body: M.RunPatch):
         return curation.Curation(pkg, kind).patch_run(run, body.disabled)
 
+    @api.delete(base + "/runs/{run}", tags=[kind], status_code=204, summary=f"Delete an LLM run and its {noun}s",
+                responses=errors("not_found", "in_use"))
+    def delete_run(pkg: Pkg, run: str):
+        curation.Curation(pkg, kind).delete_run(run)
+
     @api.get(base + "/{item_id}", tags=[kind], response_model=view, summary=f"Get a {noun}", responses=errors("not_found"))
     def get_item(pkg: Pkg, item_id: str):
         for i, o in curation.Curation(pkg, kind).effective(include_disabled=True):

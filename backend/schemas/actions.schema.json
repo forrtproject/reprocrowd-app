@@ -371,6 +371,20 @@
       },
       "title": "Llm Runs",
       "type": "array"
+    },
+    "last_item": {
+      "default": 0,
+      "description": "highest item number ever issued; ids of deleted items are not reused",
+      "minimum": 0,
+      "title": "Last Item",
+      "type": "integer"
+    },
+    "last_run": {
+      "default": 0,
+      "description": "highest run number ever issued; numbers of deleted runs are not reused",
+      "minimum": 0,
+      "title": "Last Run",
+      "type": "integer"
     }
   },
   "type": "object"

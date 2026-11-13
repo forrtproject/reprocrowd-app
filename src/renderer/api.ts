@@ -79,6 +79,8 @@ export type UpdateStatus =
   | { state: "manual"; current: string; version: string; url: string; howTo: string }
   | { state: "error"; current: string; message: string; detail?: string; url?: string; during?: "download" };
 export interface UpdateInfo { mode: "auto" | "notify" | "off"; explain: string; status: UpdateStatus; pending: boolean; installOnQuit: boolean }
+/** What the window's creation or opening of a package is doing: step `step` (1-based) of `steps`, for `elapsed` ms. */
+export interface TextProgress { step: number; steps: number; label: string; elapsed: number; cancelling: boolean }
 export interface JatsAvailability { doi: string; available: boolean; pmcid: string | null; url: string | null; title: string | null; reason: string | null }
 export const JATS_ONLY = "Only articles with JATS XML full text (the open-access subset of PubMed Central) are supported at this time.";
 export interface Work { doi: string; title: string | null; authors: string[]; year: number | null; venue: string | null; license: string | null; open_access: boolean | null }
@@ -122,7 +124,7 @@ export const host = {
   installUpdate: () => call<void>("installUpdate"),
   listPackages: () => call<LibraryEntry[]>("listPackages"),
   listExamples: () => call<{ id: string; name: string; description?: string; source?: string }[]>("listExamples"),
-  openExample: (id: string) => call<{ id: string }>("openExample", id),
+  openExample: (id: string) => call<string>("openExample", id),
   packageDeposits: (id: string) => call<ZenodoDeposit[]>("packageDeposits", id),
   lookupDoi: (doi: string) => call<Work>("lookupDoi", doi),
   zenodoRecords: (doi: string) => call<ZenodoRecord[]>("zenodoRecords", doi),
@@ -131,6 +133,8 @@ export const host = {
   jatsAvailability: (doi: string) => call<JatsAvailability>("jatsAvailability", doi),
   createPackage: (opts: { doi: string; folder: string }) => call<{ id: string }>("createPackage", opts),
   createPackageFromFile: (opts: { path: string; folder: string }) => call<{ id: string }>("createPackageFromFile", opts),
+  textProgress: () => call<TextProgress | null>("textProgress"),
+  cancelText: () => call<void>("cancelText"),
   chooseFile: () => call<string | null>("chooseFile"),
   adoptFolder: () => call<string | null>("adoptFolder"),
   removePackage: (id: string) => call<void>("removePackage", id),

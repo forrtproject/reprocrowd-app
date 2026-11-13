@@ -1,5 +1,5 @@
 You are working in a computational reproduction package at:
-C:\Users\lroesele.IVV5NET\ReproCrowd\260707-aemreplication-rev1
+C:\Users\user\ReproCrowd\260707-aemreplication-rev1
 
 Goal: implement the analysis so that running `Rscript analysis.R` from the package root reproduces the paper's results.
 
@@ -23,14 +23,8 @@ Read first:
 - Other material:
   - inputs/glrep_hypothesis.png
   - inputs/questionnaire_german.pdf
-  - inputs/Reproducibility report 4320 - Meta-psych.pdf
-  - inputs/230221_StudentPoster.pptx
   - inputs/AEMreplication_preprint.pdf
   - inputs/GLeffectsizes.jpg
-  - inputs/AEM Studie.docx
-  - inputs/240523_AEMreplication.docx
-  - inputs/240524_AEMreplication.docx
-  - inputs/240702_AEMreplication.docx
 
 Rules:
 1. Implement each step section of analysis.R in place, in order.

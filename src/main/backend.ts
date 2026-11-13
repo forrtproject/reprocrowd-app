@@ -49,6 +49,10 @@ interface Running {
 let running: Running | undefined;
 let lastFailure: { at: number; message: string } | undefined;
 let starting: Promise<Running> | undefined;
+// The process start() spawned and is waiting on, before it answers; stop() ends it too (quitting during startup).
+let launching: Running | undefined;
+// Bumped by stop(): a start() begun before it gives up, and doesn't spawn or keep polling.
+let generation = 0;
 const log: string[] = [];
 
 export const userConfigFile = () => path.join(userData(), "backend.toml");
@@ -252,9 +256,14 @@ function drain(stream: NodeJS.ReadableStream | null) {
   stream.on("end", () => rest.trim() && remember(rest));
 }
 
+class Cancelled extends Error {}
+
 async function start(): Promise<Running> {
+  const gen = generation;
+  const cancelled = () => gen !== generation;
   const host = "127.0.0.1";
   const port = await freePort();
+  if (cancelled()) throw new Cancelled("The backend was stopped while it was starting.");
   const token = crypto.randomBytes(24).toString("base64url");
   stopStale();
   writeConfig(port, token);
@@ -272,6 +281,7 @@ async function start(): Promise<Running> {
   if (proc.pid) fs.writeFileSync(pidFile(), String(proc.pid));
   const base = `http://${host}:${port}`;
   const me: Running = { proc, base, token, argv, kind, ready: Promise.resolve() };
+  launching = me;
   drain(proc.stdout);
   drain(proc.stderr);
   const spawnError = new Promise<Error>((resolve) => proc.on("error", resolve));
@@ -280,19 +290,27 @@ async function start(): Promise<Running> {
     if (fs.existsSync(pidFile()) && fs.readFileSync(pidFile(), "utf8").trim() === String(proc.pid)) fs.rmSync(pidFile(), { force: true });
     remember(`(exited with ${code !== null ? `code ${code}` : `signal ${signal}`})`);
     if (running === me) running = undefined;
+    if (launching === me) launching = undefined;
   });
   let failed: Error | undefined;
   spawnError.then((e) => (failed = e));
   const deadline = Date.now() + READY_TIMEOUT;
   while (Date.now() < deadline) {
-    if (failed) throw new Error(`Couldn't run “${argv[0]}”: ${failed.message}`);
+    if (cancelled()) throw new Cancelled("The backend was stopped while it was starting.");
+    if (failed) {
+      if (launching === me) launching = undefined;
+      throw new Error(`Couldn't run “${argv[0]}”: ${failed.message}`);
+    }
     if (me.exited !== undefined) throw new Error(`The backend stopped right away (exit code ${me.exited}).\n\n${logTail(20)}`);
     if (await healthy(base, token)) {
+      if (cancelled()) throw new Cancelled("The backend was stopped while it was starting.");
+      launching = undefined;
       running = me;
       return me;
     }
     await sleep(400);
   }
+  if (launching === me) launching = undefined;
   proc.kill("SIGTERM");
   throw new Error(`The backend didn't answer within ${READY_TIMEOUT / 1000} s, so it was stopped.\n\n${logTail(20)}`);
 }
@@ -302,20 +320,21 @@ export async function ensure(): Promise<{ base: string; token: string }> {
   if (running && running.exited === undefined) return running;
   if (starting) return starting;
   if (lastFailure && Date.now() - lastFailure.at < RETRY_AFTER) throw new StartError(lastFailure.message);
-  starting = start().then(
+  const p = start().then(
     (r) => {
       lastFailure = undefined;
       return r;
     },
     (e: Error) => {
-      lastFailure = { at: Date.now(), message: e.message };
+      if (!(e instanceof Cancelled)) lastFailure = { at: Date.now(), message: e.message };
       throw new StartError(e.message);
     },
   );
+  starting = p;
   try {
-    return await starting;
+    return await p;
   } finally {
-    starting = undefined;
+    if (starting === p) starting = undefined; // stop() may have dropped it, and a new start begun since
   }
 }
 
@@ -335,11 +354,15 @@ export function status(): BackendStatus {
   };
 }
 
-/** Stop the backend: SIGTERM lets it end running jobs (they're recorded as interrupted); SIGKILL after 10 s. */
+/** Stop the backend: SIGTERM lets it end running jobs (they're recorded as interrupted); SIGKILL after 10 s.
+ * A backend that is still starting is stopped too, and its start() gives up. */
 export async function stop(): Promise<void> {
-  const r = running;
+  generation++;
+  starting = undefined;
+  const r = running ?? launching;
   running = undefined;
-  if (!r || r.exited !== undefined) return;
+  launching = undefined;
+  if (!r || r.exited !== undefined || r.proc.pid === undefined) return;
   const done = new Promise<void>((resolve) => r.proc.once("exit", () => resolve()));
   r.proc.kill("SIGTERM");
   const timer = setTimeout(() => r.proc.kill("SIGKILL"), 10_000);

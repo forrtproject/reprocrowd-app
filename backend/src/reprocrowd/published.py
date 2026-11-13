@@ -22,7 +22,7 @@ from .formats.base import Graphic
 from .package import Package
 from .schemas.document import Figure
 
-ORDER = (".tif", ".tiff", ".png", ".jpg", ".jpeg")  # the same image in several formats: largest first
+ORDER = (".tif", ".tiff", ".png", ".jpg", ".jpeg", ".webp")  # the same image in several formats: largest first
 THUMBNAIL = ".gif"  # archives hold small GIFs next to the real images; only used if the full text names one
 MAX_IMAGE_MB = 64
 PNG_MODES = {"1", "L", "LA", "I", "I;16", "P", "RGB", "RGBA"}
