@@ -92,6 +92,19 @@ jobs:
         with:
           generate_release_notes: true
           fail_on_unmatched_files: true
+          body: |
+            ## Installing
+
+            The installers aren't code-signed yet, so Windows and macOS warn before the first start.
+
+            - **Windows** (`ReproCrowd-<version>-setup.exe`): if SmartScreen says "Windows protected your PC", click
+              **More info → Run anyway**. Later updates install themselves.
+            - **macOS** (`ReproCrowd-<version>-arm64.dmg`, Apple silicon only): drag ReproCrowd to Applications and open
+              it. If macOS refuses, open **System Settings → Privacy & Security** and click **Open Anyway**. If it says
+              the app "is damaged and can't be opened", run `xattr -cr /Applications/ReproCrowd.app` in Terminal and
+              open it again. The app tells you about updates; download them from this page.
+            - **Linux** (`ReproCrowd-<version>.AppImage`): `chmod +x ReproCrowd-*.AppImage` and run it. Later updates
+              install themselves.
           files: |
             dist/*.exe
             dist/*.exe.blockmap

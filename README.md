@@ -118,6 +118,10 @@ after start (Settings → Updates; Help → Check for Updates…):
 - Windows (installer) and Linux (AppImage) download the new version and install it on restart.
 - macOS (unsigned builds can't replace themselves) and Linux installs from `scripts/install.sh`
   are told about the new version and where to get it.
+- The builds aren't code-signed yet. On Windows, SmartScreen asks first ("More info → Run
+  anyway"). On macOS (Apple silicon only), use System Settings → Privacy & Security → Open
+  Anyway, or, if the app is reported as "damaged", `xattr -cr /Applications/ReproCrowd.app`.
+  The release notes repeat this for users.
 - A development checkout doesn't check. `REPROCROWD_UPDATES=off` turns checks off;
   `REPROCROWD_UPDATE_SERVER=<url>` points them at a test server (see `src/main/updater.ts`).
 
@@ -129,3 +133,7 @@ Changes can go either way:
 git subtree pull --prefix=backend ../reprocrowd-cli master   # take the standalone repo's changes
 git subtree push --prefix=backend ../reprocrowd-cli app-sync # offer this repo's changes as a branch there
 ```
+
+## License
+
+MIT, see [LICENSE](LICENSE).

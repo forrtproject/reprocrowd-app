@@ -2,11 +2,11 @@
   "name": "reprocrowd-app",
   "productName": "ReproCrowd",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Desktop app for AI-assisted computational reproductions, deposited on Zenodo",
   "main": "build/main/index.js",
   "author": "Luna Fazio",
-  "license": "UNLICENSED",
+  "license": "MIT",
   "scripts": {
     "typecheck": "tsc --noEmit -p src/renderer && tsc --noEmit -p src/main",
     "build": "node scripts/build.mjs",
