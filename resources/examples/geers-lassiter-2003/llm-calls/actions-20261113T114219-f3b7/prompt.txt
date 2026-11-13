@@ -1,0 +1,757 @@
+Turn the following excerpts of a scholarly paper's methods into an ordered list of ACTIONS (analysis steps) for a computational reproduction.
+
+Every sentence, figure and table has an id in square brackets. Each action must cite the id(s) it implements in "refs".
+
+Available input files (cite them by name in "inputs"):
+- in-glrep-hypothesis.png: inputs/glrep_hypothesis.png [other]
+- in-questionnaire-german.pdf: inputs/questionnaire_german.pdf [other]
+- in-analyses-prereg.r: inputs/analyses_prereg.R [code]
+- in-analyses-final.r: inputs/analyses_final.R [code]
+- in-gl2003-replication-raw-2023-03-28.csv: inputs/gl2003-replication-raw-2023-03-28.csv [data]
+- in-gl2003-replication-processed-2023-03-28.csv: inputs/gl2003-replication-processed-2023-03-28.csv [data]
+- in-esconversion-red.r: inputs/esconversion_red.R [code]
+- in-gl2003-replication-processed-2024-05-23.csv: inputs/gl2003-replication-processed-2024-05-23.csv [data]
+- in-readme.txt: inputs/readme.txt [data]
+- in-reproducibility-report-4320-meta-psych.pdf: inputs/Reproducibility report 4320 - Meta-psych.pdf [other]
+- in-analyses-final-rev1.r: inputs/analyses_final_rev1.R [code]
+- in-230221-studentposter.pptx: inputs/230221_StudentPoster.pptx [other]
+- in-aemreplication-preprint.pdf: inputs/AEMreplication_preprint.pdf [other]
+- in-g-l-effectsizes.r: inputs/g&l_effectsizes.R [code]
+- in-gleffectsizes.jpg: inputs/GLeffectsizes.jpg [other]
+- in-aem-studie.docx: inputs/AEM Studie.docx [other]
+- in-240523-aemreplication.docx: inputs/240523_AEMreplication.docx [other]
+- in-240524-aemreplication.docx: inputs/240524_AEMreplication.docx [other]
+- in-240702-aemreplication.docx: inputs/240702_AEMreplication.docx [other]
+
+Reproduction targets (cite the ids an action computes in "produces"):
+- T001 (number): Original effect size eta-squared (η²) = .04
+- T002 (number): Original 90% CI lower bound for η²
+- T003 (number): Original 90% CI upper bound for η²
+- T004 (number): Replication η²
+- T005 (number): Replication 90% CI lower bound for η²
+- T006 (number): Replication 90% CI upper bound for η²
+- T007 (categorical): No evidence for a difference between groups nor moderation by NFC
+- T008 (number): Original Study 1 sample size
+- T009 (number): Original F statistic for negative-expectation effect F(1,156)
+- T010 (number): Original MSE for negative-expectation effect
+- T011 (number): Original p-value for negative-expectation effect
+- T012 (number): Original r² for negative-expectation effect
+- T013 (number): Original f effect size for negative-expectation effect
+- T014 (number): Original η² for negative-expectation effect
+- T015 (number): Original 90% CI lower bound for negative-expectation effect
+- T016 (number): Original 90% CI upper bound for negative-expectation effect
+- T017 (number): Original F statistic for expectation x NFC interaction F(1,154)
+- T018 (number): Original MSE for interaction effect
+- T019 (number): Original p-value for interaction effect
+- T020 (number): Original r² for interaction effect
+- T021 (number): Original f effect size for interaction effect
+- T022 (number): Original η² for interaction effect
+- T023 (number): Original 90% CI lower bound for interaction effect
+- T024 (number): Original 90% CI upper bound for interaction effect
+- T025 (number): Participants needed for 95% power
+- T026 (number): Target sample size rounded to
+- T027 (number): Multiple of original sample size
+- T028 (number): Participants used in analysis
+- T029 (number): Achieved power for f = 0.2
+- T030 (number): Replication sample size
+- T031 (number): Detectable effect size with 95% power
+- T032 (number): Achieved power for original f = 0.200
+- T033 (number): Participants who reported age
+- T034 (number): Missing age values
+- T035 (number): Mean age
+- T036 (number): Age standard deviation
+- T037 (number): Age range lower bound
+- T038 (number): Age range upper bound
+- T039 (number): Male participants
+- T040 (number): Female participants
+- T041 (number): Diverse participants
+- T042 (number): Participants not disclosing gender
+- T043 (number): Missing gender value
+- T044 (number): Students in sample
+- T045 (number): Apprentices in sample
+- T046 (number): Employed participants
+- T047 (number): Participants in search of employment
+- T048 (number): Retired participants
+- T049 (number): Missing occupation value
+- T050 (number): Original affect index internal consistency
+- T051 (number): Replication affect index internal consistency
+- T052 (number): Replication affect index 95% CI lower bound
+- T053 (number): Replication affect index 95% CI upper bound
+- T054 (number): Replication NFC internal consistency
+- T055 (number): Replication NFC 95% CI lower bound
+- T056 (number): Replication NFC 95% CI upper bound
+- T057 (number): NFC scale item count
+- T058 (number): F statistic for remembered expectation ANOVA
+- T059 (number): p-value for remembered expectation ANOVA
+- T060 (categorical): Significant influence of induced expectation on remembered expectations
+- T061 (number): Positive expectation group mean
+- T062 (number): Positive expectation group SD
+- T063 (number): Positive expectation group N
+- T064 (number): Negative expectation group mean
+- T065 (number): Negative expectation group SD
+- T066 (number): Negative expectation group N
+- T067 (number): Mean difference positive vs negative
+- T068 (number): Mean difference 95% CI lower bound
+- T069 (number): Mean difference 95% CI upper bound
+- T070 (number): p-value for Tukey positive vs negative comparison
+- T071 (number): Control group mean
+- T072 (number): Control group SD
+- T073 (number): Control group N
+- T074 (number): Overall model F statistic
+- T075 (number): Overall model p-value
+- T076 (number): Overall model R-squared
+- T077 (categorical): Overall model test significance
+- T078 (number): Threshold for model effects p-values
+- T079 (categorical): None of the model effects significant
+- T080 (table): Table 2 Linear Regression of Affective Reaction on Expectation, NFC, and Their Interaction
+- T081 (number): Residual standard error
+- T082 (number): Adjusted R-squared
+- T083 (number): ANOVA main effect of expectation F statistic
+- T084 (number): ANOVA main effect of expectation p-value
+- T085 (number): ANOVA main effect of expectation eta-squared
+- T086 (number): ANOVA expectation effect 90% CI lower bound
+- T087 (number): ANOVA expectation effect 90% CI upper bound
+- T088 (number): ANOVA main effect of NFC F statistic
+- T089 (number): ANOVA main effect of NFC p-value
+- T090 (number): ANOVA main effect of NFC eta-squared
+- T091 (number): ANOVA NFC effect 90% CI lower bound
+- T092 (number): ANOVA NFC effect 90% CI upper bound
+- T093 (number): ANOVA interaction F statistic
+- T094 (number): ANOVA interaction p-value
+- T095 (number): ANOVA interaction eta-squared
+- T096 (number): ANOVA interaction 90% CI lower bound
+- T097 (number): ANOVA interaction 90% CI upper bound
+- T098 (categorical): ANOVA general effects of NFC, expectation and interaction not significant
+- T099 (number): Positive expectation slope b
+- T100 (number): Positive expectation slope SE
+- T101 (number): Positive expectation slope t statistic
+- T102 (number): Positive expectation slope p-value
+- T103 (number): Negative expectation slope b
+- T104 (number): Negative expectation slope SE
+- T105 (number): Negative expectation slope t statistic
+- T106 (number): Negative expectation slope p-value
+- T107 (number): Control group slope b
+- T108 (number): Control group slope SE
+- T109 (number): Control group slope t statistic
+- T110 (number): Control group slope p-value
+- T111 (categorical): None of the slopes significantly different from zero
+- T112 (table): Table 3 Comparison of original and replication results with interpretations according to LeBel et al. (2019)
+- T113 (table): Table 4 Fixed-Effects Moderator Model Testing Replication Success (Lakens, 2022) and Effect Sizes Converted to r
+- T114 (categorical): Replication effect significantly smaller than original effect
+- T115 (number): Meta-analytic moderator test Q statistic
+- T116 (number): Meta-analytic moderator test p-value
+- T117 (number): Exploratory one-way ANOVA F statistic
+- T118 (number): Exploratory one-way ANOVA p-value
+- T119 (number): Participants identifying all four statements correctly
+- T120 (number): Percent identifying all four statements correctly
+- T121 (number): Participants identifying 3 of 4 statements
+- T122 (number): Percent identifying 3 of 4 statements
+- T123 (number): Participants identifying 2 of 4 statements
+- T124 (number): Percent identifying 2 of 4 statements
+- T125 (number): Participants identifying 1 of 4 statements
+- T126 (number): Percent identifying 1 of 4 statements
+- T127 (number): Missing value for attention check
+- T128 (number): Percent missing attention check value
+- T129 (categorical): No participant got all four statements wrong
+- T130 (number): Attention-check restricted model F statistic
+- T131 (number): Attention-check restricted model p-value
+- T132 (number): Attention-check restricted model R-squared
+- T133 (number): Replication sample size in discussion
+- T134 (number): Original sample size in discussion
+- T135 (number): Approximate statistical power in discussion
+- T136 (number): Preregistered target sample size
+- T137 (number): Achieved sample size greater than 80% power
+- T138 (number): Recommended minimum sample size
+- T139 (figure): Figure 1 Remembered expectation by induced expectation
+- T140 (figure): Figure 2 Regression lines predicting affect scores from need for cognition and expectation condition
+- T141 (figure): Figure 3 Distribution of Affect Index Scores
+- T142 (figure): Figure 4 Distribution of Need for Cognition Scores
+- T143 (figure): Figure 5 Affect scores by expectation condition
+
+Guidelines:
+- Give actions keys A1, A2, … in order. "depends_on" lists keys of EARLIER actions only.
+- "kind": "transform" for data preparation, "analysis" for estimation, tests and figures.
+- "summary": an imperative description of exactly what to compute, specific enough to code.
+- "quote": the verbatim text the action implements.
+- Do not add actions for loading the input files or writing the final results file; those are added automatically.
+- Keep the paper's order where possible, split compound procedures into separate actions, and don't invent procedures the text doesn't describe.
+
+Output ONLY one JSON object, with no commentary and no code fences, that validates against this JSON Schema:
+
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$id": "https://reprocrowd.example/schemas/action-llm-output.schema.json",
+ "title": "ActionLlmOutput (output of the action-extraction prompt)",
+ "$defs": {
+  "ActionLlmItem": {
+   "properties": {
+    "key": {
+     "description": "A1, A2, \u2026 in order; used by depends_on",
+     "title": "Key",
+     "type": "string"
+    },
+    "kind": {
+     "enum": [
+      "transform",
+      "analysis"
+     ],
+     "title": "Kind",
+     "type": "string"
+    },
+    "summary": {
+     "title": "Summary",
+     "type": "string"
+    },
+    "quote": {
+     "default": "",
+     "title": "Quote",
+     "type": "string"
+    },
+    "refs": {
+     "items": {
+      "type": "string"
+     },
+     "minItems": 1,
+     "title": "Refs",
+     "type": "array"
+    },
+    "inputs": {
+     "description": "input names (in-\u2026) used directly",
+     "items": {
+      "type": "string"
+     },
+     "title": "Inputs",
+     "type": "array"
+    },
+    "depends_on": {
+     "description": "keys of earlier actions",
+     "items": {
+      "type": "string"
+     },
+     "title": "Depends On",
+     "type": "array"
+    },
+    "produces": {
+     "description": "target ids computed by this action",
+     "items": {
+      "type": "string"
+     },
+     "title": "Produces",
+     "type": "array"
+    }
+   },
+   "required": [
+    "key",
+    "kind",
+    "summary",
+    "refs"
+   ],
+   "title": "ActionLlmItem",
+   "type": "object"
+  }
+ },
+ "description": "Output format of the action-extraction prompt.",
+ "properties": {
+  "actions": {
+   "items": {
+    "$ref": "#/$defs/ActionLlmItem"
+   },
+   "title": "Actions",
+   "type": "array"
+  }
+ },
+ "required": [
+  "actions"
+ ],
+ "type": "object"
+}
+
+EXCERPTS:
+
+## [sec1] 
+
+[sec1.p1.s1] AFFECTIVE EXPECTATIONS REPLICATION
+
+[sec1.p2.s1] 1 No Evidence for the Affective Expectation Model: Replication of Geers and Lassiter (2003) Lukas Röseler1,2,3, Christopher Doetsch1, Nico Förster4, Ann-Kathrin Bruzsa1, Marie Deublein1, Eva Rieger1, Charlotte Schmidt1, Amelie Seitz1, Antonia Wild1 1 University of Bamberg 2University of Münster 3Münster Center for Open Science 4Harz University of Applied Sciences
+
+[sec1.p3.s1] Lukas Röseler https://orcid.org/0000-0002-6446-1901 Christopher Doetsch https://orcid.org/0009-0001-6824-1332 Nico Förster https://orcid.org/0009-0005-6312-3096 Ann-Kathrin Bruzsa https://orcid.org/0009-0003-2322-4090 Marie Deublein Eva Rieger Charlotte Schmidt https://orcid.org/0009-0000-9148-4079 Amelie Seitz Antonia Wild
+
+[sec1.p4.s1] Author Note Correspondence concerning this article should be addressed to Lukas Röseler, University of Münster, Email: lukas.roeseler@uni-muenster.de.
+[sec1.p4.s2] Authors 4-9 contributed equally to the manuscript and are listed in alphabetical order.
+
+[sec1.p5.s1] Submitted to Meta-Psychology.
+[sec1.p5.s2] Participate in open peer review by sending an email to open.peer.reviewer@gmail.com.
+[sec1.p5.s3] The full editorial process of all articles under review at Meta-Psychology can be found following this link: https://tinyurl.com/mp-submissions You will find this preprint by searching for the first author's name.
+
+[sec1.p6.s1] AFFECTIVE EXPECTATIONS REPLICATION
+
+[sec1.p7.s1] 2 Abstract According to the Affective Expectation Model (AEM), people’s evaluations of experiences depend on their expectations.
+[sec1.p7.s2] This generally happens in an assimilative way (positive expectations lead to positive experiences) unless there is a strong discrepancy between the expectation and the experience.
+[sec1.p7.s3] In this case, a contrast effect occurs (positive expectations lead to negative experiences).
+[sec1.p7.s4] We conducted an online replication of Study 1 from Geers and Lassiter (2003) where affective experiences were positively correlated with affective expectations for people with a low need for cognition and negatively correlated for people with a high need for cognition.
+[sec1.p7.s5] None of the original effects could be replicated, that is, there was no evidence for a difference between the groups nor for a moderation of affective experiences by need for cognition (η²original = .04, 90% CI [.005, .10] , η²replication < 0.01, 90% CI [0, 0.02]).
+[sec1.p7.s6] We discuss potential limitations of the AEM.
+[sec1.p7.s7] The study’s preregistration, data, and materials are available online (https://osf.io/rge23/).
+[sec1.p7.s8] Keywords: affective expectations, replication, assimilation and contrast, need for cognition
+
+[sec1.p8.s1] AFFECTIVE EXPECTATIONS REPLICATION
+
+[sec1.p9.s1] 3 No Evidence for the Affective Expectation Model: Replication of Geers and Lassiter (2003) “Life is like a box of chocolate – you never know what you are going to get” (Zemeckis, 1994).
+[sec1.p9.s2] Forrest Gump leads us through the film named after him with his life philosophy, which sticks to him and his experiences throughout the film.
+[sec1.p9.s3] While we will never know what will await us, we often form expectations of events which have not yet taken place and lie in the future.
+[sec1.p9.s4] Although expectations are often formed spontaneously, we have some control over what to expect from a certain situation.
+[sec1.p9.s5] For example, big expectations could not be fulfilled and lead to a feeling of disappointment, following an adjustment of expectations to avoid a repetition of said feeling.
+[sec1.p9.s6] But is this really the best coping strategy?
+[sec1.p9.s7] According to the Affective Expectation Model (AEM), this might not be the case.
+[sec1.p9.s8] Here, expectations are defined as “people’s predictions about how they will feel in a particular situation or toward a specific stimulus” (Wilson & Klaaren, 1992, p.
+[sec1.p9.s9] 3).
+[sec1.p9.s10] According to the AEM “affect and emotion are often formed in an expectation- driven fashion” (Wilson et al., 1989).
+[sec1.p9.s11] Thus, the affective evaluation of an event (i.e., how sad or funny we rate something) does not only depend on its quality but also our affective expectations (i.e., how sad or funny we expect to rate something).
+[sec1.p9.s12] Generally, affective expectations are positively associated with affective experiences (assimilation effect: more positive affective expectations lead to a more positive affective experience) unless the affective expectation of a stimulus and its actual valence are incongruent and the incongruence is noticed (contrast effect: more positive affective expectations lead to a less positive affective experiences).
+[sec1.p9.s13] Geers and Lassiter demonstrated assimilation and contrast effects by inducing a finer unitization of information regarding the stimulus and therefore enhancing the likeliness to detect an incongruence (Geers & Lassiter, 1999) and by including participants’ optimism (Geers & Lassiter, 2002) and need for cognition (Geers & Lassiter, 2003) in the model.
+[sec1.p9.s14] Further
+
+[sec1.p10.s1] AFFECTIVE EXPECTATIONS REPLICATION
+
+[sec1.p11.s1] 4 experiments have also shown a hedonic contrast to a previously formed expectation when evaluating the taste of a specific food item, about which participants received varying information (Zellner et al., 2004).
+[sec1.p11.s2] Choice of target study We replicated Study 1 from Geers and Lassiter (2003) to re-test the hypothesis that participants with a high need for cognition (NFC) are more likely to notice an incongruence between expectation and experience and therefore produce contrast effects.
+[sec1.p11.s3] The concept of need for cognition is understood as “the tendency for an individual to engage in and enjoy thinking” (Cacioppo & Petty, 1982, p.116).
+[sec1.p11.s4] Especially the tendency to “seek, acquire, think about, and reflect back on information to make sense of stimuli, relationships, and events in their world” (Cacioppo & Petty, 1982, p.
+[sec1.p11.s5] 198) is what enhances the probability of a finer, more pronounced elaboration of information and therefore could influence one’s capability to detect an incongruence of expectation-stimulus relation.
+[sec1.p11.s6] Individuals with high need for cognition scores thus evaluate messages more strongly in dependence of their quality (Cacioppo et al., 1983), are more likely to have an information-oriented identity style (Berzonsky & Sullivan, 1992) and divide experiences into more meaningful actions and therefore memorize them better (Lassiter et al., 1991) than individuals low in need for cognition.
+[sec1.p11.s7] The tendency of persons with a high need for cognition to be “more likely to scrutinize their environment than individuals low in need for cognition” (Geers & Lassiter, 2003, p.
+[sec1.p11.s8] 315) should lead to a contrast effect of expectations on experiences if expectations and experiences do not match.
+[sec1.p11.s9] We chose to replicate an experiment that includes assimilation and contrast due to its role in research application: Creating and managing affective expectations is an important skill in politics, management, or marketing.
+[sec1.p11.s10] In such scenarios, it is important to know how an induced
+
+[sec1.p12.s1] AFFECTIVE EXPECTATIONS REPLICATION
+
+[sec1.p13.s1] 5 expectation can influence the evaluation of a policy, a recommendation, or a directive.
+[sec1.p13.s2] Moreover, models reconciling contradictory findings of assimilation and contrast can be found throughout many areas of psychology and need for cognition is listed as a (potential) moderator in several of these models (Röseler & Schütz, 2024).
+[sec1.p13.s3] For example, the need for cognition as a moderator of anchoring effects is argued to work in a similar way (Epley & Gilovich, 2006) but could not be replicated (Röseler et al., 2022).
+[sec1.p13.s4] Finally, of the works on affective expectations and simultaneous assimilation and contrast, the chosen study is the most cited one with 164 Google Scholar citations (as of May 2024).
+[sec1.p13.s5] Method As part of a seminar on replication research with students of Psychology M.Sc. from different semesters, we conducted a replication of Study 1 from Geers and Lassiter (2003).
+[sec1.p13.s6] Original Study In the original study, 160 undergraduates were asked to watch and evaluate a video.
+[sec1.p13.s7] They were told in advance that the movie “has won many awards and has received much praise from other students” (p.
+[sec1.p13.s8] 316, positive expectation condition) or that the movie is “has been described as boring and tedious by other students” (p.
+[sec1.p13.s9] 316, negative expectation condition) or they did not receive any information (no expectation condition).
+[sec1.p13.s10] They were also informed that some students will be chosen at random to have their impressions of the film recorded, but no students were actually contacted.
+[sec1.p13.s11] In the positive and negative conditions, participants were shown the expectation induction videos as an example of what they might have to do later.
+[sec1.p13.s12] Participants then watched the movie Don’t Shove or a clip from City Lights, rated the movie (affect index), and their need for cognition was measured.
+
+[sec1.p14.s1] AFFECTIVE EXPECTATIONS REPLICATION
+
+[sec1.p15.s1] 6 In line with the affective expectation model, Geers and Lassiter found that expectations were positively associated with the movie rating but that this relationship turned negative for participants with a high need for cognition.
+[sec1.p15.s2] Replication Procedure In our replication, participants were thanked for participating and told that it was about assessment of movies, that the study will take 15 minutes, and that students of the University of Bamberg can receive 0.25 respondent-credits (e.g., 15 minutes worth of course credit for the participation in research).
+[sec1.p15.s3] They were asked to complete the study using a laptop or PC and they were presented the informed consent, that is, that they are participating voluntarily, anonymously, where they can ask questions, and that we will publish the anonymized dataset.
+[sec1.p15.s4] Like in the original study, we announced that they would watch a five minutes movie that others found a) popular, b) boring, or no context information was provided.
+[sec1.p15.s5] After watching the movie, participants rated the movie, how often they are watching movies and if they pay attention to awards, what their expectation was before watching it, answered an attention check item, completed the Need for Cognition scale, and responded to demographic questions.
+[sec1.p15.s6] Open Science Practices The entire study and analysis plan including the script have been preregistered before data collection (https://osf.io/kx5gw).
+[sec1.p15.s7] All materials are available online (https://osf.io/rge23/).
+[sec1.p15.s8] We report how we determined our sample size, all data exclusions, all manipulations, and all measures in the study (Simmons et al., 2012).
+[sec1.p15.s9] All materials are openly available at https://osf.io/rge23/, including the preregistered and final analysis scripts, the data sets, and the preregistrations.
+[sec1.p15.s10] We declare that we have emptied our file drawer on affective expectation studies.
+
+[sec1.p16.s1] AFFECTIVE EXPECTATIONS REPLICATION
+
+[sec1.p17.s1] 7 Materials We tried to closely mirror the original study but had to deviate in critical aspects: None of the original study’s materials were available anymore, the materials were likely not transferable due to us using an online setting, and we had to adapt the materials to a modern German sample and an online version to meet the need for a large sample size.
+[sec1.p17.s2] We created new expectation induction films where, like in the original study, a female student describes the film for 30 s in a positive (https://osf.io/ad239) and a negative (https://osf.io/xzyh3) way.
+[sec1.p17.s3] According to an informal exchange with Andrew Geers, the original study was conducted in 1998 in a lab at Ohio University and none of the materials were available anymore.
+[sec1.p17.s4] For the original study, the videos of the persons talking about the movie and inducing expectations were recorded in the same room as the room where the study sessions were conducted, whereas in our online replication, this was not possible.
+[sec1.p17.s5] Thus, we changed the cover story to match the online setting and had the prerecorded video being filmed at another student’s home.
+[sec1.p17.s6] It remained similar to the original study’s cover story, namely that some participants would be randomly selected to record their own opinion about the film.
+[sec1.p17.s7] With the help of Andrew Geers, we could recreate the excerpt from the target film Don’t Shove.
+[sec1.p17.s8] It is a black and white silent slapstick comedy short film and the used excerpt is available online (https://osf.io/kqxe2).
+[sec1.p17.s9] It was meant to be ambiguous with regard to being funny or unfunny.
+[sec1.p17.s10] The excerpt shows two men who compete over impressing a woman and thereby playing pranks on each other such as switching out a feather present with a smoking pipe.1 The first 30 s of the film and the section after 6:30 were removed so that the movie ended with a man (Gus Leonard) screaming “My hat!”.
+[sec1.p17.s11] Thus, the original 9 min long video was cut to 6 minutes.
+
+[sec1.p18.s1] 1 The entire movie is available in the public domain (e.g., https://en.wikipedia.org/wiki/Don%27t_Shove).
+
+[sec1.p19.s1] AFFECTIVE EXPECTATIONS REPLICATION
+
+[sec1.p20.s1] 8 Moreover, we added German subtitles to the text that is presented in the movie.
+[sec1.p20.s2] We dropped the City Lights movie from the experiment because (1) the two movies had the same effect in the original study, (2) and it is unknown which 5-minute-excerpt of the 87 min long movie was used.
+[sec1.p20.s3] As in the original study, the affect index was comprised of three items in our study (How much did you like the movie?
+[sec1.p20.s4] How funny did you find the movie?
+[sec1.p20.s5] How pleasant was watching the movie?) with a 9-point-scale from 1 = not at all to 9 = very much.
+[sec1.p20.s6] Three further items were used to support the cover story (How often do you go to the cinema?
+[sec1.p20.s7] How often do you use streaming services?
+[sec1.p20.s8] When choosing a film, how often do you pay attention to whether it has received any awards?) with a 9-point-scale from 1 = never to 9 = very often.
+[sec1.p20.s9] As a quasi- manipulation check, we included an additional item asking how much people expected to like the movie before they saw it (1 = not at all, 9 = very much).
+[sec1.p20.s10] For exploratory purposes, we also asked participants to indicate which of four things happened in the movie (check all that apply; the present was switched with a feather [false], everybody is going to the roller-skating rink [correct], the little brother willie is beaten [false], the protagonist fell on somebody’s hat in the end [true]).
+[sec1.p20.s11] To measure need for cognition, we used a German version with 16 items and seven response options from completely inaccurate to completely accurate (Bless et al., 1994).
+[sec1.p20.s12] Note that the original study used an English scale with 18 items.
+[sec1.p20.s13] Half of the participants completed the scale before watching the movie and the other half completed it after watching and rating the movie.
+[sec1.p20.s14] Afterwards, participants were asked about their age, gender, occupation, field of study, and if they would like to receive course credit for their participation (students of the University of Bamberg were eligible).
+[sec1.p20.s15] The final questionnaire is available online (in German, https://osf.io/rnt74).
+[sec1.p20.s16] The study was programmed with SoSciSurvey (Leiner, 2019) and ran from January 18, 2023 until March 27, 2023.
+
+[sec1.p21.s1] AFFECTIVE EXPECTATIONS REPLICATION
+
+[sec1.p22.s1] 9 Replication closeness evaluation We reached out to Andrew Geers, one of the original authors, who helped us in reconstructing some of the materials, more precisely which parts of the films were used, how the materials were created and other details (personal communication, January 10, 2023).
+[sec1.p22.s2] In our replication, we tried to stay as close to the original study as possible.
+[sec1.p22.s3] However, we deemed some changes necessary, such as translating the study from English to German, providing German subtitles for the English movie, conducting the study online instead of on site.
+[sec1.p22.s4] An overview of all differences is provided in Table 1.
+
+[sec1.p23.s1] AFFECTIVE EXPECTATIONS REPLICATION
+
+[sec1.p24.s1] 10 Table 1 Differences between the original study and the replication.
+[sec1.p24.s2] Study feature Original Study Replication Reason for change Language of questionnaire
+
+[sec1.p25.s1] English German German participants Type of sample University undergraduates Mixed sample, containing students, employed and unemployed subjects Heterogeneous sample should increase NFC variance and thereby the effect size
+
+[sec1.p26.s1] Compensation Partial course credit Course credit and feedback
+
+[sec1.p27.s1] Facilitate participant recruitment Type of instructions Watching and evaluation of a video segment
+
+[sec1.p28.s1] Watching and evaluation of a video segment — Main variables that were collected
+
+[sec1.p29.s1] NFC, affective experience, affective expectation
+
+[sec1.p30.s1] NFC, affective experience, affective expectation
+
+[sec1.p31.s1] — Further variables that were collected
+
+[sec1.p32.s1] Age, sex, viewing behavior Age, sex, profession, viewing behavior, study program, substantive questions
+
+[sec1.p33.s1] — Items used Need for Cognition Scale by Cacioppo et al. (1984); affective experience items adapted from Klaaren et al. (1994)
+
+[sec1.p34.s1] Need for Cognition Scale by Bless et al. (1994) German participants Exclusion criteria Not reported Participants must have completed all of the following variables: NFC, affect index, experimental group Data analysis required non- missing values
+
+[sec1.p35.s1] Administration In person (lab) Online Facilitate participant recruitment Manipulation check None Remembered expectation Non-working manipulation check could uncover faulty induction of expectations Presented movies Don’t Shove, City Lights Don’t Shove Using different movies may increase variance and reduce statistical power
+
+[sec1.p36.s1] AFFECTIVE EXPECTATIONS REPLICATION
+
+[sec1.p37.s1] 11 A Priori Sample Size Determination In their study, Geers and Lassiter found that, overall, “[t]he affective reactions of the negative-expectation participants were less positive than those of the no-expectation participants, regardless of their level of need for cognition, F(1, 156) = 12.09, MSE = 3.30, p = .001, r² = .07”, f = 0.270, η² = .07, 90% CI [.02, .14] (p.
+[sec1.p37.s2] 317) and that “relative to no-expectation participants, the affective reactions of those in the positive-expectation condition became more positive as the need for cognition decreased (i.e., an assimilation effect), and less positive as level of need for cognition increased (i.e., a contrast effect), F(1, 154) = 6.40, MSE = 3.21, p = .01, r² = .04”, f = 0.200, η² = .04, 90% CI [.005, .10] (p.
+[sec1.p37.s3] 318, N = 160).
+[sec1.p37.s4] To achieve 95% power for the smaller of these two effects of f = 0.2, we would have needed 390 participants.
+[sec1.p37.s5] Notably, the confidence intervals computed with the esc R-package include zero, whereas the p-values being smaller than .05 indicate that this should not be the case.
+[sec1.p37.s6] We rounded this number to N = 400 (see https://osf.io/6ua4s for the preregistered power analysis code), which corresponds to 2.5 times the original sample size.
+[sec1.p37.s7] Note that we did not achieve this sample size.
+[sec1.p37.s8] Instead, only N = 252 participants took part in the study and could be used for the data analysis after applying exclusion criteria (see analysis plan).
+[sec1.p37.s9] Achieved power was thus 81.37% for f = 0.2.
+[sec1.p37.s10] Analysis Plan Data analysis was preregistered and conducted with R version 4.3.2 (R Core Team, 2018) and the packages esc (for effect size calculation; Dragulescu, 2014), psych (for reliability analysis and descriptives; Revelle, 2018), ggplot2 (for plotting; Wickham, 2016), dplyr (for na_if(); Wickham et al., 2018), effectsize (the calculation of effect sizes; Ben-Shachar et al., 2020), emmeans (Lenth & Piaskowski, 2026), MBESS (Kelley, 2026), and metafor
+
+[sec1.p38.s1] AFFECTIVE EXPECTATIONS REPLICATION
+
+[sec1.p39.s1] 12 (Viechtbauer, 2010).
+[sec1.p39.s2] The entire analysis script was preregistered, and changes or additions are marked as “CHANGED” or “ADDED,” respectively (https://osf.io/2m3w6).
+[sec1.p39.s3] The raw (https://osf.io/2s3tv) and processed (https://osf.io/4qwyt) datasets are available online.
+[sec1.p39.s4] At first, the preregistered exclusion criteria were applied.
+[sec1.p39.s5] Participants were excluded if values for any of the following variables were not available: Need for cognition, affect index, experimental group (assigned automatically during the experiment).
+[sec1.p39.s6] Demographics of the final sample were analyzed (age, gender and occupancy of the subjects).
+[sec1.p39.s7] Subsequently, the internal consistency of the affect index and the Need for Cognition Scale was analyzed.
+[sec1.p39.s8] A one-way ANOVA was run to examine the influence of the explanation film on the expected liking of the film.
+[sec1.p39.s9] For the main analysis, a two-way ANOVA was run to test the interaction effect of need for cognition and the expectation towards the film.
+[sec1.p39.s10] In addition, the effect size of the single variables and their interaction was calculated.
+[sec1.p39.s11] Furthermore, a plot similar to the one in the original paper (see Geers & Lassiter, 2003, p.
+[sec1.p39.s12] 318) was created to show the interaction effect of need for cognition with the affective reactions of the participants in dependence of their induced expectation.
+[sec1.p39.s13] Finally, a main effect between the participants’ expectations and the affect index was analyzed, as well as the remembered positivity of expectation and affect index.
+[sec1.p39.s14] Results Our sample consisted of N = 252 participants, which is more than 1.5 times the original study’s sample size.
+[sec1.p39.s15] This sample size is sufficient to detect effects of f = 0.249 with 95% power.
+[sec1.p39.s16] The achieved power for the original effect size of f = 0.200 was 81.37%.
+[sec1.p39.s17] Only 138 participants reported their age (114 missing values).
+[sec1.p39.s18] The reported mean age was M = 47.11 (SD = 16.48) with a range from 19 to 77.
+[sec1.p39.s19] 76 male, 169 female and four diverse
+
+[sec1.p40.s1] AFFECTIVE EXPECTATIONS REPLICATION
+
+[sec1.p41.s1] 13 persons participated in the study (2 did not want to disclose, 1 missing value).
+[sec1.p41.s2] 31 participants reported that they were either bachelor- or master students, while only one person was in an apprenticeship.
+[sec1.p41.s3] 153 subjects were employed, 5 in search for employment, and 61 in retirement (1 missing value).
+[sec1.p41.s4] Data Quality Checks Affective experience in the original experiment was measured via three items, which were adapted from the work by Klaaren et al. (1994) on the role of affective expectations on subjective experience and decision-making.
+[sec1.p41.s5] Responses of those items were averaged to gain a single affect index, which reached an internal consistency of α = .93.
+[sec1.p41.s6] To test if this would also hold true for our questionnaire, we analyzed the internal consistency of our affect index items and found α = .96 (95% CI [0.95, 0.97]).
+[sec1.p41.s7] To measure NFC in the original experiment, the 18-item version of the scale developed by Cacioppo et al. (1984) was used.
+[sec1.p41.s8] However, no internal consistency analysis was run, which we added in our analysis.
+[sec1.p41.s9] In our sample and using the scale by Bless et al. (1994), we found a value of α = 0.85 (95% CI [0.83, 0.88], 16 items).
+[sec1.p41.s10] To test whether participants’ affective expectations were successfully manipulated, we asked them to remember their affective expectations at the end of the experiment.
+[sec1.p41.s11] A one-way ANOVA revealed a significant influence of induced expectation on remembered expectations, F(2, 249) = 3.90, p = .021.
+[sec1.p41.s12] Subsequently, we conducted a Tukey t test for multiple comparisons of the experimental groups’ means.
+[sec1.p41.s13] Here, only a significant difference between the positive (M = 5.21, SD = 2.00, N = 75) and the negative (M = 4.35, SD = 1.94, N = 94) expectation group was found (Δ = 0.862, 95% CI [0.127, 1.597], p = .017).
+[sec1.p41.s14] The control group’s values were between
+
+[sec1.p42.s1] AFFECTIVE EXPECTATIONS REPLICATION
+
+[sec1.p43.s1] 14 the other two groups (M = 4.63, SD = 2.11, N = 83).
+[sec1.p43.s2] A distribution of the data can be seen in Figure 1.
+[sec1.p43.s3] Figure 1 Remembered expectation by induced expectation
+
+[sec1.p44.s1] Note.
+[sec1.p44.s2] Solid lines represent medians.
+[sec1.p44.s3] Remembered positivity of expectations was measured on a 9 point scale (1 = not at all, 9 = very much).
+
+[sec1.p45.s1] AFFECTIVE EXPECTATIONS REPLICATION
+
+[sec1.p46.s1] 15
+
+[sec1.p47.s1] AFFECTIVE EXPECTATIONS REPLICATION
+
+[sec1.p48.s1] 16 Hypothesis Tests Affect scores were entered as dependent variables into a linear regression.
+[sec1.p48.s2] Expectation condition and NFC were entered as predictors.
+[sec1.p48.s3] The overall model test was not significant, F(5, 246) = 1.86, p = .103, R2 = 0.036.
+[sec1.p48.s4] In line with this, none of the model’s effects were significant (all ps > .143, see Table 2).
+[sec1.p48.s5] Table 2 Linear Regression of Affective Reaction on Expectation, NFC, and Their Interaction Coefficient B SE t p Intercept 1.88 1.44 1.31 .192 Expectation (none) 2.53 2.10 1.21 .229 Expectation (positive) 1.36 2.04 0.67 .506 NFC 0.42 0.29 1.47 .143 Expectation (none) × NFC −0.55 0.42 −1.32 .190 Expectation (positive) × NFC −0.13 0.41 −0.32 .750
+
+[sec1.p49.s1] Note.
+[sec1.p49.s2] N = 252.
+[sec1.p49.s3] Residual SE = 2.30 on 246 df.
+[sec1.p49.s4] R² = .036, adjusted R² = .017, F(5, 246) = 1.86, p = .103.
+[sec1.p49.s5] NFC = Need for Cognition.
+[sec1.p49.s6] Expectation reference category = negative expectation.
+
+[sec1.p50.s1] Furthermore, an ANOVA was run to test for general effects of NFC, expectation and their interaction on the affect index.
+[sec1.p50.s2] Again, no significant effect was found (all ps ≥ .051).
+[sec1.p50.s3] Specifically, there was no main effect of expectation condition on the affect index, F(2, 246) = 3.00, p = .051, η² = 0.02, 90% CI [0, 0.05], need for cognition F(1, 246) = 1.43, p = .233, η² < 0.01, 90% CI [0, 0.02] or an interaction effect F(2, 246) = 0.92, p = .398, η² < 0.01, 90% CI [0, 0.02].
+[sec1.p50.s4] Subsequently, as in the original study (see Geers & Lassiter, 2003, p.
+[sec1.p50.s5] 318), the slopes for
+
+[sec1.p51.s1] AFFECTIVE EXPECTATIONS REPLICATION
+
+[sec1.p52.s1] 17 the linear regression model for all expectation conditions were calculated.
+[sec1.p52.s2] None of them was significantly different from zero: • Positive expectations: b = 0.288, se = 0.306, t(73) = 0.94, p = .349 • Negative expectations: b = 0.420, se = 0.275, t(92) = 1.53, p = .130 • Control group (no specific expectations): b = -0.131, se = 0.312, t(81) = -0.420, p = .675.
+[sec1.p52.s3] An overview of the results is presented in Figure 2 and Table 3.
+
+[sec1.p53.s1] AFFECTIVE EXPECTATIONS REPLICATION
+
+[sec1.p54.s1] 18 Figure 2 Regression lines predicting affect scores from need for cognition and expectation condition.
+
+[sec1.p55.s1] Note.
+[sec1.p55.s2] Affect index was measured on a 9-point scale with higher values reflecting positive assessment.
+[sec1.p55.s3] Need for cognition was measured on a 7-point scale (1 = completely disagree, 7 = completely agree).
+[sec1.p55.s4] Shaded bands represent 95% confidence intervals.
+
+[sec1.p56.s1] AFFECTIVE EXPECTATIONS REPLICATION
+
+[sec1.p57.s1] 19 Table 3 Comparison of original and replication results with interpretations according to LeBel et al. (2019).
+[sec1.p57.s2] Test Original Study Replication (preregistered Tukey HSD)2 Replication (planned contrasts)2 Interpretation Expectation × NFC F(1, 154) = 6.40, MSE = 3.21, p = .01, r²= .04, f = 0.200, η² = .04, 90% CI [.005, .10]” F(2, 246) = 0.92, p = .398, η² < 0.01, 90% CI [0, 0.02] — No signal, inconsistent Slope for the positive expectation condition b = -0.03, SE = .02, t(154) = 1.91, p = .051 b = 0.288, se = 0.306, t(73) = 0.94, p = .349 t(1, 246) = 0.969, p = .334 No signal, inconsistent1 Slope for the negative expectation condition b = -.008, SE = .019, t(154) = 0.42, p = .67 b = 0.420, se = 0.275, t(92) = 1.53, p = .130 t(1, 246) = 1.469, p = .143 No signal, consistent Slope for the no expectation condition b = .03, SE = .02, t(154) = 1.62, p = .10 b = -0.131, se = 0.312, t(81) = -0.420, p = .675 t(1, 246) = -0.428, p = .669 No signal, consistent Note.
+[sec1.p57.s3] Original effect sizes were taken from Geers and Lassiter (2003, pp. 317-318).
+[sec1.p57.s4] Effect sizes are scaled differently because the original (English) and replication (German) NFC scales have a
+
+[sec1.p58.s1] AFFECTIVE EXPECTATIONS REPLICATION
+
+[sec1.p59.s1] 20 different number of items.
+[sec1.p59.s2] Scaling of original effects was not possible.
+[sec1.p59.s3] 1Using the reported and rounded values, the computed original p-value is p = .058 and not significant.
+[sec1.p59.s4] 2While we preregistered post hoc tests using Tukey Honest Significant Differences, we were made aware that planned contrast are more appropriate since there are clear hypotheses and since it is closer to the original study’s methods.
+[sec1.p59.s5] For the sake of transparency, we report both results.
+
+[sec1.p60.s1] Exploratory Analyses We assessed variance of the affect index and need for cognition to evaluate whether the target movie was ambivalent enough to be evaluated positively and negatively and to check whether participants may have only experienced one type of effect.
+[sec1.p60.s2] The distribution of the affect index was skewed towards negative evaluations and need for cognition scores were positively skewed.
+[sec1.p60.s3] Nevertheless, both scales had variance (see Figure 3 and
+
+[sec1.p61.s1] AFFECTIVE EXPECTATIONS REPLICATION
+
+[sec1.p62.s1] 21 Figure 4).
+[sec1.p62.s2] We compared the original and replication effect sizes using the approach suggested by Lakens (2022).
+[sec1.p62.s3] Therefore, effect sizes for the focal original and replication test were converted from η² to r and compared using a meta-analytical test for moderation by the replication.
+[sec1.p62.s4] Thereby, the replication effect was significantly smaller than the original effect.
+[sec1.p62.s5] The full model results are in Table 4.
+[sec1.p62.s6] Table 4 Fixed-Effects Moderator Model Testing Replication Success (Lakens, 2022) and Effect Sizes Converted to r Coefficient b SE z p 95% CI Intercept 0.200 0.076 2.63 .009 [.051, .349] Study (replication) −0.200 0.099 −2.02 .043 [-.394, -.006]
+
+[sec1.p63.s1] Note. k = 2 (original and replication study).
+[sec1.p63.s2] Effect sizes are Fisher's z-transformed correlations (r = √η²). b = unstandardized regression coefficient from fixed-effects meta-analytic model.
+[sec1.p63.s3] CI = confidence interval.
+[sec1.p63.s4] The moderator test QM(1) = 4.09, p = .043 indicates the replication effect size differed significantly from the original.
+
+[sec1.p64.s1] AFFECTIVE EXPECTATIONS REPLICATION
+
+[sec1.p65.s1] 22 Figure 3 Distribution of Affect Index Scores
+
+[sec1.p66.s1] Note.
+[sec1.p66.s2] N = 252.
+
+[sec1.p67.s1] AFFECTIVE EXPECTATIONS REPLICATION
+
+[sec1.p68.s1] 23 Figure 4 Distribution of Need for Cognition Scores
+
+[sec1.p69.s1] Note.
+[sec1.p69.s2] N = 252.
+
+[sec1.p70.s1] To test whether induction of expectations has led to an overall assimilation effect without any contrast effects or moderations, we ran an exploratory one-way ANOVA.
+[sec1.p70.s2] Mean differences between the three expectation conditions did not differ overall, F(2, 249) = 3.00, p = .052.
+[sec1.p70.s3] Responses are presented in Figure 5, exact values are available from the analysis script (https://osf.io/2m3w6).
+
+[sec1.p71.s1] AFFECTIVE EXPECTATIONS REPLICATION
+
+[sec1.p72.s1] 24 Figure 5 Affect scores by expectation condition.
+
+[sec1.p73.s1] Note.
+[sec1.p73.s2] Solid lines represent medians.
+[sec1.p73.s3] Affect index was measured on a 9-point scale with higher values reflecting positive assessment
+
+[sec1.p74.s1] AFFECTIVE EXPECTATIONS REPLICATION
+
+[sec1.p75.s1] 25 When asked to identify the correct ones of four statements about the movie, 149 participants (59.13%) identified all statements correctly, 77 (30.56%) identified 3/4, 22 (8.73%) identified 2/4, and 3 (1.19%) only identified 1/4 (1 missing value, 0.40%).
+[sec1.p75.s2] No participant got all four statements wrong.
+[sec1.p75.s3] Running the main hypothesis’ model only on the 149 participants that responded correctly to the four attention check items did not affect the results, F(5, 143) = 0.94, p = .459, R² = .032.
+
+[sec1.p76.s1] AFFECTIVE EXPECTATIONS REPLICATION
+
+[sec1.p77.s1] 26 Discussion and Limitations In our replication of Geers and Lassiter (2003) Study 1, we could not find an effect of affective expectations on affective experience nor a moderation of that effect by participants’ need for cognition.
+[sec1.p77.s2] It remains unclear whether the affective expectation model or the derived hypotheses are wrong or whether the study quality (e.g., statistical power, unclear efficacy of the manipulation) was insufficient to detect the effects.
+[sec1.p77.s3] Most importantly, a lack of statistical power (~80%) may have led to a non-significant finding (false-negative) though our sample size is considerably larger than the original (Nreplication= 252, Noriginal = 160).
+[sec1.p77.s4] We also did not conduct a strict manipulation check.
+[sec1.p77.s5] For example, creating the materials from scratch and not piloting the induction (whether people’s expectations actually change) may have led to a non-working manipulation.
+[sec1.p77.s6] However, we could show that participants remembered expectations were in line with the manipulation.
+[sec1.p77.s7] It is also unlikely that this difference was due to a hindsight bias as it did not affect the affective experience.
+[sec1.p77.s8] Another interpretation is that the manipulation did work but it was too weak.
+[sec1.p77.s9] Making the evaluations in the expectation induction movies even more extreme would put their credibility at risk but may be necessary to produce the effects predicted by the AEM.
+[sec1.p77.s10] The movie may also not be well suited for different types of expectations.
+[sec1.p77.s11] The affect index was skewed towards negative ratings.
+[sec1.p77.s12] However, variance of the affect index was large and with a generally negatively rated movie, main effects of affective expectations should have been detectable.
+[sec1.p77.s13] There has been little systematic research on whether switching to online for a replication study affects replication outcomes with the only evidence known to us revealing a small and imprecise negative effect (Boyce et al., 2023, Table 2).
+[sec1.p77.s14] Together with a sample size that was
+
+[sec1.p78.s1] AFFECTIVE EXPECTATIONS REPLICATION
+
+[sec1.p79.s1] 27 only about 1.5 times larger than the original study, statistical power may still have been insufficient.
+[sec1.p79.s2] While attentiveness of participants was high in our replication, the cover story may not have worked.
+[sec1.p79.s3] To test this, we recommend future studies to ask participants if they would indeed be willing to record their opinion on the movie and ask for contact details.
+[sec1.p79.s4] Finally, in the light of field-wide replication failures (e.g., Camerer et al., 2018; Open Science Collaboration, 2015), strong and persistent publication biases (e.g., Giner-Sorolla, 2012; Sterling, 1959), and imprecise effect size estimates (e.g., the p-value for the positive slope in the regression model was not significant based on the reported and rounded values), it is possible that effects that we tried to replicate were false positives.
+[sec1.p79.s5] Again, we do not believe that our results warrant this conclusion and that it is unclear whether our study simply failed to detect the effect or whether the effects are not robust.
+[sec1.p79.s6] Deviations from the Preregistration Sample size.
+[sec1.p79.s7] We did not achieve our preregistered target sample size for N = 400 participants but only N = 252, which still had >80% power for the original effect.
+[sec1.p79.s8] Replication effects are usually about 40-50% the size of original effects (Röseler et al., 2024) and the replication may thus have been underpowered.
+[sec1.p79.s9] Changes in the analysis code.
+[sec1.p79.s10] We made changes to the preregistered analysis code (https://osf.io/6ua4s) that we highlighted with “ADDED” or “CHANGED” in the final analysis code (https://osf.io/2m3w6).
+[sec1.p79.s11] These changes only included aesthetic changes or fixing of erroneous code.
+
+[sec1.p80.s1] Conclusion
+
+[sec1.p81.s1] AFFECTIVE EXPECTATIONS REPLICATION
+
+[sec1.p82.s1] 28 Given our failure to replicate the effects of affective expectation on ratings of a film, we believe that the generalizability and robustness of the finding from Geers and Lassiter (2003) Study 1 is limited.
+[sec1.p82.s2] We believe further research is necessary to determine effect sizes that are practically relevant and detectable, conditions for manipulations to work (e.g., about the expectation induction) and specific recommendations for stimuli with which the effects occur.
+[sec1.p82.s3] Moreover, researchers need to describe the precise background conditions that are necessary for assimilation and contrast patterns to arise or define the threshold when an assimilation effect turns into a contrast effect.
+[sec1.p82.s4] For example, we suggest the creation of a formal model (e.g., Robinaugh et al., 2021) that incorporates stimuli requirements such as whether the target movie should be ambivalent or not, and describes the relationship between expectations, experiences, and the tipping point (or region) between assimilation and contrast.
+[sec1.p82.s5] While, overall, there is little research revisiting the role of affective expectations in the laboratory and affective expectations were unrelated to affective experiences in this study, Röseler and Schütz (2021) could show that people who watch a movie early or play a game early after its release do so because they have more positive expectations and also rate it more positively (assimilation effect).
+[sec1.p82.s6] We thus see high potential for the AEM in relation to affective expectations, other fields such as placebo and nocebo effects, confirmation biases, the subject of assimilation and contrast in general (e.g., Röseler & Schütz, 2024), and its application in fields such as of health behavior, interpersonal relationships, or consumer behavior.
+[sec1.p82.s7] We believe that conducting research on the Affective Expectation Model requires significant resources.
+[sec1.p82.s8] Ideally, future research should use a controlled laboratory setting closer to the original study, create new and credible materials (e.g., like in the original study and in our online version, the expectation induction film should be set in an environment that is similar to
+
+[sec1.p83.s1] AFFECTIVE EXPECTATIONS REPLICATION
+
+[sec1.p84.s1] 29 the environment of the participants), conduct thorough pilot tests on the expectation induction and the target movie, use a freely available and non-copyrighted movie that should not need to be translated, include manipulation checks of the induction method, test for demand characteristics, and use a very large sample size (N ≥ 400).
+[sec1.p84.s2] Obviously, it should adhere to modern standards of open science (e.g., preregistered methods, hypotheses, and analysis script, open materials, open access) to facilitate reproduction and replication.
+[sec1.p84.s3] We hope that our study and materials will help to explore the limits of the AEM and encourage further replication attempts of studies on assimilation and contrast effects.
+
+[sec1.p85.s1] AFFECTIVE EXPECTATIONS REPLICATION
+
+[sec1.p86.s1] 30 Acknowledgments We thank Andrew Geers for his willingness to help in reconstructing the original experiment, his comments on our method, and for the interesting exchange.
+[sec1.p86.s2] We thank Anna Maria Müller, Hannah Kloß, Madeleine Bauer, Kathrin Friedinger, Jessica van den Bergh, and Katharina Drach for their help in designing and conducting the study.
+[sec1.p86.s3] CRediT Author Statement • Lukas Röseler: Conceptualization, Data curation, Formal analysis, Investigation, Methodology, Project administration, Resources, Software, Supervision, Validation, Visualization, Writing – original draft, Writing – review & editing • Christopher Doetsch: Conceptualization, Investigation, Methodology, Resources, Writing – review & editing • Nico Förster: Writing – original draft, Writing – review & editing • Ann-Kathrin Bruzsa: Conceptualization, Investigation, Methodology, Resources, Writing – review & editing • Marie Deublein: Conceptualization, Investigation, Methodology, Resources, Writing – review & editing • Eva Rieger: Conceptualization, Investigation, Methodology, Resources, Writing – review & editing • Charlotte Schmidt: Conceptualization, Investigation, Methodology, Resources, Writing – review & editing • Amelie Seitz: Conceptualization, Investigation, Methodology, Resources, Writing – review & editing • Antonia Wild: Conceptualization, Investigation, Methodology, Resources, Writing – review & editing
+
+[sec1.p87.s1] AFFECTIVE EXPECTATIONS REPLICATION
+
+[sec1.p88.s1] 31 Transparency and Openness Statement All materials are openly available at https://osf.io/rge23/.
+[sec1.p88.s2] These include the preregistered and final analysis scripts, the data sets, and the preregistrations.
+[sec1.p88.s3] The authors declare that they have emptied their file drawer on affective expectation studies.
+[sec1.p88.s4] Declaration of Conflict Interest Statement The authors declare that they have no conflicts of interest.
+[sec1.p88.s5] Financial Support Statement The authors report no financial support for this work.
+[sec1.p88.s6] Declaration of AI Use We used Claude Sonnet 4.6 to format newly added results in Tables 2 and 4 and check for correct reporting.
+
+[sec1.p89.s1] AFFECTIVE EXPECTATIONS REPLICATION
+
+[sec1.p90.s1] 32 References Ben-Shachar, M., Lüdecke, D., & Makowski, D. (2020). effectsize: Estimation of Effect Size Indices and Standardized Parameters.
+[sec1.p90.s2] Journal of Open Source Software, 5(56), 2815. https://doi.org/10.21105/joss.02815 Berzonsky, M. D., & Sullivan, C. (1992).
+[sec1.p90.s3] Social-Cognitive Aspects of Identity Style.
+[sec1.p90.s4] Journal of Adolescent Research, 7(2), 140–155. https://doi.org/10.1177/074355489272002 Bless, H., Wänke, M., Bohner, G., Fellhauer, R. F., & Schwarz, N. (1994).
+[sec1.p90.s5] Need for cognition: eine Skala zur Erfassung von Engagement und Freude bei Denkaufgaben: Need for cognition: a scale measuring engagement and happiness in cognitive tasks.
+[sec1.p90.s6] Zeitschrift Für Sozialpsychologie, 25, 147–154.
+[sec1.p90.s7] Boyce, V., Mathur, M., & Frank, M. C. (2023).
+[sec1.p90.s8] Eleven years of student replication projects provide evidence on the correlates of replicability in psychology.
+[sec1.p90.s9] Royal Society Open Science, 10(11), 231240. https://doi.org/10.1098/rsos.231240 Cacioppo, J. T., & Petty, R. E [Richard E. (1982).
+[sec1.p90.s10] The need for cognition.
+[sec1.p90.s11] Journal of Personality and Social Psychology, 42(1), 116–131. https://doi.org/10.1037/0022- 3514.42.1.116 Cacioppo, J. T., Petty, R. E [R. E.], & Kao, C. F. (1984).
+[sec1.p90.s12] The efficient assessment of need for cognition.
+[sec1.p90.s13] Journal of Personality Assessment, 48(3), 306–307. https://doi.org/10.1207/s15327752jpa4803_13 Cacioppo, J. T., Petty, R. E [Richard E.], & Morris, K. J. (1983).
+[sec1.p90.s14] Effects of need for cognition on message evaluation, recall, and persuasion.
+[sec1.p90.s15] Journal of Personality and Social Psychology, 45(4), 805–818. https://doi.org/10.1037/0022-3514.45.4.805
+
+[sec1.p91.s1] AFFECTIVE EXPECTATIONS REPLICATION
+
+[sec1.p92.s1] 33 Camerer, C. F., Dreber, A., Holzmeister, F., Ho, T.‑H., Huber, J., Johannesson, M., Kirchler, M., Nave, G., Nosek, B. A., Pfeiffer, T., Altmejd, A., Buttrick, N., Chan, T., Chen, Y., Forsell, E., Gampa, A., Heikensten, E., Hummer, L., Imai, T., . . .
+[sec1.p92.s2] Wu, H. (2018).
+[sec1.p92.s3] Evaluating the replicability of social science experiments in Nature and Science between 2010 and 2015.
+[sec1.p92.s4] Nature Human Behaviour, 2(9), 637–644. https://doi.org/10.1038/s41562-018-0399-z Dragulescu, A. A. (2014). xlsx: Read, write, format Excel 2007 and Excel 97/2000/XP/2003 files.
+[sec1.p92.s5] R package version 0.5.7 [Computer software]. https://CRAN.R-project.org/package=xlsx Epley, N., & Gilovich, T. (2006).
+[sec1.p92.s6] The anchoring-and-adjustment heuristic: Why the adjustments are insufficient.
+[sec1.p92.s7] Psychological Science, 17(4), 311–318. https://doi.org/10.1111/j.1467- 9280.2006.01704.x Geers, A. L., & Lassiter, G. D. (1999).
+[sec1.p92.s8] Affective Expectations and Information Gain: Evidence for Assimilation and Contrast Effects in Affective Experience.
+[sec1.p92.s9] Journal of Experimental Social Psychology, 35, 394–413. https://doi.org/10.1006/jesp.1999.1377 Geers, A. L., & Lassiter, G. D. (2002).
+[sec1.p92.s10] Effects of Affective Expectations on Affective Experience: The Moderating Role of Optimism-Pessimism.
+[sec1.p92.s11] Personality and Social Psychology Bulletin, 28(8), 1026–1039. https://doi.org/10.1177/01461672022811002 Geers, A. L., & Lassiter, G. D. (2003).
+[sec1.p92.s12] Need for Cognition and Expectations as Determinants of Affective Experience.
+[sec1.p92.s13] Basic and Applied Social Psychology, 25(4), 313–325. https://doi.org/10.1207/S15324834BASP2504_5 Giner-Sorolla, R. (2012).
+[sec1.p92.s14] Science or Art?
+[sec1.p92.s15] How Aesthetic Standards Grease the Way Through the Publication Bottleneck but Undermine Science.
+[sec1.p92.s16] Perspectives on Psychological Science :
+
+[sec1.p93.s1] AFFECTIVE EXPECTATIONS REPLICATION
+
+[sec1.p94.s1] 34 A Journal of the Association for Psychological Science, 7(6), 562–571. https://doi.org/10.1177/1745691612457576 Kelley, K. (2026).
+[sec1.p94.s2] MBESS (Version 5.0.1) [computer software and manual].
+[sec1.p94.s3] Retrieved from
+
+[sec1.p95.s1] https://CRAN.R-project.org/package=MBESS Klaaren, K. J [Kristen J.], Hodges, S. D., & Wilson, T. D. (1994).
+[sec1.p95.s2] The Role of Affective Expectations in Subjective Experience and Decision-Making.
+[sec1.p95.s3] Social Cognition, 12(2), 77–101. https://doi.org/10.1521/soco.1994.12.2.77 Lakens, D. (2022).
+[sec1.p95.s4] Improving Your Statistical Inferences.
+[sec1.p95.s5] Retrieved from https://lakens.github.io/statistical_inferences/. https://doi.org/10.5281/zenodo.6409077 Lassiter, G. D., Briggs, M. A., & Bowman, R. E. (1991).
+[sec1.p95.s6] Need for Cognition and the Perception of Ongoing Behavior.
+[sec1.p95.s7] Personality and Social Psychology Bulletin, 17(2), 156–160. https://doi.org/10.1177/014616729101700206 LeBel, E. P., Vanpaemel, W., Cheung, I., & Campbell, L. (2019).
+[sec1.p95.s8] A Brief Guide to Evaluate Replications.
+[sec1.p95.s9] Meta-Psychology, 3. https://doi.org/10.15626/MP.2018.843 Leiner, D. J. (2019).
+[sec1.p95.s10] SoSci Survey (Version 3.1.06) [Computer software]. https://www.soscisurvey.de Lenth, R. V., & Piaskowski, J. (2026). emmeans: Estimated marginal means, aka least-squares means (R package version 2.0.3) [Computer software]. https://CRAN.R- project.org/package=emmeans Open Science Collaboration (2015).
+[sec1.p95.s11] Psychology: Estimating the reproducibility of psychological science.
+[sec1.p95.s12] Science (New York, N.Y.), 349(6251), aac4716. https://doi.org/10.1126/science.aac4716
+
+[sec1.p96.s1] AFFECTIVE EXPECTATIONS REPLICATION
+
+[sec1.p97.s1] 35 R Core Team.
+[sec1.p97.s2] (2018).
+[sec1.p97.s3] R [Computer software].
+[sec1.p97.s4] R Foundation for Statistical Computing. https://www.R-project.org/ Revelle, W. (2018). psych: Procedures for Personality and Psychological Research, Version = 1.8.3 [Computer software].
+[sec1.p97.s5] Northwestern University, Evanston, Illinois, USA. https://CRAN.R-project.org/package=psych Robinaugh, D. J., Haslbeck, J. M. B., Ryan, O., Fried, E. I., & Waldorp, L. J. (2021).
+[sec1.p97.s6] Invisible Hands and Fine Calipers: A Call to Use Formal Theory as a Toolkit for Theory Construction.
+[sec1.p97.s7] Perspectives on Psychological Science : A Journal of the Association for Psychological Science, 16(4), 725–743. https://doi.org/10.1177/1745691620974697 Röseler, L., Bögler, H. L., Koßmann, L., Krueger, S., Bickenbach, S., Bühler, R., Della Guardia, J., Köppel, L.‑M., Ponader, S., Roßmaier, K., & Sing, J. (2022).
+[sec1.p97.s8] Replicating Epley and Gilovich: Need for Cognition, Cognitive Load, and Forewarning do not Moderate Anchoring Effects.
+[sec1.p97.s9] Advance online publication. https://doi.org/10.31234/osf.io/bgp3m Röseler, L., Kaiser, L., Doetsch, C. A., Klett, N., Seida, C., Schütz, A., Aczel, B., Adelina, N., Agostini, V., Alarie, S., Albayarak-Aydemir, N., AlDoh, A., Al-Hoorie, A. H., Azevedo, F., Baker, B. J., Barth, C. L., Beitner, J., Brick, C., Brohmer, H., . . .
+[sec1.p97.s10] Zhang, Y. (2024).
+[sec1.p97.s11] The Replication Database: Documenting the Replicability of Psychological Science.
+[sec1.p97.s12] Advance online publication. https://doi.org/10.31222/osf.io/me2ub Röseler, L., & Schütz, A. (2021, March 14).
+[sec1.p97.s13] What You Expect is What You Get: The Role of Affective Expectations in Real-World Experiences. https://doi.org/10.31219/osf.io/2tr6q Röseler, L., & Schütz, A. (2024).
+[sec1.p97.s14] Assimilation and Contrast are Everywhere.
+[sec1.p97.s15] Advance online publication. https://doi.org/10.31234/osf.io/krwcn
+
+[sec1.p98.s1] AFFECTIVE EXPECTATIONS REPLICATION
+
+[sec1.p99.s1] 36 Simmons, J. P., Nelson, L. D., & Simonsohn, U. (2012).
+[sec1.p99.s2] A 21 Word Solution.
+[sec1.p99.s3] SSRN Electronic Journal.
+[sec1.p99.s4] Advance online publication. https://doi.org/10.2139/ssrn.2160588 Sterling, T. D. (1959).
+[sec1.p99.s5] Publication decisions and their possible effects on inferences drawn from tests of significance—or vice versa.
+[sec1.p99.s6] Journal of the American Statistical Association, 54(285), 30–34. http://www.jstor.com/stable/2282137 Viechtbauer, W. (2010).
+[sec1.p99.s7] Conducting meta-analyses in R with the metafor package.
+[sec1.p99.s8] Journal of Statistical Software, 36(3), 1-48. https://doi.org/10.18637/jss.v036.i03 Wickham, H. (2016). ggplot2: Elegant graphics for data analysis (Second edition).
+[sec1.p99.s9] Use R!
+[sec1.p99.s10] Springer.
+[sec1.p99.s11] Wickham, H., Francois, R., Henry, L., & Müller, K. (2018). dplyr: A Grammar of Data Manipulation.
+[sec1.p99.s12] R package version 0.7.6 [Computer software]. https://CRAN.R- project.org/package=dplyr Wilson, T. D., & Klaaren, K. J [K. J.].
+[sec1.p99.s13] (1992).
+[sec1.p99.s14] "Expectation whirls me round": The role of affective expectations in affective experience.
+[sec1.p99.s15] In M. S. Clark (Ed.), Review of personality and social psychology: Vol. 14.
+[sec1.p99.s16] Emotion and social behavior (pp. 1–31).
+[sec1.p99.s17] Sage.
+[sec1.p99.s18] Wilson, T. D., Lisle, D. J., Kraft, D., & Wetzel, C. G. (1989).
+[sec1.p99.s19] Preferences as expectation-driven inferences: Effects of affective expectations on affective experience.
+[sec1.p99.s20] Journal of Personality and Social Psychology, 56(4), 519–530. https://doi.org/10.1037/0022- 3514.56.4.519 Zellner, D. A., Strickhouser, D., & Tornow, C. E. (2004).
+[sec1.p99.s21] Disconfirmed Hedonic Expectations Produce Perceptual Contrast, Not Assimilation.
+[sec1.p99.s22] The American Journal of Psychology, 117(3), 363. https://doi.org/10.2307/4149006 Zemeckis, R. (Director).
+[sec1.p99.s23] (1994).
+[sec1.p99.s24] Forrest Gump.
+[sec1.p99.s25] USA.
+

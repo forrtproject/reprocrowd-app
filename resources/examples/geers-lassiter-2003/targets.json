@@ -1,0 +1,2693 @@
+{
+  "schema_version": "1.0",
+  "kind": "targets",
+  "manual": [],
+  "llm_runs": [
+    {
+      "id": "run1",
+      "disabled": false,
+      "request": {
+        "extraction": "ex-local",
+        "scope": {
+          "sections": [],
+          "items": []
+        }
+      },
+      "call": {
+        "id": "targets-20261113T114025-a705",
+        "task": "targets",
+        "profile": "opencode",
+        "argv": [
+          "opencode",
+          "run",
+          "--format",
+          "json",
+          "-m",
+          "unigpt/DeepSeek-V4-Flash"
+        ],
+        "model": "unigpt/DeepSeek-V4-Flash",
+        "effort": "",
+        "template": "default",
+        "instructions": "",
+        "prompt": "Extract the quantitative and categorical RESULTS reported in the following excerpts of a scholarly paper. They are reproduction targets for a computational reproducibility check.\n\nEvery sentence, figure and table has an id in square brackets. Each result must cite the id(s) it comes from in \"refs\".\n\nGuidelines:\n- One item per distinct reported number: estimates, confidence-interval bounds (as separate items), test statistics, p-values, percentages, sample sizes, means, SDs. Skip numbers that are not results (years, citations, section numbers, parameter settings).\n- \"categorical\": checkable qualitative findings. \"expected\" is REQUIRED: the finding as a short string (e.g. \"significant\", \"not significant\", \"positive\").\n- \"table\": each table you are asked about becomes exactly ONE item. \"expected\" is the rows of cell strings exactly as printed, header row included. Cite the table id.\n- \"figure\": only for figures whose content can be re-plotted. \"expected\" is null. Cite the figure id.\n- \"number\": \"expected\" is the number as printed (76 with unit \"%\" for 76%). Use \"comparator\" for bounds (\"p < .001\" → \"<\" with 0.001; \"approximately\" → \"~\"). Set \"decimals\" to the decimals as printed.\n- \"quote\" is the verbatim text that states the result.\n\nOutput ONLY one JSON object, with no commentary and no code fences, that validates against this JSON Schema:\n\n{\n \"$schema\": \"https://json-schema.org/draft/2020-12/schema\",\n \"$id\": \"https://reprocrowd.example/schemas/target-llm-output.schema.json\",\n \"title\": \"TargetLlmOutput (output of the target-extraction prompt)\",\n \"$defs\": {\n  \"TargetLlmItem\": {\n   \"properties\": {\n    \"type\": {\n     \"enum\": [\n      \"number\",\n      \"categorical\",\n      \"table\",\n      \"figure\"\n     ],\n     \"title\": \"Type\",\n     \"type\": \"string\"\n    },\n    \"description\": {\n     \"title\": \"Description\",\n     \"type\": \"string\"\n    },\n    \"quote\": {\n     \"default\": \"\",\n     \"title\": \"Quote\",\n     \"type\": \"string\"\n    },\n    \"expected\": {\n     \"anyOf\": [\n      {\n       \"type\": \"number\"\n      },\n      {\n       \"type\": \"integer\"\n      },\n      {\n       \"type\": \"string\"\n      },\n      {\n       \"items\": {\n        \"items\": {\n         \"type\": \"string\"\n        },\n        \"type\": \"array\"\n       },\n       \"type\": \"array\"\n      },\n      {\n       \"type\": \"null\"\n      }\n     ],\n     \"default\": null,\n     \"title\": \"Expected\"\n    },\n    \"comparator\": {\n     \"anyOf\": [\n      {\n       \"enum\": [\n        \"=\",\n        \"<\",\n        \"<=\",\n        \">\",\n        \">=\",\n        \"~\"\n       ],\n       \"type\": \"string\"\n      },\n      {\n       \"type\": \"null\"\n      }\n     ],\n     \"default\": null,\n     \"title\": \"Comparator\"\n    },\n    \"decimals\": {\n     \"anyOf\": [\n      {\n       \"type\": \"integer\"\n      },\n      {\n       \"type\": \"null\"\n      }\n     ],\n     \"default\": null,\n     \"title\": \"Decimals\"\n    },\n    \"unit\": {\n     \"anyOf\": [\n      {\n       \"type\": \"string\"\n      },\n      {\n       \"type\": \"null\"\n      }\n     ],\n     \"default\": null,\n     \"title\": \"Unit\"\n    },\n    \"refs\": {\n     \"description\": \"ids in brackets the result comes from\",\n     \"items\": {\n      \"type\": \"string\"\n     },\n     \"minItems\": 1,\n     \"title\": \"Refs\",\n     \"type\": \"array\"\n    }\n   },\n   \"required\": [\n    \"type\",\n    \"description\",\n    \"refs\"\n   ],\n   \"title\": \"TargetLlmItem\",\n   \"type\": \"object\"\n  }\n },\n \"description\": \"Output format of the target-extraction prompt.\",\n \"properties\": {\n  \"targets\": {\n   \"items\": {\n    \"$ref\": \"#/$defs/TargetLlmItem\"\n   },\n   \"title\": \"Targets\",\n   \"type\": \"array\"\n  }\n },\n \"required\": [\n  \"targets\"\n ],\n \"type\": \"object\"\n}\n\nEXCERPTS:\n\n## [sec1] \n\n[sec1.p1.s1] AFFECTIVE EXPECTATIONS REPLICATION\n\n[sec1.p2.s1] 1 No Evidence for the Affective Expectation Model: Replication of Geers and Lassiter (2003) Lukas Röseler1,2,3, Christopher Doetsch1, Nico Förster4, Ann-Kathrin Bruzsa1, Marie Deublein1, Eva Rieger1, Charlotte Schmidt1, Amelie Seitz1, Antonia Wild1 1 University of Bamberg 2University of Münster 3Münster Center for Open Science 4Harz University of Applied Sciences\n\n[sec1.p3.s1] Lukas Röseler https://orcid.org/0000-0002-6446-1901 Christopher Doetsch https://orcid.org/0009-0001-6824-1332 Nico Förster https://orcid.org/0009-0005-6312-3096 Ann-Kathrin Bruzsa https://orcid.org/0009-0003-2322-4090 Marie Deublein Eva Rieger Charlotte Schmidt https://orcid.org/0009-0000-9148-4079 Amelie Seitz Antonia Wild\n\n[sec1.p4.s1] Author Note Correspondence concerning this article should be addressed to Lukas Röseler, University of Münster, Email: lukas.roeseler@uni-muenster.de.\n[sec1.p4.s2] Authors 4-9 contributed equally to the manuscript and are listed in alphabetical order.\n\n[sec1.p5.s1] Submitted to Meta-Psychology.\n[sec1.p5.s2] Participate in open peer review by sending an email to open.peer.reviewer@gmail.com.\n[sec1.p5.s3] The full editorial process of all articles under review at Meta-Psychology can be found following this link: https://tinyurl.com/mp-submissions You will find this preprint by searching for the first author's name.\n\n[sec1.p6.s1] AFFECTIVE EXPECTATIONS REPLICATION\n\n[sec1.p7.s1] 2 Abstract According to the Affective Expectation Model (AEM), people’s evaluations of experiences depend on their expectations.\n[sec1.p7.s2] This generally happens in an assimilative way (positive expectations lead to positive experiences) unless there is a strong discrepancy between the expectation and the experience.\n[sec1.p7.s3] In this case, a contrast effect occurs (positive expectations lead to negative experiences).\n[sec1.p7.s4] We conducted an online replication of Study 1 from Geers and Lassiter (2003) where affective experiences were positively correlated with affective expectations for people with a low need for cognition and negatively correlated for people with a high need for cognition.\n[sec1.p7.s5] None of the original effects could be replicated, that is, there was no evidence for a difference between the groups nor for a moderation of affective experiences by need for cognition (η²original = .04, 90% CI [.005, .10] , η²replication < 0.01, 90% CI [0, 0.02]).\n[sec1.p7.s6] We discuss potential limitations of the AEM.\n[sec1.p7.s7] The study’s preregistration, data, and materials are available online (https://osf.io/rge23/).\n[sec1.p7.s8] Keywords: affective expectations, replication, assimilation and contrast, need for cognition\n\n[sec1.p8.s1] AFFECTIVE EXPECTATIONS REPLICATION\n\n[sec1.p9.s1] 3 No Evidence for the Affective Expectation Model: Replication of Geers and Lassiter (2003) “Life is like a box of chocolate – you never know what you are going to get” (Zemeckis, 1994).\n[sec1.p9.s2] Forrest Gump leads us through the film named after him with his life philosophy, which sticks to him and his experiences throughout the film.\n[sec1.p9.s3] While we will never know what will await us, we often form expectations of events which have not yet taken place and lie in the future.\n[sec1.p9.s4] Although expectations are often formed spontaneously, we have some control over what to expect from a certain situation.\n[sec1.p9.s5] For example, big expectations could not be fulfilled and lead to a feeling of disappointment, following an adjustment of expectations to avoid a repetition of said feeling.\n[sec1.p9.s6] But is this really the best coping strategy?\n[sec1.p9.s7] According to the Affective Expectation Model (AEM), this might not be the case.\n[sec1.p9.s8] Here, expectations are defined as “people’s predictions about how they will feel in a particular situation or toward a specific stimulus” (Wilson & Klaaren, 1992, p.\n[sec1.p9.s9] 3).\n[sec1.p9.s10] According to the AEM “affect and emotion are often formed in an expectation- driven fashion” (Wilson et al., 1989).\n[sec1.p9.s11] Thus, the affective evaluation of an event (i.e., how sad or funny we rate something) does not only depend on its quality but also our affective expectations (i.e., how sad or funny we expect to rate something).\n[sec1.p9.s12] Generally, affective expectations are positively associated with affective experiences (assimilation effect: more positive affective expectations lead to a more positive affective experience) unless the affective expectation of a stimulus and its actual valence are incongruent and the incongruence is noticed (contrast effect: more positive affective expectations lead to a less positive affective experiences).\n[sec1.p9.s13] Geers and Lassiter demonstrated assimilation and contrast effects by inducing a finer unitization of information regarding the stimulus and therefore enhancing the likeliness to detect an incongruence (Geers & Lassiter, 1999) and by including participants’ optimism (Geers & Lassiter, 2002) and need for cognition (Geers & Lassiter, 2003) in the model.\n[sec1.p9.s14] Further\n\n[sec1.p10.s1] AFFECTIVE EXPECTATIONS REPLICATION\n\n[sec1.p11.s1] 4 experiments have also shown a hedonic contrast to a previously formed expectation when evaluating the taste of a specific food item, about which participants received varying information (Zellner et al., 2004).\n[sec1.p11.s2] Choice of target study We replicated Study 1 from Geers and Lassiter (2003) to re-test the hypothesis that participants with a high need for cognition (NFC) are more likely to notice an incongruence between expectation and experience and therefore produce contrast effects.\n[sec1.p11.s3] The concept of need for cognition is understood as “the tendency for an individual to engage in and enjoy thinking” (Cacioppo & Petty, 1982, p.116).\n[sec1.p11.s4] Especially the tendency to “seek, acquire, think about, and reflect back on information to make sense of stimuli, relationships, and events in their world” (Cacioppo & Petty, 1982, p.\n[sec1.p11.s5] 198) is what enhances the probability of a finer, more pronounced elaboration of information and therefore could influence one’s capability to detect an incongruence of expectation-stimulus relation.\n[sec1.p11.s6] Individuals with high need for cognition scores thus evaluate messages more strongly in dependence of their quality (Cacioppo et al., 1983), are more likely to have an information-oriented identity style (Berzonsky & Sullivan, 1992) and divide experiences into more meaningful actions and therefore memorize them better (Lassiter et al., 1991) than individuals low in need for cognition.\n[sec1.p11.s7] The tendency of persons with a high need for cognition to be “more likely to scrutinize their environment than individuals low in need for cognition” (Geers & Lassiter, 2003, p.\n[sec1.p11.s8] 315) should lead to a contrast effect of expectations on experiences if expectations and experiences do not match.\n[sec1.p11.s9] We chose to replicate an experiment that includes assimilation and contrast due to its role in research application: Creating and managing affective expectations is an important skill in politics, management, or marketing.\n[sec1.p11.s10] In such scenarios, it is important to know how an induced\n\n[sec1.p12.s1] AFFECTIVE EXPECTATIONS REPLICATION\n\n[sec1.p13.s1] 5 expectation can influence the evaluation of a policy, a recommendation, or a directive.\n[sec1.p13.s2] Moreover, models reconciling contradictory findings of assimilation and contrast can be found throughout many areas of psychology and need for cognition is listed as a (potential) moderator in several of these models (Röseler & Schütz, 2024).\n[sec1.p13.s3] For example, the need for cognition as a moderator of anchoring effects is argued to work in a similar way (Epley & Gilovich, 2006) but could not be replicated (Röseler et al., 2022).\n[sec1.p13.s4] Finally, of the works on affective expectations and simultaneous assimilation and contrast, the chosen study is the most cited one with 164 Google Scholar citations (as of May 2024).\n[sec1.p13.s5] Method As part of a seminar on replication research with students of Psychology M.Sc. from different semesters, we conducted a replication of Study 1 from Geers and Lassiter (2003).\n[sec1.p13.s6] Original Study In the original study, 160 undergraduates were asked to watch and evaluate a video.\n[sec1.p13.s7] They were told in advance that the movie “has won many awards and has received much praise from other students” (p.\n[sec1.p13.s8] 316, positive expectation condition) or that the movie is “has been described as boring and tedious by other students” (p.\n[sec1.p13.s9] 316, negative expectation condition) or they did not receive any information (no expectation condition).\n[sec1.p13.s10] They were also informed that some students will be chosen at random to have their impressions of the film recorded, but no students were actually contacted.\n[sec1.p13.s11] In the positive and negative conditions, participants were shown the expectation induction videos as an example of what they might have to do later.\n[sec1.p13.s12] Participants then watched the movie Don’t Shove or a clip from City Lights, rated the movie (affect index), and their need for cognition was measured.\n\n[sec1.p14.s1] AFFECTIVE EXPECTATIONS REPLICATION\n\n[sec1.p15.s1] 6 In line with the affective expectation model, Geers and Lassiter found that expectations were positively associated with the movie rating but that this relationship turned negative for participants with a high need for cognition.\n[sec1.p15.s2] Replication Procedure In our replication, participants were thanked for participating and told that it was about assessment of movies, that the study will take 15 minutes, and that students of the University of Bamberg can receive 0.25 respondent-credits (e.g., 15 minutes worth of course credit for the participation in research).\n[sec1.p15.s3] They were asked to complete the study using a laptop or PC and they were presented the informed consent, that is, that they are participating voluntarily, anonymously, where they can ask questions, and that we will publish the anonymized dataset.\n[sec1.p15.s4] Like in the original study, we announced that they would watch a five minutes movie that others found a) popular, b) boring, or no context information was provided.\n[sec1.p15.s5] After watching the movie, participants rated the movie, how often they are watching movies and if they pay attention to awards, what their expectation was before watching it, answered an attention check item, completed the Need for Cognition scale, and responded to demographic questions.\n[sec1.p15.s6] Open Science Practices The entire study and analysis plan including the script have been preregistered before data collection (https://osf.io/kx5gw).\n[sec1.p15.s7] All materials are available online (https://osf.io/rge23/).\n[sec1.p15.s8] We report how we determined our sample size, all data exclusions, all manipulations, and all measures in the study (Simmons et al., 2012).\n[sec1.p15.s9] All materials are openly available at https://osf.io/rge23/, including the preregistered and final analysis scripts, the data sets, and the preregistrations.\n[sec1.p15.s10] We declare that we have emptied our file drawer on affective expectation studies.\n\n[sec1.p16.s1] AFFECTIVE EXPECTATIONS REPLICATION\n\n[sec1.p17.s1] 7 Materials We tried to closely mirror the original study but had to deviate in critical aspects: None of the original study’s materials were available anymore, the materials were likely not transferable due to us using an online setting, and we had to adapt the materials to a modern German sample and an online version to meet the need for a large sample size.\n[sec1.p17.s2] We created new expectation induction films where, like in the original study, a female student describes the film for 30 s in a positive (https://osf.io/ad239) and a negative (https://osf.io/xzyh3) way.\n[sec1.p17.s3] According to an informal exchange with Andrew Geers, the original study was conducted in 1998 in a lab at Ohio University and none of the materials were available anymore.\n[sec1.p17.s4] For the original study, the videos of the persons talking about the movie and inducing expectations were recorded in the same room as the room where the study sessions were conducted, whereas in our online replication, this was not possible.\n[sec1.p17.s5] Thus, we changed the cover story to match the online setting and had the prerecorded video being filmed at another student’s home.\n[sec1.p17.s6] It remained similar to the original study’s cover story, namely that some participants would be randomly selected to record their own opinion about the film.\n[sec1.p17.s7] With the help of Andrew Geers, we could recreate the excerpt from the target film Don’t Shove.\n[sec1.p17.s8] It is a black and white silent slapstick comedy short film and the used excerpt is available online (https://osf.io/kqxe2).\n[sec1.p17.s9] It was meant to be ambiguous with regard to being funny or unfunny.\n[sec1.p17.s10] The excerpt shows two men who compete over impressing a woman and thereby playing pranks on each other such as switching out a feather present with a smoking pipe.1 The first 30 s of the film and the section after 6:30 were removed so that the movie ended with a man (Gus Leonard) screaming “My hat!”.\n[sec1.p17.s11] Thus, the original 9 min long video was cut to 6 minutes.\n\n[sec1.p18.s1] 1 The entire movie is available in the public domain (e.g., https://en.wikipedia.org/wiki/Don%27t_Shove).\n\n[sec1.p19.s1] AFFECTIVE EXPECTATIONS REPLICATION\n\n[sec1.p20.s1] 8 Moreover, we added German subtitles to the text that is presented in the movie.\n[sec1.p20.s2] We dropped the City Lights movie from the experiment because (1) the two movies had the same effect in the original study, (2) and it is unknown which 5-minute-excerpt of the 87 min long movie was used.\n[sec1.p20.s3] As in the original study, the affect index was comprised of three items in our study (How much did you like the movie?\n[sec1.p20.s4] How funny did you find the movie?\n[sec1.p20.s5] How pleasant was watching the movie?) with a 9-point-scale from 1 = not at all to 9 = very much.\n[sec1.p20.s6] Three further items were used to support the cover story (How often do you go to the cinema?\n[sec1.p20.s7] How often do you use streaming services?\n[sec1.p20.s8] When choosing a film, how often do you pay attention to whether it has received any awards?) with a 9-point-scale from 1 = never to 9 = very often.\n[sec1.p20.s9] As a quasi- manipulation check, we included an additional item asking how much people expected to like the movie before they saw it (1 = not at all, 9 = very much).\n[sec1.p20.s10] For exploratory purposes, we also asked participants to indicate which of four things happened in the movie (check all that apply; the present was switched with a feather [false], everybody is going to the roller-skating rink [correct], the little brother willie is beaten [false], the protagonist fell on somebody’s hat in the end [true]).\n[sec1.p20.s11] To measure need for cognition, we used a German version with 16 items and seven response options from completely inaccurate to completely accurate (Bless et al., 1994).\n[sec1.p20.s12] Note that the original study used an English scale with 18 items.\n[sec1.p20.s13] Half of the participants completed the scale before watching the movie and the other half completed it after watching and rating the movie.\n[sec1.p20.s14] Afterwards, participants were asked about their age, gender, occupation, field of study, and if they would like to receive course credit for their participation (students of the University of Bamberg were eligible).\n[sec1.p20.s15] The final questionnaire is available online (in German, https://osf.io/rnt74).\n[sec1.p20.s16] The study was programmed with SoSciSurvey (Leiner, 2019) and ran from January 18, 2023 until March 27, 2023.\n\n[sec1.p21.s1] AFFECTIVE EXPECTATIONS REPLICATION\n\n[sec1.p22.s1] 9 Replication closeness evaluation We reached out to Andrew Geers, one of the original authors, who helped us in reconstructing some of the materials, more precisely which parts of the films were used, how the materials were created and other details (personal communication, January 10, 2023).\n[sec1.p22.s2] In our replication, we tried to stay as close to the original study as possible.\n[sec1.p22.s3] However, we deemed some changes necessary, such as translating the study from English to German, providing German subtitles for the English movie, conducting the study online instead of on site.\n[sec1.p22.s4] An overview of all differences is provided in Table 1.\n\n[sec1.p23.s1] AFFECTIVE EXPECTATIONS REPLICATION\n\n[sec1.p24.s1] 10 Table 1 Differences between the original study and the replication.\n[sec1.p24.s2] Study feature Original Study Replication Reason for change Language of questionnaire\n\n[sec1.p25.s1] English German German participants Type of sample University undergraduates Mixed sample, containing students, employed and unemployed subjects Heterogeneous sample should increase NFC variance and thereby the effect size\n\n[sec1.p26.s1] Compensation Partial course credit Course credit and feedback\n\n[sec1.p27.s1] Facilitate participant recruitment Type of instructions Watching and evaluation of a video segment\n\n[sec1.p28.s1] Watching and evaluation of a video segment — Main variables that were collected\n\n[sec1.p29.s1] NFC, affective experience, affective expectation\n\n[sec1.p30.s1] NFC, affective experience, affective expectation\n\n[sec1.p31.s1] — Further variables that were collected\n\n[sec1.p32.s1] Age, sex, viewing behavior Age, sex, profession, viewing behavior, study program, substantive questions\n\n[sec1.p33.s1] — Items used Need for Cognition Scale by Cacioppo et al. (1984); affective experience items adapted from Klaaren et al. (1994)\n\n[sec1.p34.s1] Need for Cognition Scale by Bless et al. (1994) German participants Exclusion criteria Not reported Participants must have completed all of the following variables: NFC, affect index, experimental group Data analysis required non- missing values\n\n[sec1.p35.s1] Administration In person (lab) Online Facilitate participant recruitment Manipulation check None Remembered expectation Non-working manipulation check could uncover faulty induction of expectations Presented movies Don’t Shove, City Lights Don’t Shove Using different movies may increase variance and reduce statistical power\n\n[sec1.p36.s1] AFFECTIVE EXPECTATIONS REPLICATION\n\n[sec1.p37.s1] 11 A Priori Sample Size Determination In their study, Geers and Lassiter found that, overall, “[t]he affective reactions of the negative-expectation participants were less positive than those of the no-expectation participants, regardless of their level of need for cognition, F(1, 156) = 12.09, MSE = 3.30, p = .001, r² = .07”, f = 0.270, η² = .07, 90% CI [.02, .14] (p.\n[sec1.p37.s2] 317) and that “relative to no-expectation participants, the affective reactions of those in the positive-expectation condition became more positive as the need for cognition decreased (i.e., an assimilation effect), and less positive as level of need for cognition increased (i.e., a contrast effect), F(1, 154) = 6.40, MSE = 3.21, p = .01, r² = .04”, f = 0.200, η² = .04, 90% CI [.005, .10] (p.\n[sec1.p37.s3] 318, N = 160).\n[sec1.p37.s4] To achieve 95% power for the smaller of these two effects of f = 0.2, we would have needed 390 participants.\n[sec1.p37.s5] Notably, the confidence intervals computed with the esc R-package include zero, whereas the p-values being smaller than .05 indicate that this should not be the case.\n[sec1.p37.s6] We rounded this number to N = 400 (see https://osf.io/6ua4s for the preregistered power analysis code), which corresponds to 2.5 times the original sample size.\n[sec1.p37.s7] Note that we did not achieve this sample size.\n[sec1.p37.s8] Instead, only N = 252 participants took part in the study and could be used for the data analysis after applying exclusion criteria (see analysis plan).\n[sec1.p37.s9] Achieved power was thus 81.37% for f = 0.2.\n[sec1.p37.s10] Analysis Plan Data analysis was preregistered and conducted with R version 4.3.2 (R Core Team, 2018) and the packages esc (for effect size calculation; Dragulescu, 2014), psych (for reliability analysis and descriptives; Revelle, 2018), ggplot2 (for plotting; Wickham, 2016), dplyr (for na_if(); Wickham et al., 2018), effectsize (the calculation of effect sizes; Ben-Shachar et al., 2020), emmeans (Lenth & Piaskowski, 2026), MBESS (Kelley, 2026), and metafor\n\n[sec1.p38.s1] AFFECTIVE EXPECTATIONS REPLICATION\n\n[sec1.p39.s1] 12 (Viechtbauer, 2010).\n[sec1.p39.s2] The entire analysis script was preregistered, and changes or additions are marked as “CHANGED” or “ADDED,” respectively (https://osf.io/2m3w6).\n[sec1.p39.s3] The raw (https://osf.io/2s3tv) and processed (https://osf.io/4qwyt) datasets are available online.\n[sec1.p39.s4] At first, the preregistered exclusion criteria were applied.\n[sec1.p39.s5] Participants were excluded if values for any of the following variables were not available: Need for cognition, affect index, experimental group (assigned automatically during the experiment).\n[sec1.p39.s6] Demographics of the final sample were analyzed (age, gender and occupancy of the subjects).\n[sec1.p39.s7] Subsequently, the internal consistency of the affect index and the Need for Cognition Scale was analyzed.\n[sec1.p39.s8] A one-way ANOVA was run to examine the influence of the explanation film on the expected liking of the film.\n[sec1.p39.s9] For the main analysis, a two-way ANOVA was run to test the interaction effect of need for cognition and the expectation towards the film.\n[sec1.p39.s10] In addition, the effect size of the single variables and their interaction was calculated.\n[sec1.p39.s11] Furthermore, a plot similar to the one in the original paper (see Geers & Lassiter, 2003, p.\n[sec1.p39.s12] 318) was created to show the interaction effect of need for cognition with the affective reactions of the participants in dependence of their induced expectation.\n[sec1.p39.s13] Finally, a main effect between the participants’ expectations and the affect index was analyzed, as well as the remembered positivity of expectation and affect index.\n[sec1.p39.s14] Results Our sample consisted of N = 252 participants, which is more than 1.5 times the original study’s sample size.\n[sec1.p39.s15] This sample size is sufficient to detect effects of f = 0.249 with 95% power.\n[sec1.p39.s16] The achieved power for the original effect size of f = 0.200 was 81.37%.\n[sec1.p39.s17] Only 138 participants reported their age (114 missing values).\n[sec1.p39.s18] The reported mean age was M = 47.11 (SD = 16.48) with a range from 19 to 77.\n[sec1.p39.s19] 76 male, 169 female and four diverse\n\n[sec1.p40.s1] AFFECTIVE EXPECTATIONS REPLICATION\n\n[sec1.p41.s1] 13 persons participated in the study (2 did not want to disclose, 1 missing value).\n[sec1.p41.s2] 31 participants reported that they were either bachelor- or master students, while only one person was in an apprenticeship.\n[sec1.p41.s3] 153 subjects were employed, 5 in search for employment, and 61 in retirement (1 missing value).\n[sec1.p41.s4] Data Quality Checks Affective experience in the original experiment was measured via three items, which were adapted from the work by Klaaren et al. (1994) on the role of affective expectations on subjective experience and decision-making.\n[sec1.p41.s5] Responses of those items were averaged to gain a single affect index, which reached an internal consistency of α = .93.\n[sec1.p41.s6] To test if this would also hold true for our questionnaire, we analyzed the internal consistency of our affect index items and found α = .96 (95% CI [0.95, 0.97]).\n[sec1.p41.s7] To measure NFC in the original experiment, the 18-item version of the scale developed by Cacioppo et al. (1984) was used.\n[sec1.p41.s8] However, no internal consistency analysis was run, which we added in our analysis.\n[sec1.p41.s9] In our sample and using the scale by Bless et al. (1994), we found a value of α = 0.85 (95% CI [0.83, 0.88], 16 items).\n[sec1.p41.s10] To test whether participants’ affective expectations were successfully manipulated, we asked them to remember their affective expectations at the end of the experiment.\n[sec1.p41.s11] A one-way ANOVA revealed a significant influence of induced expectation on remembered expectations, F(2, 249) = 3.90, p = .021.\n[sec1.p41.s12] Subsequently, we conducted a Tukey t test for multiple comparisons of the experimental groups’ means.\n[sec1.p41.s13] Here, only a significant difference between the positive (M = 5.21, SD = 2.00, N = 75) and the negative (M = 4.35, SD = 1.94, N = 94) expectation group was found (Δ = 0.862, 95% CI [0.127, 1.597], p = .017).\n[sec1.p41.s14] The control group’s values were between\n\n[sec1.p42.s1] AFFECTIVE EXPECTATIONS REPLICATION\n\n[sec1.p43.s1] 14 the other two groups (M = 4.63, SD = 2.11, N = 83).\n[sec1.p43.s2] A distribution of the data can be seen in Figure 1.\n[sec1.p43.s3] Figure 1 Remembered expectation by induced expectation\n\n[sec1.p44.s1] Note.\n[sec1.p44.s2] Solid lines represent medians.\n[sec1.p44.s3] Remembered positivity of expectations was measured on a 9 point scale (1 = not at all, 9 = very much).\n\n[sec1.p45.s1] AFFECTIVE EXPECTATIONS REPLICATION\n\n[sec1.p46.s1] 15\n\n[sec1.p47.s1] AFFECTIVE EXPECTATIONS REPLICATION\n\n[sec1.p48.s1] 16 Hypothesis Tests Affect scores were entered as dependent variables into a linear regression.\n[sec1.p48.s2] Expectation condition and NFC were entered as predictors.\n[sec1.p48.s3] The overall model test was not significant, F(5, 246) = 1.86, p = .103, R2 = 0.036.\n[sec1.p48.s4] In line with this, none of the model’s effects were significant (all ps > .143, see Table 2).\n[sec1.p48.s5] Table 2 Linear Regression of Affective Reaction on Expectation, NFC, and Their Interaction Coefficient B SE t p Intercept 1.88 1.44 1.31 .192 Expectation (none) 2.53 2.10 1.21 .229 Expectation (positive) 1.36 2.04 0.67 .506 NFC 0.42 0.29 1.47 .143 Expectation (none) × NFC −0.55 0.42 −1.32 .190 Expectation (positive) × NFC −0.13 0.41 −0.32 .750\n\n[sec1.p49.s1] Note.\n[sec1.p49.s2] N = 252.\n[sec1.p49.s3] Residual SE = 2.30 on 246 df.\n[sec1.p49.s4] R² = .036, adjusted R² = .017, F(5, 246) = 1.86, p = .103.\n[sec1.p49.s5] NFC = Need for Cognition.\n[sec1.p49.s6] Expectation reference category = negative expectation.\n\n[sec1.p50.s1] Furthermore, an ANOVA was run to test for general effects of NFC, expectation and their interaction on the affect index.\n[sec1.p50.s2] Again, no significant effect was found (all ps ≥ .051).\n[sec1.p50.s3] Specifically, there was no main effect of expectation condition on the affect index, F(2, 246) = 3.00, p = .051, η² = 0.02, 90% CI [0, 0.05], need for cognition F(1, 246) = 1.43, p = .233, η² < 0.01, 90% CI [0, 0.02] or an interaction effect F(2, 246) = 0.92, p = .398, η² < 0.01, 90% CI [0, 0.02].\n[sec1.p50.s4] Subsequently, as in the original study (see Geers & Lassiter, 2003, p.\n[sec1.p50.s5] 318), the slopes for\n\n[sec1.p51.s1] AFFECTIVE EXPECTATIONS REPLICATION\n\n[sec1.p52.s1] 17 the linear regression model for all expectation conditions were calculated.\n[sec1.p52.s2] None of them was significantly different from zero: • Positive expectations: b = 0.288, se = 0.306, t(73) = 0.94, p = .349 • Negative expectations: b = 0.420, se = 0.275, t(92) = 1.53, p = .130 • Control group (no specific expectations): b = -0.131, se = 0.312, t(81) = -0.420, p = .675.\n[sec1.p52.s3] An overview of the results is presented in Figure 2 and Table 3.\n\n[sec1.p53.s1] AFFECTIVE EXPECTATIONS REPLICATION\n\n[sec1.p54.s1] 18 Figure 2 Regression lines predicting affect scores from need for cognition and expectation condition.\n\n[sec1.p55.s1] Note.\n[sec1.p55.s2] Affect index was measured on a 9-point scale with higher values reflecting positive assessment.\n[sec1.p55.s3] Need for cognition was measured on a 7-point scale (1 = completely disagree, 7 = completely agree).\n[sec1.p55.s4] Shaded bands represent 95% confidence intervals.\n\n[sec1.p56.s1] AFFECTIVE EXPECTATIONS REPLICATION\n\n[sec1.p57.s1] 19 Table 3 Comparison of original and replication results with interpretations according to LeBel et al. (2019).\n[sec1.p57.s2] Test Original Study Replication (preregistered Tukey HSD)2 Replication (planned contrasts)2 Interpretation Expectation × NFC F(1, 154) = 6.40, MSE = 3.21, p = .01, r²= .04, f = 0.200, η² = .04, 90% CI [.005, .10]” F(2, 246) = 0.92, p = .398, η² < 0.01, 90% CI [0, 0.02] — No signal, inconsistent Slope for the positive expectation condition b = -0.03, SE = .02, t(154) = 1.91, p = .051 b = 0.288, se = 0.306, t(73) = 0.94, p = .349 t(1, 246) = 0.969, p = .334 No signal, inconsistent1 Slope for the negative expectation condition b = -.008, SE = .019, t(154) = 0.42, p = .67 b = 0.420, se = 0.275, t(92) = 1.53, p = .130 t(1, 246) = 1.469, p = .143 No signal, consistent Slope for the no expectation condition b = .03, SE = .02, t(154) = 1.62, p = .10 b = -0.131, se = 0.312, t(81) = -0.420, p = .675 t(1, 246) = -0.428, p = .669 No signal, consistent Note.\n[sec1.p57.s3] Original effect sizes were taken from Geers and Lassiter (2003, pp. 317-318).\n[sec1.p57.s4] Effect sizes are scaled differently because the original (English) and replication (German) NFC scales have a\n\n[sec1.p58.s1] AFFECTIVE EXPECTATIONS REPLICATION\n\n[sec1.p59.s1] 20 different number of items.\n[sec1.p59.s2] Scaling of original effects was not possible.\n[sec1.p59.s3] 1Using the reported and rounded values, the computed original p-value is p = .058 and not significant.\n[sec1.p59.s4] 2While we preregistered post hoc tests using Tukey Honest Significant Differences, we were made aware that planned contrast are more appropriate since there are clear hypotheses and since it is closer to the original study’s methods.\n[sec1.p59.s5] For the sake of transparency, we report both results.\n\n[sec1.p60.s1] Exploratory Analyses We assessed variance of the affect index and need for cognition to evaluate whether the target movie was ambivalent enough to be evaluated positively and negatively and to check whether participants may have only experienced one type of effect.\n[sec1.p60.s2] The distribution of the affect index was skewed towards negative evaluations and need for cognition scores were positively skewed.\n[sec1.p60.s3] Nevertheless, both scales had variance (see Figure 3 and\n\n[sec1.p61.s1] AFFECTIVE EXPECTATIONS REPLICATION\n\n[sec1.p62.s1] 21 Figure 4).\n[sec1.p62.s2] We compared the original and replication effect sizes using the approach suggested by Lakens (2022).\n[sec1.p62.s3] Therefore, effect sizes for the focal original and replication test were converted from η² to r and compared using a meta-analytical test for moderation by the replication.\n[sec1.p62.s4] Thereby, the replication effect was significantly smaller than the original effect.\n[sec1.p62.s5] The full model results are in Table 4.\n[sec1.p62.s6] Table 4 Fixed-Effects Moderator Model Testing Replication Success (Lakens, 2022) and Effect Sizes Converted to r Coefficient b SE z p 95% CI Intercept 0.200 0.076 2.63 .009 [.051, .349] Study (replication) −0.200 0.099 −2.02 .043 [-.394, -.006]\n\n[sec1.p63.s1] Note. k = 2 (original and replication study).\n[sec1.p63.s2] Effect sizes are Fisher's z-transformed correlations (r = √η²). b = unstandardized regression coefficient from fixed-effects meta-analytic model.\n[sec1.p63.s3] CI = confidence interval.\n[sec1.p63.s4] The moderator test QM(1) = 4.09, p = .043 indicates the replication effect size differed significantly from the original.\n\n[sec1.p64.s1] AFFECTIVE EXPECTATIONS REPLICATION\n\n[sec1.p65.s1] 22 Figure 3 Distribution of Affect Index Scores\n\n[sec1.p66.s1] Note.\n[sec1.p66.s2] N = 252.\n\n[sec1.p67.s1] AFFECTIVE EXPECTATIONS REPLICATION\n\n[sec1.p68.s1] 23 Figure 4 Distribution of Need for Cognition Scores\n\n[sec1.p69.s1] Note.\n[sec1.p69.s2] N = 252.\n\n[sec1.p70.s1] To test whether induction of expectations has led to an overall assimilation effect without any contrast effects or moderations, we ran an exploratory one-way ANOVA.\n[sec1.p70.s2] Mean differences between the three expectation conditions did not differ overall, F(2, 249) = 3.00, p = .052.\n[sec1.p70.s3] Responses are presented in Figure 5, exact values are available from the analysis script (https://osf.io/2m3w6).\n\n[sec1.p71.s1] AFFECTIVE EXPECTATIONS REPLICATION\n\n[sec1.p72.s1] 24 Figure 5 Affect scores by expectation condition.\n\n[sec1.p73.s1] Note.\n[sec1.p73.s2] Solid lines represent medians.\n[sec1.p73.s3] Affect index was measured on a 9-point scale with higher values reflecting positive assessment\n\n[sec1.p74.s1] AFFECTIVE EXPECTATIONS REPLICATION\n\n[sec1.p75.s1] 25 When asked to identify the correct ones of four statements about the movie, 149 participants (59.13%) identified all statements correctly, 77 (30.56%) identified 3/4, 22 (8.73%) identified 2/4, and 3 (1.19%) only identified 1/4 (1 missing value, 0.40%).\n[sec1.p75.s2] No participant got all four statements wrong.\n[sec1.p75.s3] Running the main hypothesis’ model only on the 149 participants that responded correctly to the four attention check items did not affect the results, F(5, 143) = 0.94, p = .459, R² = .032.\n\n[sec1.p76.s1] AFFECTIVE EXPECTATIONS REPLICATION\n\n[sec1.p77.s1] 26 Discussion and Limitations In our replication of Geers and Lassiter (2003) Study 1, we could not find an effect of affective expectations on affective experience nor a moderation of that effect by participants’ need for cognition.\n[sec1.p77.s2] It remains unclear whether the affective expectation model or the derived hypotheses are wrong or whether the study quality (e.g., statistical power, unclear efficacy of the manipulation) was insufficient to detect the effects.\n[sec1.p77.s3] Most importantly, a lack of statistical power (~80%) may have led to a non-significant finding (false-negative) though our sample size is considerably larger than the original (Nreplication= 252, Noriginal = 160).\n[sec1.p77.s4] We also did not conduct a strict manipulation check.\n[sec1.p77.s5] For example, creating the materials from scratch and not piloting the induction (whether people’s expectations actually change) may have led to a non-working manipulation.\n[sec1.p77.s6] However, we could show that participants remembered expectations were in line with the manipulation.\n[sec1.p77.s7] It is also unlikely that this difference was due to a hindsight bias as it did not affect the affective experience.\n[sec1.p77.s8] Another interpretation is that the manipulation did work but it was too weak.\n[sec1.p77.s9] Making the evaluations in the expectation induction movies even more extreme would put their credibility at risk but may be necessary to produce the effects predicted by the AEM.\n[sec1.p77.s10] The movie may also not be well suited for different types of expectations.\n[sec1.p77.s11] The affect index was skewed towards negative ratings.\n[sec1.p77.s12] However, variance of the affect index was large and with a generally negatively rated movie, main effects of affective expectations should have been detectable.\n[sec1.p77.s13] There has been little systematic research on whether switching to online for a replication study affects replication outcomes with the only evidence known to us revealing a small and imprecise negative effect (Boyce et al., 2023, Table 2).\n[sec1.p77.s14] Together with a sample size that was\n\n[sec1.p78.s1] AFFECTIVE EXPECTATIONS REPLICATION\n\n[sec1.p79.s1] 27 only about 1.5 times larger than the original study, statistical power may still have been insufficient.\n[sec1.p79.s2] While attentiveness of participants was high in our replication, the cover story may not have worked.\n[sec1.p79.s3] To test this, we recommend future studies to ask participants if they would indeed be willing to record their opinion on the movie and ask for contact details.\n[sec1.p79.s4] Finally, in the light of field-wide replication failures (e.g., Camerer et al., 2018; Open Science Collaboration, 2015), strong and persistent publication biases (e.g., Giner-Sorolla, 2012; Sterling, 1959), and imprecise effect size estimates (e.g., the p-value for the positive slope in the regression model was not significant based on the reported and rounded values), it is possible that effects that we tried to replicate were false positives.\n[sec1.p79.s5] Again, we do not believe that our results warrant this conclusion and that it is unclear whether our study simply failed to detect the effect or whether the effects are not robust.\n[sec1.p79.s6] Deviations from the Preregistration Sample size.\n[sec1.p79.s7] We did not achieve our preregistered target sample size for N = 400 participants but only N = 252, which still had >80% power for the original effect.\n[sec1.p79.s8] Replication effects are usually about 40-50% the size of original effects (Röseler et al., 2024) and the replication may thus have been underpowered.\n[sec1.p79.s9] Changes in the analysis code.\n[sec1.p79.s10] We made changes to the preregistered analysis code (https://osf.io/6ua4s) that we highlighted with “ADDED” or “CHANGED” in the final analysis code (https://osf.io/2m3w6).\n[sec1.p79.s11] These changes only included aesthetic changes or fixing of erroneous code.\n\n[sec1.p80.s1] Conclusion\n\n[sec1.p81.s1] AFFECTIVE EXPECTATIONS REPLICATION\n\n[sec1.p82.s1] 28 Given our failure to replicate the effects of affective expectation on ratings of a film, we believe that the generalizability and robustness of the finding from Geers and Lassiter (2003) Study 1 is limited.\n[sec1.p82.s2] We believe further research is necessary to determine effect sizes that are practically relevant and detectable, conditions for manipulations to work (e.g., about the expectation induction) and specific recommendations for stimuli with which the effects occur.\n[sec1.p82.s3] Moreover, researchers need to describe the precise background conditions that are necessary for assimilation and contrast patterns to arise or define the threshold when an assimilation effect turns into a contrast effect.\n[sec1.p82.s4] For example, we suggest the creation of a formal model (e.g., Robinaugh et al., 2021) that incorporates stimuli requirements such as whether the target movie should be ambivalent or not, and describes the relationship between expectations, experiences, and the tipping point (or region) between assimilation and contrast.\n[sec1.p82.s5] While, overall, there is little research revisiting the role of affective expectations in the laboratory and affective expectations were unrelated to affective experiences in this study, Röseler and Schütz (2021) could show that people who watch a movie early or play a game early after its release do so because they have more positive expectations and also rate it more positively (assimilation effect).\n[sec1.p82.s6] We thus see high potential for the AEM in relation to affective expectations, other fields such as placebo and nocebo effects, confirmation biases, the subject of assimilation and contrast in general (e.g., Röseler & Schütz, 2024), and its application in fields such as of health behavior, interpersonal relationships, or consumer behavior.\n[sec1.p82.s7] We believe that conducting research on the Affective Expectation Model requires significant resources.\n[sec1.p82.s8] Ideally, future research should use a controlled laboratory setting closer to the original study, create new and credible materials (e.g., like in the original study and in our online version, the expectation induction film should be set in an environment that is similar to\n\n[sec1.p83.s1] AFFECTIVE EXPECTATIONS REPLICATION\n\n[sec1.p84.s1] 29 the environment of the participants), conduct thorough pilot tests on the expectation induction and the target movie, use a freely available and non-copyrighted movie that should not need to be translated, include manipulation checks of the induction method, test for demand characteristics, and use a very large sample size (N ≥ 400).\n[sec1.p84.s2] Obviously, it should adhere to modern standards of open science (e.g., preregistered methods, hypotheses, and analysis script, open materials, open access) to facilitate reproduction and replication.\n[sec1.p84.s3] We hope that our study and materials will help to explore the limits of the AEM and encourage further replication attempts of studies on assimilation and contrast effects.\n\n[sec1.p85.s1] AFFECTIVE EXPECTATIONS REPLICATION\n\n[sec1.p86.s1] 30 Acknowledgments We thank Andrew Geers for his willingness to help in reconstructing the original experiment, his comments on our method, and for the interesting exchange.\n[sec1.p86.s2] We thank Anna Maria Müller, Hannah Kloß, Madeleine Bauer, Kathrin Friedinger, Jessica van den Bergh, and Katharina Drach for their help in designing and conducting the study.\n[sec1.p86.s3] CRediT Author Statement • Lukas Röseler: Conceptualization, Data curation, Formal analysis, Investigation, Methodology, Project administration, Resources, Software, Supervision, Validation, Visualization, Writing – original draft, Writing – review & editing • Christopher Doetsch: Conceptualization, Investigation, Methodology, Resources, Writing – review & editing • Nico Förster: Writing – original draft, Writing – review & editing • Ann-Kathrin Bruzsa: Conceptualization, Investigation, Methodology, Resources, Writing – review & editing • Marie Deublein: Conceptualization, Investigation, Methodology, Resources, Writing – review & editing • Eva Rieger: Conceptualization, Investigation, Methodology, Resources, Writing – review & editing • Charlotte Schmidt: Conceptualization, Investigation, Methodology, Resources, Writing – review & editing • Amelie Seitz: Conceptualization, Investigation, Methodology, Resources, Writing – review & editing • Antonia Wild: Conceptualization, Investigation, Methodology, Resources, Writing – review & editing\n\n[sec1.p87.s1] AFFECTIVE EXPECTATIONS REPLICATION\n\n[sec1.p88.s1] 31 Transparency and Openness Statement All materials are openly available at https://osf.io/rge23/.\n[sec1.p88.s2] These include the preregistered and final analysis scripts, the data sets, and the preregistrations.\n[sec1.p88.s3] The authors declare that they have emptied their file drawer on affective expectation studies.\n[sec1.p88.s4] Declaration of Conflict Interest Statement The authors declare that they have no conflicts of interest.\n[sec1.p88.s5] Financial Support Statement The authors report no financial support for this work.\n[sec1.p88.s6] Declaration of AI Use We used Claude Sonnet 4.6 to format newly added results in Tables 2 and 4 and check for correct reporting.\n\n[sec1.p89.s1] AFFECTIVE EXPECTATIONS REPLICATION\n\n[sec1.p90.s1] 32 References Ben-Shachar, M., Lüdecke, D., & Makowski, D. (2020). effectsize: Estimation of Effect Size Indices and Standardized Parameters.\n[sec1.p90.s2] Journal of Open Source Software, 5(56), 2815. https://doi.org/10.21105/joss.02815 Berzonsky, M. D., & Sullivan, C. (1992).\n[sec1.p90.s3] Social-Cognitive Aspects of Identity Style.\n[sec1.p90.s4] Journal of Adolescent Research, 7(2), 140–155. https://doi.org/10.1177/074355489272002 Bless, H., Wänke, M., Bohner, G., Fellhauer, R. F., & Schwarz, N. (1994).\n[sec1.p90.s5] Need for cognition: eine Skala zur Erfassung von Engagement und Freude bei Denkaufgaben: Need for cognition: a scale measuring engagement and happiness in cognitive tasks.\n[sec1.p90.s6] Zeitschrift Für Sozialpsychologie, 25, 147–154.\n[sec1.p90.s7] Boyce, V., Mathur, M., & Frank, M. C. (2023).\n[sec1.p90.s8] Eleven years of student replication projects provide evidence on the correlates of replicability in psychology.\n[sec1.p90.s9] Royal Society Open Science, 10(11), 231240. https://doi.org/10.1098/rsos.231240 Cacioppo, J. T., & Petty, R. E [Richard E. (1982).\n[sec1.p90.s10] The need for cognition.\n[sec1.p90.s11] Journal of Personality and Social Psychology, 42(1), 116–131. https://doi.org/10.1037/0022- 3514.42.1.116 Cacioppo, J. T., Petty, R. E [R. E.], & Kao, C. F. (1984).\n[sec1.p90.s12] The efficient assessment of need for cognition.\n[sec1.p90.s13] Journal of Personality Assessment, 48(3), 306–307. https://doi.org/10.1207/s15327752jpa4803_13 Cacioppo, J. T., Petty, R. E [Richard E.], & Morris, K. J. (1983).\n[sec1.p90.s14] Effects of need for cognition on message evaluation, recall, and persuasion.\n[sec1.p90.s15] Journal of Personality and Social Psychology, 45(4), 805–818. https://doi.org/10.1037/0022-3514.45.4.805\n\n[sec1.p91.s1] AFFECTIVE EXPECTATIONS REPLICATION\n\n[sec1.p92.s1] 33 Camerer, C. F., Dreber, A., Holzmeister, F., Ho, T.‑H., Huber, J., Johannesson, M., Kirchler, M., Nave, G., Nosek, B. A., Pfeiffer, T., Altmejd, A., Buttrick, N., Chan, T., Chen, Y., Forsell, E., Gampa, A., Heikensten, E., Hummer, L., Imai, T., . . .\n[sec1.p92.s2] Wu, H. (2018).\n[sec1.p92.s3] Evaluating the replicability of social science experiments in Nature and Science between 2010 and 2015.\n[sec1.p92.s4] Nature Human Behaviour, 2(9), 637–644. https://doi.org/10.1038/s41562-018-0399-z Dragulescu, A. A. (2014). xlsx: Read, write, format Excel 2007 and Excel 97/2000/XP/2003 files.\n[sec1.p92.s5] R package version 0.5.7 [Computer software]. https://CRAN.R-project.org/package=xlsx Epley, N., & Gilovich, T. (2006).\n[sec1.p92.s6] The anchoring-and-adjustment heuristic: Why the adjustments are insufficient.\n[sec1.p92.s7] Psychological Science, 17(4), 311–318. https://doi.org/10.1111/j.1467- 9280.2006.01704.x Geers, A. L., & Lassiter, G. D. (1999).\n[sec1.p92.s8] Affective Expectations and Information Gain: Evidence for Assimilation and Contrast Effects in Affective Experience.\n[sec1.p92.s9] Journal of Experimental Social Psychology, 35, 394–413. https://doi.org/10.1006/jesp.1999.1377 Geers, A. L., & Lassiter, G. D. (2002).\n[sec1.p92.s10] Effects of Affective Expectations on Affective Experience: The Moderating Role of Optimism-Pessimism.\n[sec1.p92.s11] Personality and Social Psychology Bulletin, 28(8), 1026–1039. https://doi.org/10.1177/01461672022811002 Geers, A. L., & Lassiter, G. D. (2003).\n[sec1.p92.s12] Need for Cognition and Expectations as Determinants of Affective Experience.\n[sec1.p92.s13] Basic and Applied Social Psychology, 25(4), 313–325. https://doi.org/10.1207/S15324834BASP2504_5 Giner-Sorolla, R. (2012).\n[sec1.p92.s14] Science or Art?\n[sec1.p92.s15] How Aesthetic Standards Grease the Way Through the Publication Bottleneck but Undermine Science.\n[sec1.p92.s16] Perspectives on Psychological Science :\n\n[sec1.p93.s1] AFFECTIVE EXPECTATIONS REPLICATION\n\n[sec1.p94.s1] 34 A Journal of the Association for Psychological Science, 7(6), 562–571. https://doi.org/10.1177/1745691612457576 Kelley, K. (2026).\n[sec1.p94.s2] MBESS (Version 5.0.1) [computer software and manual].\n[sec1.p94.s3] Retrieved from\n\n[sec1.p95.s1] https://CRAN.R-project.org/package=MBESS Klaaren, K. J [Kristen J.], Hodges, S. D., & Wilson, T. D. (1994).\n[sec1.p95.s2] The Role of Affective Expectations in Subjective Experience and Decision-Making.\n[sec1.p95.s3] Social Cognition, 12(2), 77–101. https://doi.org/10.1521/soco.1994.12.2.77 Lakens, D. (2022).\n[sec1.p95.s4] Improving Your Statistical Inferences.\n[sec1.p95.s5] Retrieved from https://lakens.github.io/statistical_inferences/. https://doi.org/10.5281/zenodo.6409077 Lassiter, G. D., Briggs, M. A., & Bowman, R. E. (1991).\n[sec1.p95.s6] Need for Cognition and the Perception of Ongoing Behavior.\n[sec1.p95.s7] Personality and Social Psychology Bulletin, 17(2), 156–160. https://doi.org/10.1177/014616729101700206 LeBel, E. P., Vanpaemel, W., Cheung, I., & Campbell, L. (2019).\n[sec1.p95.s8] A Brief Guide to Evaluate Replications.\n[sec1.p95.s9] Meta-Psychology, 3. https://doi.org/10.15626/MP.2018.843 Leiner, D. J. (2019).\n[sec1.p95.s10] SoSci Survey (Version 3.1.06) [Computer software]. https://www.soscisurvey.de Lenth, R. V., & Piaskowski, J. (2026). emmeans: Estimated marginal means, aka least-squares means (R package version 2.0.3) [Computer software]. https://CRAN.R- project.org/package=emmeans Open Science Collaboration (2015).\n[sec1.p95.s11] Psychology: Estimating the reproducibility of psychological science.\n[sec1.p95.s12] Science (New York, N.Y.), 349(6251), aac4716. https://doi.org/10.1126/science.aac4716\n\n[sec1.p96.s1] AFFECTIVE EXPECTATIONS REPLICATION\n\n[sec1.p97.s1] 35 R Core Team.\n[sec1.p97.s2] (2018).\n[sec1.p97.s3] R [Computer software].\n[sec1.p97.s4] R Foundation for Statistical Computing. https://www.R-project.org/ Revelle, W. (2018). psych: Procedures for Personality and Psychological Research, Version = 1.8.3 [Computer software].\n[sec1.p97.s5] Northwestern University, Evanston, Illinois, USA. https://CRAN.R-project.org/package=psych Robinaugh, D. J., Haslbeck, J. M. B., Ryan, O., Fried, E. I., & Waldorp, L. J. (2021).\n[sec1.p97.s6] Invisible Hands and Fine Calipers: A Call to Use Formal Theory as a Toolkit for Theory Construction.\n[sec1.p97.s7] Perspectives on Psychological Science : A Journal of the Association for Psychological Science, 16(4), 725–743. https://doi.org/10.1177/1745691620974697 Röseler, L., Bögler, H. L., Koßmann, L., Krueger, S., Bickenbach, S., Bühler, R., Della Guardia, J., Köppel, L.‑M., Ponader, S., Roßmaier, K., & Sing, J. (2022).\n[sec1.p97.s8] Replicating Epley and Gilovich: Need for Cognition, Cognitive Load, and Forewarning do not Moderate Anchoring Effects.\n[sec1.p97.s9] Advance online publication. https://doi.org/10.31234/osf.io/bgp3m Röseler, L., Kaiser, L., Doetsch, C. A., Klett, N., Seida, C., Schütz, A., Aczel, B., Adelina, N., Agostini, V., Alarie, S., Albayarak-Aydemir, N., AlDoh, A., Al-Hoorie, A. H., Azevedo, F., Baker, B. J., Barth, C. L., Beitner, J., Brick, C., Brohmer, H., . . .\n[sec1.p97.s10] Zhang, Y. (2024).\n[sec1.p97.s11] The Replication Database: Documenting the Replicability of Psychological Science.\n[sec1.p97.s12] Advance online publication. https://doi.org/10.31222/osf.io/me2ub Röseler, L., & Schütz, A. (2021, March 14).\n[sec1.p97.s13] What You Expect is What You Get: The Role of Affective Expectations in Real-World Experiences. https://doi.org/10.31219/osf.io/2tr6q Röseler, L., & Schütz, A. (2024).\n[sec1.p97.s14] Assimilation and Contrast are Everywhere.\n[sec1.p97.s15] Advance online publication. https://doi.org/10.31234/osf.io/krwcn\n\n[sec1.p98.s1] AFFECTIVE EXPECTATIONS REPLICATION\n\n[sec1.p99.s1] 36 Simmons, J. P., Nelson, L. D., & Simonsohn, U. (2012).\n[sec1.p99.s2] A 21 Word Solution.\n[sec1.p99.s3] SSRN Electronic Journal.\n[sec1.p99.s4] Advance online publication. https://doi.org/10.2139/ssrn.2160588 Sterling, T. D. (1959).\n[sec1.p99.s5] Publication decisions and their possible effects on inferences drawn from tests of significance—or vice versa.\n[sec1.p99.s6] Journal of the American Statistical Association, 54(285), 30–34. http://www.jstor.com/stable/2282137 Viechtbauer, W. (2010).\n[sec1.p99.s7] Conducting meta-analyses in R with the metafor package.\n[sec1.p99.s8] Journal of Statistical Software, 36(3), 1-48. https://doi.org/10.18637/jss.v036.i03 Wickham, H. (2016). ggplot2: Elegant graphics for data analysis (Second edition).\n[sec1.p99.s9] Use R!\n[sec1.p99.s10] Springer.\n[sec1.p99.s11] Wickham, H., Francois, R., Henry, L., & Müller, K. (2018). dplyr: A Grammar of Data Manipulation.\n[sec1.p99.s12] R package version 0.7.6 [Computer software]. https://CRAN.R- project.org/package=dplyr Wilson, T. D., & Klaaren, K. J [K. J.].\n[sec1.p99.s13] (1992).\n[sec1.p99.s14] \"Expectation whirls me round\": The role of affective expectations in affective experience.\n[sec1.p99.s15] In M. S. Clark (Ed.), Review of personality and social psychology: Vol. 14.\n[sec1.p99.s16] Emotion and social behavior (pp. 1–31).\n[sec1.p99.s17] Sage.\n[sec1.p99.s18] Wilson, T. D., Lisle, D. J., Kraft, D., & Wetzel, C. G. (1989).\n[sec1.p99.s19] Preferences as expectation-driven inferences: Effects of affective expectations on affective experience.\n[sec1.p99.s20] Journal of Personality and Social Psychology, 56(4), 519–530. https://doi.org/10.1037/0022- 3514.56.4.519 Zellner, D. A., Strickhouser, D., & Tornow, C. E. (2004).\n[sec1.p99.s21] Disconfirmed Hedonic Expectations Produce Perceptual Contrast, Not Assimilation.\n[sec1.p99.s22] The American Journal of Psychology, 117(3), 363. https://doi.org/10.2307/4149006 Zemeckis, R. (Director).\n[sec1.p99.s23] (1994).\n[sec1.p99.s24] Forrest Gump.\n[sec1.p99.s25] USA.\n\n",
+        "output": "{\"type\":\"step_start\",\"timestamp\":1794566430936,\"sessionID\":\"ses_e2b816cd7ffeJ76YD9zOMmkE58\",\"part\":{\"id\":\"prt_1d47ea0c8001KBuwL3rp7MlVL2\",\"messageID\":\"msg_1d47e95f8001GTbW2i1JglbyMW\",\"sessionID\":\"ses_e2b816cd7ffeJ76YD9zOMmkE58\",\"type\":\"step-start\"}}\n{\"type\":\"text\",\"timestamp\":1794566484702,\"sessionID\":\"ses_e2b816cd7ffeJ76YD9zOMmkE58\",\"part\":{\"id\":\"prt_1d47f0f1a0018bRMlZ45o5jzQz\",\"messageID\":\"msg_1d47e95f8001GTbW2i1JglbyMW\",\"sessionID\":\"ses_e2b816cd7ffeJ76YD9zOMmkE58\",\"type\":\"text\",\"text\":\"{\\\"targets\\\":[{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Original effect size eta-squared (η²) = .04\\\",\\\"quote\\\":\\\"η²original = .04, 90% CI [.005, .10]\\\",\\\"expected\\\":0.04,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":2,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p7.s5\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Original 90% CI lower bound for η²\\\",\\\"quote\\\":\\\"90% CI [.005, .10]\\\",\\\"expected\\\":0.005,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":3,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p7.s5\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Original 90% CI upper bound for η²\\\",\\\"quote\\\":\\\"90% CI [.005, .10]\\\",\\\"expected\\\":0.10,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":2,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p7.s5\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Replication η²\\\",\\\"quote\\\":\\\"η²replication < 0.01, 90% CI [0, 0.02]\\\",\\\"expected\\\":0.01,\\\"comparator\\\":\\\"<\\\",\\\"decimals\\\":2,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p7.s5\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Replication 90% CI lower bound for η²\\\",\\\"quote\\\":\\\"90% CI [0, 0.02]\\\",\\\"expected\\\":0,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":0,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p7.s5\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Replication 90% CI upper bound for η²\\\",\\\"quote\\\":\\\"90% CI [0, 0.02]\\\",\\\"expected\\\":0.02,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":2,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p7.s5\\\"]},{\\\"type\\\":\\\"categorical\\\",\\\"description\\\":\\\"No evidence for a difference between groups nor moderation by NFC\\\",\\\"quote\\\":\\\"there was no evidence for a difference between the groups nor for a moderation of affective experiences by need for cognition\\\",\\\"expected\\\":\\\"no evidence\\\",\\\"comparator\\\":null,\\\"decimals\\\":null,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p7.s5\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Original Study 1 sample size\\\",\\\"quote\\\":\\\"160 undergraduates were asked to watch and evaluate a video\\\",\\\"expected\\\":160,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":null,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p13.s6\\\",\\\"sec1.p37.s3\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Original F statistic for negative-expectation effect F(1,156)\\\",\\\"quote\\\":\\\"F(1, 156) = 12.09, MSE = 3.30, p = .001, r² = .07\\\",\\\"expected\\\":12.09,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":2,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p37.s1\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Original MSE for negative-expectation effect\\\",\\\"quote\\\":\\\"MSE = 3.30\\\",\\\"expected\\\":3.30,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":2,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p37.s1\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Original p-value for negative-expectation effect\\\",\\\"quote\\\":\\\"p = .001\\\",\\\"expected\\\":0.001,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":3,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p37.s1\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Original r² for negative-expectation effect\\\",\\\"quote\\\":\\\"r² = .07\\\",\\\"expected\\\":0.07,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":2,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p37.s1\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Original f effect size for negative-expectation effect\\\",\\\"quote\\\":\\\"f = 0.270\\\",\\\"expected\\\":0.270,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":3,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p37.s1\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Original η² for negative-expectation effect\\\",\\\"quote\\\":\\\"η² = .07\\\",\\\"expected\\\":0.07,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":2,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p37.s1\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Original 90% CI lower bound for negative-expectation effect\\\",\\\"quote\\\":\\\"90% CI [.02, .14]\\\",\\\"expected\\\":0.02,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":2,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p37.s1\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Original 90% CI upper bound for negative-expectation effect\\\",\\\"quote\\\":\\\"90% CI [.02, .14]\\\",\\\"expected\\\":0.14,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":2,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p37.s1\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Original F statistic for expectation x NFC interaction F(1,154)\\\",\\\"quote\\\":\\\"F(1, 154) = 6.40, MSE = 3.21, p = .01, r² = .04\\\",\\\"expected\\\":6.40,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":2,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p37.s2\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Original MSE for interaction effect\\\",\\\"quote\\\":\\\"MSE = 3.21\\\",\\\"expected\\\":3.21,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":2,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p37.s2\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Original p-value for interaction effect\\\",\\\"quote\\\":\\\"p = .01\\\",\\\"expected\\\":0.01,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":2,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p37.s2\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Original r² for interaction effect\\\",\\\"quote\\\":\\\"r² = .04\\\",\\\"expected\\\":0.04,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":2,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p37.s2\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Original f effect size for interaction effect\\\",\\\"quote\\\":\\\"f = 0.200\\\",\\\"expected\\\":0.200,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":3,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p37.s2\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Original η² for interaction effect\\\",\\\"quote\\\":\\\"η² = .04\\\",\\\"expected\\\":0.04,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":2,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p37.s2\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Original 90% CI lower bound for interaction effect\\\",\\\"quote\\\":\\\"90% CI [.005, .10]\\\",\\\"expected\\\":0.005,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":3,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p37.s2\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Original 90% CI upper bound for interaction effect\\\",\\\"quote\\\":\\\"90% CI [.005, .10]\\\",\\\"expected\\\":0.10,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":2,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p37.s2\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Participants needed for 95% power\\\",\\\"quote\\\":\\\"we would have needed 390 participants\\\",\\\"expected\\\":390,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":null,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p37.s4\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Target sample size rounded to\\\",\\\"quote\\\":\\\"N = 400\\\",\\\"expected\\\":400,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":null,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p37.s6\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Multiple of original sample size\\\",\\\"quote\\\":\\\"2.5 times the original sample size\\\",\\\"expected\\\":2.5,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":1,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p37.s6\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Participants used in analysis\\\",\\\"quote\\\":\\\"only N = 252 participants took part\\\",\\\"expected\\\":252,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":null,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p37.s8\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Achieved power for f = 0.2\\\",\\\"quote\\\":\\\"Achieved power was thus 81.37% for f = 0.2\\\",\\\"expected\\\":81.37,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":2,\\\"unit\\\":\\\"%\\\",\\\"refs\\\":[\\\"sec1.p37.s9\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Replication sample size\\\",\\\"quote\\\":\\\"Our sample consisted of N = 252 participants\\\",\\\"expected\\\":252,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":null,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p39.s14\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Detectable effect size with 95% power\\\",\\\"quote\\\":\\\"sufficient to detect effects of f = 0.249 with 95% power\\\",\\\"expected\\\":0.249,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":3,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p39.s15\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Achieved power for original f = 0.200\\\",\\\"quote\\\":\\\"The achieved power for the original effect size of f = 0.200 was 81.37%\\\",\\\"expected\\\":81.37,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":2,\\\"unit\\\":\\\"%\\\",\\\"refs\\\":[\\\"sec1.p39.s16\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Participants who reported age\\\",\\\"quote\\\":\\\"Only 138 participants reported their age\\\",\\\"expected\\\":138,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":null,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p39.s17\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Missing age values\\\",\\\"quote\\\":\\\"(114 missing values)\\\",\\\"expected\\\":114,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":null,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p39.s17\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Mean age\\\",\\\"quote\\\":\\\"The reported mean age was M = 47.11\\\",\\\"expected\\\":47.11,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":2,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p39.s18\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Age standard deviation\\\",\\\"quote\\\":\\\"SD = 16.48\\\",\\\"expected\\\":16.48,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":2,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p39.s18\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Age range lower bound\\\",\\\"quote\\\":\\\"with a range from 19 to 77\\\",\\\"expected\\\":19,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":null,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p39.s18\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Age range upper bound\\\",\\\"quote\\\":\\\"with a range from 19 to 77\\\",\\\"expected\\\":77,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":null,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p39.s18\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Male participants\\\",\\\"quote\\\":\\\"76 male\\\",\\\"expected\\\":76,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":null,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p39.s19\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Female participants\\\",\\\"quote\\\":\\\"169 female\\\",\\\"expected\\\":169,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":null,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p39.s19\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Diverse participants\\\",\\\"quote\\\":\\\"four diverse\\\",\\\"expected\\\":4,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":null,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p39.s19\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Participants not disclosing gender\\\",\\\"quote\\\":\\\"2 did not want to disclose\\\",\\\"expected\\\":2,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":null,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p41.s1\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Missing gender value\\\",\\\"quote\\\":\\\"1 missing value\\\",\\\"expected\\\":1,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":null,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p41.s1\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Students in sample\\\",\\\"quote\\\":\\\"31 participants reported that they were either bachelor- or master students\\\",\\\"expected\\\":31,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":null,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p41.s2\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Apprentices in sample\\\",\\\"quote\\\":\\\"only one person was in an apprenticeship\\\",\\\"expected\\\":1,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":null,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p41.s2\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Employed participants\\\",\\\"quote\\\":\\\"153 subjects were employed\\\",\\\"expected\\\":153,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":null,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p41.s3\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Participants in search of employment\\\",\\\"quote\\\":\\\"5 in search for employment\\\",\\\"expected\\\":5,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":null,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p41.s3\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Retired participants\\\",\\\"quote\\\":\\\"61 in retirement\\\",\\\"expected\\\":61,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":null,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p41.s3\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Missing occupation value\\\",\\\"quote\\\":\\\"(1 missing value)\\\",\\\"expected\\\":1,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":null,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p41.s3\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Original affect index internal consistency\\\",\\\"quote\\\":\\\"reached an internal consistency of α = .93\\\",\\\"expected\\\":0.93,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":2,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p41.s5\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Replication affect index internal consistency\\\",\\\"quote\\\":\\\"we analyzed the internal consistency of our affect index items and found α = .96\\\",\\\"expected\\\":0.96,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":2,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p41.s6\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Replication affect index 95% CI lower bound\\\",\\\"quote\\\":\\\"(95% CI [0.95, 0.97])\\\",\\\"expected\\\":0.95,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":2,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p41.s6\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Replication affect index 95% CI upper bound\\\",\\\"quote\\\":\\\"(95% CI [0.95, 0.97])\\\",\\\"expected\\\":0.97,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":2,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p41.s6\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Replication NFC internal consistency\\\",\\\"quote\\\":\\\"we found a value of α = 0.85\\\",\\\"expected\\\":0.85,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":2,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p41.s9\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Replication NFC 95% CI lower bound\\\",\\\"quote\\\":\\\"(95% CI [0.83, 0.88], 16 items)\\\",\\\"expected\\\":0.83,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":2,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p41.s9\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Replication NFC 95% CI upper bound\\\",\\\"quote\\\":\\\"(95% CI [0.83, 0.88], 16 items)\\\",\\\"expected\\\":0.88,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":2,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p41.s9\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"NFC scale item count\\\",\\\"quote\\\":\\\"(95% CI [0.83, 0.88], 16 items)\\\",\\\"expected\\\":16,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":null,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p41.s9\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"F statistic for remembered expectation ANOVA\\\",\\\"quote\\\":\\\"F(2, 249) = 3.90\\\",\\\"expected\\\":3.90,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":2,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p41.s11\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"p-value for remembered expectation ANOVA\\\",\\\"quote\\\":\\\"p = .021\\\",\\\"expected\\\":0.021,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":3,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p41.s11\\\"]},{\\\"type\\\":\\\"categorical\\\",\\\"description\\\":\\\"Significant influence of induced expectation on remembered expectations\\\",\\\"quote\\\":\\\"A one-way ANOVA revealed a significant influence of induced expectation on remembered expectations\\\",\\\"expected\\\":\\\"significant\\\",\\\"comparator\\\":null,\\\"decimals\\\":null,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p41.s11\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Positive expectation group mean\\\",\\\"quote\\\":\\\"positive (M = 5.21\\\",\\\"expected\\\":5.21,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":2,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p41.s13\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Positive expectation group SD\\\",\\\"quote\\\":\\\"SD = 2.00\\\",\\\"expected\\\":2.00,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":2,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p41.s13\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Positive expectation group N\\\",\\\"quote\\\":\\\"N = 75\\\",\\\"expected\\\":75,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":null,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p41.s13\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Negative expectation group mean\\\",\\\"quote\\\":\\\"negative (M = 4.35\\\",\\\"expected\\\":4.35,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":2,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p41.s13\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Negative expectation group SD\\\",\\\"quote\\\":\\\"SD = 1.94\\\",\\\"expected\\\":1.94,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":2,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p41.s13\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Negative expectation group N\\\",\\\"quote\\\":\\\"N = 94\\\",\\\"expected\\\":94,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":null,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p41.s13\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Mean difference positive vs negative\\\",\\\"quote\\\":\\\"Δ = 0.862\\\",\\\"expected\\\":0.862,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":3,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p41.s13\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Mean difference 95% CI lower bound\\\",\\\"quote\\\":\\\"95% CI [0.127, 1.597]\\\",\\\"expected\\\":0.127,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":3,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p41.s13\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Mean difference 95% CI upper bound\\\",\\\"quote\\\":\\\"95% CI [0.127, 1.597]\\\",\\\"expected\\\":1.597,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":3,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p41.s13\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"p-value for Tukey positive vs negative comparison\\\",\\\"quote\\\":\\\"p = .017\\\",\\\"expected\\\":0.017,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":3,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p41.s13\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Control group mean\\\",\\\"quote\\\":\\\"M = 4.63\\\",\\\"expected\\\":4.63,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":2,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p43.s1\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Control group SD\\\",\\\"quote\\\":\\\"SD = 2.11\\\",\\\"expected\\\":2.11,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":2,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p43.s1\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Control group N\\\",\\\"quote\\\":\\\"N = 83\\\",\\\"expected\\\":83,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":null,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p43.s1\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Overall model F statistic\\\",\\\"quote\\\":\\\"F(5, 246) = 1.86\\\",\\\"expected\\\":1.86,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":2,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p48.s3\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Overall model p-value\\\",\\\"quote\\\":\\\"p = .103\\\",\\\"expected\\\":0.103,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":3,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p48.s3\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Overall model R-squared\\\",\\\"quote\\\":\\\"R2 = 0.036\\\",\\\"expected\\\":0.036,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":3,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p48.s3\\\"]},{\\\"type\\\":\\\"categorical\\\",\\\"description\\\":\\\"Overall model test significance\\\",\\\"quote\\\":\\\"The overall model test was not significant\\\",\\\"expected\\\":\\\"not significant\\\",\\\"comparator\\\":null,\\\"decimals\\\":null,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p48.s3\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Threshold for model effects p-values\\\",\\\"quote\\\":\\\"none of the model’s effects were significant (all ps > .143\\\",\\\"expected\\\":0.143,\\\"comparator\\\":\\\">\\\",\\\"decimals\\\":3,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p48.s4\\\"]},{\\\"type\\\":\\\"categorical\\\",\\\"description\\\":\\\"None of the model effects significant\\\",\\\"quote\\\":\\\"none of the model’s effects were significant\\\",\\\"expected\\\":\\\"not significant\\\",\\\"comparator\\\":null,\\\"decimals\\\":null,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p48.s4\\\"]},{\\\"type\\\":\\\"table\\\",\\\"description\\\":\\\"Table 2 Linear Regression of Affective Reaction on Expectation, NFC, and Their Interaction\\\",\\\"quote\\\":\\\"Table 2 Linear Regression of Affective Reaction on Expectation, NFC, and Their Interaction\\\",\\\"expected\\\":[[\\\"Coefficient\\\",\\\"B\\\",\\\"SE\\\",\\\"t\\\",\\\"p\\\"],[\\\"Intercept\\\",\\\"1.88\\\",\\\"1.44\\\",\\\"1.31\\\",\\\".192\\\"],[\\\"Expectation (none)\\\",\\\"2.53\\\",\\\"2.10\\\",\\\"1.21\\\",\\\".229\\\"],[\\\"Expectation (positive)\\\",\\\"1.36\\\",\\\"2.04\\\",\\\"0.67\\\",\\\".506\\\"],[\\\"NFC\\\",\\\"0.42\\\",\\\"0.29\\\",\\\"1.47\\\",\\\".143\\\"],[\\\"Expectation (none) × NFC\\\",\\\"−0.55\\\",\\\"0.42\\\",\\\"−1.32\\\",\\\".190\\\"],[\\\"Expectation (positive) × NFC\\\",\\\"−0.13\\\",\\\"0.41\\\",\\\"−0.32\\\",\\\".750\\\"]],\\\"comparator\\\":null,\\\"decimals\\\":null,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p48.s5\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Residual standard error\\\",\\\"quote\\\":\\\"Residual SE = 2.30 on 246 df\\\",\\\"expected\\\":2.30,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":2,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p49.s3\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Adjusted R-squared\\\",\\\"quote\\\":\\\"adjusted R² = .017\\\",\\\"expected\\\":0.017,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":3,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p49.s4\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"ANOVA main effect of expectation F statistic\\\",\\\"quote\\\":\\\"F(2, 246) = 3.00\\\",\\\"expected\\\":3.00,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":2,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p50.s3\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"ANOVA main effect of expectation p-value\\\",\\\"quote\\\":\\\"p = .051\\\",\\\"expected\\\":0.051,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":3,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p50.s3\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"ANOVA main effect of expectation eta-squared\\\",\\\"quote\\\":\\\"η² = 0.02\\\",\\\"expected\\\":0.02,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":2,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p50.s3\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"ANOVA expectation effect 90% CI lower bound\\\",\\\"quote\\\":\\\"90% CI [0, 0.05]\\\",\\\"expected\\\":0,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":0,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p50.s3\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"ANOVA expectation effect 90% CI upper bound\\\",\\\"quote\\\":\\\"90% CI [0, 0.05]\\\",\\\"expected\\\":0.05,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":2,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p50.s3\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"ANOVA main effect of NFC F statistic\\\",\\\"quote\\\":\\\"need for cognition F(1, 246) = 1.43\\\",\\\"expected\\\":1.43,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":2,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p50.s3\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"ANOVA main effect of NFC p-value\\\",\\\"quote\\\":\\\"p = .233\\\",\\\"expected\\\":0.233,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":3,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p50.s3\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"ANOVA main effect of NFC eta-squared\\\",\\\"quote\\\":\\\"η² < 0.01\\\",\\\"expected\\\":0.01,\\\"comparator\\\":\\\"<\\\",\\\"decimals\\\":2,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p50.s3\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"ANOVA NFC effect 90% CI lower bound\\\",\\\"quote\\\":\\\"90% CI [0, 0.02]\\\",\\\"expected\\\":0,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":0,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p50.s3\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"ANOVA NFC effect 90% CI upper bound\\\",\\\"quote\\\":\\\"90% CI [0, 0.02]\\\",\\\"expected\\\":0.02,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":2,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p50.s3\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"ANOVA interaction F statistic\\\",\\\"quote\\\":\\\"interaction effect F(2, 246) = 0.92\\\",\\\"expected\\\":0.92,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":2,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p50.s3\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"ANOVA interaction p-value\\\",\\\"quote\\\":\\\"p = .398\\\",\\\"expected\\\":0.398,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":3,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p50.s3\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"ANOVA interaction eta-squared\\\",\\\"quote\\\":\\\"η² < 0.01\\\",\\\"expected\\\":0.01,\\\"comparator\\\":\\\"<\\\",\\\"decimals\\\":2,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p50.s3\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"ANOVA interaction 90% CI lower bound\\\",\\\"quote\\\":\\\"90% CI [0, 0.02]\\\",\\\"expected\\\":0,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":0,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p50.s3\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"ANOVA interaction 90% CI upper bound\\\",\\\"quote\\\":\\\"90% CI [0, 0.02]\\\",\\\"expected\\\":0.02,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":2,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p50.s3\\\"]},{\\\"type\\\":\\\"categorical\\\",\\\"description\\\":\\\"ANOVA general effects of NFC, expectation and interaction not significant\\\",\\\"quote\\\":\\\"Again, no significant effect was found (all ps ≥ .051)\\\",\\\"expected\\\":\\\"not significant\\\",\\\"comparator\\\":null,\\\"decimals\\\":null,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p50.s2\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Positive expectation slope b\\\",\\\"quote\\\":\\\"Positive expectations: b = 0.288\\\",\\\"expected\\\":0.288,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":3,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p52.s2\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Positive expectation slope SE\\\",\\\"quote\\\":\\\"se = 0.306\\\",\\\"expected\\\":0.306,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":3,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p52.s2\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Positive expectation slope t statistic\\\",\\\"quote\\\":\\\"t(73) = 0.94\\\",\\\"expected\\\":0.94,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":2,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p52.s2\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Positive expectation slope p-value\\\",\\\"quote\\\":\\\"p = .349\\\",\\\"expected\\\":0.349,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":3,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p52.s2\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Negative expectation slope b\\\",\\\"quote\\\":\\\"Negative expectations: b = 0.420\\\",\\\"expected\\\":0.420,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":3,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p52.s2\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Negative expectation slope SE\\\",\\\"quote\\\":\\\"se = 0.275\\\",\\\"expected\\\":0.275,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":3,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p52.s2\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Negative expectation slope t statistic\\\",\\\"quote\\\":\\\"t(92) = 1.53\\\",\\\"expected\\\":1.53,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":2,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p52.s2\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Negative expectation slope p-value\\\",\\\"quote\\\":\\\"p = .130\\\",\\\"expected\\\":0.130,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":3,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p52.s2\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Control group slope b\\\",\\\"quote\\\":\\\"Control group (no specific expectations): b = -0.131\\\",\\\"expected\\\":-0.131,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":3,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p52.s2\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Control group slope SE\\\",\\\"quote\\\":\\\"se = 0.312\\\",\\\"expected\\\":0.312,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":3,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p52.s2\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Control group slope t statistic\\\",\\\"quote\\\":\\\"t(81) = -0.420\\\",\\\"expected\\\":-0.420,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":3,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p52.s2\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Control group slope p-value\\\",\\\"quote\\\":\\\"p = .675\\\",\\\"expected\\\":0.675,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":3,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p52.s2\\\"]},{\\\"type\\\":\\\"categorical\\\",\\\"description\\\":\\\"None of the slopes significantly different from zero\\\",\\\"quote\\\":\\\"None of them was significantly different from zero\\\",\\\"expected\\\":\\\"not significant\\\",\\\"comparator\\\":null,\\\"decimals\\\":null,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p52.s2\\\"]},{\\\"type\\\":\\\"table\\\",\\\"description\\\":\\\"Table 3 Comparison of original and replication results with interpretations according to LeBel et al. (2019)\\\",\\\"quote\\\":\\\"Table 3 Comparison of original and replication results with interpretations according to LeBel et al. (2019)\\\",\\\"expected\\\":[[\\\"Test\\\",\\\"Original Study\\\",\\\"Replication (preregistered Tukey HSD)2\\\",\\\"Replication (planned contrasts)2\\\",\\\"Interpretation\\\"],[\\\"Expectation × NFC\\\",\\\"F(1, 154) = 6.40, MSE = 3.21, p = .01, r²= .04, f = 0.200, η² = .04, 90% CI [.005, .10]”\\\",\\\"F(2, 246) = 0.92, p = .398, η² < 0.01, 90% CI [0, 0.02]\\\",\\\"—\\\",\\\"No signal, inconsistent\\\"],[\\\"Slope for the positive expectation condition\\\",\\\"b = -0.03, SE = .02, t(154) = 1.91, p = .051\\\",\\\"b = 0.288, se = 0.306, t(73) = 0.94, p = .349\\\",\\\"t(1, 246) = 0.969, p = .334\\\",\\\"No signal, inconsistent1\\\"],[\\\"Slope for the negative expectation condition\\\",\\\"b = -.008, SE = .019, t(154) = 0.42, p = .67\\\",\\\"b = 0.420, se = 0.275, t(92) = 1.53, p = .130\\\",\\\"t(1, 246) = 1.469, p = .143\\\",\\\"No signal, consistent\\\"],[\\\"Slope for the no expectation condition\\\",\\\"b = .03, SE = .02, t(154) = 1.62, p = .10\\\",\\\"b = -0.131, se = 0.312, t(81) = -0.420, p = .675\\\",\\\"t(1, 246) = -0.428, p = .669\\\",\\\"No signal, consistent\\\"]],\\\"comparator\\\":null,\\\"decimals\\\":null,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p57.s2\\\"]},{\\\"type\\\":\\\"table\\\",\\\"description\\\":\\\"Table 4 Fixed-Effects Moderator Model Testing Replication Success (Lakens, 2022) and Effect Sizes Converted to r\\\",\\\"quote\\\":\\\"Table 4 Fixed-Effects Moderator Model Testing Replication Success (Lakens, 2022) and Effect Sizes Converted to r\\\",\\\"expected\\\":[[\\\"Coefficient\\\",\\\"b\\\",\\\"SE\\\",\\\"z\\\",\\\"p\\\",\\\"95% CI\\\"],[\\\"Intercept\\\",\\\"0.200\\\",\\\"0.076\\\",\\\"2.63\\\",\\\".009\\\",\\\"[.051, .349]\\\"],[\\\"Study (replication)\\\",\\\"−0.200\\\",\\\"0.099\\\",\\\"−2.02\\\",\\\".043\\\",\\\"[-.394, -.006]\\\"]],\\\"comparator\\\":null,\\\"decimals\\\":null,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p62.s6\\\"]},{\\\"type\\\":\\\"categorical\\\",\\\"description\\\":\\\"Replication effect significantly smaller than original effect\\\",\\\"quote\\\":\\\"the replication effect was significantly smaller than the original effect\\\",\\\"expected\\\":\\\"significant\\\",\\\"comparator\\\":null,\\\"decimals\\\":null,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p62.s4\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Meta-analytic moderator test Q statistic\\\",\\\"quote\\\":\\\"The moderator test QM(1) = 4.09\\\",\\\"expected\\\":4.09,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":2,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p63.s4\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Meta-analytic moderator test p-value\\\",\\\"quote\\\":\\\"p = .043\\\",\\\"expected\\\":0.043,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":3,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p63.s4\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Exploratory one-way ANOVA F statistic\\\",\\\"quote\\\":\\\"F(2, 249) = 3.00\\\",\\\"expected\\\":3.00,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":2,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p70.s2\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Exploratory one-way ANOVA p-value\\\",\\\"quote\\\":\\\"p = .052\\\",\\\"expected\\\":0.052,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":3,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p70.s2\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Participants identifying all four statements correctly\\\",\\\"quote\\\":\\\"149 participants (59.13%) identified all statements correctly\\\",\\\"expected\\\":149,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":null,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p75.s1\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Percent identifying all four statements correctly\\\",\\\"quote\\\":\\\"149 participants (59.13%)\\\",\\\"expected\\\":59.13,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":2,\\\"unit\\\":\\\"%\\\",\\\"refs\\\":[\\\"sec1.p75.s1\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Participants identifying 3 of 4 statements\\\",\\\"quote\\\":\\\"77 (30.56%) identified 3/4\\\",\\\"expected\\\":77,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":null,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p75.s1\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Percent identifying 3 of 4 statements\\\",\\\"quote\\\":\\\"77 (30.56%)\\\",\\\"expected\\\":30.56,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":2,\\\"unit\\\":\\\"%\\\",\\\"refs\\\":[\\\"sec1.p75.s1\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Participants identifying 2 of 4 statements\\\",\\\"quote\\\":\\\"22 (8.73%) identified 2/4\\\",\\\"expected\\\":22,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":null,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p75.s1\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Percent identifying 2 of 4 statements\\\",\\\"quote\\\":\\\"22 (8.73%)\\\",\\\"expected\\\":8.73,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":2,\\\"unit\\\":\\\"%\\\",\\\"refs\\\":[\\\"sec1.p75.s1\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Participants identifying 1 of 4 statements\\\",\\\"quote\\\":\\\"3 (1.19%) only identified 1/4\\\",\\\"expected\\\":3,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":null,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p75.s1\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Percent identifying 1 of 4 statements\\\",\\\"quote\\\":\\\"3 (1.19%)\\\",\\\"expected\\\":1.19,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":2,\\\"unit\\\":\\\"%\\\",\\\"refs\\\":[\\\"sec1.p75.s1\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Missing value for attention check\\\",\\\"quote\\\":\\\"(1 missing value, 0.40%)\\\",\\\"expected\\\":1,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":null,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p75.s1\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Percent missing attention check value\\\",\\\"quote\\\":\\\"(1 missing value, 0.40%)\\\",\\\"expected\\\":0.40,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":2,\\\"unit\\\":\\\"%\\\",\\\"refs\\\":[\\\"sec1.p75.s1\\\"]},{\\\"type\\\":\\\"categorical\\\",\\\"description\\\":\\\"No participant got all four statements wrong\\\",\\\"quote\\\":\\\"No participant got all four statements wrong\\\",\\\"expected\\\":\\\"none\\\",\\\"comparator\\\":null,\\\"decimals\\\":null,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p75.s2\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Attention-check restricted model F statistic\\\",\\\"quote\\\":\\\"F(5, 143) = 0.94\\\",\\\"expected\\\":0.94,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":2,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p75.s3\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Attention-check restricted model p-value\\\",\\\"quote\\\":\\\"p = .459\\\",\\\"expected\\\":0.459,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":3,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p75.s3\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Attention-check restricted model R-squared\\\",\\\"quote\\\":\\\"R² = .032\\\",\\\"expected\\\":0.032,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":3,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p75.s3\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Replication sample size in discussion\\\",\\\"quote\\\":\\\"Nreplication= 252\\\",\\\"expected\\\":252,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":null,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p77.s3\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Original sample size in discussion\\\",\\\"quote\\\":\\\"Noriginal = 160\\\",\\\"expected\\\":160,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":null,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p77.s3\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Approximate statistical power in discussion\\\",\\\"quote\\\":\\\"a lack of statistical power (~80%)\\\",\\\"expected\\\":80,\\\"comparator\\\":\\\"~\\\",\\\"decimals\\\":null,\\\"unit\\\":\\\"%\\\",\\\"refs\\\":[\\\"sec1.p77.s3\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Preregistered target sample size\\\",\\\"quote\\\":\\\"target sample size for N = 400 participants\\\",\\\"expected\\\":400,\\\"comparator\\\":\\\"=\\\",\\\"decimals\\\":null,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p79.s7\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Achieved sample size greater than 80% power\\\",\\\"quote\\\":\\\"which still had >80% power for the original effect\\\",\\\"expected\\\":80,\\\"comparator\\\":\\\">\\\",\\\"decimals\\\":null,\\\"unit\\\":\\\"%\\\",\\\"refs\\\":[\\\"sec1.p79.s7\\\"]},{\\\"type\\\":\\\"number\\\",\\\"description\\\":\\\"Recommended minimum sample size\\\",\\\"quote\\\":\\\"use a very large sample size (N ≥ 400)\\\",\\\"expected\\\":400,\\\"comparator\\\":\\\">=\\\",\\\"decimals\\\":null,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p84.s1\\\"]},{\\\"type\\\":\\\"figure\\\",\\\"description\\\":\\\"Figure 1 Remembered expectation by induced expectation\\\",\\\"quote\\\":\\\"Figure 1 Remembered expectation by induced expectation\\\",\\\"expected\\\":null,\\\"comparator\\\":null,\\\"decimals\\\":null,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p43.s3\\\"]},{\\\"type\\\":\\\"figure\\\",\\\"description\\\":\\\"Figure 2 Regression lines predicting affect scores from need for cognition and expectation condition\\\",\\\"quote\\\":\\\"Figure 2 Regression lines predicting affect scores from need for cognition and expectation condition\\\",\\\"expected\\\":null,\\\"comparator\\\":null,\\\"decimals\\\":null,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p54.s1\\\"]},{\\\"type\\\":\\\"figure\\\",\\\"description\\\":\\\"Figure 3 Distribution of Affect Index Scores\\\",\\\"quote\\\":\\\"Figure 3 Distribution of Affect Index Scores\\\",\\\"expected\\\":null,\\\"comparator\\\":null,\\\"decimals\\\":null,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p65.s1\\\"]},{\\\"type\\\":\\\"figure\\\",\\\"description\\\":\\\"Figure 4 Distribution of Need for Cognition Scores\\\",\\\"quote\\\":\\\"Figure 4 Distribution of Need for Cognition Scores\\\",\\\"expected\\\":null,\\\"comparator\\\":null,\\\"decimals\\\":null,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p68.s1\\\"]},{\\\"type\\\":\\\"figure\\\",\\\"description\\\":\\\"Figure 5 Affect scores by expectation condition\\\",\\\"quote\\\":\\\"Figure 5 Affect scores by expectation condition\\\",\\\"expected\\\":null,\\\"comparator\\\":null,\\\"decimals\\\":null,\\\"unit\\\":null,\\\"refs\\\":[\\\"sec1.p72.s1\\\"]}]}\",\"time\":{\"start\":1794566459163,\"end\":1794566484658}}}\n{\"type\":\"step_finish\",\"timestamp\":1794566484703,\"sessionID\":\"ses_e2b816cd7ffeJ76YD9zOMmkE58\",\"part\":{\"id\":\"prt_1d47f72bf0018Bb3PGSib3B7fb\",\"reason\":\"stop\",\"messageID\":\"msg_1d47e95f8001GTbW2i1JglbyMW\",\"sessionID\":\"ses_e2b816cd7ffeJ76YD9zOMmkE58\",\"type\":\"step-finish\",\"tokens\":{\"total\":40751,\"input\":23992,\"output\":8895,\"reasoning\":7608,\"cache\":{\"write\":0,\"read\":256}},\"cost\":0}}\n",
+        "output_format": "opencode-json",
+        "started_at": "2026-11-13T10:40:25Z",
+        "duration_ms": 59397,
+        "exit_code": 0
+      },
+      "entries": [
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p7.s5"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Original effect size eta-squared (η²) = .04",
+            "quote": "η²original = .04, 90% CI [.005, .10]",
+            "expected": 0.04,
+            "decimals": 2,
+            "id": "T001"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p7.s5"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Original 90% CI lower bound for η²",
+            "quote": "90% CI [.005, .10]",
+            "expected": 0.005,
+            "decimals": 3,
+            "id": "T002"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p7.s5"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Original 90% CI upper bound for η²",
+            "quote": "90% CI [.005, .10]",
+            "expected": 0.1,
+            "decimals": 2,
+            "id": "T003"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p7.s5"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Replication η²",
+            "quote": "η²replication < 0.01, 90% CI [0, 0.02]",
+            "expected": 0.01,
+            "comparator": "<",
+            "decimals": 2,
+            "id": "T004"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p7.s5"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Replication 90% CI lower bound for η²",
+            "quote": "90% CI [0, 0.02]",
+            "expected": 0,
+            "decimals": 0,
+            "id": "T005"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p7.s5"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Replication 90% CI upper bound for η²",
+            "quote": "90% CI [0, 0.02]",
+            "expected": 0.02,
+            "decimals": 2,
+            "id": "T006"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p7.s5"
+              }
+            ],
+            "unreferenced": false,
+            "type": "categorical",
+            "description": "No evidence for a difference between groups nor moderation by NFC",
+            "quote": "there was no evidence for a difference between the groups nor for a moderation of affective experiences by need for cognition",
+            "expected": "no evidence",
+            "id": "T007"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p13.s6"
+              },
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p37.s3"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Original Study 1 sample size",
+            "quote": "160 undergraduates were asked to watch and evaluate a video",
+            "expected": 160,
+            "id": "T008"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p37.s1"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Original F statistic for negative-expectation effect F(1,156)",
+            "quote": "F(1, 156) = 12.09, MSE = 3.30, p = .001, r² = .07",
+            "expected": 12.09,
+            "decimals": 2,
+            "id": "T009"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p37.s1"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Original MSE for negative-expectation effect",
+            "quote": "MSE = 3.30",
+            "expected": 3.3,
+            "decimals": 2,
+            "id": "T010"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p37.s1"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Original p-value for negative-expectation effect",
+            "quote": "p = .001",
+            "expected": 0.001,
+            "decimals": 3,
+            "id": "T011"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p37.s1"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Original r² for negative-expectation effect",
+            "quote": "r² = .07",
+            "expected": 0.07,
+            "decimals": 2,
+            "id": "T012"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p37.s1"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Original f effect size for negative-expectation effect",
+            "quote": "f = 0.270",
+            "expected": 0.27,
+            "decimals": 3,
+            "id": "T013"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p37.s1"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Original η² for negative-expectation effect",
+            "quote": "η² = .07",
+            "expected": 0.07,
+            "decimals": 2,
+            "id": "T014"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p37.s1"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Original 90% CI lower bound for negative-expectation effect",
+            "quote": "90% CI [.02, .14]",
+            "expected": 0.02,
+            "decimals": 2,
+            "id": "T015"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p37.s1"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Original 90% CI upper bound for negative-expectation effect",
+            "quote": "90% CI [.02, .14]",
+            "expected": 0.14,
+            "decimals": 2,
+            "id": "T016"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p37.s2"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Original F statistic for expectation x NFC interaction F(1,154)",
+            "quote": "F(1, 154) = 6.40, MSE = 3.21, p = .01, r² = .04",
+            "expected": 6.4,
+            "decimals": 2,
+            "id": "T017"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p37.s2"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Original MSE for interaction effect",
+            "quote": "MSE = 3.21",
+            "expected": 3.21,
+            "decimals": 2,
+            "id": "T018"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p37.s2"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Original p-value for interaction effect",
+            "quote": "p = .01",
+            "expected": 0.01,
+            "decimals": 2,
+            "id": "T019"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p37.s2"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Original r² for interaction effect",
+            "quote": "r² = .04",
+            "expected": 0.04,
+            "decimals": 2,
+            "id": "T020"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p37.s2"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Original f effect size for interaction effect",
+            "quote": "f = 0.200",
+            "expected": 0.2,
+            "decimals": 3,
+            "id": "T021"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p37.s2"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Original η² for interaction effect",
+            "quote": "η² = .04",
+            "expected": 0.04,
+            "decimals": 2,
+            "id": "T022"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p37.s2"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Original 90% CI lower bound for interaction effect",
+            "quote": "90% CI [.005, .10]",
+            "expected": 0.005,
+            "decimals": 3,
+            "id": "T023"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p37.s2"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Original 90% CI upper bound for interaction effect",
+            "quote": "90% CI [.005, .10]",
+            "expected": 0.1,
+            "decimals": 2,
+            "id": "T024"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p37.s4"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Participants needed for 95% power",
+            "quote": "we would have needed 390 participants",
+            "expected": 390,
+            "id": "T025"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p37.s6"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Target sample size rounded to",
+            "quote": "N = 400",
+            "expected": 400,
+            "id": "T026"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p37.s6"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Multiple of original sample size",
+            "quote": "2.5 times the original sample size",
+            "expected": 2.5,
+            "decimals": 1,
+            "id": "T027"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p37.s8"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Participants used in analysis",
+            "quote": "only N = 252 participants took part",
+            "expected": 252,
+            "id": "T028"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p37.s9"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Achieved power for f = 0.2",
+            "quote": "Achieved power was thus 81.37% for f = 0.2",
+            "expected": 81.37,
+            "decimals": 2,
+            "unit": "%",
+            "id": "T029"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p39.s14"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Replication sample size",
+            "quote": "Our sample consisted of N = 252 participants",
+            "expected": 252,
+            "id": "T030"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p39.s15"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Detectable effect size with 95% power",
+            "quote": "sufficient to detect effects of f = 0.249 with 95% power",
+            "expected": 0.249,
+            "decimals": 3,
+            "id": "T031"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p39.s16"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Achieved power for original f = 0.200",
+            "quote": "The achieved power for the original effect size of f = 0.200 was 81.37%",
+            "expected": 81.37,
+            "decimals": 2,
+            "unit": "%",
+            "id": "T032"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p39.s17"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Participants who reported age",
+            "quote": "Only 138 participants reported their age",
+            "expected": 138,
+            "id": "T033"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p39.s17"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Missing age values",
+            "quote": "(114 missing values)",
+            "expected": 114,
+            "id": "T034"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p39.s18"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Mean age",
+            "quote": "The reported mean age was M = 47.11",
+            "expected": 47.11,
+            "decimals": 2,
+            "id": "T035"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p39.s18"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Age standard deviation",
+            "quote": "SD = 16.48",
+            "expected": 16.48,
+            "decimals": 2,
+            "id": "T036"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p39.s18"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Age range lower bound",
+            "quote": "with a range from 19 to 77",
+            "expected": 19,
+            "id": "T037"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p39.s18"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Age range upper bound",
+            "quote": "with a range from 19 to 77",
+            "expected": 77,
+            "id": "T038"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p39.s19"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Male participants",
+            "quote": "76 male",
+            "expected": 76,
+            "id": "T039"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p39.s19"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Female participants",
+            "quote": "169 female",
+            "expected": 169,
+            "id": "T040"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p39.s19"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Diverse participants",
+            "quote": "four diverse",
+            "expected": 4,
+            "id": "T041"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p41.s1"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Participants not disclosing gender",
+            "quote": "2 did not want to disclose",
+            "expected": 2,
+            "id": "T042"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p41.s1"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Missing gender value",
+            "quote": "1 missing value",
+            "expected": 1,
+            "id": "T043"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p41.s2"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Students in sample",
+            "quote": "31 participants reported that they were either bachelor- or master students",
+            "expected": 31,
+            "id": "T044"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p41.s2"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Apprentices in sample",
+            "quote": "only one person was in an apprenticeship",
+            "expected": 1,
+            "id": "T045"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p41.s3"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Employed participants",
+            "quote": "153 subjects were employed",
+            "expected": 153,
+            "id": "T046"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p41.s3"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Participants in search of employment",
+            "quote": "5 in search for employment",
+            "expected": 5,
+            "id": "T047"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p41.s3"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Retired participants",
+            "quote": "61 in retirement",
+            "expected": 61,
+            "id": "T048"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p41.s3"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Missing occupation value",
+            "quote": "(1 missing value)",
+            "expected": 1,
+            "id": "T049"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p41.s5"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Original affect index internal consistency",
+            "quote": "reached an internal consistency of α = .93",
+            "expected": 0.93,
+            "decimals": 2,
+            "id": "T050"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p41.s6"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Replication affect index internal consistency",
+            "quote": "we analyzed the internal consistency of our affect index items and found α = .96",
+            "expected": 0.96,
+            "decimals": 2,
+            "id": "T051"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p41.s6"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Replication affect index 95% CI lower bound",
+            "quote": "(95% CI [0.95, 0.97])",
+            "expected": 0.95,
+            "decimals": 2,
+            "id": "T052"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p41.s6"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Replication affect index 95% CI upper bound",
+            "quote": "(95% CI [0.95, 0.97])",
+            "expected": 0.97,
+            "decimals": 2,
+            "id": "T053"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p41.s9"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Replication NFC internal consistency",
+            "quote": "we found a value of α = 0.85",
+            "expected": 0.85,
+            "decimals": 2,
+            "id": "T054"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p41.s9"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Replication NFC 95% CI lower bound",
+            "quote": "(95% CI [0.83, 0.88], 16 items)",
+            "expected": 0.83,
+            "decimals": 2,
+            "id": "T055"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p41.s9"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Replication NFC 95% CI upper bound",
+            "quote": "(95% CI [0.83, 0.88], 16 items)",
+            "expected": 0.88,
+            "decimals": 2,
+            "id": "T056"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p41.s9"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "NFC scale item count",
+            "quote": "(95% CI [0.83, 0.88], 16 items)",
+            "expected": 16,
+            "id": "T057"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p41.s11"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "F statistic for remembered expectation ANOVA",
+            "quote": "F(2, 249) = 3.90",
+            "expected": 3.9,
+            "decimals": 2,
+            "id": "T058"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p41.s11"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "p-value for remembered expectation ANOVA",
+            "quote": "p = .021",
+            "expected": 0.021,
+            "decimals": 3,
+            "id": "T059"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p41.s11"
+              }
+            ],
+            "unreferenced": false,
+            "type": "categorical",
+            "description": "Significant influence of induced expectation on remembered expectations",
+            "quote": "A one-way ANOVA revealed a significant influence of induced expectation on remembered expectations",
+            "expected": "significant",
+            "id": "T060"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p41.s13"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Positive expectation group mean",
+            "quote": "positive (M = 5.21",
+            "expected": 5.21,
+            "decimals": 2,
+            "id": "T061"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p41.s13"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Positive expectation group SD",
+            "quote": "SD = 2.00",
+            "expected": 2.0,
+            "decimals": 2,
+            "id": "T062"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p41.s13"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Positive expectation group N",
+            "quote": "N = 75",
+            "expected": 75,
+            "id": "T063"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p41.s13"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Negative expectation group mean",
+            "quote": "negative (M = 4.35",
+            "expected": 4.35,
+            "decimals": 2,
+            "id": "T064"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p41.s13"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Negative expectation group SD",
+            "quote": "SD = 1.94",
+            "expected": 1.94,
+            "decimals": 2,
+            "id": "T065"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p41.s13"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Negative expectation group N",
+            "quote": "N = 94",
+            "expected": 94,
+            "id": "T066"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p41.s13"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Mean difference positive vs negative",
+            "quote": "Δ = 0.862",
+            "expected": 0.862,
+            "decimals": 3,
+            "id": "T067"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p41.s13"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Mean difference 95% CI lower bound",
+            "quote": "95% CI [0.127, 1.597]",
+            "expected": 0.127,
+            "decimals": 3,
+            "id": "T068"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p41.s13"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Mean difference 95% CI upper bound",
+            "quote": "95% CI [0.127, 1.597]",
+            "expected": 1.597,
+            "decimals": 3,
+            "id": "T069"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p41.s13"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "p-value for Tukey positive vs negative comparison",
+            "quote": "p = .017",
+            "expected": 0.017,
+            "decimals": 3,
+            "id": "T070"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p43.s1"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Control group mean",
+            "quote": "M = 4.63",
+            "expected": 4.63,
+            "decimals": 2,
+            "id": "T071"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p43.s1"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Control group SD",
+            "quote": "SD = 2.11",
+            "expected": 2.11,
+            "decimals": 2,
+            "id": "T072"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p43.s1"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Control group N",
+            "quote": "N = 83",
+            "expected": 83,
+            "id": "T073"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p48.s3"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Overall model F statistic",
+            "quote": "F(5, 246) = 1.86",
+            "expected": 1.86,
+            "decimals": 2,
+            "id": "T074"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p48.s3"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Overall model p-value",
+            "quote": "p = .103",
+            "expected": 0.103,
+            "decimals": 3,
+            "id": "T075"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p48.s3"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Overall model R-squared",
+            "quote": "R2 = 0.036",
+            "expected": 0.036,
+            "decimals": 3,
+            "id": "T076"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p48.s3"
+              }
+            ],
+            "unreferenced": false,
+            "type": "categorical",
+            "description": "Overall model test significance",
+            "quote": "The overall model test was not significant",
+            "expected": "not significant",
+            "id": "T077"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p48.s4"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Threshold for model effects p-values",
+            "quote": "none of the model’s effects were significant (all ps > .143",
+            "expected": 0.143,
+            "comparator": ">",
+            "decimals": 3,
+            "id": "T078"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p48.s4"
+              }
+            ],
+            "unreferenced": false,
+            "type": "categorical",
+            "description": "None of the model effects significant",
+            "quote": "none of the model’s effects were significant",
+            "expected": "not significant",
+            "id": "T079"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p48.s5"
+              }
+            ],
+            "unreferenced": false,
+            "type": "table",
+            "description": "Table 2 Linear Regression of Affective Reaction on Expectation, NFC, and Their Interaction",
+            "quote": "Table 2 Linear Regression of Affective Reaction on Expectation, NFC, and Their Interaction",
+            "expected": [
+              [
+                "Coefficient",
+                "B",
+                "SE",
+                "t",
+                "p"
+              ],
+              [
+                "Intercept",
+                "1.88",
+                "1.44",
+                "1.31",
+                ".192"
+              ],
+              [
+                "Expectation (none)",
+                "2.53",
+                "2.10",
+                "1.21",
+                ".229"
+              ],
+              [
+                "Expectation (positive)",
+                "1.36",
+                "2.04",
+                "0.67",
+                ".506"
+              ],
+              [
+                "NFC",
+                "0.42",
+                "0.29",
+                "1.47",
+                ".143"
+              ],
+              [
+                "Expectation (none) × NFC",
+                "−0.55",
+                "0.42",
+                "−1.32",
+                ".190"
+              ],
+              [
+                "Expectation (positive) × NFC",
+                "−0.13",
+                "0.41",
+                "−0.32",
+                ".750"
+              ]
+            ],
+            "id": "T080"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p49.s3"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Residual standard error",
+            "quote": "Residual SE = 2.30 on 246 df",
+            "expected": 2.3,
+            "decimals": 2,
+            "id": "T081"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p49.s4"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Adjusted R-squared",
+            "quote": "adjusted R² = .017",
+            "expected": 0.017,
+            "decimals": 3,
+            "id": "T082"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p50.s3"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "ANOVA main effect of expectation F statistic",
+            "quote": "F(2, 246) = 3.00",
+            "expected": 3.0,
+            "decimals": 2,
+            "id": "T083"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p50.s3"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "ANOVA main effect of expectation p-value",
+            "quote": "p = .051",
+            "expected": 0.051,
+            "decimals": 3,
+            "id": "T084"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p50.s3"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "ANOVA main effect of expectation eta-squared",
+            "quote": "η² = 0.02",
+            "expected": 0.02,
+            "decimals": 2,
+            "id": "T085"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p50.s3"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "ANOVA expectation effect 90% CI lower bound",
+            "quote": "90% CI [0, 0.05]",
+            "expected": 0,
+            "decimals": 0,
+            "id": "T086"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p50.s3"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "ANOVA expectation effect 90% CI upper bound",
+            "quote": "90% CI [0, 0.05]",
+            "expected": 0.05,
+            "decimals": 2,
+            "id": "T087"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p50.s3"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "ANOVA main effect of NFC F statistic",
+            "quote": "need for cognition F(1, 246) = 1.43",
+            "expected": 1.43,
+            "decimals": 2,
+            "id": "T088"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p50.s3"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "ANOVA main effect of NFC p-value",
+            "quote": "p = .233",
+            "expected": 0.233,
+            "decimals": 3,
+            "id": "T089"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p50.s3"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "ANOVA main effect of NFC eta-squared",
+            "quote": "η² < 0.01",
+            "expected": 0.01,
+            "comparator": "<",
+            "decimals": 2,
+            "id": "T090"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p50.s3"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "ANOVA NFC effect 90% CI lower bound",
+            "quote": "90% CI [0, 0.02]",
+            "expected": 0,
+            "decimals": 0,
+            "id": "T091"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p50.s3"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "ANOVA NFC effect 90% CI upper bound",
+            "quote": "90% CI [0, 0.02]",
+            "expected": 0.02,
+            "decimals": 2,
+            "id": "T092"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p50.s3"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "ANOVA interaction F statistic",
+            "quote": "interaction effect F(2, 246) = 0.92",
+            "expected": 0.92,
+            "decimals": 2,
+            "id": "T093"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p50.s3"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "ANOVA interaction p-value",
+            "quote": "p = .398",
+            "expected": 0.398,
+            "decimals": 3,
+            "id": "T094"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p50.s3"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "ANOVA interaction eta-squared",
+            "quote": "η² < 0.01",
+            "expected": 0.01,
+            "comparator": "<",
+            "decimals": 2,
+            "id": "T095"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p50.s3"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "ANOVA interaction 90% CI lower bound",
+            "quote": "90% CI [0, 0.02]",
+            "expected": 0,
+            "decimals": 0,
+            "id": "T096"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p50.s3"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "ANOVA interaction 90% CI upper bound",
+            "quote": "90% CI [0, 0.02]",
+            "expected": 0.02,
+            "decimals": 2,
+            "id": "T097"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p50.s2"
+              }
+            ],
+            "unreferenced": false,
+            "type": "categorical",
+            "description": "ANOVA general effects of NFC, expectation and interaction not significant",
+            "quote": "Again, no significant effect was found (all ps ≥ .051)",
+            "expected": "not significant",
+            "id": "T098"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p52.s2"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Positive expectation slope b",
+            "quote": "Positive expectations: b = 0.288",
+            "expected": 0.288,
+            "decimals": 3,
+            "id": "T099"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p52.s2"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Positive expectation slope SE",
+            "quote": "se = 0.306",
+            "expected": 0.306,
+            "decimals": 3,
+            "id": "T100"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p52.s2"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Positive expectation slope t statistic",
+            "quote": "t(73) = 0.94",
+            "expected": 0.94,
+            "decimals": 2,
+            "id": "T101"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p52.s2"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Positive expectation slope p-value",
+            "quote": "p = .349",
+            "expected": 0.349,
+            "decimals": 3,
+            "id": "T102"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p52.s2"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Negative expectation slope b",
+            "quote": "Negative expectations: b = 0.420",
+            "expected": 0.42,
+            "decimals": 3,
+            "id": "T103"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p52.s2"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Negative expectation slope SE",
+            "quote": "se = 0.275",
+            "expected": 0.275,
+            "decimals": 3,
+            "id": "T104"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p52.s2"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Negative expectation slope t statistic",
+            "quote": "t(92) = 1.53",
+            "expected": 1.53,
+            "decimals": 2,
+            "id": "T105"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p52.s2"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Negative expectation slope p-value",
+            "quote": "p = .130",
+            "expected": 0.13,
+            "decimals": 3,
+            "id": "T106"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p52.s2"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Control group slope b",
+            "quote": "Control group (no specific expectations): b = -0.131",
+            "expected": -0.131,
+            "decimals": 3,
+            "id": "T107"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p52.s2"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Control group slope SE",
+            "quote": "se = 0.312",
+            "expected": 0.312,
+            "decimals": 3,
+            "id": "T108"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p52.s2"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Control group slope t statistic",
+            "quote": "t(81) = -0.420",
+            "expected": -0.42,
+            "decimals": 3,
+            "id": "T109"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p52.s2"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Control group slope p-value",
+            "quote": "p = .675",
+            "expected": 0.675,
+            "decimals": 3,
+            "id": "T110"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p52.s2"
+              }
+            ],
+            "unreferenced": false,
+            "type": "categorical",
+            "description": "None of the slopes significantly different from zero",
+            "quote": "None of them was significantly different from zero",
+            "expected": "not significant",
+            "id": "T111"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p57.s2"
+              }
+            ],
+            "unreferenced": false,
+            "type": "table",
+            "description": "Table 3 Comparison of original and replication results with interpretations according to LeBel et al. (2019)",
+            "quote": "Table 3 Comparison of original and replication results with interpretations according to LeBel et al. (2019)",
+            "expected": [
+              [
+                "Test",
+                "Original Study",
+                "Replication (preregistered Tukey HSD)2",
+                "Replication (planned contrasts)2",
+                "Interpretation"
+              ],
+              [
+                "Expectation × NFC",
+                "F(1, 154) = 6.40, MSE = 3.21, p = .01, r²= .04, f = 0.200, η² = .04, 90% CI [.005, .10]”",
+                "F(2, 246) = 0.92, p = .398, η² < 0.01, 90% CI [0, 0.02]",
+                "—",
+                "No signal, inconsistent"
+              ],
+              [
+                "Slope for the positive expectation condition",
+                "b = -0.03, SE = .02, t(154) = 1.91, p = .051",
+                "b = 0.288, se = 0.306, t(73) = 0.94, p = .349",
+                "t(1, 246) = 0.969, p = .334",
+                "No signal, inconsistent1"
+              ],
+              [
+                "Slope for the negative expectation condition",
+                "b = -.008, SE = .019, t(154) = 0.42, p = .67",
+                "b = 0.420, se = 0.275, t(92) = 1.53, p = .130",
+                "t(1, 246) = 1.469, p = .143",
+                "No signal, consistent"
+              ],
+              [
+                "Slope for the no expectation condition",
+                "b = .03, SE = .02, t(154) = 1.62, p = .10",
+                "b = -0.131, se = 0.312, t(81) = -0.420, p = .675",
+                "t(1, 246) = -0.428, p = .669",
+                "No signal, consistent"
+              ]
+            ],
+            "id": "T112"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p62.s6"
+              }
+            ],
+            "unreferenced": false,
+            "type": "table",
+            "description": "Table 4 Fixed-Effects Moderator Model Testing Replication Success (Lakens, 2022) and Effect Sizes Converted to r",
+            "quote": "Table 4 Fixed-Effects Moderator Model Testing Replication Success (Lakens, 2022) and Effect Sizes Converted to r",
+            "expected": [
+              [
+                "Coefficient",
+                "b",
+                "SE",
+                "z",
+                "p",
+                "95% CI"
+              ],
+              [
+                "Intercept",
+                "0.200",
+                "0.076",
+                "2.63",
+                ".009",
+                "[.051, .349]"
+              ],
+              [
+                "Study (replication)",
+                "−0.200",
+                "0.099",
+                "−2.02",
+                ".043",
+                "[-.394, -.006]"
+              ]
+            ],
+            "id": "T113"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p62.s4"
+              }
+            ],
+            "unreferenced": false,
+            "type": "categorical",
+            "description": "Replication effect significantly smaller than original effect",
+            "quote": "the replication effect was significantly smaller than the original effect",
+            "expected": "significant",
+            "id": "T114"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p63.s4"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Meta-analytic moderator test Q statistic",
+            "quote": "The moderator test QM(1) = 4.09",
+            "expected": 4.09,
+            "decimals": 2,
+            "id": "T115"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p63.s4"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Meta-analytic moderator test p-value",
+            "quote": "p = .043",
+            "expected": 0.043,
+            "decimals": 3,
+            "id": "T116"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p70.s2"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Exploratory one-way ANOVA F statistic",
+            "quote": "F(2, 249) = 3.00",
+            "expected": 3.0,
+            "decimals": 2,
+            "id": "T117"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p70.s2"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Exploratory one-way ANOVA p-value",
+            "quote": "p = .052",
+            "expected": 0.052,
+            "decimals": 3,
+            "id": "T118"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p75.s1"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Participants identifying all four statements correctly",
+            "quote": "149 participants (59.13%) identified all statements correctly",
+            "expected": 149,
+            "id": "T119"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p75.s1"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Percent identifying all four statements correctly",
+            "quote": "149 participants (59.13%)",
+            "expected": 59.13,
+            "decimals": 2,
+            "unit": "%",
+            "id": "T120"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p75.s1"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Participants identifying 3 of 4 statements",
+            "quote": "77 (30.56%) identified 3/4",
+            "expected": 77,
+            "id": "T121"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p75.s1"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Percent identifying 3 of 4 statements",
+            "quote": "77 (30.56%)",
+            "expected": 30.56,
+            "decimals": 2,
+            "unit": "%",
+            "id": "T122"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p75.s1"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Participants identifying 2 of 4 statements",
+            "quote": "22 (8.73%) identified 2/4",
+            "expected": 22,
+            "id": "T123"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p75.s1"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Percent identifying 2 of 4 statements",
+            "quote": "22 (8.73%)",
+            "expected": 8.73,
+            "decimals": 2,
+            "unit": "%",
+            "id": "T124"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p75.s1"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Participants identifying 1 of 4 statements",
+            "quote": "3 (1.19%) only identified 1/4",
+            "expected": 3,
+            "id": "T125"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p75.s1"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Percent identifying 1 of 4 statements",
+            "quote": "3 (1.19%)",
+            "expected": 1.19,
+            "decimals": 2,
+            "unit": "%",
+            "id": "T126"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p75.s1"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Missing value for attention check",
+            "quote": "(1 missing value, 0.40%)",
+            "expected": 1,
+            "id": "T127"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p75.s1"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Percent missing attention check value",
+            "quote": "(1 missing value, 0.40%)",
+            "expected": 0.4,
+            "decimals": 2,
+            "unit": "%",
+            "id": "T128"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p75.s2"
+              }
+            ],
+            "unreferenced": false,
+            "type": "categorical",
+            "description": "No participant got all four statements wrong",
+            "quote": "No participant got all four statements wrong",
+            "expected": "none",
+            "id": "T129"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p75.s3"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Attention-check restricted model F statistic",
+            "quote": "F(5, 143) = 0.94",
+            "expected": 0.94,
+            "decimals": 2,
+            "id": "T130"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p75.s3"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Attention-check restricted model p-value",
+            "quote": "p = .459",
+            "expected": 0.459,
+            "decimals": 3,
+            "id": "T131"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p75.s3"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Attention-check restricted model R-squared",
+            "quote": "R² = .032",
+            "expected": 0.032,
+            "decimals": 3,
+            "id": "T132"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p77.s3"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Replication sample size in discussion",
+            "quote": "Nreplication= 252",
+            "expected": 252,
+            "id": "T133"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p77.s3"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Original sample size in discussion",
+            "quote": "Noriginal = 160",
+            "expected": 160,
+            "id": "T134"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p77.s3"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Approximate statistical power in discussion",
+            "quote": "a lack of statistical power (~80%)",
+            "expected": 80,
+            "comparator": "~",
+            "unit": "%",
+            "id": "T135"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p79.s7"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Preregistered target sample size",
+            "quote": "target sample size for N = 400 participants",
+            "expected": 400,
+            "id": "T136"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p79.s7"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Achieved sample size greater than 80% power",
+            "quote": "which still had >80% power for the original effect",
+            "expected": 80,
+            "comparator": ">",
+            "unit": "%",
+            "id": "T137"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p84.s1"
+              }
+            ],
+            "unreferenced": false,
+            "type": "number",
+            "description": "Recommended minimum sample size",
+            "quote": "use a very large sample size (N ≥ 400)",
+            "expected": 400,
+            "comparator": ">=",
+            "id": "T138"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p43.s3"
+              }
+            ],
+            "unreferenced": false,
+            "type": "figure",
+            "description": "Figure 1 Remembered expectation by induced expectation",
+            "quote": "Figure 1 Remembered expectation by induced expectation",
+            "id": "T139"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p54.s1"
+              }
+            ],
+            "unreferenced": false,
+            "type": "figure",
+            "description": "Figure 2 Regression lines predicting affect scores from need for cognition and expectation condition",
+            "quote": "Figure 2 Regression lines predicting affect scores from need for cognition and expectation condition",
+            "id": "T140"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p65.s1"
+              }
+            ],
+            "unreferenced": false,
+            "type": "figure",
+            "description": "Figure 3 Distribution of Affect Index Scores",
+            "quote": "Figure 3 Distribution of Affect Index Scores",
+            "id": "T141"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p68.s1"
+              }
+            ],
+            "unreferenced": false,
+            "type": "figure",
+            "description": "Figure 4 Distribution of Need for Cognition Scores",
+            "quote": "Figure 4 Distribution of Need for Cognition Scores",
+            "id": "T142"
+          },
+          "disabled": false
+        },
+        {
+          "base": {
+            "refs": [
+              {
+                "extraction": "ex-local",
+                "id": "sec1.p72.s1"
+              }
+            ],
+            "unreferenced": false,
+            "type": "figure",
+            "description": "Figure 5 Affect scores by expectation condition",
+            "quote": "Figure 5 Affect scores by expectation condition",
+            "id": "T143"
+          },
+          "disabled": false
+        }
+      ],
+      "rejected": []
+    }
+  ]
+}

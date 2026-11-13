@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://reprocrowd.example/schemas/action-llm-output.schema.json",
+  "title": "ActionLlmOutput (output of the action-extraction prompt)",
+  "$defs": {
+    "ActionLlmItem": {
+      "properties": {
+        "key": {
+          "description": "A1, A2, … in order; used by depends_on",
+          "title": "Key",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "transform",
+            "analysis"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "summary": {
+          "title": "Summary",
+          "type": "string"
+        },
+        "quote": {
+          "default": "",
+          "title": "Quote",
+          "type": "string"
+        },
+        "refs": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Refs",
+          "type": "array"
+        },
+        "inputs": {
+          "description": "input names (in-…) used directly",
+          "items": {
+            "type": "string"
+          },
+          "title": "Inputs",
+          "type": "array"
+        },
+        "depends_on": {
+          "description": "keys of earlier actions",
+          "items": {
+            "type": "string"
+          },
+          "title": "Depends On",
+          "type": "array"
+        },
+        "produces": {
+          "description": "target ids computed by this action",
+          "items": {
+            "type": "string"
+          },
+          "title": "Produces",
+          "type": "array"
+        }
+      },
+      "required": [
+        "key",
+        "kind",
+        "summary",
+        "refs"
+      ],
+      "title": "ActionLlmItem",
+      "type": "object"
+    }
+  },
+  "description": "Output format of the action-extraction prompt.",
+  "properties": {
+    "actions": {
+      "items": {
+        "$ref": "#/$defs/ActionLlmItem"
+      },
+      "title": "Actions",
+      "type": "array"
+    }
+  },
+  "required": [
+    "actions"
+  ],
+  "type": "object"
+}

@@ -1,0 +1,126 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://reprocrowd.example/schemas/results-output.schema.json",
+  "title": "ReproducedOutput (outputs/results.json)",
+  "$defs": {
+    "OutputResult": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "description": "target id",
+          "title": "Id",
+          "type": "string"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "number/categorical targets; unrounded",
+          "title": "Value"
+        },
+        "table": {
+          "anyOf": [
+            {
+              "items": {
+                "items": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "type": "array"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "table targets; same layout as expected",
+          "title": "Table"
+        },
+        "file": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "figure targets: package-relative image path",
+          "title": "File"
+        },
+        "step": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "plan step that produced it",
+          "title": "Step"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Note"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "title": "OutputResult",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "outputs/results.json, written by the reproduction code.",
+  "properties": {
+    "results": {
+      "items": {
+        "$ref": "#/$defs/OutputResult"
+      },
+      "title": "Results",
+      "type": "array"
+    }
+  },
+  "required": [
+    "results"
+  ],
+  "type": "object"
+}

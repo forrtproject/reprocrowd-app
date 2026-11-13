@@ -1,0 +1,1750 @@
+{
+  "settings": {
+    "rounding": "reported",
+    "threshold": 5.0
+  },
+  "summary": {
+    "match": 136,
+    "within": 2,
+    "figure": 5
+  },
+  "rows": [
+    {
+      "target": "T001",
+      "type": "number",
+      "description": "Original effect size eta-squared (η²) = .04",
+      "status": "match",
+      "expected_text": "0.04",
+      "reproduced_text": "0.04  (0.038461538)",
+      "deviation": 3.84615384615386
+    },
+    {
+      "target": "T002",
+      "type": "number",
+      "description": "Original 90% CI lower bound for η²",
+      "status": "match",
+      "expected_text": "0.005",
+      "reproduced_text": "0.005  (0.0046011053)",
+      "deviation": 7.977893039338555
+    },
+    {
+      "target": "T003",
+      "type": "number",
+      "description": "Original 90% CI upper bound for η²",
+      "status": "match",
+      "expected_text": "0.1",
+      "reproduced_text": "0.10  (0.09877404)",
+      "deviation": 1.2259604732385436
+    },
+    {
+      "target": "T004",
+      "type": "number",
+      "description": "Replication η²",
+      "status": "match",
+      "expected_text": "< 0.01",
+      "reproduced_text": "0.01  (0.0072365244)",
+      "deviation": 27.63475617419649
+    },
+    {
+      "target": "T005",
+      "type": "number",
+      "description": "Replication 90% CI lower bound for η²",
+      "status": "match",
+      "expected_text": "0",
+      "reproduced_text": "0  (0)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T006",
+      "type": "number",
+      "description": "Replication 90% CI upper bound for η²",
+      "status": "match",
+      "expected_text": "0.02",
+      "reproduced_text": "0.02  (0.02143552)",
+      "deviation": 7.177600724728242
+    },
+    {
+      "target": "T007",
+      "type": "categorical",
+      "description": "No evidence for a difference between groups nor moderation by NFC",
+      "status": "match",
+      "expected_text": "no evidence",
+      "reproduced_text": "no evidence"
+    },
+    {
+      "target": "T008",
+      "type": "number",
+      "description": "Original Study 1 sample size",
+      "status": "match",
+      "expected_text": "160",
+      "reproduced_text": "160  (160)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T009",
+      "type": "number",
+      "description": "Original F statistic for negative-expectation effect F(1,156)",
+      "status": "match",
+      "expected_text": "12.09",
+      "reproduced_text": "12.09  (12.09)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T010",
+      "type": "number",
+      "description": "Original MSE for negative-expectation effect",
+      "status": "match",
+      "expected_text": "3.3",
+      "reproduced_text": "3.30  (3.3)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T011",
+      "type": "number",
+      "description": "Original p-value for negative-expectation effect",
+      "status": "match",
+      "expected_text": "0.001",
+      "reproduced_text": "0.001  (0.001)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T012",
+      "type": "number",
+      "description": "Original r² for negative-expectation effect",
+      "status": "match",
+      "expected_text": "0.07",
+      "reproduced_text": "0.07  (0.07)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T013",
+      "type": "number",
+      "description": "Original f effect size for negative-expectation effect",
+      "status": "within",
+      "expected_text": "0.27",
+      "reproduced_text": "0.275  (0.27488634)",
+      "deviation": 1.8097556103959842
+    },
+    {
+      "target": "T014",
+      "type": "number",
+      "description": "Original η² for negative-expectation effect",
+      "status": "match",
+      "expected_text": "0.07",
+      "reproduced_text": "0.07  (0.070253937)",
+      "deviation": 0.36276699069421164
+    },
+    {
+      "target": "T015",
+      "type": "number",
+      "description": "Original 90% CI lower bound for negative-expectation effect",
+      "status": "match",
+      "expected_text": "0.02",
+      "reproduced_text": "0.02  (0.019745478)",
+      "deviation": 1.2726124945813995
+    },
+    {
+      "target": "T016",
+      "type": "number",
+      "description": "Original 90% CI upper bound for negative-expectation effect",
+      "status": "match",
+      "expected_text": "0.14",
+      "reproduced_text": "0.14  (0.14209934)",
+      "deviation": 1.4995265709650698
+    },
+    {
+      "target": "T017",
+      "type": "number",
+      "description": "Original F statistic for expectation x NFC interaction F(1,154)",
+      "status": "match",
+      "expected_text": "6.4",
+      "reproduced_text": "6.40  (6.4)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T018",
+      "type": "number",
+      "description": "Original MSE for interaction effect",
+      "status": "match",
+      "expected_text": "3.21",
+      "reproduced_text": "3.21  (3.21)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T019",
+      "type": "number",
+      "description": "Original p-value for interaction effect",
+      "status": "match",
+      "expected_text": "0.01",
+      "reproduced_text": "0.01  (0.01)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T020",
+      "type": "number",
+      "description": "Original r² for interaction effect",
+      "status": "match",
+      "expected_text": "0.04",
+      "reproduced_text": "0.04  (0.04)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T021",
+      "type": "number",
+      "description": "Original f effect size for interaction effect",
+      "status": "match",
+      "expected_text": "0.2",
+      "reproduced_text": "0.200  (0.2)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T022",
+      "type": "number",
+      "description": "Original η² for interaction effect",
+      "status": "match",
+      "expected_text": "0.04",
+      "reproduced_text": "0.04  (0.038461538)",
+      "deviation": 3.84615384615386
+    },
+    {
+      "target": "T023",
+      "type": "number",
+      "description": "Original 90% CI lower bound for interaction effect",
+      "status": "match",
+      "expected_text": "0.005",
+      "reproduced_text": "0.005  (0.0046011053)",
+      "deviation": 7.977893039338555
+    },
+    {
+      "target": "T024",
+      "type": "number",
+      "description": "Original 90% CI upper bound for interaction effect",
+      "status": "match",
+      "expected_text": "0.1",
+      "reproduced_text": "0.10  (0.09877404)",
+      "deviation": 1.2259604732385436
+    },
+    {
+      "target": "T025",
+      "type": "number",
+      "description": "Participants needed for 95% power",
+      "status": "match",
+      "expected_text": "390",
+      "reproduced_text": "390  (390)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T026",
+      "type": "number",
+      "description": "Target sample size rounded to",
+      "status": "match",
+      "expected_text": "400",
+      "reproduced_text": "400  (400)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T027",
+      "type": "number",
+      "description": "Multiple of original sample size",
+      "status": "match",
+      "expected_text": "2.5",
+      "reproduced_text": "2.5  (2.5)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T028",
+      "type": "number",
+      "description": "Participants used in analysis",
+      "status": "match",
+      "expected_text": "252",
+      "reproduced_text": "252  (252)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T029",
+      "type": "number",
+      "description": "Achieved power for f = 0.2",
+      "status": "match",
+      "expected_text": "81.37 %",
+      "reproduced_text": "81.37  (81.374946)",
+      "deviation": 0.006077819565825451
+    },
+    {
+      "target": "T030",
+      "type": "number",
+      "description": "Replication sample size",
+      "status": "match",
+      "expected_text": "252",
+      "reproduced_text": "252  (252)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T031",
+      "type": "number",
+      "description": "Detectable effect size with 95% power",
+      "status": "match",
+      "expected_text": "0.249",
+      "reproduced_text": "0.249  (0.24905412)",
+      "deviation": 0.02173621782075853
+    },
+    {
+      "target": "T032",
+      "type": "number",
+      "description": "Achieved power for original f = 0.200",
+      "status": "match",
+      "expected_text": "81.37 %",
+      "reproduced_text": "81.37  (81.374946)",
+      "deviation": 0.006077819565825451
+    },
+    {
+      "target": "T033",
+      "type": "number",
+      "description": "Participants who reported age",
+      "status": "match",
+      "expected_text": "138",
+      "reproduced_text": "138  (138)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T034",
+      "type": "number",
+      "description": "Missing age values",
+      "status": "match",
+      "expected_text": "114",
+      "reproduced_text": "114  (114)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T035",
+      "type": "number",
+      "description": "Mean age",
+      "status": "match",
+      "expected_text": "47.11",
+      "reproduced_text": "47.11  (47.108696)",
+      "deviation": 0.0027687281385808987
+    },
+    {
+      "target": "T036",
+      "type": "number",
+      "description": "Age standard deviation",
+      "status": "match",
+      "expected_text": "16.48",
+      "reproduced_text": "16.48  (16.479886)",
+      "deviation": 0.0006923755126943817
+    },
+    {
+      "target": "T037",
+      "type": "number",
+      "description": "Age range lower bound",
+      "status": "match",
+      "expected_text": "19",
+      "reproduced_text": "19  (19)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T038",
+      "type": "number",
+      "description": "Age range upper bound",
+      "status": "match",
+      "expected_text": "77",
+      "reproduced_text": "77  (77)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T039",
+      "type": "number",
+      "description": "Male participants",
+      "status": "match",
+      "expected_text": "76",
+      "reproduced_text": "76  (76)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T040",
+      "type": "number",
+      "description": "Female participants",
+      "status": "match",
+      "expected_text": "169",
+      "reproduced_text": "169  (169)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T041",
+      "type": "number",
+      "description": "Diverse participants",
+      "status": "match",
+      "expected_text": "4",
+      "reproduced_text": "4  (4)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T042",
+      "type": "number",
+      "description": "Participants not disclosing gender",
+      "status": "match",
+      "expected_text": "2",
+      "reproduced_text": "2  (2)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T043",
+      "type": "number",
+      "description": "Missing gender value",
+      "status": "match",
+      "expected_text": "1",
+      "reproduced_text": "1  (1)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T044",
+      "type": "number",
+      "description": "Students in sample",
+      "status": "match",
+      "expected_text": "31",
+      "reproduced_text": "31  (31)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T045",
+      "type": "number",
+      "description": "Apprentices in sample",
+      "status": "match",
+      "expected_text": "1",
+      "reproduced_text": "1  (1)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T046",
+      "type": "number",
+      "description": "Employed participants",
+      "status": "match",
+      "expected_text": "153",
+      "reproduced_text": "153  (153)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T047",
+      "type": "number",
+      "description": "Participants in search of employment",
+      "status": "match",
+      "expected_text": "5",
+      "reproduced_text": "5  (5)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T048",
+      "type": "number",
+      "description": "Retired participants",
+      "status": "match",
+      "expected_text": "61",
+      "reproduced_text": "61  (61)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T049",
+      "type": "number",
+      "description": "Missing occupation value",
+      "status": "match",
+      "expected_text": "1",
+      "reproduced_text": "1  (1)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T050",
+      "type": "number",
+      "description": "Original affect index internal consistency",
+      "status": "match",
+      "expected_text": "0.93",
+      "reproduced_text": "0.93  (0.93)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T051",
+      "type": "number",
+      "description": "Replication affect index internal consistency",
+      "status": "match",
+      "expected_text": "0.96",
+      "reproduced_text": "0.96  (0.95689582)",
+      "deviation": 0.3233525120424167
+    },
+    {
+      "target": "T052",
+      "type": "number",
+      "description": "Replication affect index 95% CI lower bound",
+      "status": "match",
+      "expected_text": "0.95",
+      "reproduced_text": "0.95  (0.94678182)",
+      "deviation": 0.33875546528879047
+    },
+    {
+      "target": "T053",
+      "type": "number",
+      "description": "Replication affect index 95% CI upper bound",
+      "status": "match",
+      "expected_text": "0.97",
+      "reproduced_text": "0.97  (0.96535824)",
+      "deviation": 0.4785319375251151
+    },
+    {
+      "target": "T054",
+      "type": "number",
+      "description": "Replication NFC internal consistency",
+      "status": "match",
+      "expected_text": "0.85",
+      "reproduced_text": "0.85  (0.85358148)",
+      "deviation": 0.42135094027506703
+    },
+    {
+      "target": "T055",
+      "type": "number",
+      "description": "Replication NFC 95% CI lower bound",
+      "status": "match",
+      "expected_text": "0.83",
+      "reproduced_text": "0.83  (0.82579248)",
+      "deviation": 0.5069298197908517
+    },
+    {
+      "target": "T056",
+      "type": "number",
+      "description": "Replication NFC 95% CI upper bound",
+      "status": "match",
+      "expected_text": "0.88",
+      "reproduced_text": "0.88  (0.87871044)",
+      "deviation": 0.14654078614206362
+    },
+    {
+      "target": "T057",
+      "type": "number",
+      "description": "NFC scale item count",
+      "status": "match",
+      "expected_text": "16",
+      "reproduced_text": "16  (16)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T058",
+      "type": "number",
+      "description": "F statistic for remembered expectation ANOVA",
+      "status": "match",
+      "expected_text": "3.9",
+      "reproduced_text": "3.90  (3.9043946)",
+      "deviation": 0.11268261623477188
+    },
+    {
+      "target": "T059",
+      "type": "number",
+      "description": "p-value for remembered expectation ANOVA",
+      "status": "match",
+      "expected_text": "0.021",
+      "reproduced_text": "0.021  (0.021398742)",
+      "deviation": 1.898770910283373
+    },
+    {
+      "target": "T060",
+      "type": "categorical",
+      "description": "Significant influence of induced expectation on remembered expectations",
+      "status": "match",
+      "expected_text": "significant",
+      "reproduced_text": "significant"
+    },
+    {
+      "target": "T061",
+      "type": "number",
+      "description": "Positive expectation group mean",
+      "status": "match",
+      "expected_text": "5.21",
+      "reproduced_text": "5.21  (5.2133333)",
+      "deviation": 0.06397952655149647
+    },
+    {
+      "target": "T062",
+      "type": "number",
+      "description": "Positive expectation group SD",
+      "status": "match",
+      "expected_text": "2",
+      "reproduced_text": "2.00  (1.9952195)",
+      "deviation": 0.23902440206264863
+    },
+    {
+      "target": "T063",
+      "type": "number",
+      "description": "Positive expectation group N",
+      "status": "match",
+      "expected_text": "75",
+      "reproduced_text": "75  (75)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T064",
+      "type": "number",
+      "description": "Negative expectation group mean",
+      "status": "match",
+      "expected_text": "4.35",
+      "reproduced_text": "4.35  (4.3510638)",
+      "deviation": 0.02445585717781007
+    },
+    {
+      "target": "T065",
+      "type": "number",
+      "description": "Negative expectation group SD",
+      "status": "match",
+      "expected_text": "1.94",
+      "reproduced_text": "1.94  (1.9438762)",
+      "deviation": 0.19980530570845761
+    },
+    {
+      "target": "T066",
+      "type": "number",
+      "description": "Negative expectation group N",
+      "status": "match",
+      "expected_text": "94",
+      "reproduced_text": "94  (94)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T067",
+      "type": "number",
+      "description": "Mean difference positive vs negative",
+      "status": "match",
+      "expected_text": "0.862",
+      "reproduced_text": "0.862  (0.8622695)",
+      "deviation": 0.03126491254064222
+    },
+    {
+      "target": "T068",
+      "type": "number",
+      "description": "Mean difference 95% CI lower bound",
+      "status": "match",
+      "expected_text": "0.127",
+      "reproduced_text": "0.127  (0.1272555)",
+      "deviation": 0.20118100471432426
+    },
+    {
+      "target": "T069",
+      "type": "number",
+      "description": "Mean difference 95% CI upper bound",
+      "status": "match",
+      "expected_text": "1.597",
+      "reproduced_text": "1.597  (1.5972835)",
+      "deviation": 0.017752486926303296
+    },
+    {
+      "target": "T070",
+      "type": "number",
+      "description": "p-value for Tukey positive vs negative comparison",
+      "status": "match",
+      "expected_text": "0.017",
+      "reproduced_text": "0.017  (0.016736533)",
+      "deviation": 1.549807483907777
+    },
+    {
+      "target": "T071",
+      "type": "number",
+      "description": "Control group mean",
+      "status": "match",
+      "expected_text": "4.63",
+      "reproduced_text": "4.63  (4.626506)",
+      "deviation": 0.07546384241068153
+    },
+    {
+      "target": "T072",
+      "type": "number",
+      "description": "Control group SD",
+      "status": "match",
+      "expected_text": "2.11",
+      "reproduced_text": "2.11  (2.1052249)",
+      "deviation": 0.22630906972771556
+    },
+    {
+      "target": "T073",
+      "type": "number",
+      "description": "Control group N",
+      "status": "match",
+      "expected_text": "83",
+      "reproduced_text": "83  (83)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T074",
+      "type": "number",
+      "description": "Overall model F statistic",
+      "status": "match",
+      "expected_text": "1.86",
+      "reproduced_text": "1.86  (1.8570339)",
+      "deviation": 0.159465289024627
+    },
+    {
+      "target": "T075",
+      "type": "number",
+      "description": "Overall model p-value",
+      "status": "within",
+      "expected_text": "0.103",
+      "reproduced_text": "0.102  (0.10249148)",
+      "deviation": 0.4937049444808715
+    },
+    {
+      "target": "T076",
+      "type": "number",
+      "description": "Overall model R-squared",
+      "status": "match",
+      "expected_text": "0.036",
+      "reproduced_text": "0.036  (0.036371755)",
+      "deviation": 1.0326536443042502
+    },
+    {
+      "target": "T077",
+      "type": "categorical",
+      "description": "Overall model test significance",
+      "status": "match",
+      "expected_text": "not significant",
+      "reproduced_text": "not significant"
+    },
+    {
+      "target": "T078",
+      "type": "number",
+      "description": "Threshold for model effects p-values",
+      "status": "match",
+      "expected_text": "> 0.143",
+      "reproduced_text": "0.143  (0.14320154)",
+      "deviation": 0.14093425926727635
+    },
+    {
+      "target": "T079",
+      "type": "categorical",
+      "description": "None of the model effects significant",
+      "status": "match",
+      "expected_text": "not significant",
+      "reproduced_text": "not significant"
+    },
+    {
+      "target": "T080",
+      "type": "table",
+      "description": "Table 2 Linear Regression of Affective Reaction on Expectation, NFC, and Their Interaction",
+      "status": "match",
+      "expected_text": "7 rows",
+      "reproduced_text": "24/24 numeric cells match",
+      "cells": [
+        [
+          {
+            "expected": "Coefficient",
+            "reproduced": "Coefficient",
+            "status": "match"
+          },
+          {
+            "expected": "B",
+            "reproduced": "B",
+            "status": "match"
+          },
+          {
+            "expected": "SE",
+            "reproduced": "SE",
+            "status": "match"
+          },
+          {
+            "expected": "t",
+            "reproduced": "t",
+            "status": "match"
+          },
+          {
+            "expected": "p",
+            "reproduced": "p",
+            "status": "match"
+          }
+        ],
+        [
+          {
+            "expected": "Intercept",
+            "reproduced": "Intercept",
+            "status": "match"
+          },
+          {
+            "expected": "1.88",
+            "reproduced": "1.88",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "1.44",
+            "reproduced": "1.44",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "1.31",
+            "reproduced": "1.31",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": ".192",
+            "reproduced": ".192",
+            "status": "match",
+            "deviation": 0.0
+          }
+        ],
+        [
+          {
+            "expected": "Expectation (none)",
+            "reproduced": "Expectation (none)",
+            "status": "match"
+          },
+          {
+            "expected": "2.53",
+            "reproduced": "2.53",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "2.10",
+            "reproduced": "2.10",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "1.21",
+            "reproduced": "1.21",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": ".229",
+            "reproduced": ".229",
+            "status": "match",
+            "deviation": 0.0
+          }
+        ],
+        [
+          {
+            "expected": "Expectation (positive)",
+            "reproduced": "Expectation (positive)",
+            "status": "match"
+          },
+          {
+            "expected": "1.36",
+            "reproduced": "1.36",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "2.04",
+            "reproduced": "2.04",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "0.67",
+            "reproduced": "0.67",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": ".506",
+            "reproduced": ".506",
+            "status": "match",
+            "deviation": 0.0
+          }
+        ],
+        [
+          {
+            "expected": "NFC",
+            "reproduced": "NFC",
+            "status": "match"
+          },
+          {
+            "expected": "0.42",
+            "reproduced": "0.42",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "0.29",
+            "reproduced": "0.29",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "1.47",
+            "reproduced": "1.47",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": ".143",
+            "reproduced": ".143",
+            "status": "match",
+            "deviation": 0.0
+          }
+        ],
+        [
+          {
+            "expected": "Expectation (none) × NFC",
+            "reproduced": "Expectation (none) × NFC",
+            "status": "match"
+          },
+          {
+            "expected": "−0.55",
+            "reproduced": "-0.55",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "0.42",
+            "reproduced": "0.42",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "−1.32",
+            "reproduced": "-1.32",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": ".190",
+            "reproduced": ".190",
+            "status": "match",
+            "deviation": 0.0
+          }
+        ],
+        [
+          {
+            "expected": "Expectation (positive) × NFC",
+            "reproduced": "Expectation (positive) × NFC",
+            "status": "match"
+          },
+          {
+            "expected": "−0.13",
+            "reproduced": "-0.13",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "0.41",
+            "reproduced": "0.41",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "−0.32",
+            "reproduced": "-0.32",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": ".750",
+            "reproduced": ".750",
+            "status": "match",
+            "deviation": 0.0
+          }
+        ]
+      ],
+      "matched": 24,
+      "total": 24
+    },
+    {
+      "target": "T081",
+      "type": "number",
+      "description": "Residual standard error",
+      "status": "match",
+      "expected_text": "2.3",
+      "reproduced_text": "2.30  (2.2980809)",
+      "deviation": 0.08343757541586011
+    },
+    {
+      "target": "T082",
+      "type": "number",
+      "description": "Adjusted R-squared",
+      "status": "match",
+      "expected_text": "0.017",
+      "reproduced_text": "0.017  (0.016785815)",
+      "deviation": 1.259909533731115
+    },
+    {
+      "target": "T083",
+      "type": "number",
+      "description": "ANOVA main effect of expectation F statistic",
+      "status": "match",
+      "expected_text": "3",
+      "reproduced_text": "3.00  (3.0036147)",
+      "deviation": 0.12049138628302813
+    },
+    {
+      "target": "T084",
+      "type": "number",
+      "description": "ANOVA main effect of expectation p-value",
+      "status": "match",
+      "expected_text": "0.051",
+      "reproduced_text": "0.051  (0.051430316)",
+      "deviation": 0.8437573688312161
+    },
+    {
+      "target": "T085",
+      "type": "number",
+      "description": "ANOVA main effect of expectation eta-squared",
+      "status": "match",
+      "expected_text": "0.02",
+      "reproduced_text": "0.02  (0.023531447)",
+      "deviation": 17.65723581935245
+    },
+    {
+      "target": "T086",
+      "type": "number",
+      "description": "ANOVA expectation effect 90% CI lower bound",
+      "status": "match",
+      "expected_text": "0",
+      "reproduced_text": "0  (0)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T087",
+      "type": "number",
+      "description": "ANOVA expectation effect 90% CI upper bound",
+      "status": "match",
+      "expected_text": "0.05",
+      "reproduced_text": "0.05  (0.048711789)",
+      "deviation": 2.5764211785551523
+    },
+    {
+      "target": "T088",
+      "type": "number",
+      "description": "ANOVA main effect of NFC F statistic",
+      "status": "match",
+      "expected_text": "1.43",
+      "reproduced_text": "1.43  (1.4305629)",
+      "deviation": 0.039362915736723875
+    },
+    {
+      "target": "T089",
+      "type": "number",
+      "description": "ANOVA main effect of NFC p-value",
+      "status": "match",
+      "expected_text": "0.233",
+      "reproduced_text": "0.233  (0.23282416)",
+      "deviation": 0.07546872889000136
+    },
+    {
+      "target": "T090",
+      "type": "number",
+      "description": "ANOVA main effect of NFC eta-squared",
+      "status": "match",
+      "expected_text": "< 0.01",
+      "reproduced_text": "0.01  (0.0056037838)",
+      "deviation": 43.96216234501253
+    },
+    {
+      "target": "T091",
+      "type": "number",
+      "description": "ANOVA NFC effect 90% CI lower bound",
+      "status": "match",
+      "expected_text": "0",
+      "reproduced_text": "0  (0)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T092",
+      "type": "number",
+      "description": "ANOVA NFC effect 90% CI upper bound",
+      "status": "match",
+      "expected_text": "0.02",
+      "reproduced_text": "0.02  (0.023985795)",
+      "deviation": 19.928976989302942
+    },
+    {
+      "target": "T093",
+      "type": "number",
+      "description": "ANOVA interaction F statistic",
+      "status": "match",
+      "expected_text": "0.92",
+      "reproduced_text": "0.92  (0.92368868)",
+      "deviation": 0.4009432200385371
+    },
+    {
+      "target": "T094",
+      "type": "number",
+      "description": "ANOVA interaction p-value",
+      "status": "match",
+      "expected_text": "0.398",
+      "reproduced_text": "0.398  (0.39842434)",
+      "deviation": 0.10661932687753692
+    },
+    {
+      "target": "T095",
+      "type": "number",
+      "description": "ANOVA interaction eta-squared",
+      "status": "match",
+      "expected_text": "< 0.01",
+      "reproduced_text": "0.01  (0.0072365244)",
+      "deviation": 27.63475617419649
+    },
+    {
+      "target": "T096",
+      "type": "number",
+      "description": "ANOVA interaction 90% CI lower bound",
+      "status": "match",
+      "expected_text": "0",
+      "reproduced_text": "0  (0)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T097",
+      "type": "number",
+      "description": "ANOVA interaction 90% CI upper bound",
+      "status": "match",
+      "expected_text": "0.02",
+      "reproduced_text": "0.02  (0.02143552)",
+      "deviation": 7.177600724728242
+    },
+    {
+      "target": "T098",
+      "type": "categorical",
+      "description": "ANOVA general effects of NFC, expectation and interaction not significant",
+      "status": "match",
+      "expected_text": "not significant",
+      "reproduced_text": "not significant"
+    },
+    {
+      "target": "T099",
+      "type": "number",
+      "description": "Positive expectation slope b",
+      "status": "match",
+      "expected_text": "0.288",
+      "reproduced_text": "0.288  (0.28828564)",
+      "deviation": 0.0991817312997714
+    },
+    {
+      "target": "T100",
+      "type": "number",
+      "description": "Positive expectation slope SE",
+      "status": "match",
+      "expected_text": "0.306",
+      "reproduced_text": "0.306  (0.30609641)",
+      "deviation": 0.03150619681640844
+    },
+    {
+      "target": "T101",
+      "type": "number",
+      "description": "Positive expectation slope t statistic",
+      "status": "match",
+      "expected_text": "0.94",
+      "reproduced_text": "0.94  (0.94181322)",
+      "deviation": 0.1928953383848795
+    },
+    {
+      "target": "T102",
+      "type": "number",
+      "description": "Positive expectation slope p-value",
+      "status": "match",
+      "expected_text": "0.349",
+      "reproduced_text": "0.349  (0.34939464)",
+      "deviation": 0.11307856022482642
+    },
+    {
+      "target": "T103",
+      "type": "number",
+      "description": "Negative expectation slope b",
+      "status": "match",
+      "expected_text": "0.42",
+      "reproduced_text": "0.420  (0.42004709)",
+      "deviation": 0.011210823380247174
+    },
+    {
+      "target": "T104",
+      "type": "number",
+      "description": "Negative expectation slope SE",
+      "status": "match",
+      "expected_text": "0.275",
+      "reproduced_text": "0.275  (0.27471686)",
+      "deviation": 0.10296079476746943
+    },
+    {
+      "target": "T105",
+      "type": "number",
+      "description": "Negative expectation slope t statistic",
+      "status": "match",
+      "expected_text": "1.53",
+      "reproduced_text": "1.53  (1.5290182)",
+      "deviation": 0.06416755234621402
+    },
+    {
+      "target": "T106",
+      "type": "number",
+      "description": "Negative expectation slope p-value",
+      "status": "match",
+      "expected_text": "0.13",
+      "reproduced_text": "0.130  (0.12969105)",
+      "deviation": 0.2376523651281612
+    },
+    {
+      "target": "T107",
+      "type": "number",
+      "description": "Control group slope b",
+      "status": "match",
+      "expected_text": "-0.131",
+      "reproduced_text": "-0.131  (-0.1309708)",
+      "deviation": 0.02228635136885626
+    },
+    {
+      "target": "T108",
+      "type": "number",
+      "description": "Control group slope SE",
+      "status": "match",
+      "expected_text": "0.312",
+      "reproduced_text": "0.312  (0.31169175)",
+      "deviation": 0.09879891952785878
+    },
+    {
+      "target": "T109",
+      "type": "number",
+      "description": "Control group slope t statistic",
+      "status": "match",
+      "expected_text": "-0.42",
+      "reproduced_text": "-0.420  (-0.42019337)",
+      "deviation": 0.04603982740152333
+    },
+    {
+      "target": "T110",
+      "type": "number",
+      "description": "Control group slope p-value",
+      "status": "match",
+      "expected_text": "0.675",
+      "reproduced_text": "0.675  (0.67545679)",
+      "deviation": 0.06767211523861505
+    },
+    {
+      "target": "T111",
+      "type": "categorical",
+      "description": "None of the slopes significantly different from zero",
+      "status": "match",
+      "expected_text": "not significant",
+      "reproduced_text": "not significant"
+    },
+    {
+      "target": "T112",
+      "type": "table",
+      "description": "Table 3 Comparison of original and replication results with interpretations according to LeBel et al. (2019)",
+      "status": "match",
+      "expected_text": "5 rows",
+      "reproduced_text": "0/0 numeric cells match",
+      "cells": [
+        [
+          {
+            "expected": "Test",
+            "reproduced": "Test",
+            "status": "match"
+          },
+          {
+            "expected": "Original Study",
+            "reproduced": "Original Study",
+            "status": "match"
+          },
+          {
+            "expected": "Replication (preregistered Tukey HSD)2",
+            "reproduced": "Replication (preregistered Tukey HSD)2",
+            "status": "match"
+          },
+          {
+            "expected": "Replication (planned contrasts)2",
+            "reproduced": "Replication (planned contrasts)2",
+            "status": "match"
+          },
+          {
+            "expected": "Interpretation",
+            "reproduced": "Interpretation",
+            "status": "match"
+          }
+        ],
+        [
+          {
+            "expected": "Expectation × NFC",
+            "reproduced": "Expectation × NFC",
+            "status": "match"
+          },
+          {
+            "expected": "F(1, 154) = 6.40, MSE = 3.21, p = .01, r²= .04, f = 0.200, η² = .04, 90% CI [.005, .10]”",
+            "reproduced": "F(1, 154) = 6.40, MSE = 3.21, p = .01, r²= .04, f = 0.200, η² = .04, 90% CI [.005, .10]”",
+            "status": "match"
+          },
+          {
+            "expected": "F(2, 246) = 0.92, p = .398, η² < 0.01, 90% CI [0, 0.02]",
+            "reproduced": "F(2, 246) = 0.92, p = .398, η² < 0.01, 90% CI [0, 0.02]",
+            "status": "match"
+          },
+          {
+            "expected": "—",
+            "reproduced": "—",
+            "status": "match"
+          },
+          {
+            "expected": "No signal, inconsistent",
+            "reproduced": "No signal, inconsistent",
+            "status": "match"
+          }
+        ],
+        [
+          {
+            "expected": "Slope for the positive expectation condition",
+            "reproduced": "Slope for the positive expectation condition",
+            "status": "match"
+          },
+          {
+            "expected": "b = -0.03, SE = .02, t(154) = 1.91, p = .051",
+            "reproduced": "b = -0.03, SE = .02, t(154) = 1.91, p = .051",
+            "status": "match"
+          },
+          {
+            "expected": "b = 0.288, se = 0.306, t(73) = 0.94, p = .349",
+            "reproduced": "b = 0.288, se = 0.306, t(73) = 0.94, p = .349",
+            "status": "match"
+          },
+          {
+            "expected": "t(1, 246) = 0.969, p = .334",
+            "reproduced": "t(1, 246) = 0.969, p = .334",
+            "status": "match"
+          },
+          {
+            "expected": "No signal, inconsistent1",
+            "reproduced": "No signal, inconsistent1",
+            "status": "match"
+          }
+        ],
+        [
+          {
+            "expected": "Slope for the negative expectation condition",
+            "reproduced": "Slope for the negative expectation condition",
+            "status": "match"
+          },
+          {
+            "expected": "b = -.008, SE = .019, t(154) = 0.42, p = .67",
+            "reproduced": "b = -.008, SE = .019, t(154) = 0.42, p = .67",
+            "status": "match"
+          },
+          {
+            "expected": "b = 0.420, se = 0.275, t(92) = 1.53, p = .130",
+            "reproduced": "b = 0.420, se = 0.275, t(92) = 1.53, p = .130",
+            "status": "match"
+          },
+          {
+            "expected": "t(1, 246) = 1.469, p = .143",
+            "reproduced": "t(1, 246) = 1.469, p = .143",
+            "status": "match"
+          },
+          {
+            "expected": "No signal, consistent",
+            "reproduced": "No signal, consistent",
+            "status": "match"
+          }
+        ],
+        [
+          {
+            "expected": "Slope for the no expectation condition",
+            "reproduced": "Slope for the no expectation condition",
+            "status": "match"
+          },
+          {
+            "expected": "b = .03, SE = .02, t(154) = 1.62, p = .10",
+            "reproduced": "b = .03, SE = .02, t(154) = 1.62, p = .10",
+            "status": "match"
+          },
+          {
+            "expected": "b = -0.131, se = 0.312, t(81) = -0.420, p = .675",
+            "reproduced": "b = -0.131, se = 0.312, t(81) = -0.420, p = .675",
+            "status": "match"
+          },
+          {
+            "expected": "t(1, 246) = -0.428, p = .669",
+            "reproduced": "t(1, 246) = -0.428, p = .669",
+            "status": "match"
+          },
+          {
+            "expected": "No signal, consistent",
+            "reproduced": "No signal, consistent",
+            "status": "match"
+          }
+        ]
+      ],
+      "matched": 0,
+      "total": 0
+    },
+    {
+      "target": "T113",
+      "type": "table",
+      "description": "Table 4 Fixed-Effects Moderator Model Testing Replication Success (Lakens, 2022) and Effect Sizes Converted to r",
+      "status": "match",
+      "expected_text": "3 rows",
+      "reproduced_text": "8/8 numeric cells match",
+      "cells": [
+        [
+          {
+            "expected": "Coefficient",
+            "reproduced": "Coefficient",
+            "status": "match"
+          },
+          {
+            "expected": "b",
+            "reproduced": "b",
+            "status": "match"
+          },
+          {
+            "expected": "SE",
+            "reproduced": "SE",
+            "status": "match"
+          },
+          {
+            "expected": "z",
+            "reproduced": "z",
+            "status": "match"
+          },
+          {
+            "expected": "p",
+            "reproduced": "p",
+            "status": "match"
+          },
+          {
+            "expected": "95% CI",
+            "reproduced": "95% CI",
+            "status": "match"
+          }
+        ],
+        [
+          {
+            "expected": "Intercept",
+            "reproduced": "Intercept",
+            "status": "match"
+          },
+          {
+            "expected": "0.200",
+            "reproduced": "0.200",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "0.076",
+            "reproduced": "0.076",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "2.63",
+            "reproduced": "2.63",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": ".009",
+            "reproduced": ".009",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "[.051, .349]",
+            "reproduced": "[.051, .349]",
+            "status": "match"
+          }
+        ],
+        [
+          {
+            "expected": "Study (replication)",
+            "reproduced": "Study (replication)",
+            "status": "match"
+          },
+          {
+            "expected": "−0.200",
+            "reproduced": "-0.200",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "0.099",
+            "reproduced": "0.099",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "−2.02",
+            "reproduced": "-2.02",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": ".043",
+            "reproduced": ".043",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "[-.394, -.006]",
+            "reproduced": "[-.394, -.006]",
+            "status": "match"
+          }
+        ]
+      ],
+      "matched": 8,
+      "total": 8
+    },
+    {
+      "target": "T114",
+      "type": "categorical",
+      "description": "Replication effect significantly smaller than original effect",
+      "status": "match",
+      "expected_text": "significant",
+      "reproduced_text": "significant"
+    },
+    {
+      "target": "T115",
+      "type": "number",
+      "description": "Meta-analytic moderator test Q statistic",
+      "status": "match",
+      "expected_text": "4.09",
+      "reproduced_text": "4.09  (4.0898582)",
+      "deviation": 0.0034667669793935246
+    },
+    {
+      "target": "T116",
+      "type": "number",
+      "description": "Meta-analytic moderator test p-value",
+      "status": "match",
+      "expected_text": "0.043",
+      "reproduced_text": "0.043  (0.043141261)",
+      "deviation": 0.32851413013065695
+    },
+    {
+      "target": "T117",
+      "type": "number",
+      "description": "Exploratory one-way ANOVA F statistic",
+      "status": "match",
+      "expected_text": "3",
+      "reproduced_text": "3.00  (3.0002658)",
+      "deviation": 0.008858909408226978
+    },
+    {
+      "target": "T118",
+      "type": "number",
+      "description": "Exploratory one-way ANOVA p-value",
+      "status": "match",
+      "expected_text": "0.052",
+      "reproduced_text": "0.052  (0.051576699)",
+      "deviation": 0.8140401645733862
+    },
+    {
+      "target": "T119",
+      "type": "number",
+      "description": "Participants identifying all four statements correctly",
+      "status": "match",
+      "expected_text": "149",
+      "reproduced_text": "149  (149)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T120",
+      "type": "number",
+      "description": "Percent identifying all four statements correctly",
+      "status": "match",
+      "expected_text": "59.13 %",
+      "reproduced_text": "59.13  (59.126984)",
+      "deviation": 0.005100410985753466
+    },
+    {
+      "target": "T121",
+      "type": "number",
+      "description": "Participants identifying 3 of 4 statements",
+      "status": "match",
+      "expected_text": "77",
+      "reproduced_text": "77  (77)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T122",
+      "type": "number",
+      "description": "Percent identifying 3 of 4 statements",
+      "status": "match",
+      "expected_text": "30.56 %",
+      "reproduced_text": "30.56  (30.555556)",
+      "deviation": 0.014543339150659642
+    },
+    {
+      "target": "T123",
+      "type": "number",
+      "description": "Participants identifying 2 of 4 statements",
+      "status": "match",
+      "expected_text": "22",
+      "reproduced_text": "22  (22)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T124",
+      "type": "number",
+      "description": "Percent identifying 2 of 4 statements",
+      "status": "match",
+      "expected_text": "8.73 %",
+      "reproduced_text": "8.73  (8.7301587)",
+      "deviation": 0.0018182148766198707
+    },
+    {
+      "target": "T125",
+      "type": "number",
+      "description": "Participants identifying 1 of 4 statements",
+      "status": "match",
+      "expected_text": "3",
+      "reproduced_text": "3  (3)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T126",
+      "type": "number",
+      "description": "Percent identifying 1 of 4 statements",
+      "status": "match",
+      "expected_text": "1.19 %",
+      "reproduced_text": "1.19  (1.1904762)",
+      "deviation": 0.040016006402527296
+    },
+    {
+      "target": "T127",
+      "type": "number",
+      "description": "Missing value for attention check",
+      "status": "match",
+      "expected_text": "1",
+      "reproduced_text": "1  (1)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T128",
+      "type": "number",
+      "description": "Percent missing attention check value",
+      "status": "match",
+      "expected_text": "0.4 %",
+      "reproduced_text": "0.40  (0.3968254)",
+      "deviation": 0.7936507936508047
+    },
+    {
+      "target": "T129",
+      "type": "categorical",
+      "description": "No participant got all four statements wrong",
+      "status": "match",
+      "expected_text": "none",
+      "reproduced_text": "none"
+    },
+    {
+      "target": "T130",
+      "type": "number",
+      "description": "Attention-check restricted model F statistic",
+      "status": "match",
+      "expected_text": "0.94",
+      "reproduced_text": "0.94  (0.93712939)",
+      "deviation": 0.3053844971170835
+    },
+    {
+      "target": "T131",
+      "type": "number",
+      "description": "Attention-check restricted model p-value",
+      "status": "match",
+      "expected_text": "0.459",
+      "reproduced_text": "0.459  (0.45895366)",
+      "deviation": 0.010095698233188979
+    },
+    {
+      "target": "T132",
+      "type": "number",
+      "description": "Attention-check restricted model R-squared",
+      "status": "match",
+      "expected_text": "0.032",
+      "reproduced_text": "0.032  (0.031727165)",
+      "deviation": 0.8526085201662802
+    },
+    {
+      "target": "T133",
+      "type": "number",
+      "description": "Replication sample size in discussion",
+      "status": "match",
+      "expected_text": "252",
+      "reproduced_text": "252  (252)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T134",
+      "type": "number",
+      "description": "Original sample size in discussion",
+      "status": "match",
+      "expected_text": "160",
+      "reproduced_text": "160  (160)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T135",
+      "type": "number",
+      "description": "Approximate statistical power in discussion",
+      "status": "match",
+      "expected_text": "~ 80 %",
+      "reproduced_text": "80  (80)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T136",
+      "type": "number",
+      "description": "Preregistered target sample size",
+      "status": "match",
+      "expected_text": "400",
+      "reproduced_text": "400  (400)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T137",
+      "type": "number",
+      "description": "Achieved sample size greater than 80% power",
+      "status": "match",
+      "expected_text": "> 80 %",
+      "reproduced_text": "81  (81.374946)",
+      "deviation": 1.7186819022258957
+    },
+    {
+      "target": "T138",
+      "type": "number",
+      "description": "Recommended minimum sample size",
+      "status": "match",
+      "expected_text": ">= 400",
+      "reproduced_text": "400  (400)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T139",
+      "type": "figure",
+      "description": "Figure 1 Remembered expectation by induced expectation",
+      "status": "figure",
+      "expected_text": "(figure)",
+      "reproduced_text": "outputs/figures/T139.png"
+    },
+    {
+      "target": "T140",
+      "type": "figure",
+      "description": "Figure 2 Regression lines predicting affect scores from need for cognition and expectation condition",
+      "status": "figure",
+      "expected_text": "(figure)",
+      "reproduced_text": "outputs/figures/T140.png"
+    },
+    {
+      "target": "T141",
+      "type": "figure",
+      "description": "Figure 3 Distribution of Affect Index Scores",
+      "status": "figure",
+      "expected_text": "(figure)",
+      "reproduced_text": "outputs/figures/T141.png"
+    },
+    {
+      "target": "T142",
+      "type": "figure",
+      "description": "Figure 4 Distribution of Need for Cognition Scores",
+      "status": "figure",
+      "expected_text": "(figure)",
+      "reproduced_text": "outputs/figures/T142.png"
+    },
+    {
+      "target": "T143",
+      "type": "figure",
+      "description": "Figure 5 Affect scores by expectation condition",
+      "status": "figure",
+      "expected_text": "(figure)",
+      "reproduced_text": "outputs/figures/T143.png"
+    }
+  ],
+  "output_errors": [],
+  "output_warnings": []
+}

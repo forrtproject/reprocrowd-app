@@ -33,7 +33,7 @@ export async function start() {
       <div class="hero-copy">
         <h1 class="hero-title">Crowdsourcing AI reproductions</h1>
         <p class="hero-sub">Check whether a paper's numbers reproduce from its own data and code, with an AI-assisted workflow you stay in control of. Sign the result with your name and deposit it on Zenodo, so the community can find it.</p>
-        <div class="hero-actions"><button id="new-btn" class="btn-primary">New from DOI</button><button id="file-btn" class="btn-secondary">New from file</button><button id="adopt-btn" class="btn-secondary">Open a package folder…</button></div>
+        <div class="hero-actions"><button id="new-btn" class="btn-primary">New from DOI</button><button id="file-btn" class="btn-secondary">New from file</button><button id="examples-btn" class="btn-secondary">Try an example</button><button id="adopt-btn" class="btn-secondary">Open a package folder…</button></div>
         <p id="setup-note" class="notice" hidden></p>
       </div>
       <div class="hero-visual"><img src="${sticker}" alt="ReproCrowd" class="hero-sticker" /></div>
@@ -49,6 +49,16 @@ export async function start() {
   });
   $("#new-btn").addEventListener("click", () => newDialog());
   $("#file-btn").addEventListener("click", () => newFileDialog());
+  $("#examples-btn").addEventListener("click", async () => {
+    if (!examples.length) examples = await host.listExamples().catch(() => []);
+    if (!examples.length) return showError("Examples", "No bundled examples are available.");
+    try {
+      const r = await host.openExample(examples[0].id);
+      openPackage(r.id);
+    } catch (e) {
+      showError("Opening the example", e);
+    }
+  });
   $("#adopt-btn").addEventListener("click", async () => {
     try {
       const id = await host.adoptFolder();
@@ -225,6 +235,41 @@ async function renderLlmModels(refresh = false) {
   );
 }
 
+interface Example { id: string; name: string; description?: string; source?: string }
+let examples: Example[] = [];
+
+function examplesHtml(exs: Example[]): string {
+  if (!exs.length) return "";
+  return `<section class="examples"><h2 class="section-title">Try an example</h2>
+    <div class="cards">${exs
+      .map((x) => `<article class="card pkg-card example-card" data-example="${esc(x.id)}">
+        <h3 class="pkg-title">${esc(x.name)}</h3>
+        <p class="small muted">${esc(x.description ?? "")}</p>
+        ${x.source ? `<p class="small"><a href="#" data-src="${esc(x.source)}">${esc(x.source)}</a></p>` : ""}
+        <div class="actions"><button class="btn-primary small-btn" data-open-example="${esc(x.id)}">Open example</button></div>
+      </article>`)
+      .join("")}</div></section>`;
+}
+
+function bindExamples(body: HTMLElement) {
+  body.querySelectorAll<HTMLElement>("[data-open-example]").forEach((b) =>
+    b.addEventListener("click", async () => {
+      try {
+        const r = await host.openExample(b.dataset.openExample!);
+        openPackage(r.id);
+      } catch (e) {
+        showError("Opening the example", e);
+      }
+    }),
+  );
+  body.querySelectorAll<HTMLElement>("[data-src]").forEach((a) =>
+    a.addEventListener("click", (e) => {
+      e.preventDefault();
+      host.openUrl(a.dataset.src!);
+    }),
+  );
+}
+
 function card(p: LibraryEntry) {
   const doi = p.identifiers?.doi ?? (p.identifier?.scheme === "doi" ? p.identifier.value : "");
   const r = p.resources ?? {};
@@ -233,7 +278,7 @@ function card(p: LibraryEntry) {
     .map(([k, label]) => `${r[k]} ${label}${r[k] === 1 ? "" : "s"}`)
     .join(" · ");
   return `<article class="card pkg-card ${p.missing ? "missing" : ""}" data-id="${esc(p.id)}">
-    <h3 class="pkg-title">${esc(p.title ?? p.path.split(/[\\/]/).pop())}</h3>
+    <h3 class="pkg-title">${esc(p.title ?? p.path.split(/[\\/]/).pop())}${p.example ? ` <span class="badge example-badge" title="A bundled example reproduction">example</span>` : ""}</h3>
     ${doi ? `<p class="small"><a href="#" data-doi="${esc(doi)}">doi:${esc(doi)}</a></p>` : `<p class="small muted">No DOI</p>`}
     <p class="small muted mono path" title="${esc(p.path)}">${esc(p.path)}</p>
     <p class="small">${p.missing ? `<span class="warn-inline">The folder is missing.</span>` : esc(counts || "Empty so far")}</p>
@@ -263,11 +308,14 @@ async function render() {
     return;
   }
   list = [...list].reverse();
+  if (!examples.length) examples = await host.listExamples().catch(() => []);
   body.innerHTML = list.length
-    ? `<h2 class="section-title">Your reproductions</h2><div class="cards">${list.map(card).join("")}</div>`
+    ? `<h2 class="section-title">Your reproductions</h2><div class="cards">${list.map(card).join("")}</div>${examplesHtml(examples)}`
     : `<h2 class="section-title">How it works</h2>
        <ol class="process-cards">${STEPS.map(([t, d], i) => `<li class="card"><span class="card-step">${i + 1}</span><h3>${esc(t)}</h3><p>${esc(d)}</p></li>`).join("")}</ol>
-       <p class="note">Your reproductions will be listed here. Start with <b>New reproduction</b>.</p>`;
+       <p class="note">Your reproductions will be listed here. Start with <b>New reproduction</b>.</p>
+       ${examplesHtml(examples)}`;
+  bindExamples(body);
   body.querySelectorAll<HTMLElement>("[data-open]").forEach((b) => b.addEventListener("click", () => openPackage(b.dataset.open!)));
   body.querySelectorAll<HTMLElement>(".pkg-title").forEach((t) =>
     t.addEventListener("click", () => {

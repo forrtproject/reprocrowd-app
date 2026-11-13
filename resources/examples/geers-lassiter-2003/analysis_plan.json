@@ -1,0 +1,1119 @@
+{
+  "schema_version": "1.0",
+  "steps": [
+    {
+      "id": "L01",
+      "kind": "load",
+      "summary": "Load inputs/gl2003-replication-raw-2023-03-28.csv",
+      "quote": "",
+      "refs": [],
+      "inputs": [
+        "inputs/gl2003-replication-raw-2023-03-28.csv"
+      ],
+      "depends_on": [],
+      "produces": []
+    },
+    {
+      "id": "L02",
+      "kind": "load",
+      "summary": "Load inputs/gl2003-replication-processed-2023-03-28.csv",
+      "quote": "",
+      "refs": [],
+      "inputs": [
+        "inputs/gl2003-replication-processed-2023-03-28.csv"
+      ],
+      "depends_on": [],
+      "produces": []
+    },
+    {
+      "id": "L03",
+      "kind": "load",
+      "summary": "Load inputs/gl2003-replication-processed-2024-05-23.csv",
+      "quote": "",
+      "refs": [],
+      "inputs": [
+        "inputs/gl2003-replication-processed-2024-05-23.csv"
+      ],
+      "depends_on": [],
+      "produces": []
+    },
+    {
+      "id": "L04",
+      "kind": "load",
+      "summary": "Load inputs/readme.txt",
+      "quote": "",
+      "refs": [],
+      "inputs": [
+        "inputs/readme.txt"
+      ],
+      "depends_on": [],
+      "produces": []
+    },
+    {
+      "id": "A01",
+      "kind": "analysis",
+      "summary": "Compute the original negative-expectation effect size by deriving f, eta-squared and the 90% CI from the reported F(1,156)=12.09, MSE=3.30, p=.001, r^2=.07 and N=160 using esc::esc_f and MBESS::ci.pvaf.",
+      "quote": "\"[t]he affective reactions of the negative-expectation participants were less positive than those of the no-expectation participants, regardless of their level of need for cognition, F(1, 156) = 12.09, MSE = 3.30, p = .001, r² = .07\", f = 0.270, η² = .07, 90% CI [.02, .14] (p. 317)",
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p37.s1"
+        },
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p37.s3"
+        }
+      ],
+      "inputs": [
+        "inputs/analyses_final_rev1.R"
+      ],
+      "depends_on": [
+        "L01",
+        "L02",
+        "L03",
+        "L04"
+      ],
+      "produces": [
+        "T008",
+        "T009",
+        "T010",
+        "T011",
+        "T012",
+        "T013",
+        "T014",
+        "T015",
+        "T016"
+      ]
+    },
+    {
+      "id": "A02",
+      "kind": "analysis",
+      "summary": "Compute the original expectation x NFC interaction effect size by deriving f, eta-squared and the 90% CI from the reported F(1,154)=6.40, MSE=3.21, p=.01, r^2=.04 and N=160 using esc::esc_f and MBESS::ci.pvaf.",
+      "quote": "\"relative to no-expectation participants, the affective reactions of those in the positive-expectation condition became more positive as the need for cognition decreased (i.e., an assimilation effect), and less positive as level of need for cognition increased (i.e., a contrast effect), F(1, 154) = 6.40, MSE = 3.21, p = .01, r² = .04\", f = 0.200, η² = .04, 90% CI [.005, .10] (p. 318, N = 160)",
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p37.s2"
+        },
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p37.s3"
+        }
+      ],
+      "inputs": [
+        "inputs/analyses_final_rev1.R"
+      ],
+      "depends_on": [
+        "A01"
+      ],
+      "produces": [
+        "T001",
+        "T002",
+        "T003",
+        "T017",
+        "T018",
+        "T019",
+        "T020",
+        "T021",
+        "T022",
+        "T023",
+        "T024"
+      ]
+    },
+    {
+      "id": "A03",
+      "kind": "analysis",
+      "summary": "Compute the total sample size needed to achieve 95% power for the smaller effect of f=0.2 using pwr.anova.test with 3 groups (390 participants).",
+      "quote": "To achieve 95% power for the smaller of these two effects of f = 0.2, we would have needed 390 participants.",
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p37.s4"
+        }
+      ],
+      "inputs": [
+        "inputs/analyses_final_rev1.R"
+      ],
+      "depends_on": [
+        "A02"
+      ],
+      "produces": [
+        "T025"
+      ]
+    },
+    {
+      "id": "A04",
+      "kind": "analysis",
+      "summary": "Round the required sample size up to N=400 and compute the multiple of the original sample size (400/160 = 2.5).",
+      "quote": "We rounded this number to N = 400 (see https://osf.io/6ua4s for the preregistered power analysis code), which corresponds to 2.5 times the original sample size.",
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p37.s6"
+        }
+      ],
+      "inputs": [
+        "inputs/analyses_final_rev1.R"
+      ],
+      "depends_on": [
+        "A03"
+      ],
+      "produces": [
+        "T026",
+        "T027"
+      ]
+    },
+    {
+      "id": "A05",
+      "kind": "transform",
+      "summary": "Load the raw data, keep only interview-mode rows, recode -9 to missing, compute the affect index as the mean of the three affect items (BK01_01..03), compute the NFC score as the mean of the 16 German NFC items, recode the experimental condition (RD01) into positive/negative/none, and apply the exclusion criteria retaining only participants with non-missing NFC, affect index and experimental condition.",
+      "quote": "At first, the preregistered exclusion criteria were applied. Participants were excluded if values for any of the following variables were not available: Need for cognition, affect index, experimental group (assigned automatically during the experiment).",
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p39.s4"
+        },
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p39.s5"
+        }
+      ],
+      "inputs": [
+        "inputs/gl2003-replication-raw-2023-03-28.csv",
+        "inputs/analyses_final_rev1.R"
+      ],
+      "depends_on": [
+        "L01"
+      ],
+      "produces": [
+        "T028",
+        "T030"
+      ]
+    },
+    {
+      "id": "A06",
+      "kind": "analysis",
+      "summary": "Compute the achieved statistical power for f=0.2 with the achieved sample size, the detectable effect size at 95% power, and the achieved power for the original f=0.200, using pwr.anova.test with 3 groups.",
+      "quote": "Achieved power was thus 81.37% for f = 0.2. This sample size is sufficient to detect effects of f = 0.249 with 95% power. The achieved power for the original effect size of f = 0.200 was 81.37%.",
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p37.s9"
+        },
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p39.s15"
+        },
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p39.s16"
+        }
+      ],
+      "inputs": [
+        "inputs/analyses_final_rev1.R"
+      ],
+      "depends_on": [
+        "A05"
+      ],
+      "produces": [
+        "T029",
+        "T031",
+        "T032"
+      ]
+    },
+    {
+      "id": "A07",
+      "kind": "analysis",
+      "summary": "Compute age descriptives: count participants who reported age, count missing values, and compute mean, SD, min and max age.",
+      "quote": "Only 138 participants reported their age (114 missing values). The reported mean age was M = 47.11 (SD = 16.48) with a range from 19 to 77.",
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p39.s17"
+        },
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p39.s18"
+        }
+      ],
+      "inputs": [
+        "inputs/analyses_final_rev1.R"
+      ],
+      "depends_on": [
+        "A05"
+      ],
+      "produces": [
+        "T033",
+        "T034",
+        "T035",
+        "T036",
+        "T037",
+        "T038"
+      ]
+    },
+    {
+      "id": "A08",
+      "kind": "analysis",
+      "summary": "Tabulate gender: count male, female, diverse participants, those who did not want to disclose, and missing values.",
+      "quote": "76 male, 169 female and four diverse persons participated in the study (2 did not want to disclose, 1 missing value).",
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p39.s19"
+        },
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p41.s1"
+        }
+      ],
+      "inputs": [
+        "inputs/analyses_final_rev1.R"
+      ],
+      "depends_on": [
+        "A05"
+      ],
+      "produces": [
+        "T039",
+        "T040",
+        "T041",
+        "T042",
+        "T043"
+      ]
+    },
+    {
+      "id": "A09",
+      "kind": "analysis",
+      "summary": "Tabulate occupation: count students, apprentices, employed, in search of employment, retired, and missing values.",
+      "quote": "31 participants reported that they were either bachelor- or master students, while only one person was in an apprenticeship. 153 subjects were employed, 5 in search for employment, and 61 in retirement (1 missing value).",
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p41.s2"
+        },
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p41.s3"
+        }
+      ],
+      "inputs": [
+        "inputs/analyses_final_rev1.R"
+      ],
+      "depends_on": [
+        "A05"
+      ],
+      "produces": [
+        "T044",
+        "T045",
+        "T046",
+        "T047",
+        "T048",
+        "T049"
+      ]
+    },
+    {
+      "id": "A10",
+      "kind": "analysis",
+      "summary": "Compute Cronbach's alpha for the 3-item affect index in the replication sample (with 95% CI) and report the original study's alpha of .93.",
+      "quote": "Responses of those items were averaged to gain a single affect index, which reached an internal consistency of α = .93. ... we analyzed the internal consistency of our affect index items and found α = .96 (95% CI [0.95, 0.97]).",
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p41.s5"
+        },
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p41.s6"
+        }
+      ],
+      "inputs": [
+        "inputs/analyses_final_rev1.R"
+      ],
+      "depends_on": [
+        "A05"
+      ],
+      "produces": [
+        "T050",
+        "T051",
+        "T052",
+        "T053"
+      ]
+    },
+    {
+      "id": "A11",
+      "kind": "analysis",
+      "summary": "Compute Cronbach's alpha for the 16-item German NFC scale in the replication sample with 95% CI.",
+      "quote": "In our sample and using the scale by Bless et al. (1994), we found a value of α = 0.85 (95% CI [0.83, 0.88], 16 items).",
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p41.s9"
+        }
+      ],
+      "inputs": [
+        "inputs/analyses_final_rev1.R"
+      ],
+      "depends_on": [
+        "A05"
+      ],
+      "produces": [
+        "T054",
+        "T055",
+        "T056",
+        "T057"
+      ]
+    },
+    {
+      "id": "A12",
+      "kind": "analysis",
+      "summary": "Run a one-way ANOVA of remembered expectation (BK03_07) on the induced expectation condition and report F, p and significance.",
+      "quote": "A one-way ANOVA revealed a significant influence of induced expectation on remembered expectations, F(2, 249) = 3.90, p = .021.",
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p41.s11"
+        }
+      ],
+      "inputs": [
+        "inputs/analyses_final_rev1.R"
+      ],
+      "depends_on": [
+        "A05"
+      ],
+      "produces": [
+        "T058",
+        "T059",
+        "T060"
+      ]
+    },
+    {
+      "id": "A13",
+      "kind": "analysis",
+      "summary": "Run Tukey HSD post-hoc comparisons of remembered expectation means between the positive and negative expectation groups; report group means, SDs, Ns, the mean difference, its 95% CI and the p-value.",
+      "quote": "only a significant difference between the positive (M = 5.21, SD = 2.00, N = 75) and the negative (M = 4.35, SD = 1.94, N = 94) expectation group was found (Δ = 0.862, 95% CI [0.127, 1.597], p = .017).",
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p41.s13"
+        }
+      ],
+      "inputs": [
+        "inputs/analyses_final_rev1.R"
+      ],
+      "depends_on": [
+        "A05"
+      ],
+      "produces": [
+        "T061",
+        "T062",
+        "T063",
+        "T064",
+        "T065",
+        "T066",
+        "T067",
+        "T068",
+        "T069",
+        "T070"
+      ]
+    },
+    {
+      "id": "A14",
+      "kind": "analysis",
+      "summary": "Report the descriptive statistics (mean, SD, N) for the control/no-expectation group's remembered expectation.",
+      "quote": "The control group's values were between the other two groups (M = 4.63, SD = 2.11, N = 83).",
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p41.s14"
+        },
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p43.s1"
+        }
+      ],
+      "inputs": [
+        "inputs/analyses_final_rev1.R"
+      ],
+      "depends_on": [
+        "A05"
+      ],
+      "produces": [
+        "T071",
+        "T072",
+        "T073"
+      ]
+    },
+    {
+      "id": "A15",
+      "kind": "analysis",
+      "summary": "Create a violin/jitter plot of remembered expectation by induced expectation condition (Figure 1), with solid lines representing medians.",
+      "quote": "A distribution of the data can be seen in Figure 1. Figure 1 Remembered expectation by induced expectation. Solid lines represent medians.",
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p43.s3"
+        },
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p44.s2"
+        }
+      ],
+      "inputs": [
+        "inputs/analyses_final_rev1.R"
+      ],
+      "depends_on": [
+        "A05"
+      ],
+      "produces": [
+        "T139"
+      ]
+    },
+    {
+      "id": "A16",
+      "kind": "analysis",
+      "summary": "Fit a linear regression of affect index on expectation condition, NFC and their interaction; report the overall model F, p and R-squared and its significance.",
+      "quote": "The overall model test was not significant, F(5, 246) = 1.86, p = .103, R2 = 0.036.",
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p48.s3"
+        }
+      ],
+      "inputs": [
+        "inputs/analyses_final_rev1.R"
+      ],
+      "depends_on": [
+        "A05"
+      ],
+      "produces": [
+        "T074",
+        "T075",
+        "T076",
+        "T077"
+      ]
+    },
+    {
+      "id": "A17",
+      "kind": "analysis",
+      "summary": "Report that none of the model's individual effects were significant (all ps > .143).",
+      "quote": "In line with this, none of the model's effects were significant (all ps > .143, see Table 2).",
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p48.s4"
+        }
+      ],
+      "inputs": [
+        "inputs/analyses_final_rev1.R"
+      ],
+      "depends_on": [
+        "A16"
+      ],
+      "produces": [
+        "T078",
+        "T079"
+      ]
+    },
+    {
+      "id": "A18",
+      "kind": "analysis",
+      "summary": "Produce Table 2, the linear regression of affective reaction on expectation, NFC and their interaction, reporting the coefficient B, SE, t and p for all terms.",
+      "quote": "Table 2 Linear Regression of Affective Reaction on Expectation, NFC, and Their Interaction Coefficient B SE t p Intercept 1.88 1.44 1.31 .192 Expectation (none) 2.53 2.10 1.21 .229 Expectation (positive) 1.36 2.04 0.67 .506 NFC 0.42 0.29 1.47 .143 Expectation (none) × NFC −0.55 0.42 −1.32 .190 Expectation (positive) × NFC −0.13 0.41 −0.32 .750",
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p48.s5"
+        }
+      ],
+      "inputs": [
+        "inputs/analyses_final_rev1.R"
+      ],
+      "depends_on": [
+        "A16"
+      ],
+      "produces": [
+        "T080"
+      ]
+    },
+    {
+      "id": "A19",
+      "kind": "analysis",
+      "summary": "Report the residual standard error (2.30 on 246 df) and the adjusted R-squared (.017) from the full regression model.",
+      "quote": "Residual SE = 2.30 on 246 df. R² = .036, adjusted R² = .017, F(5, 246) = 1.86, p = .103.",
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p49.s3"
+        },
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p49.s4"
+        }
+      ],
+      "inputs": [
+        "inputs/analyses_final_rev1.R"
+      ],
+      "depends_on": [
+        "A16"
+      ],
+      "produces": [
+        "T081",
+        "T082"
+      ]
+    },
+    {
+      "id": "A20",
+      "kind": "analysis",
+      "summary": "Run a two-way ANOVA of affect index on expectation condition and NFC (and their interaction); report F, p, eta-squared and the 90% CI for the expectation main effect, the NFC main effect and the interaction, and conclude there is no evidence for a group difference nor NFC moderation.",
+      "quote": "there was no main effect of expectation condition on the affect index, F(2, 246) = 3.00, p = .051, η² = 0.02, 90% CI [0, 0.05], need for cognition F(1, 246) = 1.43, p = .233, η² < 0.01, 90% CI [0, 0.02] or an interaction effect F(2, 246) = 0.92, p = .398, η² < 0.01, 90% CI [0, 0.02].",
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p50.s1"
+        },
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p50.s2"
+        },
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p50.s3"
+        }
+      ],
+      "inputs": [
+        "inputs/analyses_final_rev1.R"
+      ],
+      "depends_on": [
+        "A05"
+      ],
+      "produces": [
+        "T004",
+        "T005",
+        "T006",
+        "T007",
+        "T083",
+        "T084",
+        "T085",
+        "T086",
+        "T087",
+        "T088",
+        "T089",
+        "T090",
+        "T091",
+        "T092",
+        "T093",
+        "T094",
+        "T095",
+        "T096",
+        "T097",
+        "T098"
+      ]
+    },
+    {
+      "id": "A21",
+      "kind": "analysis",
+      "summary": "For each expectation condition (positive, negative, none), fit a simple linear regression of affect index on NFC and report the slope b, SE, t and p.",
+      "quote": "Positive expectations: b = 0.288, se = 0.306, t(73) = 0.94, p = .349 • Negative expectations: b = 0.420, se = 0.275, t(92) = 1.53, p = .130 • Control group (no specific expectations): b = -0.131, se = 0.312, t(81) = -0.420, p = .675.",
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p52.s2"
+        }
+      ],
+      "inputs": [
+        "inputs/analyses_final_rev1.R"
+      ],
+      "depends_on": [
+        "A05"
+      ],
+      "produces": [
+        "T099",
+        "T100",
+        "T101",
+        "T102",
+        "T103",
+        "T104",
+        "T105",
+        "T106",
+        "T107",
+        "T108",
+        "T109",
+        "T110",
+        "T111"
+      ]
+    },
+    {
+      "id": "A22",
+      "kind": "analysis",
+      "summary": "Create a scatter plot with linear regression lines (with 95% confidence bands) of affect index on need for cognition for each expectation condition (Figure 2).",
+      "quote": "An overview of the results is presented in Figure 2 and Table 3. Figure 2 Regression lines predicting affect scores from need for cognition and expectation condition.",
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p52.s3"
+        },
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p54.s1"
+        }
+      ],
+      "inputs": [
+        "inputs/analyses_final_rev1.R"
+      ],
+      "depends_on": [
+        "A05"
+      ],
+      "produces": [
+        "T140"
+      ]
+    },
+    {
+      "id": "A23",
+      "kind": "analysis",
+      "summary": "Produce Table 3 comparing original and replication results for the interaction test and the three expectation-condition slopes, with interpretations according to LeBel et al. (2019).",
+      "quote": "Table 3 Comparison of original and replication results with interpretations according to LeBel et al. (2019).",
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p57.s2"
+        }
+      ],
+      "inputs": [
+        "inputs/analyses_final_rev1.R"
+      ],
+      "depends_on": [
+        "A16",
+        "A21"
+      ],
+      "produces": [
+        "T112"
+      ]
+    },
+    {
+      "id": "A24",
+      "kind": "analysis",
+      "summary": "Create a histogram of the affect index scores (Figure 3).",
+      "quote": "Figure 3 Distribution of Affect Index Scores. N = 252.",
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p65.s1"
+        },
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p66.s2"
+        }
+      ],
+      "inputs": [
+        "inputs/analyses_final_rev1.R"
+      ],
+      "depends_on": [
+        "A05"
+      ],
+      "produces": [
+        "T141"
+      ]
+    },
+    {
+      "id": "A25",
+      "kind": "analysis",
+      "summary": "Create a histogram of the need for cognition scores (Figure 4).",
+      "quote": "Figure 4 Distribution of Need for Cognition Scores. N = 252.",
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p68.s1"
+        },
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p69.s2"
+        }
+      ],
+      "inputs": [
+        "inputs/analyses_final_rev1.R"
+      ],
+      "depends_on": [
+        "A05"
+      ],
+      "produces": [
+        "T142"
+      ]
+    },
+    {
+      "id": "A26",
+      "kind": "analysis",
+      "summary": "Convert the focal original (eta2=.04, N=160) and replication (eta2<.01, N=252) effect sizes to r=sqrt(eta2) and fit a fixed-effects meta-analytic moderator model (Lakens, 2022) with study as moderator; report the replication coefficient, QM and p.",
+      "quote": "effect sizes for the focal original and replication test were converted from η² to r and compared using a meta-analytical test for moderation by the replication. Thereby, the replication effect was significantly smaller than the original effect. ... The moderator test QM(1) = 4.09, p = .043 indicates the replication effect size differed significantly from the original.",
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p62.s3"
+        },
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p62.s4"
+        },
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p63.s4"
+        }
+      ],
+      "inputs": [
+        "inputs/analyses_final_rev1.R"
+      ],
+      "depends_on": [
+        "A02",
+        "A20"
+      ],
+      "produces": [
+        "T113",
+        "T114",
+        "T115",
+        "T116"
+      ]
+    },
+    {
+      "id": "A27",
+      "kind": "analysis",
+      "summary": "Run a one-way ANOVA of affect index on expectation condition and report the F statistic and p-value.",
+      "quote": "Mean differences between the three expectation conditions did not differ overall, F(2, 249) = 3.00, p = .052.",
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p70.s2"
+        }
+      ],
+      "inputs": [
+        "inputs/analyses_final_rev1.R"
+      ],
+      "depends_on": [
+        "A05"
+      ],
+      "produces": [
+        "T117",
+        "T118"
+      ]
+    },
+    {
+      "id": "A28",
+      "kind": "analysis",
+      "summary": "Create a violin/jitter plot of affect index scores by expectation condition (Figure 5).",
+      "quote": "Figure 5 Affect scores by expectation condition. Solid lines represent medians.",
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p72.s1"
+        },
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p73.s2"
+        }
+      ],
+      "inputs": [
+        "inputs/analyses_final_rev1.R"
+      ],
+      "depends_on": [
+        "A05"
+      ],
+      "produces": [
+        "T143"
+      ]
+    },
+    {
+      "id": "A29",
+      "kind": "analysis",
+      "summary": "Count participants by number of correctly identified movie statements (4, 3, 2, 1, missing), compute the percentages, and confirm no participant got all four statements wrong.",
+      "quote": "149 participants (59.13%) identified all statements correctly, 77 (30.56%) identified 3/4, 22 (8.73%) identified 2/4, and 3 (1.19%) only identified 1/4 (1 missing value, 0.40%). No participant got all four statements wrong.",
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p75.s1"
+        },
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p75.s2"
+        }
+      ],
+      "inputs": [
+        "inputs/analyses_final_rev1.R"
+      ],
+      "depends_on": [
+        "A05"
+      ],
+      "produces": [
+        "T119",
+        "T120",
+        "T121",
+        "T122",
+        "T123",
+        "T124",
+        "T125",
+        "T126",
+        "T127",
+        "T128",
+        "T129"
+      ]
+    },
+    {
+      "id": "A30",
+      "kind": "analysis",
+      "summary": "Re-run the main hypothesis model on the 149 participants who answered all four attention check items correctly; report F, p and R-squared.",
+      "quote": "Running the main hypothesis's model only on the 149 participants that responded correctly to the four attention check items did not affect the results, F(5, 143) = 0.94, p = .459, R² = .032.",
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p75.s3"
+        }
+      ],
+      "inputs": [
+        "inputs/analyses_final_rev1.R"
+      ],
+      "depends_on": [
+        "A29"
+      ],
+      "produces": [
+        "T130",
+        "T131",
+        "T132"
+      ]
+    },
+    {
+      "id": "A31",
+      "kind": "analysis",
+      "summary": "Report the replication and original sample sizes (Nreplication=252, Noriginal=160) and the approximate statistical power (~80%) in the discussion.",
+      "quote": "a lack of statistical power (~80%) may have led to a non-significant finding (false-negative) though our sample size is considerably larger than the original (Nreplication= 252, Noriginal = 160).",
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p77.s3"
+        }
+      ],
+      "inputs": [],
+      "depends_on": [
+        "A05"
+      ],
+      "produces": [
+        "T133",
+        "T134",
+        "T135"
+      ]
+    },
+    {
+      "id": "A32",
+      "kind": "analysis",
+      "summary": "Report the preregistered target sample size (400) and that the achieved sample still had >80% power for the original effect.",
+      "quote": "We did not achieve our preregistered target sample size for N = 400 participants but only N = 252, which still had >80% power for the original effect.",
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p79.s7"
+        }
+      ],
+      "inputs": [],
+      "depends_on": [
+        "A05"
+      ],
+      "produces": [
+        "T136",
+        "T137"
+      ]
+    },
+    {
+      "id": "A33",
+      "kind": "analysis",
+      "summary": "Report the recommended minimum sample size (N ≥ 400) for future studies.",
+      "quote": "use a very large sample size (N ≥ 400).",
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p84.s1"
+        }
+      ],
+      "inputs": [],
+      "depends_on": [
+        "A32"
+      ],
+      "produces": [
+        "T138"
+      ]
+    },
+    {
+      "id": "OUT",
+      "kind": "results",
+      "summary": "Collect all reproduced results and write outputs/results.json (format: schemas/results-output.schema.json); save figures to outputs/figures/<target id>.png",
+      "quote": "",
+      "refs": [],
+      "inputs": [],
+      "depends_on": [
+        "A04",
+        "A06",
+        "A07",
+        "A08",
+        "A09",
+        "A10",
+        "A11",
+        "A12",
+        "A13",
+        "A14",
+        "A15",
+        "A17",
+        "A18",
+        "A19",
+        "A22",
+        "A23",
+        "A24",
+        "A25",
+        "A26",
+        "A27",
+        "A28",
+        "A30",
+        "A31",
+        "A33"
+      ],
+      "produces": [
+        "T001",
+        "T002",
+        "T003",
+        "T004",
+        "T005",
+        "T006",
+        "T007",
+        "T008",
+        "T009",
+        "T010",
+        "T011",
+        "T012",
+        "T013",
+        "T014",
+        "T015",
+        "T016",
+        "T017",
+        "T018",
+        "T019",
+        "T020",
+        "T021",
+        "T022",
+        "T023",
+        "T024",
+        "T025",
+        "T026",
+        "T027",
+        "T028",
+        "T029",
+        "T030",
+        "T031",
+        "T032",
+        "T033",
+        "T034",
+        "T035",
+        "T036",
+        "T037",
+        "T038",
+        "T039",
+        "T040",
+        "T041",
+        "T042",
+        "T043",
+        "T044",
+        "T045",
+        "T046",
+        "T047",
+        "T048",
+        "T049",
+        "T050",
+        "T051",
+        "T052",
+        "T053",
+        "T054",
+        "T055",
+        "T056",
+        "T057",
+        "T058",
+        "T059",
+        "T060",
+        "T061",
+        "T062",
+        "T063",
+        "T064",
+        "T065",
+        "T066",
+        "T067",
+        "T068",
+        "T069",
+        "T070",
+        "T071",
+        "T072",
+        "T073",
+        "T074",
+        "T075",
+        "T076",
+        "T077",
+        "T078",
+        "T079",
+        "T080",
+        "T081",
+        "T082",
+        "T083",
+        "T084",
+        "T085",
+        "T086",
+        "T087",
+        "T088",
+        "T089",
+        "T090",
+        "T091",
+        "T092",
+        "T093",
+        "T094",
+        "T095",
+        "T096",
+        "T097",
+        "T098",
+        "T099",
+        "T100",
+        "T101",
+        "T102",
+        "T103",
+        "T104",
+        "T105",
+        "T106",
+        "T107",
+        "T108",
+        "T109",
+        "T110",
+        "T111",
+        "T112",
+        "T113",
+        "T114",
+        "T115",
+        "T116",
+        "T117",
+        "T118",
+        "T119",
+        "T120",
+        "T121",
+        "T122",
+        "T123",
+        "T124",
+        "T125",
+        "T126",
+        "T127",
+        "T128",
+        "T129",
+        "T130",
+        "T131",
+        "T132",
+        "T133",
+        "T134",
+        "T135",
+        "T136",
+        "T137",
+        "T138",
+        "T139",
+        "T140",
+        "T141",
+        "T142",
+        "T143"
+      ]
+    }
+  ]
+}

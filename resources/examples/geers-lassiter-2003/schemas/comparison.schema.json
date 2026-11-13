@@ -1,0 +1,248 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://reprocrowd.example/schemas/comparison.schema.json",
+  "title": "Comparison (comparison.json (written with the report; also GET …/comparison))",
+  "$defs": {
+    "Cell": {
+      "additionalProperties": false,
+      "properties": {
+        "expected": {
+          "title": "Expected",
+          "type": "string"
+        },
+        "reproduced": {
+          "title": "Reproduced",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "match",
+            "within",
+            "deviation",
+            "missing",
+            "figure",
+            "unparsable"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "deviation": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "% deviation of a numeric cell",
+          "title": "Deviation"
+        }
+      },
+      "required": [
+        "expected",
+        "reproduced",
+        "status"
+      ],
+      "title": "Cell",
+      "type": "object"
+    },
+    "CompareRow": {
+      "additionalProperties": false,
+      "properties": {
+        "target": {
+          "title": "Target",
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "number",
+            "categorical",
+            "table",
+            "figure"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "status": {
+          "enum": [
+            "match",
+            "within",
+            "deviation",
+            "missing",
+            "figure",
+            "unparsable"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "expected_text": {
+          "title": "Expected Text",
+          "type": "string"
+        },
+        "reproduced_text": {
+          "title": "Reproduced Text",
+          "type": "string"
+        },
+        "deviation": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "% deviation (numbers)",
+          "title": "Deviation"
+        },
+        "cells": {
+          "anyOf": [
+            {
+              "items": {
+                "items": {
+                  "$ref": "#/$defs/Cell"
+                },
+                "type": "array"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "table targets: cell by cell",
+          "title": "Cells"
+        },
+        "matched": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Matched"
+        },
+        "total": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Total"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "the reproduction's note on this result",
+          "title": "Note"
+        }
+      },
+      "required": [
+        "target",
+        "type",
+        "description",
+        "status",
+        "expected_text",
+        "reproduced_text"
+      ],
+      "title": "CompareRow",
+      "type": "object"
+    },
+    "CompareSettings": {
+      "additionalProperties": false,
+      "properties": {
+        "rounding": {
+          "anyOf": [
+            {
+              "const": "reported",
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            }
+          ],
+          "default": "reported",
+          "description": "\"reported\": round to the decimals printed in the paper; or a number of decimals (0–10)",
+          "title": "Rounding"
+        },
+        "threshold": {
+          "default": 5,
+          "description": "deviation in % up to which a numeric result counts as within tolerance",
+          "minimum": 0,
+          "title": "Threshold",
+          "type": "number"
+        }
+      },
+      "title": "CompareSettings",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "GET …/comparison, and comparison.json written with the report.",
+  "properties": {
+    "settings": {
+      "$ref": "#/$defs/CompareSettings"
+    },
+    "summary": {
+      "additionalProperties": {
+        "type": "integer"
+      },
+      "description": "number of targets per status",
+      "title": "Summary",
+      "type": "object"
+    },
+    "rows": {
+      "items": {
+        "$ref": "#/$defs/CompareRow"
+      },
+      "title": "Rows",
+      "type": "array"
+    },
+    "output_errors": {
+      "description": "outputs/results.json does not have the required format",
+      "items": {
+        "type": "string"
+      },
+      "title": "Output Errors",
+      "type": "array"
+    },
+    "output_warnings": {
+      "description": "targets missing from the output, unknown ids",
+      "items": {
+        "type": "string"
+      },
+      "title": "Output Warnings",
+      "type": "array"
+    }
+  },
+  "required": [
+    "settings",
+    "summary",
+    "rows",
+    "output_errors",
+    "output_warnings"
+  ],
+  "type": "object"
+}

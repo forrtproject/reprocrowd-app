@@ -19,6 +19,8 @@ extraResources:
     to: backend
   - from: resources/hex-sticker.png
     to: hex-sticker.png
+  - from: resources/examples
+    to: examples
 asarUnpack: []
 linux:
   syncDesktopName: true
