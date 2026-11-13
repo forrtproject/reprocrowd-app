@@ -154,18 +154,23 @@ async function renderLlmModels(refresh = false) {
 
 type LibSort = "newest" | "oldest" | "name-asc" | "name-desc";
 interface LibPrefs { sort: LibSort; query: string; hideMissing: boolean }
-const LIB_PREFS_KEY = "reprocrowd.lib.prefs";
+const LIB_PREFS_KEY = "reprocrowd.lib.prefs"; // sort + hide-missing, kept across launches
+const LIB_QUERY_KEY = "reprocrowd.lib.query"; // filter text, kept only for this session (survives opening a package and coming back)
 const libSorts: LibSort[] = ["newest", "oldest", "name-asc", "name-desc"];
 
 const libPrefs = (): LibPrefs => {
+  const query = sessionStorage.getItem(LIB_QUERY_KEY) ?? "";
   try {
     const p = JSON.parse(localStorage.getItem(LIB_PREFS_KEY) ?? "{}");
-    return { sort: libSorts.includes(p.sort) ? p.sort : "newest", query: typeof p.query === "string" ? p.query : "", hideMissing: !!p.hideMissing };
+    return { sort: libSorts.includes(p.sort) ? p.sort : "newest", query, hideMissing: !!p.hideMissing };
   } catch {
-    return { sort: "newest", query: "", hideMissing: false };
+    return { sort: "newest", query, hideMissing: false };
   }
 };
-const saveLibPrefs = (p: LibPrefs) => localStorage.setItem(LIB_PREFS_KEY, JSON.stringify(p));
+const saveLibPrefs = ({ query, ...rest }: LibPrefs) => {
+  localStorage.setItem(LIB_PREFS_KEY, JSON.stringify(rest));
+  sessionStorage.setItem(LIB_QUERY_KEY, query);
+};
 const pkgName = (p: LibraryEntry) => p.title ?? p.path.split(/[\\/]/).pop() ?? p.id;
 
 function sortLib(list: LibraryEntry[], sort: LibSort): LibraryEntry[] {
@@ -184,17 +189,14 @@ function filterLib(list: LibraryEntry[], p: LibPrefs): LibraryEntry[] {
   return out;
 }
 
+const libSortLabels: Record<LibSort, string> = { newest: "Newest first", oldest: "Oldest first", "name-asc": "Name (A–Z)", "name-desc": "Name (Z–A)" };
+
 function libToolbar(p: LibPrefs): string {
   return `<div class="lib-toolbar">
     <label class="small">Sort
-      <select data-lib="sort">
-        <option value="newest">Newest first</option>
-        <option value="oldest">Oldest first</option>
-        <option value="name-asc">Name (A–Z)</option>
-        <option value="name-desc">Name (Z–A)</option>
-      </select></label>
+      <select data-lib="sort">${libSorts.map((v) => `<option value="${v}"${p.sort === v ? " selected" : ""}>${libSortLabels[v]}</option>`).join("")}</select></label>
     <input data-lib="query" type="search" placeholder="Filter by title or folder…" value="${esc(p.query)}" aria-label="Filter reproductions" />
-    <label class="inline small"><input data-lib="hide-missing" type="checkbox" ${p.hideMissing ? "checked" : ""} /> Hide missing folders</label>
+    <label class="small"><input data-lib="hide-missing" type="checkbox" ${p.hideMissing ? "checked" : ""} /> Hide missing folders</label>
   </div>`;
 }
 
@@ -241,60 +243,73 @@ async function render() {
        <p class="note">Your reproductions will be listed here. Start with <b>New reproduction</b>.</p>`;
     return;
   }
+  body.innerHTML = `<h2 class="section-title">Your reproductions</h2>${libToolbar(libPrefs())}<div id="lib-cards"></div>`;
+  const wrap = $("#lib-cards", body);
+  // Deposits are fetched once per list load; sorting/filtering only redraws the cards.
+  const deposits = new Map<string, ZenodoDeposit[]>();
+  for (const p of all.filter((x) => !x.missing))
+    host
+      .packageDeposits(p.id)
+      .then((ds) => {
+        deposits.set(p.id, ds);
+        const el = wrap.querySelector<HTMLElement>(`[data-dep-for="${CSS.escape(p.id)}"]`);
+        if (el) el.innerHTML = depositLine(ds);
+      })
+      .catch(() => {});
+  const redraw = () => renderCards(wrap, all, deposits);
+  bindLibToolbar(body, redraw);
+  redraw();
+}
+
+function renderCards(wrap: HTMLElement, all: LibraryEntry[], deposits: Map<string, ZenodoDeposit[]>) {
   const prefs = libPrefs();
   const list = sortLib(filterLib(all, prefs), prefs.sort);
-  body.innerHTML = `<h2 class="section-title">Your reproductions</h2>${libToolbar(prefs)}
-    ${list.length ? `<div class="cards">${list.map(card).join("")}</div>` : `<p class="muted">No reproductions match your filter.</p>`}`;
-  bindLibToolbar(body);
-  body.querySelectorAll<HTMLElement>("[data-open]").forEach((b) => b.addEventListener("click", () => openPackage(b.dataset.open!)));
-  body.querySelectorAll<HTMLElement>(".pkg-title").forEach((t) =>
+  wrap.innerHTML = list.length ? `<div class="cards">${list.map(card).join("")}</div>` : `<p class="muted">No reproductions match your filter.</p>`;
+  wrap.querySelectorAll<HTMLElement>("[data-dep-for]").forEach((el) => {
+    const ds = deposits.get(el.dataset.depFor!);
+    if (ds) el.innerHTML = depositLine(ds);
+  });
+  wrap.querySelectorAll<HTMLElement>("[data-open]").forEach((b) => b.addEventListener("click", () => openPackage(b.dataset.open!)));
+  wrap.querySelectorAll<HTMLElement>(".pkg-title").forEach((t) =>
     t.addEventListener("click", () => {
       const c = t.closest<HTMLElement>(".pkg-card")!;
       if (!c.classList.contains("missing")) openPackage(c.dataset.id!);
     }),
   );
-  body.querySelectorAll<HTMLElement>("[data-reveal]").forEach((b) => b.addEventListener("click", () => host.revealPackage(b.dataset.reveal!).catch((e) => showError("Showing the folder", e))));
-  body.querySelectorAll<HTMLElement>("[data-doi]").forEach((a) =>
+  wrap.querySelectorAll<HTMLElement>("[data-reveal]").forEach((b) => b.addEventListener("click", () => host.revealPackage(b.dataset.reveal!).catch((e) => showError("Showing the folder", e))));
+  wrap.querySelectorAll<HTMLElement>("[data-doi]").forEach((a) =>
     a.addEventListener("click", (e) => {
       e.preventDefault();
       host.openUrl(`https://doi.org/${a.dataset.doi}`);
     }),
   );
-  body.querySelectorAll<HTMLElement>("[data-remove]").forEach((b) =>
+  wrap.querySelectorAll<HTMLElement>("[data-remove]").forEach((b) =>
     b.addEventListener("click", async () => {
       if (!(await confirmDialog("Remove from the list", "<p>The package is removed from ReproCrowd's list. Its folder and files stay on disk; open it again with <b>Open a package folder…</b>.</p>", "Remove"))) return;
       await host.removePackage(b.dataset.remove!).catch((e) => showError("Removing", e));
       render();
     }),
   );
-  for (const p of list.filter((x) => !x.missing))
-    host
-      .packageDeposits(p.id)
-      .then((ds) => {
-        const el = body.querySelector<HTMLElement>(`[data-dep-for="${CSS.escape(p.id)}"]`);
-        if (el) el.innerHTML = depositLine(ds);
-      })
-      .catch(() => {});
 }
 
-function bindLibToolbar(body: HTMLElement) {
+function bindLibToolbar(body: HTMLElement, redraw: () => void) {
   const sel = body.querySelector<HTMLSelectElement>("[data-lib=sort]");
   const q = body.querySelector<HTMLInputElement>("[data-lib=query]");
   const hm = body.querySelector<HTMLInputElement>("[data-lib=hide-missing]");
   if (!sel || !q || !hm) return;
   sel.addEventListener("change", () => {
     saveLibPrefs({ ...libPrefs(), sort: sel.value as LibSort });
-    render();
+    redraw();
   });
   let timer: ReturnType<typeof setTimeout> | undefined;
   q.addEventListener("input", () => {
     saveLibPrefs({ ...libPrefs(), query: q.value });
     clearTimeout(timer);
-    timer = setTimeout(() => render(), 200);
+    timer = setTimeout(redraw, 150);
   });
   hm.addEventListener("change", () => {
     saveLibPrefs({ ...libPrefs(), hideMissing: hm.checked });
-    render();
+    redraw();
   });
 }
 
