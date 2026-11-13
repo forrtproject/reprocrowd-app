@@ -1,0 +1,22 @@
+#############Info on the "Gummibear_data"
+
+
+####Table 1: includes estimates we gathered from all individuals prio to the gummi bear tasting experiment
+- Pred_ are predictions regarding once own accuracy in terms of percentages correct in guessing the gummi bear flavor (i.e.potential range of 0-100)
+- E = Strawberry, Ap = Apple, O = Orange, H = Rasperry, Z = Lemon, An = Pineapple
+- MPred_Ges_[Name] are prediction regarding the respective persons overall accuracy (across flavors) (e.g. in the column Mpred_ges_Ada are our estimates re how accurate Ada will be first line her self-estimation, second line ellas estimation of Adas overall accuracy etc.)
+- Like = are judgments of how much one likes each flavor on a scale from 1 (not at all) to 6 (really like it very much); Like_ges is a judgment of how much one likes gummi bears in general on the same scale
+
+####Table 2: includes the data of the tasting experiment
+
+- Test_ID is the running ID each ID representing one taste trial
+- ID is the person ID (1=Ada, 2 = Ella, 3=natalie, 4=Mitja)
+- Date is the date the experimental sessions ran (5 sessions each on one day); the first four sessions where run on family vacation in Italy, the last session was run back home in Germany
+- Round = is the number of testing rounds we did on a respective day, one round consisting of each of us four doing one tasting trial; 5 rounds per session
+- Name = our first names (same info as given in the ID)
+- J_Sorte = the flavor judgment
+- J_Sicher = certainty judgment (i.e. how certain one is re the judged flavor)
+- J_Lecker = judgment of how much one likes the gummi bear
+- Crit_Sorte = the actual/correct flavor that was administered
+- Correct = the correctness of the flavor judgment (0 = incorrect, 1 = corrrect)
+- package = the package the gummi bears where taken from, 2 different packages where used numbered 1 and 2 (both bought in Italy)

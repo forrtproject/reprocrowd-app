@@ -1,0 +1,2846 @@
+{
+  "settings": {
+    "rounding": "reported",
+    "threshold": 5.0
+  },
+  "summary": {
+    "match": 175,
+    "figure": 3
+  },
+  "rows": [
+    {
+      "target": "T001",
+      "type": "table",
+      "description": "Table 1: Predicted Accuracy, Identification Accuracy, Certainty, and Liking for Each Flavor, Aggregated Across Perceivers",
+      "status": "match",
+      "expected_text": "8 rows",
+      "reproduced_text": "26/26 numeric cells match",
+      "cells": [
+        [
+          {
+            "expected": "Flavor",
+            "reproduced": "Flavor",
+            "status": "match"
+          },
+          {
+            "expected": "predicted accuracy",
+            "reproduced": "predicted accuracy",
+            "status": "match"
+          },
+          {
+            "expected": "accuracy",
+            "reproduced": "accuracy",
+            "status": "match"
+          },
+          {
+            "expected": "certainty",
+            "reproduced": "certainty",
+            "status": "match"
+          },
+          {
+            "expected": "stated liking",
+            "reproduced": "stated liking",
+            "status": "match"
+          },
+          {
+            "expected": "tasted liking",
+            "reproduced": "tasted liking",
+            "status": "match"
+          }
+        ],
+        [
+          {
+            "expected": "strawberry",
+            "reproduced": "strawberry",
+            "status": "match"
+          },
+          {
+            "expected": "43%",
+            "reproduced": "43%",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "36% (4/11)",
+            "reproduced": "36% (4/11)",
+            "status": "match"
+          },
+          {
+            "expected": "2.91",
+            "reproduced": "2.91",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "5.00",
+            "reproduced": "5.00",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "3.18",
+            "reproduced": "3.18",
+            "status": "match",
+            "deviation": 0.0
+          }
+        ],
+        [
+          {
+            "expected": "orange",
+            "reproduced": "orange",
+            "status": "match"
+          },
+          {
+            "expected": "44%",
+            "reproduced": "44%",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "53% (9/17)",
+            "reproduced": "53% (9/17)",
+            "status": "match"
+          },
+          {
+            "expected": "3.41",
+            "reproduced": "3.41",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "3.25",
+            "reproduced": "3.25",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "3.59",
+            "reproduced": "3.59",
+            "status": "match",
+            "deviation": 0.0
+          }
+        ],
+        [
+          {
+            "expected": "apple",
+            "reproduced": "apple",
+            "status": "match"
+          },
+          {
+            "expected": "54%",
+            "reproduced": "54%",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "35% (8/23)",
+            "reproduced": "35% (8/23)",
+            "status": "match"
+          },
+          {
+            "expected": "3.04",
+            "reproduced": "3.04",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "3.00",
+            "reproduced": "3.00",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "4.04",
+            "reproduced": "4.04",
+            "status": "match",
+            "deviation": 0.0
+          }
+        ],
+        [
+          {
+            "expected": "raspberry",
+            "reproduced": "raspberry",
+            "status": "match"
+          },
+          {
+            "expected": "44%",
+            "reproduced": "44%",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "53% (9/17)",
+            "reproduced": "53% (9/17)",
+            "status": "match"
+          },
+          {
+            "expected": "3.12",
+            "reproduced": "3.12",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "5.50",
+            "reproduced": "5.50",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "3.94",
+            "reproduced": "3.94",
+            "status": "match",
+            "deviation": 0.0
+          }
+        ],
+        [
+          {
+            "expected": "lemon",
+            "reproduced": "lemon",
+            "status": "match"
+          },
+          {
+            "expected": "46%",
+            "reproduced": "46%",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "41% (7/17)",
+            "reproduced": "41% (7/17)",
+            "status": "match"
+          },
+          {
+            "expected": "2.71",
+            "reproduced": "2.71",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "3.50",
+            "reproduced": "3.50",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "3.35",
+            "reproduced": "3.35",
+            "status": "match",
+            "deviation": 0.0
+          }
+        ],
+        [
+          {
+            "expected": "pineapple",
+            "reproduced": "pineapple",
+            "status": "match"
+          },
+          {
+            "expected": "48%",
+            "reproduced": "48%",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "33% (5/15)",
+            "reproduced": "33% (5/15)",
+            "status": "match"
+          },
+          {
+            "expected": "2.93",
+            "reproduced": "2.93",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "4.75",
+            "reproduced": "4.75",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "4.07",
+            "reproduced": "4.07",
+            "status": "match",
+            "deviation": 0.0
+          }
+        ],
+        [
+          {
+            "expected": "All flavors",
+            "reproduced": "All flavors",
+            "status": "match"
+          },
+          {
+            "expected": "46%",
+            "reproduced": "46%",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "42% (42/100)",
+            "reproduced": "42% (42/100)",
+            "status": "match"
+          },
+          {
+            "expected": "3.03 (1.46)",
+            "reproduced": "3.03 (1.46)",
+            "status": "match"
+          },
+          {
+            "expected": "4.17",
+            "reproduced": "4.17",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "3.74 (1.31)",
+            "reproduced": "3.74 (1.31)",
+            "status": "match"
+          }
+        ]
+      ],
+      "matched": 26,
+      "total": 26
+    },
+    {
+      "target": "T002",
+      "type": "table",
+      "description": "Table 2: Predicted Accuracy, Identification Accuracy, Certainty, and Liking for Each Flavor, Separately for Each Perceiver",
+      "status": "match",
+      "expected_text": "8 rows",
+      "reproduced_text": "104/104 numeric cells match",
+      "cells": [
+        [
+          {
+            "expected": "Flavor",
+            "reproduced": "Flavor",
+            "status": "match"
+          },
+          {
+            "expected": "predicted accuracy",
+            "reproduced": "predicted accuracy",
+            "status": "match"
+          },
+          {
+            "expected": "accuracy",
+            "reproduced": "accuracy",
+            "status": "match"
+          },
+          {
+            "expected": "certainty",
+            "reproduced": "certainty",
+            "status": "match"
+          },
+          {
+            "expected": "stated liking",
+            "reproduced": "stated liking",
+            "status": "match"
+          },
+          {
+            "expected": "tasted liking",
+            "reproduced": "tasted liking",
+            "status": "match"
+          },
+          {
+            "expected": "predicted accuracy",
+            "reproduced": "predicted accuracy",
+            "status": "match"
+          },
+          {
+            "expected": "accuracy",
+            "reproduced": "accuracy",
+            "status": "match"
+          },
+          {
+            "expected": "certainty",
+            "reproduced": "certainty",
+            "status": "match"
+          },
+          {
+            "expected": "stated liking",
+            "reproduced": "stated liking",
+            "status": "match"
+          },
+          {
+            "expected": "tasted liking",
+            "reproduced": "tasted liking",
+            "status": "match"
+          },
+          {
+            "expected": "predicted accuracy",
+            "reproduced": "predicted accuracy",
+            "status": "match"
+          },
+          {
+            "expected": "accuracy",
+            "reproduced": "accuracy",
+            "status": "match"
+          },
+          {
+            "expected": "certainty",
+            "reproduced": "certainty",
+            "status": "match"
+          },
+          {
+            "expected": "stated liking",
+            "reproduced": "stated liking",
+            "status": "match"
+          },
+          {
+            "expected": "tasted liking",
+            "reproduced": "tasted liking",
+            "status": "match"
+          },
+          {
+            "expected": "predicted accuracy",
+            "reproduced": "predicted accuracy",
+            "status": "match"
+          },
+          {
+            "expected": "accuracy",
+            "reproduced": "accuracy",
+            "status": "match"
+          },
+          {
+            "expected": "certainty",
+            "reproduced": "certainty",
+            "status": "match"
+          },
+          {
+            "expected": "stated liking",
+            "reproduced": "stated liking",
+            "status": "match"
+          },
+          {
+            "expected": "tasted liking",
+            "reproduced": "tasted liking",
+            "status": "match"
+          }
+        ],
+        [
+          {
+            "expected": "strawberry",
+            "reproduced": "strawberry",
+            "status": "match"
+          },
+          {
+            "expected": "60%",
+            "reproduced": "60%",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "33% (1/3)",
+            "reproduced": "33% (1/3)",
+            "status": "match"
+          },
+          {
+            "expected": "2.67",
+            "reproduced": "2.67",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "5.00",
+            "reproduced": "5.00",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "3.00",
+            "reproduced": "3.00",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "48%",
+            "reproduced": "48%",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "67% (2/3)",
+            "reproduced": "67% (2/3)",
+            "status": "match"
+          },
+          {
+            "expected": "3.67",
+            "reproduced": "3.67",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "5.00",
+            "reproduced": "5.00",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "4.33",
+            "reproduced": "4.33",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "35%",
+            "reproduced": "35%",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "0% (0/2)",
+            "reproduced": "0% (0/2)",
+            "status": "match"
+          },
+          {
+            "expected": "3.00",
+            "reproduced": "3.00",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "6.00",
+            "reproduced": "6.00",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "2.50",
+            "reproduced": "2.50",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "28%",
+            "reproduced": "28%",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "33% (1/3)",
+            "reproduced": "33% (1/3)",
+            "status": "match"
+          },
+          {
+            "expected": "2.33",
+            "reproduced": "2.33",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "4.00",
+            "reproduced": "4.00",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "2.67",
+            "reproduced": "2.67",
+            "status": "match",
+            "deviation": 0.0
+          }
+        ],
+        [
+          {
+            "expected": "orange",
+            "reproduced": "orange",
+            "status": "match"
+          },
+          {
+            "expected": "40%",
+            "reproduced": "40%",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "0% (0/3)",
+            "reproduced": "0% (0/3)",
+            "status": "match"
+          },
+          {
+            "expected": "3.00",
+            "reproduced": "3.00",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "4.00",
+            "reproduced": "4.00",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "5.00",
+            "reproduced": "5.00",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "82%",
+            "reproduced": "82%",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "71% (5/7)",
+            "reproduced": "71% (5/7)",
+            "status": "match"
+          },
+          {
+            "expected": "4.00",
+            "reproduced": "4.00",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "3.00",
+            "reproduced": "3.00",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "3.57",
+            "reproduced": "3.57",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "30%",
+            "reproduced": "30%",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "0% (0/3)",
+            "reproduced": "0% (0/3)",
+            "status": "match"
+          },
+          {
+            "expected": "2.00",
+            "reproduced": "2.00",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "3.00",
+            "reproduced": "3.00",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "3.33",
+            "reproduced": "3.33",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "24%",
+            "reproduced": "24%",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "100% (4/4)",
+            "reproduced": "100% (4/4)",
+            "status": "match"
+          },
+          {
+            "expected": "3.75",
+            "reproduced": "3.75",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "3.00",
+            "reproduced": "3.00",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "2.75",
+            "reproduced": "2.75",
+            "status": "match",
+            "deviation": 0.0
+          }
+        ],
+        [
+          {
+            "expected": "apple",
+            "reproduced": "apple",
+            "status": "match"
+          },
+          {
+            "expected": "80%",
+            "reproduced": "80%",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "14% (1/7)",
+            "reproduced": "14% (1/7)",
+            "status": "match"
+          },
+          {
+            "expected": "2.29",
+            "reproduced": "2.29",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "3.00",
+            "reproduced": "3.00",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "4.43",
+            "reproduced": "4.43",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "81%",
+            "reproduced": "81%",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "20% (1/5)",
+            "reproduced": "20% (1/5)",
+            "status": "match"
+          },
+          {
+            "expected": "2.60",
+            "reproduced": "2.60",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "3.00",
+            "reproduced": "3.00",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "3.60",
+            "reproduced": "3.60",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "20%",
+            "reproduced": "20%",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "0% (0/3)",
+            "reproduced": "0% (0/3)",
+            "status": "match"
+          },
+          {
+            "expected": "3.67",
+            "reproduced": "3.67",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "3.00",
+            "reproduced": "3.00",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "4.33",
+            "reproduced": "4.33",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "35%",
+            "reproduced": "35%",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "75% (6/8)",
+            "reproduced": "75% (6/8)",
+            "status": "match"
+          },
+          {
+            "expected": "3.75",
+            "reproduced": "3.75",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "3.00",
+            "reproduced": "3.00",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "3.88",
+            "reproduced": "3.88",
+            "status": "match",
+            "deviation": 0.0
+          }
+        ],
+        [
+          {
+            "expected": "raspberry",
+            "reproduced": "raspberry",
+            "status": "match"
+          },
+          {
+            "expected": "60%",
+            "reproduced": "60%",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "17% (1/6)",
+            "reproduced": "17% (1/6)",
+            "status": "match"
+          },
+          {
+            "expected": "2.50",
+            "reproduced": "2.50",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "6.00",
+            "reproduced": "6.00",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "3.50",
+            "reproduced": "3.50",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "50%",
+            "reproduced": "50%",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "100% (3/3)",
+            "reproduced": "100% (3/3)",
+            "status": "match"
+          },
+          {
+            "expected": "5.00",
+            "reproduced": "5.00",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "5.00",
+            "reproduced": "5.00",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "4.67",
+            "reproduced": "4.67",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "38%",
+            "reproduced": "38%",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "50% (3/6)",
+            "reproduced": "50% (3/6)",
+            "status": "match"
+          },
+          {
+            "expected": "2.33",
+            "reproduced": "2.33",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "6.00",
+            "reproduced": "6.00",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "3.50",
+            "reproduced": "3.50",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "26%",
+            "reproduced": "26%",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "100% (2/2)",
+            "reproduced": "100% (2/2)",
+            "status": "match"
+          },
+          {
+            "expected": "4.50",
+            "reproduced": "4.50",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "5.00",
+            "reproduced": "5.00",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "5.50",
+            "reproduced": "5.50",
+            "status": "match",
+            "deviation": 0.0
+          }
+        ],
+        [
+          {
+            "expected": "lemon",
+            "reproduced": "lemon",
+            "status": "match"
+          },
+          {
+            "expected": "60%",
+            "reproduced": "60%",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "0% (0/1)",
+            "reproduced": "0% (0/1)",
+            "status": "match"
+          },
+          {
+            "expected": "6.00",
+            "reproduced": "6.00",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "4.00",
+            "reproduced": "4.00",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "6.00",
+            "reproduced": "6.00",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "51%",
+            "reproduced": "51%",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "75% (3/4)",
+            "reproduced": "75% (3/4)",
+            "status": "match"
+          },
+          {
+            "expected": "3.00",
+            "reproduced": "3.00",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "4.00",
+            "reproduced": "4.00",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "4.00",
+            "reproduced": "4.00",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "35%",
+            "reproduced": "35%",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "43% (3/7)",
+            "reproduced": "43% (3/7)",
+            "status": "match"
+          },
+          {
+            "expected": "2.00",
+            "reproduced": "2.00",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "4.00",
+            "reproduced": "4.00",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "3.00",
+            "reproduced": "3.00",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "40%",
+            "reproduced": "40%",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "20% (1/5)",
+            "reproduced": "20% (1/5)",
+            "status": "match"
+          },
+          {
+            "expected": "2.80",
+            "reproduced": "2.80",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "2.00",
+            "reproduced": "2.00",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "2.80",
+            "reproduced": "2.80",
+            "status": "match",
+            "deviation": 0.0
+          }
+        ],
+        [
+          {
+            "expected": "pineapple",
+            "reproduced": "pineapple",
+            "status": "match"
+          },
+          {
+            "expected": "60%",
+            "reproduced": "60%",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "0% (0/5)",
+            "reproduced": "0% (0/5)",
+            "status": "match"
+          },
+          {
+            "expected": "2.80",
+            "reproduced": "2.80",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "4.00",
+            "reproduced": "4.00",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "4.00",
+            "reproduced": "4.00",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "65%",
+            "reproduced": "65%",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "100% (3/3)",
+            "reproduced": "100% (3/3)",
+            "status": "match"
+          },
+          {
+            "expected": "5.00",
+            "reproduced": "5.00",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "6.00",
+            "reproduced": "6.00",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "6.00",
+            "reproduced": "6.00",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "30%",
+            "reproduced": "30%",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "25% (1/4)",
+            "reproduced": "25% (1/4)",
+            "status": "match"
+          },
+          {
+            "expected": "1.75",
+            "reproduced": "1.75",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "3.00",
+            "reproduced": "3.00",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "3.00",
+            "reproduced": "3.00",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "35%",
+            "reproduced": "35%",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "33% (1/3)",
+            "reproduced": "33% (1/3)",
+            "status": "match"
+          },
+          {
+            "expected": "2.67",
+            "reproduced": "2.67",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "6.00",
+            "reproduced": "6.00",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "3.67",
+            "reproduced": "3.67",
+            "status": "match",
+            "deviation": 0.0
+          }
+        ],
+        [
+          {
+            "expected": "All flavors",
+            "reproduced": "All flavors",
+            "status": "match"
+          },
+          {
+            "expected": "60%",
+            "reproduced": "60%",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "12% (3/25)",
+            "reproduced": "12% (3/25)",
+            "status": "match"
+          },
+          {
+            "expected": "2.72 (1.74)",
+            "reproduced": "2.72 (1.74)",
+            "status": "match"
+          },
+          {
+            "expected": "4.33",
+            "reproduced": "4.33",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "4.08 (1.85)",
+            "reproduced": "4.08 (1.85)",
+            "status": "match"
+          },
+          {
+            "expected": "63%",
+            "reproduced": "63%",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "68% (17/25)",
+            "reproduced": "68% (17/25)",
+            "status": "match"
+          },
+          {
+            "expected": "3.76 (1.36)",
+            "reproduced": "3.76 (1.36)",
+            "status": "match"
+          },
+          {
+            "expected": "4.33",
+            "reproduced": "4.33",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "4.16 (0.99)",
+            "reproduced": "4.16 (0.99)",
+            "status": "match"
+          },
+          {
+            "expected": "31%",
+            "reproduced": "31%",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "28% (7/25)",
+            "reproduced": "28% (7/25)",
+            "status": "match"
+          },
+          {
+            "expected": "2.32 (1.07)",
+            "reproduced": "2.32 (1.07)",
+            "status": "match"
+          },
+          {
+            "expected": "4.17",
+            "reproduced": "4.17",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "3.28 (0.98)",
+            "reproduced": "3.28 (0.98)",
+            "status": "match"
+          },
+          {
+            "expected": "31%",
+            "reproduced": "31%",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "60% (15/25)",
+            "reproduced": "60% (15/25)",
+            "status": "match"
+          },
+          {
+            "expected": "3.32 (1.22)",
+            "reproduced": "3.32 (1.22)",
+            "status": "match"
+          },
+          {
+            "expected": "3.83",
+            "reproduced": "3.83",
+            "status": "match",
+            "deviation": 0.0
+          },
+          {
+            "expected": "3.44 (1.04)",
+            "reproduced": "3.44 (1.04)",
+            "status": "match"
+          }
+        ]
+      ],
+      "matched": 104,
+      "total": 104
+    },
+    {
+      "target": "T003",
+      "type": "figure",
+      "description": "Figure 1: Blind Identification of Gummy Bear Flavors by Four Perceivers",
+      "status": "figure",
+      "expected_text": "(figure)",
+      "reproduced_text": "outputs/figures/T003.png"
+    },
+    {
+      "target": "T004",
+      "type": "figure",
+      "description": "Figure 2: Relative Variance Components for Identification Accuracy, Stated Liking, and Tasted Liking",
+      "status": "figure",
+      "expected_text": "(figure)",
+      "reproduced_text": "outputs/figures/T004.png"
+    },
+    {
+      "target": "T005",
+      "type": "figure",
+      "description": "Figure 3: Awareness of One's Own Unique Flavor Preferences",
+      "status": "figure",
+      "expected_text": "(figure)",
+      "reproduced_text": "outputs/figures/T005.png"
+    },
+    {
+      "target": "T006",
+      "type": "number",
+      "description": "Pooled accuracy proportion",
+      "status": "match",
+      "expected_text": "0.42",
+      "reproduced_text": "0.42  (0.42)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T007",
+      "type": "number",
+      "description": "Pooled accuracy lower 95% CI bound",
+      "status": "match",
+      "expected_text": "0.32",
+      "reproduced_text": "0.32  (0.32198554)",
+      "deviation": 0.6204810483043111
+    },
+    {
+      "target": "T008",
+      "type": "number",
+      "description": "Pooled accuracy upper 95% CI bound",
+      "status": "match",
+      "expected_text": "0.52",
+      "reproduced_text": "0.52  (0.5228808)",
+      "deviation": 0.5540008223149757
+    },
+    {
+      "target": "T009",
+      "type": "number",
+      "description": "Average accuracy in identification",
+      "status": "match",
+      "expected_text": "42 %",
+      "reproduced_text": "42  (42)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T010",
+      "type": "number",
+      "description": "Chance level for six alternatives",
+      "status": "match",
+      "expected_text": "16.7 %",
+      "reproduced_text": "16.7  (16.666667)",
+      "deviation": 0.19960079840320358
+    },
+    {
+      "target": "T011",
+      "type": "number",
+      "description": "Minimum individual accuracy",
+      "status": "match",
+      "expected_text": "12 %",
+      "reproduced_text": "12  (12)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T012",
+      "type": "number",
+      "description": "Maximum individual accuracy",
+      "status": "match",
+      "expected_text": "68 %",
+      "reproduced_text": "68  (68)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T013",
+      "type": "number",
+      "description": "Total number of trials",
+      "status": "match",
+      "expected_text": "100",
+      "reproduced_text": "100  (100)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T014",
+      "type": "number",
+      "description": "Number of family members / perceivers",
+      "status": "match",
+      "expected_text": "4",
+      "reproduced_text": "4  (4)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T015",
+      "type": "number",
+      "description": "Number of gummy bears tasted per participant",
+      "status": "match",
+      "expected_text": "25",
+      "reproduced_text": "25  (25)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T016",
+      "type": "number",
+      "description": "Chi-square statistic for perceiver differences in accuracy",
+      "status": "match",
+      "expected_text": "21.51",
+      "reproduced_text": "21.51  (21.510673)",
+      "deviation": 0.003129868950085196
+    },
+    {
+      "target": "T017",
+      "type": "number",
+      "description": "Exact conditional p-value for perceiver accuracy differences",
+      "status": "match",
+      "expected_text": "< 0.001",
+      "reproduced_text": "0.000  (5.4114533e-05)",
+      "deviation": 94.58854671558247
+    },
+    {
+      "target": "T018",
+      "type": "number",
+      "description": "Ella identification accuracy",
+      "status": "match",
+      "expected_text": "0.68",
+      "reproduced_text": "0.68  (0.68)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T019",
+      "type": "number",
+      "description": "Ella accuracy lower 95% CI bound",
+      "status": "match",
+      "expected_text": "0.46",
+      "reproduced_text": "0.46  (0.46499928)",
+      "deviation": 1.0868005440468114
+    },
+    {
+      "target": "T020",
+      "type": "number",
+      "description": "Ella accuracy upper 95% CI bound",
+      "status": "match",
+      "expected_text": "0.85",
+      "reproduced_text": "0.85  (0.85050458)",
+      "deviation": 0.05936204546239927
+    },
+    {
+      "target": "T021",
+      "type": "number",
+      "description": "Ella accuracy p-value",
+      "status": "match",
+      "expected_text": "< 0.001",
+      "reproduced_text": "0.000  (1.6284968e-08)",
+      "deviation": 99.9983715031606
+    },
+    {
+      "target": "T022",
+      "type": "number",
+      "description": "Mitja identification accuracy",
+      "status": "match",
+      "expected_text": "0.6",
+      "reproduced_text": "0.60  (0.6)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T023",
+      "type": "number",
+      "description": "Mitja accuracy lower 95% CI bound",
+      "status": "match",
+      "expected_text": "0.39",
+      "reproduced_text": "0.39  (0.3866535)",
+      "deviation": 0.8580778828612341
+    },
+    {
+      "target": "T024",
+      "type": "number",
+      "description": "Mitja accuracy upper 95% CI bound",
+      "status": "match",
+      "expected_text": "0.79",
+      "reproduced_text": "0.79  (0.78874519)",
+      "deviation": 0.15883626141039098
+    },
+    {
+      "target": "T025",
+      "type": "number",
+      "description": "Mitja accuracy p-value",
+      "status": "match",
+      "expected_text": "< 0.001",
+      "reproduced_text": "0.000  (1.2794333e-06)",
+      "deviation": 99.87205667341257
+    },
+    {
+      "target": "T026",
+      "type": "number",
+      "description": "Natalie identification accuracy",
+      "status": "match",
+      "expected_text": "0.28",
+      "reproduced_text": "0.28  (0.28)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T027",
+      "type": "number",
+      "description": "Natalie accuracy lower 95% CI bound",
+      "status": "match",
+      "expected_text": "0.12",
+      "reproduced_text": "0.12  (0.12071669)",
+      "deviation": 0.5972404197472059
+    },
+    {
+      "target": "T028",
+      "type": "number",
+      "description": "Natalie accuracy upper 95% CI bound",
+      "status": "match",
+      "expected_text": "0.49",
+      "reproduced_text": "0.49  (0.49387682)",
+      "deviation": 0.7911881237334933
+    },
+    {
+      "target": "T029",
+      "type": "number",
+      "description": "Natalie accuracy p-value",
+      "status": "match",
+      "expected_text": "0.17",
+      "reproduced_text": "0.17  (0.1721265)",
+      "deviation": 1.2508808723280789
+    },
+    {
+      "target": "T030",
+      "type": "number",
+      "description": "Ada identification accuracy",
+      "status": "match",
+      "expected_text": "0.12",
+      "reproduced_text": "0.12  (0.12)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T031",
+      "type": "number",
+      "description": "Ada accuracy lower 95% CI bound",
+      "status": "match",
+      "expected_text": "0.03",
+      "reproduced_text": "0.03  (0.025465397)",
+      "deviation": 15.115344507555934
+    },
+    {
+      "target": "T032",
+      "type": "number",
+      "description": "Ada accuracy upper 95% CI bound",
+      "status": "match",
+      "expected_text": "0.31",
+      "reproduced_text": "0.31  (0.31219031)",
+      "deviation": 0.7065507373498776
+    },
+    {
+      "target": "T033",
+      "type": "number",
+      "description": "Ada accuracy p-value",
+      "status": "match",
+      "expected_text": "0.79",
+      "reproduced_text": "0.79  (0.78783226)",
+      "deviation": 0.27439787979948227
+    },
+    {
+      "target": "T034",
+      "type": "number",
+      "description": "One-sided p-value for zero hits in 25 trials",
+      "status": "match",
+      "expected_text": "0.01",
+      "reproduced_text": "0.010  (0.010482596)",
+      "deviation": 4.825960103961129
+    },
+    {
+      "target": "T035",
+      "type": "number",
+      "description": "Accuracy at age 8",
+      "status": "match",
+      "expected_text": "0.12",
+      "reproduced_text": "0.12  (0.12)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T036",
+      "type": "number",
+      "description": "Accuracy at age 13",
+      "status": "match",
+      "expected_text": "0.68",
+      "reproduced_text": "0.68  (0.68)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T037",
+      "type": "number",
+      "description": "Accuracy at age 42",
+      "status": "match",
+      "expected_text": "0.28",
+      "reproduced_text": "0.28  (0.28)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T038",
+      "type": "number",
+      "description": "Accuracy at age 47",
+      "status": "match",
+      "expected_text": "0.6",
+      "reproduced_text": "0.60  (0.6)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T039",
+      "type": "number",
+      "description": "Trials: lemon named orange",
+      "status": "match",
+      "expected_text": "6",
+      "reproduced_text": "6  (6)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T040",
+      "type": "number",
+      "description": "Trials: apple named raspberry",
+      "status": "match",
+      "expected_text": "6",
+      "reproduced_text": "6  (6)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T041",
+      "type": "number",
+      "description": "Trials: orange named lemon",
+      "status": "match",
+      "expected_text": "5",
+      "reproduced_text": "5  (5)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T042",
+      "type": "number",
+      "description": "Trials: pineapple named lemon",
+      "status": "match",
+      "expected_text": "4",
+      "reproduced_text": "4  (4)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T043",
+      "type": "number",
+      "description": "Lowest per-flavor accuracy (pineapple)",
+      "status": "match",
+      "expected_text": "0.33",
+      "reproduced_text": "0.33  (0.33333333)",
+      "deviation": 1.0101010101009997
+    },
+    {
+      "target": "T044",
+      "type": "number",
+      "description": "Highest per-flavor accuracy (orange and raspberry)",
+      "status": "match",
+      "expected_text": "0.53",
+      "reproduced_text": "0.53  (0.52941176)",
+      "deviation": 0.11098779134295607
+    },
+    {
+      "target": "T045",
+      "type": "number",
+      "description": "Ella certainty-graded AUC",
+      "status": "match",
+      "expected_text": "0.95",
+      "reproduced_text": "0.95  (0.95220588)",
+      "deviation": 0.23219814241485984
+    },
+    {
+      "target": "T046",
+      "type": "number",
+      "description": "Ella certainty AUC p-value",
+      "status": "match",
+      "expected_text": "< 0.001",
+      "reproduced_text": "0.000  (9.9990001e-05)",
+      "deviation": 90.00099990000999
+    },
+    {
+      "target": "T047",
+      "type": "number",
+      "description": "Mitja certainty-graded AUC",
+      "status": "match",
+      "expected_text": "0.79",
+      "reproduced_text": "0.79  (0.79333333)",
+      "deviation": 0.42194092827003793
+    },
+    {
+      "target": "T048",
+      "type": "number",
+      "description": "Mitja certainty AUC p-value",
+      "status": "match",
+      "expected_text": "0.005",
+      "reproduced_text": "0.005  (0.0053994601)",
+      "deviation": 7.989201079892007
+    },
+    {
+      "target": "T049",
+      "type": "number",
+      "description": "Natalie certainty-graded AUC",
+      "status": "match",
+      "expected_text": "0.56",
+      "reproduced_text": "0.56  (0.55555556)",
+      "deviation": 0.7936507936507986
+    },
+    {
+      "target": "T050",
+      "type": "number",
+      "description": "Natalie certainty AUC p-value",
+      "status": "match",
+      "expected_text": "0.37",
+      "reproduced_text": "0.37  (0.37126287)",
+      "deviation": 0.3413172196293869
+    },
+    {
+      "target": "T051",
+      "type": "number",
+      "description": "Ada certainty-graded AUC",
+      "status": "match",
+      "expected_text": "0.38",
+      "reproduced_text": "0.38  (0.37878788)",
+      "deviation": 0.3189792663476894
+    },
+    {
+      "target": "T052",
+      "type": "number",
+      "description": "Ada certainty AUC p-value",
+      "status": "match",
+      "expected_text": "0.81",
+      "reproduced_text": "0.81  (0.81131887)",
+      "deviation": 0.16282322385044423
+    },
+    {
+      "target": "T053",
+      "type": "number",
+      "description": "Ella macro-averaged AUC",
+      "status": "match",
+      "expected_text": "0.95",
+      "reproduced_text": "0.95  (0.94947571)",
+      "deviation": 0.05518847624110345
+    },
+    {
+      "target": "T054",
+      "type": "number",
+      "description": "Mitja macro-averaged AUC",
+      "status": "match",
+      "expected_text": "0.85",
+      "reproduced_text": "0.85  (0.85065837)",
+      "deviation": 0.07745522451404539
+    },
+    {
+      "target": "T055",
+      "type": "number",
+      "description": "Macro-averaged AUC for Ella and Mitja p-value",
+      "status": "match",
+      "expected_text": "< 0.001",
+      "reproduced_text": "0.000  (9.9990001e-05)",
+      "deviation": 90.00099990000999
+    },
+    {
+      "target": "T056",
+      "type": "number",
+      "description": "Natalie macro-averaged AUC",
+      "status": "match",
+      "expected_text": "0.5",
+      "reproduced_text": "0.50  (0.50301072)",
+      "deviation": 0.6021449099252285
+    },
+    {
+      "target": "T057",
+      "type": "number",
+      "description": "Natalie macro AUC p-value",
+      "status": "match",
+      "expected_text": "0.46",
+      "reproduced_text": "0.46  (0.46085391)",
+      "deviation": 0.1856336105519824
+    },
+    {
+      "target": "T058",
+      "type": "number",
+      "description": "Ada macro-averaged AUC",
+      "status": "match",
+      "expected_text": "0.4",
+      "reproduced_text": "0.40  (0.39965162)",
+      "deviation": 0.08709431406798973
+    },
+    {
+      "target": "T059",
+      "type": "number",
+      "description": "Ada macro AUC p-value",
+      "status": "match",
+      "expected_text": "0.94",
+      "reproduced_text": "0.94  (0.94470553)",
+      "deviation": 0.5005882390484445
+    },
+    {
+      "target": "T060",
+      "type": "number",
+      "description": "Grand macro-AUC",
+      "status": "match",
+      "expected_text": "0.68",
+      "reproduced_text": "0.68  (0.67569911)",
+      "deviation": 0.6324843317120257
+    },
+    {
+      "target": "T061",
+      "type": "number",
+      "description": "Grand macro-AUC p-value",
+      "status": "match",
+      "expected_text": "< 0.001",
+      "reproduced_text": "0.000  (9.9990001e-05)",
+      "deviation": 90.00099990000999
+    },
+    {
+      "target": "T062",
+      "type": "number",
+      "description": "Lemon per-flavor macro-AUC",
+      "status": "match",
+      "expected_text": "0.56",
+      "reproduced_text": "0.56  (0.56314484)",
+      "deviation": 0.5615787981859212
+    },
+    {
+      "target": "T063",
+      "type": "number",
+      "description": "Lemon per-flavor macro-AUC p-value",
+      "status": "match",
+      "expected_text": "0.27",
+      "reproduced_text": "0.27  (0.27477252)",
+      "deviation": 1.767601017676006
+    },
+    {
+      "target": "T064",
+      "type": "number",
+      "description": "Raspberry per-flavor macro-AUC",
+      "status": "match",
+      "expected_text": "0.83",
+      "reproduced_text": "0.83  (0.82894737)",
+      "deviation": 0.12682308180088012
+    },
+    {
+      "target": "T065",
+      "type": "number",
+      "description": "Raspberry per-flavor macro-AUC p-value",
+      "status": "match",
+      "expected_text": "< 0.001",
+      "reproduced_text": "0.000  (9.9990001e-05)",
+      "deviation": 90.00099990000999
+    },
+    {
+      "target": "T066",
+      "type": "number",
+      "description": "Rescaled pooled hit rate (pi)",
+      "status": "match",
+      "expected_text": "0.78",
+      "reproduced_text": "0.78  (0.78358209)",
+      "deviation": 0.4592422502870426
+    },
+    {
+      "target": "T067",
+      "type": "number",
+      "description": "Rescaled Candy Smell Test value",
+      "status": "match",
+      "expected_text": "0.8",
+      "reproduced_text": "0.80  (0.79906542)",
+      "deviation": 0.11682242990652958
+    },
+    {
+      "target": "T068",
+      "type": "number",
+      "description": "Discrimination metric d",
+      "status": "match",
+      "expected_text": "0.66",
+      "reproduced_text": "0.66  (0.66142598)",
+      "deviation": 0.21605830505265866
+    },
+    {
+      "target": "T069",
+      "type": "number",
+      "description": "Discrimination metric r",
+      "status": "match",
+      "expected_text": "0.31",
+      "reproduced_text": "0.31  (0.31398785)",
+      "deviation": 1.286401638694563
+    },
+    {
+      "target": "T070",
+      "type": "number",
+      "description": "Variance share due to perceiver (accuracy)",
+      "status": "match",
+      "expected_text": "50 %",
+      "reproduced_text": "50  (50.426927)",
+      "deviation": 0.8538533041197808
+    },
+    {
+      "target": "T071",
+      "type": "number",
+      "description": "SD of perceiver accuracies",
+      "status": "match",
+      "expected_text": "0.26",
+      "reproduced_text": "0.26  (0.26432303)",
+      "deviation": 1.6627056492256855
+    },
+    {
+      "target": "T072",
+      "type": "number",
+      "description": "Variance share due to flavor identifiability",
+      "status": "match",
+      "expected_text": "11 %",
+      "reproduced_text": "11  (10.604809)",
+      "deviation": 3.59264323783181
+    },
+    {
+      "target": "T073",
+      "type": "number",
+      "description": "SD of flavor accuracies",
+      "status": "match",
+      "expected_text": "0.09",
+      "reproduced_text": "0.09  (0.089334407)",
+      "deviation": 0.7395473582995976
+    },
+    {
+      "target": "T074",
+      "type": "number",
+      "description": "Variance share on relationship component (accuracy)",
+      "status": "match",
+      "expected_text": "15 %",
+      "reproduced_text": "15  (15.205727)",
+      "deviation": 1.371512540086511
+    },
+    {
+      "target": "T075",
+      "type": "number",
+      "description": "Sampling floor share (accuracy)",
+      "status": "match",
+      "expected_text": "24 %",
+      "reproduced_text": "24  (23.762537)",
+      "deviation": 0.9894282371306851
+    },
+    {
+      "target": "T076",
+      "type": "number",
+      "description": "Renormalized perceiver component (accuracy)",
+      "status": "match",
+      "expected_text": "0.7",
+      "reproduced_text": "0.70  (0.70187753)",
+      "deviation": 0.2682190442703395
+    },
+    {
+      "target": "T077",
+      "type": "number",
+      "description": "Renormalized flavor component (accuracy)",
+      "status": "match",
+      "expected_text": "0.07",
+      "reproduced_text": "0.07  (0.073751792)",
+      "deviation": 5.359702149700325
+    },
+    {
+      "target": "T078",
+      "type": "number",
+      "description": "Renormalized relationship component (accuracy)",
+      "status": "match",
+      "expected_text": "0.22",
+      "reproduced_text": "0.22  (0.22437068)",
+      "deviation": 1.9866705387806574
+    },
+    {
+      "target": "T079",
+      "type": "number",
+      "description": "Ada predicted accuracy",
+      "status": "match",
+      "expected_text": "60 %",
+      "reproduced_text": "60  (60)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T080",
+      "type": "number",
+      "description": "Ada achieved accuracy vs prediction",
+      "status": "match",
+      "expected_text": "12 %",
+      "reproduced_text": "12  (12)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T081",
+      "type": "number",
+      "description": "Ada prediction discrepancy p-value",
+      "status": "match",
+      "expected_text": "< 0.001",
+      "reproduced_text": "0.000  (9.5431276e-07)",
+      "deviation": 99.90456872389602
+    },
+    {
+      "target": "T082",
+      "type": "number",
+      "description": "Mitja predicted accuracy",
+      "status": "match",
+      "expected_text": "31 %",
+      "reproduced_text": "31  (31.333333)",
+      "deviation": 1.0752688172042857
+    },
+    {
+      "target": "T083",
+      "type": "number",
+      "description": "Mitja achieved accuracy",
+      "status": "match",
+      "expected_text": "60 %",
+      "reproduced_text": "60  (60)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T084",
+      "type": "number",
+      "description": "Mitja prediction discrepancy p-value",
+      "status": "match",
+      "expected_text": "0.004",
+      "reproduced_text": "0.004  (0.0039056082)",
+      "deviation": 2.3597947815729747
+    },
+    {
+      "target": "T085",
+      "type": "number",
+      "description": "Ella predicted accuracy",
+      "status": "match",
+      "expected_text": "63 %",
+      "reproduced_text": "63  (62.833333)",
+      "deviation": 0.2645502645502608
+    },
+    {
+      "target": "T086",
+      "type": "number",
+      "description": "Ella achieved accuracy",
+      "status": "match",
+      "expected_text": "68 %",
+      "reproduced_text": "68  (68)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T087",
+      "type": "number",
+      "description": "Natalie predicted accuracy",
+      "status": "match",
+      "expected_text": "31 %",
+      "reproduced_text": "31  (31.333333)",
+      "deviation": 1.0752688172042857
+    },
+    {
+      "target": "T088",
+      "type": "number",
+      "description": "Natalie achieved accuracy",
+      "status": "match",
+      "expected_text": "28 %",
+      "reproduced_text": "28  (28)",
+      "deviation": 1.2688263138573217e-14
+    },
+    {
+      "target": "T089",
+      "type": "number",
+      "description": "Stated liking variance: flavor consensus",
+      "status": "match",
+      "expected_text": "55 %",
+      "reproduced_text": "55  (55.119215)",
+      "deviation": 0.21675379319137017
+    },
+    {
+      "target": "T090",
+      "type": "number",
+      "description": "Stated liking variance: perceiver",
+      "status": "match",
+      "expected_text": "3 %",
+      "reproduced_text": "3  (2.8050491)",
+      "deviation": 6.4983637213652745
+    },
+    {
+      "target": "T091",
+      "type": "number",
+      "description": "Stated liking variance: relationship",
+      "status": "match",
+      "expected_text": "42 %",
+      "reproduced_text": "42  (42.075736)",
+      "deviation": 0.18032458425167874
+    },
+    {
+      "target": "T092",
+      "type": "number",
+      "description": "Consensually best stated flavor raspberry",
+      "status": "match",
+      "expected_text": "5.5",
+      "reproduced_text": "5.50  (5.5)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T093",
+      "type": "number",
+      "description": "Consensually best stated flavor strawberry",
+      "status": "match",
+      "expected_text": "5",
+      "reproduced_text": "5.00  (5)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T094",
+      "type": "number",
+      "description": "Best tasting flavor pineapple",
+      "status": "match",
+      "expected_text": "4.07",
+      "reproduced_text": "4.07  (4.0666667)",
+      "deviation": 0.08190008190009469
+    },
+    {
+      "target": "T095",
+      "type": "number",
+      "description": "Best tasting flavor apple",
+      "status": "match",
+      "expected_text": "4.04",
+      "reproduced_text": "4.04  (4.0434783)",
+      "deviation": 0.08609556607835087
+    },
+    {
+      "target": "T096",
+      "type": "number",
+      "description": "Correlation between mean stated and tasted liking",
+      "status": "match",
+      "expected_text": "0.02",
+      "reproduced_text": "0.02  (0.018636702)",
+      "deviation": 6.816490346314291
+    },
+    {
+      "target": "T097",
+      "type": "number",
+      "description": "p-value for stated-tasted liking correlation",
+      "status": "match",
+      "expected_text": "0.98",
+      "reproduced_text": "0.98  (0.97916667)",
+      "deviation": 0.08503401360544414
+    },
+    {
+      "target": "T098",
+      "type": "number",
+      "description": "Tasted liking variance: flavor",
+      "status": "match",
+      "expected_text": "13 %",
+      "reproduced_text": "13  (12.711348)",
+      "deviation": 2.2204034584754133
+    },
+    {
+      "target": "T099",
+      "type": "number",
+      "description": "Tasted liking variance: perceiver",
+      "status": "match",
+      "expected_text": "21 %",
+      "reproduced_text": "21  (21.135079)",
+      "deviation": 0.643234461414129
+    },
+    {
+      "target": "T100",
+      "type": "number",
+      "description": "Tasted liking variance: relationship",
+      "status": "match",
+      "expected_text": "37 %",
+      "reproduced_text": "37  (36.72344)",
+      "deviation": 0.7474596327004843
+    },
+    {
+      "target": "T101",
+      "type": "number",
+      "description": "Tasted liking sampling floor",
+      "status": "match",
+      "expected_text": "29 %",
+      "reproduced_text": "29  (29.430133)",
+      "deviation": 1.483218195875886
+    },
+    {
+      "target": "T102",
+      "type": "number",
+      "description": "Mitja's raspberry unique liking above expectation",
+      "status": "match",
+      "expected_text": "1.54",
+      "reproduced_text": "1.54  (1.5413194)",
+      "deviation": 0.08567821067820966
+    },
+    {
+      "target": "T103",
+      "type": "number",
+      "description": "Ella's pineapple unique liking above expectation",
+      "status": "match",
+      "expected_text": "1.35",
+      "reproduced_text": "1.35  (1.3474702)",
+      "deviation": 0.1873897707230746
+    },
+    {
+      "target": "T104",
+      "type": "number",
+      "description": "Perceiver-level liking-accuracy correlation",
+      "status": "match",
+      "expected_text": "0.05",
+      "reproduced_text": "0.05  (0.0498965)",
+      "deviation": 0.207000113838951
+    },
+    {
+      "target": "T105",
+      "type": "number",
+      "description": "Flavor-level liking-accuracy correlation",
+      "status": "match",
+      "expected_text": "-0.06",
+      "reproduced_text": "-0.06  (-0.061488789)",
+      "deviation": 2.481315466852883
+    },
+    {
+      "target": "T106",
+      "type": "number",
+      "description": "Relationship-level liking-accuracy correlation",
+      "status": "match",
+      "expected_text": "0.21",
+      "reproduced_text": "0.21  (0.20871207)",
+      "deviation": 0.6132991765797757
+    },
+    {
+      "target": "T107",
+      "type": "number",
+      "description": "Relationship liking-accuracy p-value",
+      "status": "match",
+      "expected_text": "0.43",
+      "reproduced_text": "0.43  (0.42555744)",
+      "deviation": 1.033152498703613
+    },
+    {
+      "target": "T108",
+      "type": "number",
+      "description": "Stated-tasted unique liking correlation",
+      "status": "match",
+      "expected_text": "0.31",
+      "reproduced_text": "0.31  (0.31012584)",
+      "deviation": 0.040593646126919944
+    },
+    {
+      "target": "T109",
+      "type": "number",
+      "description": "Stated-tasted unique liking p-value",
+      "status": "match",
+      "expected_text": "0.21",
+      "reproduced_text": "0.21  (0.2149785)",
+      "deviation": 2.370715309421448
+    },
+    {
+      "target": "T110",
+      "type": "number",
+      "description": "Trial-weighted stated-tasted unique liking correlation",
+      "status": "match",
+      "expected_text": "0.33",
+      "reproduced_text": "0.33  (0.33149853)",
+      "deviation": 0.4541004283154296
+    },
+    {
+      "target": "T111",
+      "type": "number",
+      "description": "Trial-weighted correlation p-value",
+      "status": "match",
+      "expected_text": "0.13",
+      "reproduced_text": "0.13  (0.12838716)",
+      "deviation": 1.240645166252603
+    },
+    {
+      "target": "T112",
+      "type": "number",
+      "description": "Stated-tasted correlation with single-trial cell removed",
+      "status": "match",
+      "expected_text": "0.3",
+      "reproduced_text": "0.30  (0.29933536)",
+      "deviation": 0.221545771986779
+    },
+    {
+      "target": "T113",
+      "type": "number",
+      "description": "Single-trial-removed p-value",
+      "status": "match",
+      "expected_text": "0.24",
+      "reproduced_text": "0.24  (0.2389761)",
+      "deviation": 0.426624004266236
+    },
+    {
+      "target": "T114",
+      "type": "number",
+      "description": "Rank version stated-tasted correlation",
+      "status": "match",
+      "expected_text": "0.31",
+      "reproduced_text": "0.31  (0.30970722)",
+      "deviation": 0.0944454806011345
+    },
+    {
+      "target": "T115",
+      "type": "number",
+      "description": "Mixed-model beta for awareness",
+      "status": "match",
+      "expected_text": "0.32",
+      "reproduced_text": "0.32  (0.3155)",
+      "deviation": 1.4062500000000013
+    },
+    {
+      "target": "T116",
+      "type": "number",
+      "description": "Mixed-model awareness p-value",
+      "status": "match",
+      "expected_text": "0.13",
+      "reproduced_text": "0.13  (0.1294)",
+      "deviation": 0.4615384615384748
+    },
+    {
+      "target": "T117",
+      "type": "number",
+      "description": "Degrees of freedom for 24 cells",
+      "status": "match",
+      "expected_text": "15",
+      "reproduced_text": "15  (15)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T118",
+      "type": "number",
+      "description": "Conventional-test p-value for awareness correlation",
+      "status": "match",
+      "expected_text": "0.14",
+      "reproduced_text": "0.14  (0.14025541)",
+      "deviation": 0.18243799610688305
+    },
+    {
+      "target": "T119",
+      "type": "number",
+      "description": "Ada stated-tasted relationship-effect correlation",
+      "status": "match",
+      "expected_text": "0.46",
+      "reproduced_text": "0.46  (0.4585719)",
+      "deviation": 0.31045738480088747
+    },
+    {
+      "target": "T120",
+      "type": "number",
+      "description": "Ada per-perceiver exact p-value",
+      "status": "match",
+      "expected_text": "0.69",
+      "reproduced_text": "0.69  (0.69166667)",
+      "deviation": 0.24154589371981233
+    },
+    {
+      "target": "T121",
+      "type": "number",
+      "description": "Ella stated-tasted relationship-effect correlation",
+      "status": "match",
+      "expected_text": "0.61",
+      "reproduced_text": "0.61  (0.61349513)",
+      "deviation": 0.5729717028638687
+    },
+    {
+      "target": "T122",
+      "type": "number",
+      "description": "Ella per-perceiver p-value",
+      "status": "match",
+      "expected_text": "0.25",
+      "reproduced_text": "0.25  (0.25)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T123",
+      "type": "number",
+      "description": "Natalie stated-tasted relationship-effect correlation",
+      "status": "match",
+      "expected_text": "0.25",
+      "reproduced_text": "0.25  (0.25455615)",
+      "deviation": 1.8224604037877956
+    },
+    {
+      "target": "T124",
+      "type": "number",
+      "description": "Natalie per-perceiver p-value",
+      "status": "match",
+      "expected_text": "0.67",
+      "reproduced_text": "0.67  (0.66666667)",
+      "deviation": 0.4975124378109567
+    },
+    {
+      "target": "T125",
+      "type": "number",
+      "description": "Mitja stated-tasted relationship-effect correlation",
+      "status": "match",
+      "expected_text": "0.13",
+      "reproduced_text": "0.13  (0.13180038)",
+      "deviation": 1.3849054007284507
+    },
+    {
+      "target": "T126",
+      "type": "number",
+      "description": "Mitja per-perceiver p-value",
+      "status": "match",
+      "expected_text": "0.85",
+      "reproduced_text": "0.85  (0.85277778)",
+      "deviation": 0.32679738562091387
+    },
+    {
+      "target": "T127",
+      "type": "number",
+      "description": "Ella raw profile correlation",
+      "status": "match",
+      "expected_text": "0.93",
+      "reproduced_text": "0.93  (0.92944871)",
+      "deviation": 0.059278044731475514
+    },
+    {
+      "target": "T128",
+      "type": "number",
+      "description": "Ella raw profile exact p-value",
+      "status": "match",
+      "expected_text": "0.0056",
+      "reproduced_text": "0.0056  (0.0055555556)",
+      "deviation": 0.7936507936507889
+    },
+    {
+      "target": "T129",
+      "type": "number",
+      "description": "Mitja raw profile correlation",
+      "status": "match",
+      "expected_text": "0.52",
+      "reproduced_text": "0.52  (0.51907598)",
+      "deviation": 0.17769609433720113
+    },
+    {
+      "target": "T130",
+      "type": "number",
+      "description": "Ada raw profile correlation",
+      "status": "match",
+      "expected_text": "-0.55",
+      "reproduced_text": "-0.55  (-0.55158434)",
+      "deviation": 0.28806163451791905
+    },
+    {
+      "target": "T131",
+      "type": "number",
+      "description": "Natalie raw profile correlation",
+      "status": "match",
+      "expected_text": "-0.43",
+      "reproduced_text": "-0.43  (-0.42569122)",
+      "deviation": 1.00204105018493
+    },
+    {
+      "target": "T132",
+      "type": "number",
+      "description": "Range of stated-tasted unique liking correspondence",
+      "status": "match",
+      "expected_text": "0.13",
+      "reproduced_text": "0.13  (0.13180038)",
+      "deviation": 1.3849054007284507
+    },
+    {
+      "target": "T133",
+      "type": "number",
+      "description": "Upper end of stated-tasted unique liking correspondence",
+      "status": "match",
+      "expected_text": "0.61",
+      "reproduced_text": "0.61  (0.61349513)",
+      "deviation": 0.5729717028638687
+    },
+    {
+      "target": "T134",
+      "type": "number",
+      "description": "Relationship variance for experienced liking (noise-corrected)",
+      "status": "match",
+      "expected_text": "63 %",
+      "reproduced_text": "63  (62.982508)",
+      "deviation": 0.027765085505799494
+    },
+    {
+      "target": "T135",
+      "type": "number",
+      "description": "Spread of identification accuracy between perceivers",
+      "status": "match",
+      "expected_text": "0.12",
+      "reproduced_text": "0.12  (0.12)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T136",
+      "type": "number",
+      "description": "Upper end of accuracy spread",
+      "status": "match",
+      "expected_text": "0.68",
+      "reproduced_text": "0.68  (0.68)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T137",
+      "type": "number",
+      "description": "Apple stated liking",
+      "status": "match",
+      "expected_text": "3",
+      "reproduced_text": "3.00  (3)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T138",
+      "type": "number",
+      "description": "Apple tasted liking",
+      "status": "match",
+      "expected_text": "4.04",
+      "reproduced_text": "4.04  (4.0434783)",
+      "deviation": 0.08609556607835087
+    },
+    {
+      "target": "T139",
+      "type": "number",
+      "description": "Stratified correlation of accuracy with prior feedback",
+      "status": "match",
+      "expected_text": "0.04",
+      "reproduced_text": "0.04  (0.036155076)",
+      "deviation": 9.612309242226589
+    },
+    {
+      "target": "T140",
+      "type": "number",
+      "description": "Stratified correlation p-value",
+      "status": "match",
+      "expected_text": "0.83",
+      "reproduced_text": "0.83  (0.82561744)",
+      "deviation": 0.5280194872078993
+    },
+    {
+      "target": "T141",
+      "type": "number",
+      "description": "Global-time variant stratified correlation",
+      "status": "match",
+      "expected_text": "0.03",
+      "reproduced_text": "0.03  (0.025293767)",
+      "deviation": 15.687444635752366
+    },
+    {
+      "target": "T142",
+      "type": "number",
+      "description": "Global-time variant p-value",
+      "status": "match",
+      "expected_text": "0.81",
+      "reproduced_text": "0.81  (0.80541946)",
+      "deviation": 0.5654990056549979
+    },
+    {
+      "target": "T143",
+      "type": "number",
+      "description": "First-half correct trials for accurate perceiver one",
+      "status": "match",
+      "expected_text": "9",
+      "reproduced_text": "9  (9)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T144",
+      "type": "number",
+      "description": "First-half correct trials for accurate perceiver two",
+      "status": "match",
+      "expected_text": "8",
+      "reproduced_text": "8  (8)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T145",
+      "type": "number",
+      "description": "Pooled halves numerator",
+      "status": "match",
+      "expected_text": "22",
+      "reproduced_text": "22  (22)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T146",
+      "type": "number",
+      "description": "Pooled halves denominator",
+      "status": "match",
+      "expected_text": "48",
+      "reproduced_text": "48  (48)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T147",
+      "type": "number",
+      "description": "Second pooled halves numerator",
+      "status": "match",
+      "expected_text": "20",
+      "reproduced_text": "20  (20)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T148",
+      "type": "number",
+      "description": "Second pooled halves denominator",
+      "status": "match",
+      "expected_text": "52",
+      "reproduced_text": "52  (52)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T149",
+      "type": "number",
+      "description": "Odd-even half reliability correlation",
+      "status": "match",
+      "expected_text": "0.86",
+      "reproduced_text": "0.86  (0.85986161)",
+      "deviation": 0.016092435550436653
+    },
+    {
+      "target": "T150",
+      "type": "number",
+      "description": "Session-based half reliability correlation",
+      "status": "match",
+      "expected_text": "0.94",
+      "reproduced_text": "0.94  (0.94289561)",
+      "deviation": 0.3080432215086166
+    },
+    {
+      "target": "T151",
+      "type": "number",
+      "description": "Per-perceiver response-use chi-square range lower",
+      "status": "match",
+      "expected_text": "0.68",
+      "reproduced_text": "0.68  (0.68)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T152",
+      "type": "number",
+      "description": "Per-perceiver response-use chi-square range upper",
+      "status": "match",
+      "expected_text": "6.44",
+      "reproduced_text": "6.44  (6.44)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T153",
+      "type": "number",
+      "description": "Smallest per-perceiver response-use p-value",
+      "status": "match",
+      "expected_text": "0.29",
+      "reproduced_text": "0.29  (0.28837116)",
+      "deviation": 0.561667971133918
+    },
+    {
+      "target": "T154",
+      "type": "number",
+      "description": "Pooled response distribution chi-square",
+      "status": "match",
+      "expected_text": "5",
+      "reproduced_text": "5.00  (5)",
+      "deviation": 1.7763568394002505e-14
+    },
+    {
+      "target": "T155",
+      "type": "number",
+      "description": "Pooled response distribution p-value",
+      "status": "match",
+      "expected_text": "0.42",
+      "reproduced_text": "0.42  (0.41588019)",
+      "deviation": 0.9809078582123258
+    },
+    {
+      "target": "T156",
+      "type": "number",
+      "description": "Response bias upper bound",
+      "status": "match",
+      "expected_text": "-0.16",
+      "reproduced_text": "-0.16  (-0.16)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T157",
+      "type": "number",
+      "description": "Response bias upper positive bound",
+      "status": "match",
+      "expected_text": "0.16",
+      "reproduced_text": "0.16  (0.16)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T158",
+      "type": "number",
+      "description": "Goodness-of-fit chi-square for flavor frequencies",
+      "status": "match",
+      "expected_text": "4.52",
+      "reproduced_text": "4.52  (4.52)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T159",
+      "type": "number",
+      "description": "Flavor frequency goodness-of-fit p-value",
+      "status": "match",
+      "expected_text": "0.477",
+      "reproduced_text": "0.477  (0.47721197)",
+      "deviation": 0.044439138894895015
+    },
+    {
+      "target": "T160",
+      "type": "number",
+      "description": "Overall predicted accuracy at age 8",
+      "status": "match",
+      "expected_text": "60",
+      "reproduced_text": "60.0  (60)",
+      "deviation": 0.0
+    },
+    {
+      "target": "T161",
+      "type": "number",
+      "description": "Overall predicted accuracy at age 13",
+      "status": "match",
+      "expected_text": "62.8",
+      "reproduced_text": "62.8  (62.833333)",
+      "deviation": 0.05307855626327794
+    },
+    {
+      "target": "T162",
+      "type": "number",
+      "description": "Overall predicted accuracy at age 42",
+      "status": "match",
+      "expected_text": "31.3",
+      "reproduced_text": "31.3  (31.333333)",
+      "deviation": 0.10649627263044054
+    },
+    {
+      "target": "T163",
+      "type": "number",
+      "description": "Overall predicted accuracy at age 47",
+      "status": "match",
+      "expected_text": "31.3",
+      "reproduced_text": "31.3  (31.333333)",
+      "deviation": 0.10649627263044054
+    },
+    {
+      "target": "T164",
+      "type": "categorical",
+      "description": "Average accuracy in gummy bear identification was well above chance level",
+      "status": "match",
+      "expected_text": "positive",
+      "reproduced_text": "positive"
+    },
+    {
+      "target": "T165",
+      "type": "categorical",
+      "description": "Ella identified flavors far above chance",
+      "status": "match",
+      "expected_text": "significant",
+      "reproduced_text": "significant"
+    },
+    {
+      "target": "T166",
+      "type": "categorical",
+      "description": "Mitja identified flavors far above chance",
+      "status": "match",
+      "expected_text": "significant",
+      "reproduced_text": "significant"
+    },
+    {
+      "target": "T167",
+      "type": "categorical",
+      "description": "Natalie did not identify flavors above chance",
+      "status": "match",
+      "expected_text": "not significant",
+      "reproduced_text": "not significant"
+    },
+    {
+      "target": "T168",
+      "type": "categorical",
+      "description": "Ada did not identify flavors above chance (guessing)",
+      "status": "match",
+      "expected_text": "not significant",
+      "reproduced_text": "not significant"
+    },
+    {
+      "target": "T169",
+      "type": "categorical",
+      "description": "Stated liking was largely consensual between family members",
+      "status": "match",
+      "expected_text": "positive",
+      "reproduced_text": "positive"
+    },
+    {
+      "target": "T170",
+      "type": "categorical",
+      "description": "Tasted liking was driven by unique perceiver x flavor pairing",
+      "status": "match",
+      "expected_text": "positive",
+      "reproduced_text": "positive"
+    },
+    {
+      "target": "T171",
+      "type": "categorical",
+      "description": "Stated preferences did not track tasted ones on average",
+      "status": "match",
+      "expected_text": "not significant",
+      "reproduced_text": "not significant"
+    },
+    {
+      "target": "T172",
+      "type": "categorical",
+      "description": "Mean stated and tasted liking were uncorrelated",
+      "status": "match",
+      "expected_text": "not significant",
+      "reproduced_text": "not significant"
+    },
+    {
+      "target": "T173",
+      "type": "categorical",
+      "description": "No evidence for general awareness of specific gummy bear preferences",
+      "status": "match",
+      "expected_text": "not significant",
+      "reproduced_text": "not significant"
+    },
+    {
+      "target": "T174",
+      "type": "categorical",
+      "description": "Accuracy pattern with age was non-monotonic",
+      "status": "match",
+      "expected_text": "not significant",
+      "reproduced_text": "not significant"
+    },
+    {
+      "target": "T175",
+      "type": "categorical",
+      "description": "Accuracy did not improve across trials",
+      "status": "match",
+      "expected_text": "not significant",
+      "reproduced_text": "not significant"
+    },
+    {
+      "target": "T176",
+      "type": "categorical",
+      "description": "Liking and accuracy were unrelated at every level",
+      "status": "match",
+      "expected_text": "not significant",
+      "reproduced_text": "not significant"
+    },
+    {
+      "target": "T177",
+      "type": "categorical",
+      "description": "Relationship (unique pairing) component was largest for tasted liking",
+      "status": "match",
+      "expected_text": "positive",
+      "reproduced_text": "positive"
+    },
+    {
+      "target": "T178",
+      "type": "categorical",
+      "description": "Flavor consensus dominated stated liking variance",
+      "status": "match",
+      "expected_text": "positive",
+      "reproduced_text": "positive"
+    }
+  ],
+  "output_errors": [],
+  "output_warnings": []
+}

@@ -1,0 +1,2940 @@
+{
+  "schema_version": "1.0",
+  "paper": {
+    "title": "Förster et al.: Gummy bear perceptions (preprint)",
+    "identifiers": {}
+  },
+  "results": [
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p14.s5"
+        }
+      ],
+      "unreferenced": false,
+      "type": "table",
+      "description": "Table 1: Predicted Accuracy, Identification Accuracy, Certainty, and Liking for Each Flavor, Aggregated Across Perceivers",
+      "quote": "",
+      "expected": [
+        [
+          "Flavor",
+          "predicted accuracy",
+          "accuracy",
+          "certainty",
+          "stated liking",
+          "tasted liking"
+        ],
+        [
+          "strawberry",
+          "43%",
+          "36% (4/11)",
+          "2.91",
+          "5.00",
+          "3.18"
+        ],
+        [
+          "orange",
+          "44%",
+          "53% (9/17)",
+          "3.41",
+          "3.25",
+          "3.59"
+        ],
+        [
+          "apple",
+          "54%",
+          "35% (8/23)",
+          "3.04",
+          "3.00",
+          "4.04"
+        ],
+        [
+          "raspberry",
+          "44%",
+          "53% (9/17)",
+          "3.12",
+          "5.50",
+          "3.94"
+        ],
+        [
+          "lemon",
+          "46%",
+          "41% (7/17)",
+          "2.71",
+          "3.50",
+          "3.35"
+        ],
+        [
+          "pineapple",
+          "48%",
+          "33% (5/15)",
+          "2.93",
+          "4.75",
+          "4.07"
+        ],
+        [
+          "All flavors",
+          "46%",
+          "42% (42/100)",
+          "3.03 (1.46)",
+          "4.17",
+          "3.74 (1.31)"
+        ]
+      ],
+      "id": "T001"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p15.s1"
+        }
+      ],
+      "unreferenced": false,
+      "type": "table",
+      "description": "Table 2: Predicted Accuracy, Identification Accuracy, Certainty, and Liking for Each Flavor, Separately for Each Perceiver",
+      "quote": "",
+      "expected": [
+        [
+          "Flavor",
+          "predicted accuracy",
+          "accuracy",
+          "certainty",
+          "stated liking",
+          "tasted liking",
+          "predicted accuracy",
+          "accuracy",
+          "certainty",
+          "stated liking",
+          "tasted liking",
+          "predicted accuracy",
+          "accuracy",
+          "certainty",
+          "stated liking",
+          "tasted liking",
+          "predicted accuracy",
+          "accuracy",
+          "certainty",
+          "stated liking",
+          "tasted liking"
+        ],
+        [
+          "strawberry",
+          "60%",
+          "33% (1/3)",
+          "2.67",
+          "5.00",
+          "3.00",
+          "48%",
+          "67% (2/3)",
+          "3.67",
+          "5.00",
+          "4.33",
+          "35%",
+          "0% (0/2)",
+          "3.00",
+          "6.00",
+          "2.50",
+          "28%",
+          "33% (1/3)",
+          "2.33",
+          "4.00",
+          "2.67"
+        ],
+        [
+          "orange",
+          "40%",
+          "0% (0/3)",
+          "3.00",
+          "4.00",
+          "5.00",
+          "82%",
+          "71% (5/7)",
+          "4.00",
+          "3.00",
+          "3.57",
+          "30%",
+          "0% (0/3)",
+          "2.00",
+          "3.00",
+          "3.33",
+          "24%",
+          "100% (4/4)",
+          "3.75",
+          "3.00",
+          "2.75"
+        ],
+        [
+          "apple",
+          "80%",
+          "14% (1/7)",
+          "2.29",
+          "3.00",
+          "4.43",
+          "81%",
+          "20% (1/5)",
+          "2.60",
+          "3.00",
+          "3.60",
+          "20%",
+          "0% (0/3)",
+          "3.67",
+          "3.00",
+          "4.33",
+          "35%",
+          "75% (6/8)",
+          "3.75",
+          "3.00",
+          "3.88"
+        ],
+        [
+          "raspberry",
+          "60%",
+          "17% (1/6)",
+          "2.50",
+          "6.00",
+          "3.50",
+          "50%",
+          "100% (3/3)",
+          "5.00",
+          "5.00",
+          "4.67",
+          "38%",
+          "50% (3/6)",
+          "2.33",
+          "6.00",
+          "3.50",
+          "26%",
+          "100% (2/2)",
+          "4.50",
+          "5.00",
+          "5.50"
+        ],
+        [
+          "lemon",
+          "60%",
+          "0% (0/1)",
+          "6.00",
+          "4.00",
+          "6.00",
+          "51%",
+          "75% (3/4)",
+          "3.00",
+          "4.00",
+          "4.00",
+          "35%",
+          "43% (3/7)",
+          "2.00",
+          "4.00",
+          "3.00",
+          "40%",
+          "20% (1/5)",
+          "2.80",
+          "2.00",
+          "2.80"
+        ],
+        [
+          "pineapple",
+          "60%",
+          "0% (0/5)",
+          "2.80",
+          "4.00",
+          "4.00",
+          "65%",
+          "100% (3/3)",
+          "5.00",
+          "6.00",
+          "6.00",
+          "30%",
+          "25% (1/4)",
+          "1.75",
+          "3.00",
+          "3.00",
+          "35%",
+          "33% (1/3)",
+          "2.67",
+          "6.00",
+          "3.67"
+        ],
+        [
+          "All flavors",
+          "60%",
+          "12% (3/25)",
+          "2.72 (1.74)",
+          "4.33",
+          "4.08 (1.85)",
+          "63%",
+          "68% (17/25)",
+          "3.76 (1.36)",
+          "4.33",
+          "4.16 (0.99)",
+          "31%",
+          "28% (7/25)",
+          "2.32 (1.07)",
+          "4.17",
+          "3.28 (0.98)",
+          "31%",
+          "60% (15/25)",
+          "3.32 (1.22)",
+          "3.83",
+          "3.44 (1.04)"
+        ]
+      ],
+      "id": "T002"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p17.s1"
+        }
+      ],
+      "unreferenced": false,
+      "type": "figure",
+      "description": "Figure 1: Blind Identification of Gummy Bear Flavors by Four Perceivers",
+      "quote": "",
+      "id": "T003"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p21.s1"
+        }
+      ],
+      "unreferenced": false,
+      "type": "figure",
+      "description": "Figure 2: Relative Variance Components for Identification Accuracy, Stated Liking, and Tasted Liking",
+      "quote": "",
+      "id": "T004"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p23.s1"
+        }
+      ],
+      "unreferenced": false,
+      "type": "figure",
+      "description": "Figure 3: Awareness of One's Own Unique Flavor Preferences",
+      "quote": "",
+      "id": "T005"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p16.s1"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Pooled accuracy proportion",
+      "quote": "was 42 of 100, .42 [.32, .52]",
+      "expected": 0.42,
+      "decimals": 2,
+      "id": "T006"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p16.s1"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Pooled accuracy lower 95% CI bound",
+      "quote": ".42 [.32, .52]",
+      "expected": 0.32,
+      "decimals": 2,
+      "id": "T007"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p16.s1"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Pooled accuracy upper 95% CI bound",
+      "quote": ".42 [.32, .52]",
+      "expected": 0.52,
+      "decimals": 2,
+      "id": "T008"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p2.s6"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Average accuracy in identification",
+      "quote": "Average accuracy in gummy bear identification (42%) was well above chance level (16.7%)",
+      "expected": 42,
+      "decimals": 0,
+      "unit": "%",
+      "id": "T009"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p2.s6"
+        },
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p11.s20"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Chance level for six alternatives",
+      "quote": "well above chance level (16.7%)",
+      "expected": 16.7,
+      "decimals": 1,
+      "unit": "%",
+      "id": "T010"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p2.s6"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Minimum individual accuracy",
+      "quote": "individual accuracies ranged from 12% to 68%",
+      "expected": 12,
+      "decimals": 0,
+      "unit": "%",
+      "id": "T011"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p2.s6"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Maximum individual accuracy",
+      "quote": "individual accuracies ranged from 12% to 68%",
+      "expected": 68,
+      "decimals": 0,
+      "unit": "%",
+      "id": "T012"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p2.s3"
+        },
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p10.s4"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Total number of trials",
+      "quote": "100 trials in total",
+      "expected": 100,
+      "id": "T013"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p2.s3"
+        },
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p8.s8"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Number of family members / perceivers",
+      "quote": "Four members of one family",
+      "expected": 4,
+      "id": "T014"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p2.s3"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Number of gummy bears tasted per participant",
+      "quote": "each tasted 25 gummy bears drawn blind (100 trials in total)",
+      "expected": 25,
+      "id": "T015"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p16.s2"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Chi-square statistic for perceiver differences in accuracy",
+      "quote": "χ²(3) = 21.51, exact conditional p < .001",
+      "expected": 21.51,
+      "decimals": 2,
+      "id": "T016"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p16.s2"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Exact conditional p-value for perceiver accuracy differences",
+      "quote": "χ²(3) = 21.51, exact conditional p < .001",
+      "expected": 0.001,
+      "comparator": "<",
+      "decimals": 3,
+      "id": "T017"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p16.s3"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Ella identification accuracy",
+      "quote": "Ella named 17 of 25 correctly, .68 [.46, .85], p < .001",
+      "expected": 0.68,
+      "decimals": 2,
+      "id": "T018"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p16.s3"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Ella accuracy lower 95% CI bound",
+      "quote": ".68 [.46, .85]",
+      "expected": 0.46,
+      "decimals": 2,
+      "id": "T019"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p16.s3"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Ella accuracy upper 95% CI bound",
+      "quote": ".68 [.46, .85]",
+      "expected": 0.85,
+      "decimals": 2,
+      "id": "T020"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p16.s3"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Ella accuracy p-value",
+      "quote": "Ella named 17 of 25 correctly, .68 [.46, .85], p < .001",
+      "expected": 0.001,
+      "comparator": "<",
+      "decimals": 3,
+      "id": "T021"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p16.s3"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Mitja identification accuracy",
+      "quote": "Mitja 15 of 25, .60 [.39, .79], p < .001",
+      "expected": 0.6,
+      "decimals": 2,
+      "id": "T022"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p16.s3"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Mitja accuracy lower 95% CI bound",
+      "quote": ".60 [.39, .79]",
+      "expected": 0.39,
+      "decimals": 2,
+      "id": "T023"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p16.s3"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Mitja accuracy upper 95% CI bound",
+      "quote": ".60 [.39, .79]",
+      "expected": 0.79,
+      "decimals": 2,
+      "id": "T024"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p16.s3"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Mitja accuracy p-value",
+      "quote": "Mitja 15 of 25, .60 [.39, .79], p < .001",
+      "expected": 0.001,
+      "comparator": "<",
+      "decimals": 3,
+      "id": "T025"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p16.s3"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Natalie identification accuracy",
+      "quote": "against Natalie's 7 of 25, .28 [.12, .49], p = .17",
+      "expected": 0.28,
+      "decimals": 2,
+      "id": "T026"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p16.s3"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Natalie accuracy lower 95% CI bound",
+      "quote": ".28 [.12, .49]",
+      "expected": 0.12,
+      "decimals": 2,
+      "id": "T027"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p16.s3"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Natalie accuracy upper 95% CI bound",
+      "quote": ".28 [.12, .49]",
+      "expected": 0.49,
+      "decimals": 2,
+      "id": "T028"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p16.s3"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Natalie accuracy p-value",
+      "quote": "Natalie's 7 of 25, .28 [.12, .49], p = .17",
+      "expected": 0.17,
+      "decimals": 2,
+      "id": "T029"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p16.s3"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Ada identification accuracy",
+      "quote": "Ada's 3 of 25, .12 [.03, .31], p = .79",
+      "expected": 0.12,
+      "decimals": 2,
+      "id": "T030"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p16.s3"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Ada accuracy lower 95% CI bound",
+      "quote": ".12 [.03, .31]",
+      "expected": 0.03,
+      "decimals": 2,
+      "id": "T031"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p16.s3"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Ada accuracy upper 95% CI bound",
+      "quote": ".12 [.03, .31]",
+      "expected": 0.31,
+      "decimals": 2,
+      "id": "T032"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p16.s3"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Ada accuracy p-value",
+      "quote": "Ada's 3 of 25, .12 [.03, .31], p = .79",
+      "expected": 0.79,
+      "decimals": 2,
+      "id": "T033"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p16.s5"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "One-sided p-value for zero hits in 25 trials",
+      "quote": "Only zero hits in 25 trials would reject downward (one-sided p = .010)",
+      "expected": 0.01,
+      "decimals": 3,
+      "id": "T034"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p16.s8"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Accuracy at age 8",
+      "quote": "accuracy was .12 at age 8",
+      "expected": 0.12,
+      "decimals": 2,
+      "id": "T035"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p16.s8"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Accuracy at age 13",
+      "quote": ".68 at 13",
+      "expected": 0.68,
+      "decimals": 2,
+      "id": "T036"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p16.s8"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Accuracy at age 42",
+      "quote": ".28 at 42",
+      "expected": 0.28,
+      "decimals": 2,
+      "id": "T037"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p16.s8"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Accuracy at age 47",
+      "quote": ".60 at 47",
+      "expected": 0.6,
+      "decimals": 2,
+      "id": "T038"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p18.s1"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Trials: lemon named orange",
+      "quote": "lemon named orange (6 trials)",
+      "expected": 6,
+      "id": "T039"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p18.s1"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Trials: apple named raspberry",
+      "quote": "apple named raspberry (6)",
+      "expected": 6,
+      "id": "T040"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p18.s1"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Trials: orange named lemon",
+      "quote": "orange named lemon (5)",
+      "expected": 5,
+      "id": "T041"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p18.s1"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Trials: pineapple named lemon",
+      "quote": "pineapple named lemon (4)",
+      "expected": 4,
+      "id": "T042"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p18.s2"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Lowest per-flavor accuracy (pineapple)",
+      "quote": "Per-flavor accuracy pooled over perceivers ran from .33 for pineapple",
+      "expected": 0.33,
+      "decimals": 2,
+      "id": "T043"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p18.s2"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Highest per-flavor accuracy (orange and raspberry)",
+      "quote": "to .53 for orange and raspberry",
+      "expected": 0.53,
+      "decimals": 2,
+      "id": "T044"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p18.s6"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Ella certainty-graded AUC",
+      "quote": "Certainty discriminated correct from incorrect trials for Ella (AUC = .95, p < .001)",
+      "expected": 0.95,
+      "decimals": 2,
+      "id": "T045"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p18.s6"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Ella certainty AUC p-value",
+      "quote": "Ella (AUC = .95, p < .001)",
+      "expected": 0.001,
+      "comparator": "<",
+      "decimals": 3,
+      "id": "T046"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p18.s6"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Mitja certainty-graded AUC",
+      "quote": "Mitja (.79, p = .005)",
+      "expected": 0.79,
+      "decimals": 2,
+      "id": "T047"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p18.s6"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Mitja certainty AUC p-value",
+      "quote": "Mitja (.79, p = .005)",
+      "expected": 0.005,
+      "decimals": 3,
+      "id": "T048"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p18.s6"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Natalie certainty-graded AUC",
+      "quote": "but not for Natalie (.56, p = .37)",
+      "expected": 0.56,
+      "decimals": 2,
+      "id": "T049"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p18.s6"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Natalie certainty AUC p-value",
+      "quote": "Natalie (.56, p = .37)",
+      "expected": 0.37,
+      "decimals": 2,
+      "id": "T050"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p18.s6"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Ada certainty-graded AUC",
+      "quote": "or Ada (.38 on three correct trials, p = .81)",
+      "expected": 0.38,
+      "decimals": 2,
+      "id": "T051"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p18.s6"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Ada certainty AUC p-value",
+      "quote": "Ada (.38 on three correct trials, p = .81)",
+      "expected": 0.81,
+      "decimals": 2,
+      "id": "T052"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p18.s8"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Ella macro-averaged AUC",
+      "quote": "Ella reached .95 in identification",
+      "expected": 0.95,
+      "decimals": 2,
+      "id": "T053"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p18.s8"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Mitja macro-averaged AUC",
+      "quote": "Mitja .85",
+      "expected": 0.85,
+      "decimals": 2,
+      "id": "T054"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p18.s8"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Macro-averaged AUC for Ella and Mitja p-value",
+      "quote": "both at one-sided permutation p < .001",
+      "expected": 0.001,
+      "comparator": "<",
+      "decimals": 3,
+      "id": "T055"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p18.s8"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Natalie macro-averaged AUC",
+      "quote": "against .50 for Natalie (p = .46)",
+      "expected": 0.5,
+      "decimals": 2,
+      "id": "T056"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p18.s8"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Natalie macro AUC p-value",
+      "quote": ".50 for Natalie (p = .46)",
+      "expected": 0.46,
+      "decimals": 2,
+      "id": "T057"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p18.s8"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Ada macro-averaged AUC",
+      "quote": ".40 for Ada (p = .94)",
+      "expected": 0.4,
+      "decimals": 2,
+      "id": "T058"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p18.s8"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Ada macro AUC p-value",
+      "quote": ".40 for Ada (p = .94)",
+      "expected": 0.94,
+      "decimals": 2,
+      "id": "T059"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p18.s9"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Grand macro-AUC",
+      "quote": "The grand macro-AUC was .68 (p < .001)",
+      "expected": 0.68,
+      "decimals": 2,
+      "id": "T060"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p18.s9"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Grand macro-AUC p-value",
+      "quote": "The grand macro-AUC was .68 (p < .001)",
+      "expected": 0.001,
+      "comparator": "<",
+      "decimals": 3,
+      "id": "T061"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p18.s9"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Lemon per-flavor macro-AUC",
+      "quote": "from .56 for lemon (p = .27)",
+      "expected": 0.56,
+      "decimals": 2,
+      "id": "T062"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p18.s9"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Lemon per-flavor macro-AUC p-value",
+      "quote": ".56 for lemon (p = .27)",
+      "expected": 0.27,
+      "decimals": 2,
+      "id": "T063"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p18.s9"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Raspberry per-flavor macro-AUC",
+      "quote": "to .83 for raspberry (p < .001)",
+      "expected": 0.83,
+      "decimals": 2,
+      "id": "T064"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p18.s9"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Raspberry per-flavor macro-AUC p-value",
+      "quote": ".83 for raspberry (p < .001)",
+      "expected": 0.001,
+      "comparator": "<",
+      "decimals": 3,
+      "id": "T065"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p18.s11"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Rescaled pooled hit rate (pi)",
+      "quote": "Our pooled .42 at six alternatives becomes π = .78",
+      "expected": 0.78,
+      "decimals": 2,
+      "id": "T066"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p19.s1"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Rescaled Candy Smell Test value",
+      "quote": "the anosmia cut-off of the Candy Smell Test... rescales to π = .80",
+      "expected": 0.8,
+      "decimals": 2,
+      "id": "T067"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p19.s2"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Discrimination metric d",
+      "quote": "the grand macro-AUC of .68 corresponds under an equal-variance binormal model to d = 0.66",
+      "expected": 0.66,
+      "decimals": 2,
+      "id": "T068"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p19.s2"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Discrimination metric r",
+      "quote": "an effect-size-equivalent r = .31",
+      "expected": 0.31,
+      "decimals": 2,
+      "id": "T069"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p19.s5"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Variance share due to perceiver (accuracy)",
+      "quote": "50% of the accuracy variance was due to perceiver differences",
+      "expected": 50,
+      "decimals": 0,
+      "unit": "%",
+      "id": "T070"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p19.s5"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "SD of perceiver accuracies",
+      "quote": "SD for the four perceivers = .26",
+      "expected": 0.26,
+      "decimals": 2,
+      "id": "T071"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p19.s5"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Variance share due to flavor identifiability",
+      "quote": "against only 11% due to differences in the identifiability of flavors",
+      "expected": 11,
+      "decimals": 0,
+      "unit": "%",
+      "id": "T072"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p19.s5"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "SD of flavor accuracies",
+      "quote": "SD for the six flavors = .09",
+      "expected": 0.09,
+      "decimals": 2,
+      "id": "T073"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p19.s5"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Variance share on relationship component (accuracy)",
+      "quote": "15% on the relationship component",
+      "expected": 15,
+      "decimals": 0,
+      "unit": "%",
+      "id": "T074"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p19.s5"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Sampling floor share (accuracy)",
+      "quote": "the remaining 24% the sampling floor",
+      "expected": 24,
+      "decimals": 0,
+      "unit": "%",
+      "id": "T075"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p19.s6"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Renormalized perceiver component (accuracy)",
+      "quote": "the three components read .70, .07, and .22",
+      "expected": 0.7,
+      "decimals": 2,
+      "id": "T076"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p19.s6"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Renormalized flavor component (accuracy)",
+      "quote": "the three components read .70, .07, and .22",
+      "expected": 0.07,
+      "decimals": 2,
+      "id": "T077"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p19.s6"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Renormalized relationship component (accuracy)",
+      "quote": "the three components read .70, .07, and .22",
+      "expected": 0.22,
+      "decimals": 2,
+      "id": "T078"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p19.s9"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Ada predicted accuracy",
+      "quote": "Ada predicted 60% and achieved 12%",
+      "expected": 60,
+      "decimals": 0,
+      "unit": "%",
+      "id": "T079"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p19.s9"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Ada achieved accuracy vs prediction",
+      "quote": "Ada predicted 60% and achieved 12%",
+      "expected": 12,
+      "decimals": 0,
+      "unit": "%",
+      "id": "T080"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p19.s9"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Ada prediction discrepancy p-value",
+      "quote": "(p < .001 against her own prediction)",
+      "expected": 0.001,
+      "comparator": "<",
+      "decimals": 3,
+      "id": "T081"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p19.s9"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Mitja predicted accuracy",
+      "quote": "Mitja predicted 31% and achieved 60%",
+      "expected": 31,
+      "decimals": 0,
+      "unit": "%",
+      "id": "T082"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p19.s9"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Mitja achieved accuracy",
+      "quote": "Mitja predicted 31% and achieved 60%",
+      "expected": 60,
+      "decimals": 0,
+      "unit": "%",
+      "id": "T083"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p19.s9"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Mitja prediction discrepancy p-value",
+      "quote": "(p = .004)",
+      "expected": 0.004,
+      "decimals": 3,
+      "id": "T084"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p19.s9"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Ella predicted accuracy",
+      "quote": "Ella's (63% predicted, 68% achieved)",
+      "expected": 63,
+      "decimals": 0,
+      "unit": "%",
+      "id": "T085"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p19.s9"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Ella achieved accuracy",
+      "quote": "Ella's (63% predicted, 68% achieved)",
+      "expected": 68,
+      "decimals": 0,
+      "unit": "%",
+      "id": "T086"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p19.s9"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Natalie predicted accuracy",
+      "quote": "Natalie's (31%, 28%)",
+      "expected": 31,
+      "decimals": 0,
+      "unit": "%",
+      "id": "T087"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p19.s9"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Natalie achieved accuracy",
+      "quote": "Natalie's (31%, 28%)",
+      "expected": 28,
+      "decimals": 0,
+      "unit": "%",
+      "id": "T088"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p19.s10"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Stated liking variance: flavor consensus",
+      "quote": "a priori preferences were dominated by flavor consensus (55%)",
+      "expected": 55,
+      "decimals": 0,
+      "unit": "%",
+      "id": "T089"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p19.s10"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Stated liking variance: perceiver",
+      "quote": "against 3% for the perceiver",
+      "expected": 3,
+      "decimals": 0,
+      "unit": "%",
+      "id": "T090"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p19.s10"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Stated liking variance: relationship",
+      "quote": "42% for the relationship component",
+      "expected": 42,
+      "decimals": 0,
+      "unit": "%",
+      "id": "T091"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p20.s3"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Consensually best stated flavor raspberry",
+      "quote": "raspberry (5.50)",
+      "expected": 5.5,
+      "decimals": 2,
+      "id": "T092"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p20.s3"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Consensually best stated flavor strawberry",
+      "quote": "and strawberry (5.00)",
+      "expected": 5.0,
+      "decimals": 2,
+      "id": "T093"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p20.s5"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Best tasting flavor pineapple",
+      "quote": "pineapple (4.07)",
+      "expected": 4.07,
+      "decimals": 2,
+      "id": "T094"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p20.s5"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Best tasting flavor apple",
+      "quote": "apple (4.04)",
+      "expected": 4.04,
+      "decimals": 2,
+      "id": "T095"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p20.s6"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Correlation between mean stated and tasted liking",
+      "quote": "Mean stated and mean tasted liking was uncorrelated (r = .02) across the six flavors",
+      "expected": 0.02,
+      "decimals": 2,
+      "id": "T096"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p20.s6"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "p-value for stated-tasted liking correlation",
+      "quote": "(p = .98)",
+      "expected": 0.98,
+      "decimals": 2,
+      "id": "T097"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p20.s8"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Tasted liking variance: flavor",
+      "quote": "flavor variance: 13%",
+      "expected": 13,
+      "decimals": 0,
+      "unit": "%",
+      "id": "T098"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p20.s8"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Tasted liking variance: perceiver",
+      "quote": "somewhat more variance between perceivers in how much they liked gummy bears in general (21%)",
+      "expected": 21,
+      "decimals": 0,
+      "unit": "%",
+      "id": "T099"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p20.s9"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Tasted liking variance: relationship",
+      "quote": "The largest share was the relationship component (37%)",
+      "expected": 37,
+      "decimals": 0,
+      "unit": "%",
+      "id": "T100"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p20.s9"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Tasted liking sampling floor",
+      "quote": "with an additional 29% sampling floor",
+      "expected": 29,
+      "decimals": 0,
+      "unit": "%",
+      "id": "T101"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p20.s11"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Mitja's raspberry unique liking above expectation",
+      "quote": "Mitja's liking of raspberry was 1.54 scale points above",
+      "expected": 1.54,
+      "decimals": 2,
+      "id": "T102"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p20.s12"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Ella's pineapple unique liking above expectation",
+      "quote": "Ella rated pineapple 1.35 points higher than expected",
+      "expected": 1.35,
+      "decimals": 2,
+      "id": "T103"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p22.s1"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Perceiver-level liking-accuracy correlation",
+      "quote": "perceiver r = .05",
+      "expected": 0.05,
+      "decimals": 2,
+      "id": "T104"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p22.s1"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Flavor-level liking-accuracy correlation",
+      "quote": "flavor r = −.06",
+      "expected": -0.06,
+      "decimals": 2,
+      "id": "T105"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p22.s1"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Relationship-level liking-accuracy correlation",
+      "quote": "relationship r = .21, p = .43",
+      "expected": 0.21,
+      "decimals": 2,
+      "id": "T106"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p22.s1"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Relationship liking-accuracy p-value",
+      "quote": "relationship r = .21, p = .43",
+      "expected": 0.43,
+      "decimals": 2,
+      "id": "T107"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p22.s3"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Stated-tasted unique liking correlation",
+      "quote": "stated and tasted unique liking correlated r = .31 (p = .21)",
+      "expected": 0.31,
+      "decimals": 2,
+      "id": "T108"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p22.s3"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Stated-tasted unique liking p-value",
+      "quote": "r = .31 (p = .21)",
+      "expected": 0.21,
+      "decimals": 2,
+      "id": "T109"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p22.s3"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Trial-weighted stated-tasted unique liking correlation",
+      "quote": "r = .33 with cells weighted by their number of trials (p = .13)",
+      "expected": 0.33,
+      "decimals": 2,
+      "id": "T110"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p22.s3"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Trial-weighted correlation p-value",
+      "quote": "r = .33 with cells weighted by their number of trials (p = .13)",
+      "expected": 0.13,
+      "decimals": 2,
+      "id": "T111"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p22.s3"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Stated-tasted correlation with single-trial cell removed",
+      "quote": "r = .30 with the single-trial cell removed (p = .24)",
+      "expected": 0.3,
+      "decimals": 2,
+      "id": "T112"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p22.s3"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Single-trial-removed p-value",
+      "quote": "r = .30 with the single-trial cell removed (p = .24)",
+      "expected": 0.24,
+      "decimals": 2,
+      "id": "T113"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p22.s3"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Rank version stated-tasted correlation",
+      "quote": "the rank version gives r = .31",
+      "expected": 0.31,
+      "decimals": 2,
+      "id": "T114"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p22.s3"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Mixed-model beta for awareness",
+      "quote": "the mixed-model control gives β = .32 at p = .13",
+      "expected": 0.32,
+      "decimals": 2,
+      "id": "T115"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p22.s3"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Mixed-model awareness p-value",
+      "quote": "β = .32 at p = .13",
+      "expected": 0.13,
+      "decimals": 2,
+      "id": "T116"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p22.s6"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Degrees of freedom for 24 cells",
+      "quote": "(4-1)(6-1) = 15 degrees of freedom",
+      "expected": 15,
+      "id": "T117"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p22.s7"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Conventional-test p-value for awareness correlation",
+      "quote": "A conventional test on 24 observations would report p = .14",
+      "expected": 0.14,
+      "decimals": 2,
+      "id": "T118"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p23.s11"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Ada stated-tasted relationship-effect correlation",
+      "quote": "correlations between stated and tasted relationship effects were .46 for Ada",
+      "expected": 0.46,
+      "decimals": 2,
+      "id": "T119"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p23.s11"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Ada per-perceiver exact p-value",
+      "quote": ".46 for Ada (exact p = .69)",
+      "expected": 0.69,
+      "decimals": 2,
+      "id": "T120"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p23.s11"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Ella stated-tasted relationship-effect correlation",
+      "quote": ".61 for Ella (p = .25)",
+      "expected": 0.61,
+      "decimals": 2,
+      "id": "T121"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p23.s11"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Ella per-perceiver p-value",
+      "quote": ".61 for Ella (p = .25)",
+      "expected": 0.25,
+      "decimals": 2,
+      "id": "T122"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p23.s11"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Natalie stated-tasted relationship-effect correlation",
+      "quote": ".25 for Natalie (p = .67)",
+      "expected": 0.25,
+      "decimals": 2,
+      "id": "T123"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p23.s11"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Natalie per-perceiver p-value",
+      "quote": ".25 for Natalie (p = .67)",
+      "expected": 0.67,
+      "decimals": 2,
+      "id": "T124"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p23.s11"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Mitja stated-tasted relationship-effect correlation",
+      "quote": ".13 for Mitja (p = .85)",
+      "expected": 0.13,
+      "decimals": 2,
+      "id": "T125"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p23.s11"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Mitja per-perceiver p-value",
+      "quote": ".13 for Mitja (p = .85)",
+      "expected": 0.85,
+      "decimals": 2,
+      "id": "T126"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p23.s12"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Ella raw profile correlation",
+      "quote": ".93 for Ella (exact p = .0056",
+      "expected": 0.93,
+      "decimals": 2,
+      "id": "T127"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p23.s12"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Ella raw profile exact p-value",
+      "quote": ".93 for Ella (exact p = .0056",
+      "expected": 0.0056,
+      "decimals": 4,
+      "id": "T128"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p23.s12"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Mitja raw profile correlation",
+      "quote": ".52 for Mitja",
+      "expected": 0.52,
+      "decimals": 2,
+      "id": "T129"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p23.s12"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Ada raw profile correlation",
+      "quote": "−.55 for Ada",
+      "expected": -0.55,
+      "decimals": 2,
+      "id": "T130"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p23.s12"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Natalie raw profile correlation",
+      "quote": "and −.43 for Natalie",
+      "expected": -0.43,
+      "decimals": 2,
+      "id": "T131"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p24.s8"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Range of stated-tasted unique liking correspondence",
+      "quote": "the correspondence between stated and tasted unique liking running from .13 to .61",
+      "expected": 0.13,
+      "decimals": 2,
+      "id": "T132"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p24.s8"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Upper end of stated-tasted unique liking correspondence",
+      "quote": "running from .13 to .61",
+      "expected": 0.61,
+      "decimals": 2,
+      "id": "T133"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p26.s9"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Relationship variance for experienced liking (noise-corrected)",
+      "quote": "relationship variance for experienced liking was 63% (instead of 37% when including noise)",
+      "expected": 63,
+      "decimals": 0,
+      "unit": "%",
+      "id": "T134"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p25.s4"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Spread of identification accuracy between perceivers",
+      "quote": "a spread from .12 to .68",
+      "expected": 0.12,
+      "decimals": 2,
+      "id": "T135"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p25.s4"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Upper end of accuracy spread",
+      "quote": "a spread from .12 to .68",
+      "expected": 0.68,
+      "decimals": 2,
+      "id": "T136"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p27.s13"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Apple stated liking",
+      "quote": "It received a modest stated rating of 3.00",
+      "expected": 3.0,
+      "decimals": 2,
+      "id": "T137"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p27.s13"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Apple tasted liking",
+      "quote": "but reached 4.04 when actually tasted",
+      "expected": 4.04,
+      "decimals": 2,
+      "id": "T138"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p13.s8"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Stratified correlation of accuracy with prior feedback",
+      "quote": "was flat (r_strat = .04, p = .83)",
+      "expected": 0.04,
+      "decimals": 2,
+      "id": "T139"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p13.s8"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Stratified correlation p-value",
+      "quote": "r_strat = .04, p = .83",
+      "expected": 0.83,
+      "decimals": 2,
+      "id": "T140"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p13.s8"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Global-time variant stratified correlation",
+      "quote": "the global-time variant (r_strat = .03, p = .81)",
+      "expected": 0.03,
+      "decimals": 2,
+      "id": "T141"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p13.s8"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Global-time variant p-value",
+      "quote": "r_strat = .03, p = .81",
+      "expected": 0.81,
+      "decimals": 2,
+      "id": "T142"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p13.s10"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "First-half correct trials for accurate perceiver one",
+      "quote": "with 9 of 12 and 8 of 12 correct in their first halves",
+      "expected": 9,
+      "id": "T143"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p13.s10"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "First-half correct trials for accurate perceiver two",
+      "quote": "9 of 12 and 8 of 12 correct in their first halves",
+      "expected": 8,
+      "id": "T144"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p13.s10"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Pooled halves numerator",
+      "quote": "pooled halves 22/48 against 20/52",
+      "expected": 22,
+      "id": "T145"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p13.s10"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Pooled halves denominator",
+      "quote": "22/48 against 20/52",
+      "expected": 48,
+      "id": "T146"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p13.s10"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Second pooled halves numerator",
+      "quote": "22/48 against 20/52",
+      "expected": 20,
+      "id": "T147"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p13.s10"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Second pooled halves denominator",
+      "quote": "22/48 against 20/52",
+      "expected": 52,
+      "id": "T148"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p13.s10"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Odd-even half reliability correlation",
+      "quote": "a correlation of r = .86 for odd versus even trials",
+      "expected": 0.86,
+      "decimals": 2,
+      "id": "T149"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p13.s10"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Session-based half reliability correlation",
+      "quote": "r = .94 for sessions 1 to 3 compared to sessions 4 and 5",
+      "expected": 0.94,
+      "decimals": 2,
+      "id": "T150"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p14.s4"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Per-perceiver response-use chi-square range lower",
+      "quote": "(χ²(5) between 0.68 and 6.44, smallest p = .29)",
+      "expected": 0.68,
+      "decimals": 2,
+      "id": "T151"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p14.s4"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Per-perceiver response-use chi-square range upper",
+      "quote": "(χ²(5) between 0.68 and 6.44, smallest p = .29)",
+      "expected": 6.44,
+      "decimals": 2,
+      "id": "T152"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p14.s4"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Smallest per-perceiver response-use p-value",
+      "quote": "smallest p = .29",
+      "expected": 0.29,
+      "decimals": 2,
+      "id": "T153"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p14.s4"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Pooled response distribution chi-square",
+      "quote": "the pooled response distribution was likewise uniform (χ²(5) = 5.00, p = .42)",
+      "expected": 5.0,
+      "decimals": 2,
+      "id": "T154"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p14.s4"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Pooled response distribution p-value",
+      "quote": "χ²(5) = 5.00, p = .42",
+      "expected": 0.42,
+      "decimals": 2,
+      "id": "T155"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p14.s4"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Response bias upper bound",
+      "quote": "individual response biases stayed between −.16 and +.16",
+      "expected": -0.16,
+      "decimals": 2,
+      "id": "T156"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p14.s4"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Response bias upper positive bound",
+      "quote": "stayed between −.16 and +.16",
+      "expected": 0.16,
+      "decimals": 2,
+      "id": "T157"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p9.s15"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Goodness-of-fit chi-square for flavor frequencies",
+      "quote": "A goodness-of-fit test against equal frequencies did not reject uniformity, χ²(5) = 4.52, p = .477",
+      "expected": 4.52,
+      "decimals": 2,
+      "id": "T158"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p9.s15"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Flavor frequency goodness-of-fit p-value",
+      "quote": "χ²(5) = 4.52, p = .477",
+      "expected": 0.477,
+      "decimals": 3,
+      "id": "T159"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p11.s8"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Overall predicted accuracy at age 8",
+      "quote": "60.0 (age 8)",
+      "expected": 60.0,
+      "decimals": 1,
+      "id": "T160"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p11.s8"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Overall predicted accuracy at age 13",
+      "quote": "62.8 (13)",
+      "expected": 62.8,
+      "decimals": 1,
+      "id": "T161"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p11.s8"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Overall predicted accuracy at age 42",
+      "quote": "31.3 (42)",
+      "expected": 31.3,
+      "decimals": 1,
+      "id": "T162"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p11.s8"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Overall predicted accuracy at age 47",
+      "quote": "31.3 (47)",
+      "expected": 31.3,
+      "decimals": 1,
+      "id": "T163"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p2.s6"
+        }
+      ],
+      "unreferenced": false,
+      "type": "categorical",
+      "description": "Average accuracy in gummy bear identification was well above chance level",
+      "quote": "Average accuracy in gummy bear identification (42%) was well above chance level (16.7%)",
+      "expected": "positive",
+      "id": "T164"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p16.s2"
+        },
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p16.s3"
+        }
+      ],
+      "unreferenced": false,
+      "type": "categorical",
+      "description": "Ella identified flavors far above chance",
+      "quote": "two of the four identified flavors far above chance and two did not",
+      "expected": "significant",
+      "id": "T165"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p16.s3"
+        }
+      ],
+      "unreferenced": false,
+      "type": "categorical",
+      "description": "Mitja identified flavors far above chance",
+      "quote": "Ella named 17 of 25 correctly... and Mitja 15 of 25",
+      "expected": "significant",
+      "id": "T166"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p16.s3"
+        }
+      ],
+      "unreferenced": false,
+      "type": "categorical",
+      "description": "Natalie did not identify flavors above chance",
+      "quote": "against Natalie's 7 of 25, .28 [.12, .49], p = .17",
+      "expected": "not significant",
+      "id": "T167"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p16.s3"
+        }
+      ],
+      "unreferenced": false,
+      "type": "categorical",
+      "description": "Ada did not identify flavors above chance (guessing)",
+      "quote": "Ada's 3 of 25, .12 [.03, .31], p = .79",
+      "expected": "not significant",
+      "id": "T168"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p2.s7"
+        }
+      ],
+      "unreferenced": false,
+      "type": "categorical",
+      "description": "Stated liking was largely consensual between family members",
+      "quote": "While stated liking was largely consensual between the family members",
+      "expected": "positive",
+      "id": "T169"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p2.s7"
+        }
+      ],
+      "unreferenced": false,
+      "type": "categorical",
+      "description": "Tasted liking was driven by unique perceiver x flavor pairing",
+      "quote": "tasted liking was driven by the unique perceiver x flavor pairing",
+      "expected": "positive",
+      "id": "T170"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p2.s8"
+        }
+      ],
+      "unreferenced": false,
+      "type": "categorical",
+      "description": "Stated preferences did not track tasted ones on average",
+      "quote": "stated preferences did not track tasted ones on average",
+      "expected": "not significant",
+      "id": "T171"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p20.s6"
+        }
+      ],
+      "unreferenced": false,
+      "type": "categorical",
+      "description": "Mean stated and tasted liking were uncorrelated",
+      "quote": "Mean stated and mean tasted liking was uncorrelated (r = .02)",
+      "expected": "not significant",
+      "id": "T172"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p22.s8"
+        }
+      ],
+      "unreferenced": false,
+      "type": "categorical",
+      "description": "No evidence for general awareness of specific gummy bear preferences",
+      "quote": "there is no evidence for general awareness of specific gummy bear preferences",
+      "expected": "not significant",
+      "id": "T173"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p16.s9"
+        }
+      ],
+      "unreferenced": false,
+      "type": "categorical",
+      "description": "Accuracy pattern with age was non-monotonic",
+      "quote": "The pattern is non-monotonic.",
+      "expected": "not significant",
+      "id": "T174"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p13.s7"
+        }
+      ],
+      "unreferenced": false,
+      "type": "categorical",
+      "description": "Accuracy did not improve across trials",
+      "quote": "Accuracy did not improve across trials.",
+      "expected": "not significant",
+      "id": "T175"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p22.s1"
+        }
+      ],
+      "unreferenced": false,
+      "type": "categorical",
+      "description": "Liking and accuracy were unrelated at every level",
+      "quote": "Liking and accuracy were unrelated at every level",
+      "expected": "not significant",
+      "id": "T176"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p20.s9"
+        }
+      ],
+      "unreferenced": false,
+      "type": "categorical",
+      "description": "Relationship (unique pairing) component was largest for tasted liking",
+      "quote": "The largest share was the relationship component (37%)",
+      "expected": "positive",
+      "id": "T177"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p19.s10"
+        }
+      ],
+      "unreferenced": false,
+      "type": "categorical",
+      "description": "Flavor consensus dominated stated liking variance",
+      "quote": "a priori preferences were dominated by flavor consensus (55%)",
+      "expected": "positive",
+      "id": "T178"
+    }
+  ]
+}

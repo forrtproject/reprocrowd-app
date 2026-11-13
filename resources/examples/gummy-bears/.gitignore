@@ -1,0 +1,8 @@
+jobs/
+archive/
+.snakemake/
+_targets/
+__pycache__/
+.Rhistory
+.Rproj.user/
+outputs/.steps/

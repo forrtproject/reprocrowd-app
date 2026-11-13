@@ -1,5 +1,6 @@
 {
   "name": "gummy-bears",
+  "title": "Förster et al.: Gummy bear perceptions",
   "resources": [
     {
       "name": "schema-datapackage",
@@ -171,34 +172,6 @@
       }
     },
     {
-      "name": "targets",
-      "path": "targets.json",
-      "type": "json",
-      "format": "json",
-      "mediatype": "application/json",
-      "bytes": 85,
-      "hash": "sha256:bf5f7e198f97c11d40e987437bd896d70908dde560dadf1e165af241254dd11d",
-      "jsonSchema": "schemas/targets.schema.json",
-      "reprocrowd": {
-        "kind": "curation",
-        "added_at": "2026-11-13T12:54:30Z"
-      }
-    },
-    {
-      "name": "actions",
-      "path": "actions.json",
-      "type": "json",
-      "format": "json",
-      "mediatype": "application/json",
-      "bytes": 85,
-      "hash": "sha256:121befdb1bce88c17be326eb4ca251a5e5bbe8340a4fee97a4a974f7dc43d250",
-      "jsonSchema": "schemas/actions.schema.json",
-      "reprocrowd": {
-        "kind": "curation",
-        "added_at": "2026-11-13T12:54:30Z"
-      }
-    },
-    {
       "name": "ft-gummy",
       "path": "fulltext/gummy-bears-2.pdf",
       "type": "file",
@@ -240,6 +213,573 @@
           "ft-gummy"
         ]
       }
+    },
+    {
+      "name": "in-gummibear-trials.csv",
+      "path": "inputs/gummibear_trials.csv",
+      "type": "file",
+      "format": "csv",
+      "mediatype": "application/vnd.ms-excel",
+      "bytes": 16758,
+      "hash": "sha256:15e663f9b84f7de36c6a62dc81f6a504c76325e9a8f884d1f412b392a67b527a",
+      "reprocrowd": {
+        "kind": "input",
+        "added_at": "2026-11-13T13:05:02Z",
+        "role": "data",
+        "note": "100 trials: 4 participants x 25 bears, raw responses",
+        "used": true,
+        "origin": {
+          "type": "local",
+          "path": "C:\\Users\\lroesele.IVV5NET\\AppData\\Local\\Temp\\opencode\\gummy_data\\extracted\\Foerster_etal_Gummybearperceptions_Data-Code-Supplements\\data\\gummibear_trials.csv"
+        }
+      }
+    },
+    {
+      "name": "in-gummibear-data.xlsx",
+      "path": "inputs/Gummibear_data.xlsx",
+      "type": "file",
+      "format": "xlsx",
+      "mediatype": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "bytes": 17094,
+      "hash": "sha256:af1435505dcd8aad7323a5178740f9374712268a95cdedf6708813ec2e0d784e",
+      "reprocrowd": {
+        "kind": "input",
+        "added_at": "2026-11-13T13:05:02Z",
+        "role": "data",
+        "note": "Full Excel workbook: raw, floor, corrected components",
+        "used": true,
+        "origin": {
+          "type": "local",
+          "path": "C:\\Users\\lroesele.IVV5NET\\AppData\\Local\\Temp\\opencode\\gummy_data\\extracted\\Foerster_etal_Gummybearperceptions_Data-Code-Supplements\\data\\Gummibear_data.xlsx"
+        }
+      }
+    },
+    {
+      "name": "in-gummibear-apriori-long.csv",
+      "path": "inputs/gummibear_apriori_long.csv",
+      "type": "file",
+      "format": "csv",
+      "mediatype": "application/vnd.ms-excel",
+      "bytes": 1848,
+      "hash": "sha256:ea32eef2090abc10ee9cf9c9bfe613e1e645a81b70e611977d5b29481c85fb02",
+      "reprocrowd": {
+        "kind": "input",
+        "added_at": "2026-11-13T13:05:02Z",
+        "role": "data",
+        "note": "A-priori expectations, long format",
+        "used": true,
+        "origin": {
+          "type": "local",
+          "path": "C:\\Users\\lroesele.IVV5NET\\AppData\\Local\\Temp\\opencode\\gummy_data\\extracted\\Foerster_etal_Gummybearperceptions_Data-Code-Supplements\\data\\gummibear_apriori_long.csv"
+        }
+      }
+    },
+    {
+      "name": "in-codebook.md",
+      "path": "inputs/codebook.md",
+      "type": "file",
+      "format": "md",
+      "mediatype": "text/markdown",
+      "bytes": 14692,
+      "hash": "sha256:7bab800c9ee0a341ac9f814201b537e24803bb00af687ed8c069ffa0da1420f2",
+      "reprocrowd": {
+        "kind": "input",
+        "added_at": "2026-11-13T13:05:02Z",
+        "role": "other",
+        "note": "Codebook for the data files",
+        "used": true,
+        "origin": {
+          "type": "local",
+          "path": "C:\\Users\\lroesele.IVV5NET\\AppData\\Local\\Temp\\opencode\\gummy_data\\extracted\\Foerster_etal_Gummybearperceptions_Data-Code-Supplements\\data\\codebook.md"
+        }
+      }
+    },
+    {
+      "name": "in-info-gummibear-data.txt",
+      "path": "inputs/info_gummibear_data.txt",
+      "type": "file",
+      "format": "txt",
+      "mediatype": "text/plain",
+      "bytes": 1912,
+      "hash": "sha256:4d0d6cfbb847573334d3601868ebc857b31c9bc95575ba2e31117b55c250b954",
+      "reprocrowd": {
+        "kind": "input",
+        "added_at": "2026-11-13T13:05:02Z",
+        "role": "other",
+        "note": "Notes on the data files",
+        "used": true,
+        "origin": {
+          "type": "local",
+          "path": "C:\\Users\\lroesele.IVV5NET\\AppData\\Local\\Temp\\opencode\\gummy_data\\extracted\\Foerster_etal_Gummybearperceptions_Data-Code-Supplements\\data\\info_gummibear_data.txt"
+        }
+      }
+    },
+    {
+      "name": "in-gummibear-apriori.csv",
+      "path": "inputs/gummibear_apriori.csv",
+      "type": "file",
+      "format": "csv",
+      "mediatype": "application/vnd.ms-excel",
+      "bytes": 599,
+      "hash": "sha256:b3519fae117a23ff12bd6dde1680882cef8b76829a2b753a7a4ff91b1f929fef",
+      "reprocrowd": {
+        "kind": "input",
+        "added_at": "2026-11-13T13:05:29Z",
+        "role": "data",
+        "note": "A-priori accuracy expectations",
+        "used": true,
+        "origin": {
+          "type": "local",
+          "path": "C:\\Users\\lroesele.IVV5NET\\AppData\\Local\\Temp\\opencode\\gummy_data\\extracted\\Foerster_etal_Gummybearperceptions_Data-Code-Supplements\\data\\gummibear_apriori.csv"
+        }
+      }
+    },
+    {
+      "name": "in-gummibear-analyses.py",
+      "path": "inputs/gummibear_analyses.py",
+      "type": "file",
+      "format": "py",
+      "mediatype": "text/x-python",
+      "bytes": 88810,
+      "hash": "sha256:8c149f0cd1dbc96cd7a29dd9df586153cb582b41162e9bd29eaf60febd036499",
+      "reprocrowd": {
+        "kind": "input",
+        "added_at": "2026-11-13T13:05:37Z",
+        "role": "code",
+        "note": "Authors' main analyses (Python)",
+        "used": true,
+        "origin": {
+          "type": "local",
+          "path": "C:\\Users\\lroesele.IVV5NET\\AppData\\Local\\Temp\\opencode\\gummy_data\\extracted\\Foerster_etal_Gummybearperceptions_Data-Code-Supplements\\analysis\\gummibear_analyses.py"
+        }
+      }
+    },
+    {
+      "name": "in-build-dataset.py",
+      "path": "inputs/build_dataset.py",
+      "type": "file",
+      "format": "py",
+      "mediatype": "text/x-python",
+      "bytes": 15446,
+      "hash": "sha256:601b4ea7dcb41d6a5cc15fec0218326f9e3b9a8b4331aac261ed353f8cd09b94",
+      "reprocrowd": {
+        "kind": "input",
+        "added_at": "2026-11-13T13:05:37Z",
+        "role": "code",
+        "note": "Authors' dataset builder (Python)",
+        "used": true,
+        "origin": {
+          "type": "local",
+          "path": "C:\\Users\\lroesele.IVV5NET\\AppData\\Local\\Temp\\opencode\\gummy_data\\extracted\\Foerster_etal_Gummybearperceptions_Data-Code-Supplements\\analysis\\build_dataset.py"
+        }
+      }
+    },
+    {
+      "name": "in-make-figures.py",
+      "path": "inputs/make_figures.py",
+      "type": "file",
+      "format": "py",
+      "mediatype": "text/x-python",
+      "bytes": 65427,
+      "hash": "sha256:b2be9bac9a232cec02cfcc672c4215b3609aad9d17212a8d4a3a3dcdff867051",
+      "reprocrowd": {
+        "kind": "input",
+        "added_at": "2026-11-13T13:05:37Z",
+        "role": "code",
+        "note": "Authors' figure generation (Python)",
+        "used": true,
+        "origin": {
+          "type": "local",
+          "path": "C:\\Users\\lroesele.IVV5NET\\AppData\\Local\\Temp\\opencode\\gummy_data\\extracted\\Foerster_etal_Gummybearperceptions_Data-Code-Supplements\\analysis\\make_figures.py"
+        }
+      }
+    },
+    {
+      "name": "in-control-analyses.r",
+      "path": "inputs/control_analyses.R",
+      "type": "file",
+      "format": "r",
+      "mediatype": "application/octet-stream",
+      "bytes": 8208,
+      "hash": "sha256:6bf7194854992c83b4c5c498bf7eba84fb57edf980c89c7c25aadd2896d15b3f",
+      "reprocrowd": {
+        "kind": "input",
+        "added_at": "2026-11-13T13:05:37Z",
+        "role": "code",
+        "note": "Authors' control analyses (R)",
+        "used": true,
+        "origin": {
+          "type": "local",
+          "path": "C:\\Users\\lroesele.IVV5NET\\AppData\\Local\\Temp\\opencode\\gummy_data\\extracted\\Foerster_etal_Gummybearperceptions_Data-Code-Supplements\\analysis\\control_analyses.R"
+        }
+      }
+    },
+    {
+      "name": "in-make-supplement.sh",
+      "path": "inputs/make_supplement.sh",
+      "type": "file",
+      "format": "sh",
+      "mediatype": "application/x-sh",
+      "bytes": 5282,
+      "hash": "sha256:e15650a55da0ff2c0f6b4a98b0648491b214b4789c89e6082451831ca49a6561",
+      "reprocrowd": {
+        "kind": "input",
+        "added_at": "2026-11-13T13:05:37Z",
+        "role": "code",
+        "note": "Authors' supplement builder (shell)",
+        "used": true,
+        "origin": {
+          "type": "local",
+          "path": "C:\\Users\\lroesele.IVV5NET\\AppData\\Local\\Temp\\opencode\\gummy_data\\extracted\\Foerster_etal_Gummybearperceptions_Data-Code-Supplements\\analysis\\make_supplement.sh"
+        }
+      }
+    },
+    {
+      "name": "in-setup-r-sandbox.sh",
+      "path": "inputs/setup-r-sandbox.sh",
+      "type": "file",
+      "format": "sh",
+      "mediatype": "application/x-sh",
+      "bytes": 1687,
+      "hash": "sha256:d3e569e633e1730cb7470e61a43d067b40acadb2361684615f72101075ab6830",
+      "reprocrowd": {
+        "kind": "input",
+        "added_at": "2026-11-13T13:05:37Z",
+        "role": "code",
+        "note": "Authors' R sandbox setup (shell)",
+        "used": true,
+        "origin": {
+          "type": "local",
+          "path": "C:\\Users\\lroesele.IVV5NET\\AppData\\Local\\Temp\\opencode\\gummy_data\\extracted\\Foerster_etal_Gummybearperceptions_Data-Code-Supplements\\analysis\\setup-r-sandbox.sh"
+        }
+      }
+    },
+    {
+      "name": "in-py-auc-by-cell.csv",
+      "path": "inputs/py_auc_by_cell.csv",
+      "type": "file",
+      "format": "csv",
+      "mediatype": "application/vnd.ms-excel",
+      "bytes": 615,
+      "hash": "sha256:b11c4cf7420e5a8642d2eb83501c3b08e2032b67ea2f213d1061c3bb31381762",
+      "reprocrowd": {
+        "kind": "input",
+        "added_at": "2026-11-13T13:05:37Z",
+        "role": "data",
+        "note": "Authors' AUC by cell (Python)",
+        "used": true,
+        "origin": {
+          "type": "local",
+          "path": "C:\\Users\\lroesele.IVV5NET\\AppData\\Local\\Temp\\opencode\\gummy_data\\extracted\\Foerster_etal_Gummybearperceptions_Data-Code-Supplements\\analysis\\py_auc_by_cell.csv"
+        }
+      }
+    },
+    {
+      "name": "in-r-auc-by-cell.csv",
+      "path": "inputs/r_auc_by_cell.csv",
+      "type": "file",
+      "format": "csv",
+      "mediatype": "application/vnd.ms-excel",
+      "bytes": 636,
+      "hash": "sha256:71497b2c62459f1a6a05b7e0cb850d887ff1e4b756f4010278f393234dfc6e30",
+      "reprocrowd": {
+        "kind": "input",
+        "added_at": "2026-11-13T13:05:37Z",
+        "role": "data",
+        "note": "Authors' AUC by cell (R)",
+        "used": true,
+        "origin": {
+          "type": "local",
+          "path": "C:\\Users\\lroesele.IVV5NET\\AppData\\Local\\Temp\\opencode\\gummy_data\\extracted\\Foerster_etal_Gummybearperceptions_Data-Code-Supplements\\analysis\\r_auc_by_cell.csv"
+        }
+      }
+    },
+    {
+      "name": "in-r-controls-summary.csv",
+      "path": "inputs/r_controls_summary.csv",
+      "type": "file",
+      "format": "csv",
+      "mediatype": "application/vnd.ms-excel",
+      "bytes": 3448,
+      "hash": "sha256:58aecc2e73c8a699c2c554f05cbf58f2f925690468d295b92381cf257eda2807",
+      "reprocrowd": {
+        "kind": "input",
+        "added_at": "2026-11-13T13:05:37Z",
+        "role": "data",
+        "note": "Authors' control analyses summary (R)",
+        "used": true,
+        "origin": {
+          "type": "local",
+          "path": "C:\\Users\\lroesele.IVV5NET\\AppData\\Local\\Temp\\opencode\\gummy_data\\extracted\\Foerster_etal_Gummybearperceptions_Data-Code-Supplements\\analysis\\r_controls_summary.csv"
+        }
+      }
+    },
+    {
+      "name": "in-results-2026-08-17.md",
+      "path": "inputs/results_2026-08-17.md",
+      "type": "file",
+      "format": "md",
+      "mediatype": "text/markdown",
+      "bytes": 48163,
+      "hash": "sha256:ece9e0fd0a9af6ba40abf6a3104b223d42f5bd52bce26307a07cc55d0a0cbae7",
+      "reprocrowd": {
+        "kind": "input",
+        "added_at": "2026-11-13T13:05:37Z",
+        "role": "other",
+        "note": "Authors' reference results write-up",
+        "used": true,
+        "origin": {
+          "type": "local",
+          "path": "C:\\Users\\lroesele.IVV5NET\\AppData\\Local\\Temp\\opencode\\gummy_data\\extracted\\Foerster_etal_Gummybearperceptions_Data-Code-Supplements\\analysis\\results_2026-08-17.md"
+        }
+      }
+    },
+    {
+      "name": "in-r-sessioninfo.txt",
+      "path": "inputs/r_sessioninfo.txt",
+      "type": "file",
+      "format": "txt",
+      "mediatype": "text/plain",
+      "bytes": 1467,
+      "hash": "sha256:91d6a28e3f11a8da99e62baa6581eda5c93701017119de152cbe1c0cece3846c",
+      "reprocrowd": {
+        "kind": "input",
+        "added_at": "2026-11-13T13:05:37Z",
+        "role": "other",
+        "note": "Authors' R session info",
+        "used": true,
+        "origin": {
+          "type": "local",
+          "path": "C:\\Users\\lroesele.IVV5NET\\AppData\\Local\\Temp\\opencode\\gummy_data\\extracted\\Foerster_etal_Gummybearperceptions_Data-Code-Supplements\\analysis\\r_sessioninfo.txt"
+        }
+      }
+    },
+    {
+      "name": "in-readme.md",
+      "path": "inputs/README.md",
+      "type": "file",
+      "format": "md",
+      "mediatype": "text/markdown",
+      "bytes": 9482,
+      "hash": "sha256:5d7be7c56cf08e0356bff90f5d3393e555bfc11bed1d6ac9db3449f60688b762",
+      "reprocrowd": {
+        "kind": "input",
+        "added_at": "2026-11-13T13:05:37Z",
+        "role": "other",
+        "note": "Zenodo data/code package README",
+        "used": true,
+        "origin": {
+          "type": "local",
+          "path": "C:\\Users\\lroesele.IVV5NET\\AppData\\Local\\Temp\\opencode\\gummy_data\\extracted\\Foerster_etal_Gummybearperceptions_Data-Code-Supplements\\README.md"
+        }
+      }
+    },
+    {
+      "name": "targets",
+      "path": "targets.json",
+      "type": "json",
+      "format": "json",
+      "mediatype": "application/json",
+      "bytes": 237741,
+      "hash": "sha256:14e6ccbfbcd9929863da1b8c783e3ea4cadfe18b5203080f1cf1fec9cec8b37e",
+      "jsonSchema": "schemas/targets.schema.json",
+      "reprocrowd": {
+        "kind": "curation",
+        "added_at": "2026-11-13T12:54:30Z"
+      }
+    },
+    {
+      "name": "actions",
+      "path": "actions.json",
+      "type": "json",
+      "format": "json",
+      "mediatype": "application/json",
+      "bytes": 923726,
+      "hash": "sha256:60d9cb5fc8b01924bbae8b68b882af9a0365aa1c2a3deb6de862d24f4c13ff27",
+      "jsonSchema": "schemas/actions.schema.json",
+      "reprocrowd": {
+        "kind": "curation",
+        "added_at": "2026-11-13T12:54:30Z"
+      }
+    },
+    {
+      "name": "script-analysis.py",
+      "path": "analysis.py",
+      "type": "file",
+      "format": "py",
+      "mediatype": "text/plain",
+      "bytes": 86753,
+      "hash": "sha256:091c95492696786dcc4ffe1dda1eb951ce0abd6724613a438549727f88c04fd7",
+      "reprocrowd": {
+        "kind": "script",
+        "added_at": "2026-11-13T13:12:57Z",
+        "template": "python",
+        "generated_hash": "sha256:f69e9d3e02a46967b663220f4590ee064efdcd38ee0ca6dae3188a83b2a88fc5"
+      }
+    },
+    {
+      "name": "script-readme.md",
+      "path": "README.md",
+      "type": "file",
+      "format": "md",
+      "mediatype": "text/plain",
+      "bytes": 773,
+      "hash": "sha256:2aa27793d1e28a90b13dd42f90aa170fe319f41563bf307052489bfcd4c30558",
+      "reprocrowd": {
+        "kind": "script",
+        "added_at": "2026-11-13T13:12:57Z",
+        "template": "python",
+        "generated_hash": "sha256:2aa27793d1e28a90b13dd42f90aa170fe319f41563bf307052489bfcd4c30558"
+      }
+    },
+    {
+      "name": "script-agent-prompt.md",
+      "path": "AGENT_PROMPT.md",
+      "type": "file",
+      "format": "md",
+      "mediatype": "text/plain",
+      "bytes": 3384,
+      "hash": "sha256:17b9ac90d4553568cf040158e56f1e7c65c54b34a2e471f4bda06d47f578964e",
+      "reprocrowd": {
+        "kind": "script",
+        "added_at": "2026-11-13T13:12:57Z",
+        "template": "python",
+        "generated_hash": "sha256:17b9ac90d4553568cf040158e56f1e7c65c54b34a2e471f4bda06d47f578964e"
+      }
+    },
+    {
+      "name": "results-schema",
+      "path": "results_schema.json",
+      "type": "json",
+      "format": "json",
+      "mediatype": "application/json",
+      "bytes": 69021,
+      "hash": "sha256:b26d11c12e74b3764e665874995547005c0d3a73e09bb0af1aab04292e2fe502",
+      "jsonSchema": "schemas/results-schema.schema.json",
+      "reprocrowd": {
+        "kind": "export",
+        "added_at": "2026-11-13T13:12:57Z"
+      }
+    },
+    {
+      "name": "analysis-plan",
+      "path": "analysis_plan.json",
+      "type": "json",
+      "format": "json",
+      "mediatype": "application/json",
+      "bytes": 45081,
+      "hash": "sha256:1fdd5d50fc08bcb0b61451b30f2d6c873686c52b0357ce181b52a57a1b63e2a0",
+      "jsonSchema": "schemas/analysis-plan.schema.json",
+      "reprocrowd": {
+        "kind": "export",
+        "added_at": "2026-11-13T13:12:57Z"
+      }
+    },
+    {
+      "name": "code-example.json",
+      "path": "example.json",
+      "type": "json",
+      "format": "json",
+      "mediatype": "application/json",
+      "bytes": 304,
+      "hash": "sha256:8b3cb87570f74e47a2ea177802e0a27a12236000bc7eedc80edff9efa43a0ea0",
+      "reprocrowd": {
+        "kind": "code",
+        "added_at": "2026-11-13T13:13:30Z"
+      }
+    },
+    {
+      "name": "out-figures-t003.png",
+      "path": "outputs/figures/T003.png",
+      "type": "file",
+      "format": "png",
+      "mediatype": "image/png",
+      "bytes": 113471,
+      "hash": "sha256:4ce34596061e486a3c085c61a63aa05f672a4b46db054bafe9c7227c9d3171b0",
+      "reprocrowd": {
+        "kind": "output",
+        "added_at": "2026-11-13T13:40:57Z"
+      }
+    },
+    {
+      "name": "out-figures-t004.png",
+      "path": "outputs/figures/T004.png",
+      "type": "file",
+      "format": "png",
+      "mediatype": "image/png",
+      "bytes": 53375,
+      "hash": "sha256:19359d59e93bfcdfb268203236c2d1e7f0d749576a75a592327d344fae582675",
+      "reprocrowd": {
+        "kind": "output",
+        "added_at": "2026-11-13T13:40:57Z"
+      }
+    },
+    {
+      "name": "out-figures-t005.png",
+      "path": "outputs/figures/T005.png",
+      "type": "file",
+      "format": "png",
+      "mediatype": "image/png",
+      "bytes": 102198,
+      "hash": "sha256:5468abf05b31e6ef7d319430489eb4be2f9487438c7258d0309ede1d1d3132e1",
+      "reprocrowd": {
+        "kind": "output",
+        "added_at": "2026-11-13T13:40:57Z"
+      }
+    },
+    {
+      "name": "code-requirements.txt",
+      "path": "requirements.txt",
+      "type": "file",
+      "format": "txt",
+      "mediatype": "text/plain",
+      "bytes": 66,
+      "hash": "sha256:563e20e48fe72f01eb2d5ff660599fe011e6d292635c10412ee12fcbac2d34ac",
+      "reprocrowd": {
+        "kind": "code",
+        "added_at": "2026-11-13T13:40:57Z"
+      }
+    },
+    {
+      "name": "out-results.json",
+      "path": "outputs/results.json",
+      "type": "json",
+      "format": "json",
+      "mediatype": "application/json",
+      "bytes": 20861,
+      "hash": "sha256:7752298a6ae47518332b9b9efd16062f7ba74c0e3a14e51775083e3073872076",
+      "jsonSchema": "schemas/results-output.schema.json",
+      "reprocrowd": {
+        "kind": "output",
+        "added_at": "2026-11-13T13:44:40Z"
+      }
+    },
+    {
+      "name": "report",
+      "path": "report.html",
+      "type": "file",
+      "format": "html",
+      "mediatype": "text/html",
+      "bytes": 1141314,
+      "hash": "sha256:ede94ef46da5f9d2f9b7eb2c2641fcf1f26155a4ff9905d90b93c3ea5aabe222",
+      "reprocrowd": {
+        "kind": "report",
+        "added_at": "2026-11-13T13:44:56Z"
+      }
+    },
+    {
+      "name": "comparison",
+      "path": "comparison.json",
+      "type": "json",
+      "format": "json",
+      "mediatype": "application/json",
+      "bytes": 77030,
+      "hash": "sha256:f425294ed2cc49844880ba67ae0e76dd765e4c719030942e9f4eed261962efc0",
+      "jsonSchema": "schemas/comparison.schema.json",
+      "reprocrowd": {
+        "kind": "report",
+        "added_at": "2026-11-13T13:44:56Z"
+      }
     }
   ],
   "reprocrowd": {
@@ -248,6 +788,5 @@
     "identifiers": {},
     "submissions": [],
     "deposits": []
-  },
-  "title": "Förster et al.: Gummy bear perceptions (preprint)"
+  }
 }

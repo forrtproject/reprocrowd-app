@@ -1,0 +1,1518 @@
+{
+  "schema_version": "1.0",
+  "steps": [
+    {
+      "id": "L01",
+      "kind": "load",
+      "summary": "Load inputs/gummibear_trials.csv",
+      "quote": "",
+      "refs": [],
+      "inputs": [
+        "inputs/gummibear_trials.csv"
+      ],
+      "depends_on": [],
+      "produces": []
+    },
+    {
+      "id": "L02",
+      "kind": "load",
+      "summary": "Load inputs/Gummibear_data.xlsx",
+      "quote": "",
+      "refs": [],
+      "inputs": [
+        "inputs/Gummibear_data.xlsx"
+      ],
+      "depends_on": [],
+      "produces": []
+    },
+    {
+      "id": "L03",
+      "kind": "load",
+      "summary": "Load inputs/gummibear_apriori_long.csv",
+      "quote": "",
+      "refs": [],
+      "inputs": [
+        "inputs/gummibear_apriori_long.csv"
+      ],
+      "depends_on": [],
+      "produces": []
+    },
+    {
+      "id": "L04",
+      "kind": "load",
+      "summary": "Load inputs/gummibear_apriori.csv",
+      "quote": "",
+      "refs": [],
+      "inputs": [
+        "inputs/gummibear_apriori.csv"
+      ],
+      "depends_on": [],
+      "produces": []
+    },
+    {
+      "id": "L05",
+      "kind": "load",
+      "summary": "Load inputs/py_auc_by_cell.csv",
+      "quote": "",
+      "refs": [],
+      "inputs": [
+        "inputs/py_auc_by_cell.csv"
+      ],
+      "depends_on": [],
+      "produces": []
+    },
+    {
+      "id": "L06",
+      "kind": "load",
+      "summary": "Load inputs/r_auc_by_cell.csv",
+      "quote": "",
+      "refs": [],
+      "inputs": [
+        "inputs/r_auc_by_cell.csv"
+      ],
+      "depends_on": [],
+      "produces": []
+    },
+    {
+      "id": "L07",
+      "kind": "load",
+      "summary": "Load inputs/r_controls_summary.csv",
+      "quote": "",
+      "refs": [],
+      "inputs": [
+        "inputs/r_controls_summary.csv"
+      ],
+      "depends_on": [],
+      "produces": []
+    },
+    {
+      "id": "A01",
+      "kind": "transform",
+      "summary": "Derive the per-trial accuracy indicator as (judged_flavor == true_flavor) and verify it matches the recorded `correct` on all 100 trials; confirm the design constants: 100 trials, 4 perceivers, 25 bears per perceiver, and chance level = 1/6.",
+      "quote": "A trial was scored 1 when the flavor named matched the flavor administered and 0 otherwise. ... This gives 25 trials per person and 100 trials in total, with no missing data. ... The flavor set was known to all four participants before the first trial and was printed on the package, so chance accuracy is 1/6 = 16.7%.",
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p12.s7"
+        },
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p12.s9"
+        },
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p2.s3"
+        },
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p8.s3"
+        },
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p10.s4"
+        },
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p11.s20"
+        }
+      ],
+      "inputs": [
+        "inputs/gummibear_trials.csv"
+      ],
+      "depends_on": [
+        "L01"
+      ],
+      "produces": [
+        "T010",
+        "T013",
+        "T014",
+        "T015"
+      ]
+    },
+    {
+      "id": "A02",
+      "kind": "analysis",
+      "summary": "Count the administered true-flavor frequencies across the 100 trials and run a chi-square goodness-of-fit test against equal frequencies (1/6 each), reporting chi-square(5) and p.",
+      "quote": "Bears were drawn without replacement and eaten, so the realized flavor frequencies reflect package composition and sampling jointly: apple was administered on 23 trials, orange, raspberry, and lemon on 17 each, pineapple on 15, and strawberry on 11. A goodness-of-fit test against equal frequencies did not reject uniformity, χ²(5) = 4.52, p = .477.",
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p9.s14"
+        },
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p9.s15"
+        }
+      ],
+      "inputs": [
+        "inputs/gummibear_trials.csv"
+      ],
+      "depends_on": [
+        "A01",
+        "L01"
+      ],
+      "produces": [
+        "T158",
+        "T159"
+      ]
+    },
+    {
+      "id": "A03",
+      "kind": "transform",
+      "summary": "Build the 4 (perceiver) x 6 (flavor) matrices of cell accuracy (hits/n), cell sizes, mean tasted liking, mean certainty, a priori liking, and a priori predicted accuracy; and per-perceiver totals (hits, accuracy, mean predicted accuracy, mean a priori liking).",
+      "quote": "The variance decompositions follow the logic of the social relations model but are estimated as a plain two-way decomposition of the 4 x 6 matrix of cell means. ... Certainty and tasted liking are averaged within perceiver x flavor cells.",
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p12.s12"
+        },
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p15.s4"
+        },
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p15.s5"
+        },
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p15.s6"
+        }
+      ],
+      "inputs": [
+        "inputs/gummibear_apriori_long.csv",
+        "inputs/gummibear_apriori.csv",
+        "inputs/gummibear_trials.csv"
+      ],
+      "depends_on": [
+        "A01",
+        "L03",
+        "L04",
+        "L01"
+      ],
+      "produces": []
+    },
+    {
+      "id": "A04",
+      "kind": "analysis",
+      "summary": "Test whether accuracy improved across trials: stratified (perceiver x flavor) correlation of accuracy on flavor-specific exposure count (primary) and on global trial position; per-perceiver tests; pooled halves (22/48 vs 20/52); and split-half reliability correlations (odd-even r, sessions 1-3 vs 4-5 r) across the four perceivers.",
+      "quote": "The association between outcome and the number of prior feedback occasions on the same flavor, stratified by perceiver x flavor cell, was flat (r_strat = .04, p = .83), as were the global-time variant (r_strat = .03, p = .81) and every per-perceiver test. ... The two perceivers who ended accurately were accurate from the start, with 9 of 12 and 8 of 12 correct in their first halves (Figure S2B; pooled halves 22/48 against 20/52). ... The accuracy of a perceiver's trials in one half was closely related to their accuracy in the other half, with a correlation of r = .86 for odd versus even trials and r = .94 for sessions 1 to 3 compared to sessions 4 and 5.",
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p13.s7"
+        },
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p13.s8"
+        },
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p13.s10"
+        },
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p13.s11"
+        }
+      ],
+      "inputs": [
+        "inputs/gummibear_trials.csv"
+      ],
+      "depends_on": [
+        "A01",
+        "L01"
+      ],
+      "produces": [
+        "T139",
+        "T140",
+        "T141",
+        "T142",
+        "T143",
+        "T144",
+        "T145",
+        "T146",
+        "T147",
+        "T148",
+        "T149",
+        "T150"
+      ]
+    },
+    {
+      "id": "A05",
+      "kind": "analysis",
+      "summary": "Compute per-perceiver response-use chi-square statistics against uniform use of six response options (range 0.68 to 6.44, smallest p), the pooled response-distribution chi-square, and signed response biases (judged count minus received count)/25, reporting the range.",
+      "quote": "No perceiver departed from uniform use of the six response options (χ²(5) between 0.68 and 6.44, smallest p = .29), the pooled response distribution was likewise uniform (χ²(5) = 5.00, p = .42), and individual response biases stayed between −.16 and +.16.",
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p14.s4"
+        }
+      ],
+      "inputs": [
+        "inputs/gummibear_trials.csv"
+      ],
+      "depends_on": [
+        "A01",
+        "L01"
+      ],
+      "produces": [
+        "T151",
+        "T152",
+        "T153",
+        "T154",
+        "T155",
+        "T156",
+        "T157"
+      ]
+    },
+    {
+      "id": "A06",
+      "kind": "analysis",
+      "summary": "Assemble Table 1: per-flavor predicted accuracy, identification accuracy (with hits/trials), certainty, stated liking, and tasted liking pooled across perceivers, plus the all-flavors row with standard deviations.",
+      "quote": "Table 1 Predicted Accuracy, Identification Accuracy, Certainty, and Liking for Each Flavor, Aggregated Across Perceivers Flavor predicted accuracy accuracy certainty stated liking tasted liking ... Rows show the six flavors and, in the final row, all flavors combined; values are pooled across perceivers, with perceiver-specific results reported in Table 2.",
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p14.s5"
+        },
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p14.s6"
+        },
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p14.s7"
+        },
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p14.s10"
+        }
+      ],
+      "inputs": [
+        "inputs/gummibear_trials.csv",
+        "inputs/gummibear_apriori_long.csv",
+        "inputs/gummibear_apriori.csv"
+      ],
+      "depends_on": [
+        "A03",
+        "L01",
+        "L03",
+        "L04"
+      ],
+      "produces": [
+        "T001"
+      ]
+    },
+    {
+      "id": "A07",
+      "kind": "analysis",
+      "summary": "Assemble Table 2: the same measures (predicted accuracy, accuracy, certainty, stated liking, tasted liking) separately for each perceiver in two stacked panels (Ada/Ella upper, Natalie/Mitja lower), with per-perceiver all-flavors rows.",
+      "quote": "Table 2 Predicted Accuracy, Identification Accuracy, Certainty, and Liking for Each Flavor, Separately for Each Perceiver Flavor Ada Ella ... The upper panel gives Ada and Ella, the lower panel Natalie and Mitja. Accuracy cells give hits/trials in brackets.",
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p15.s1"
+        },
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p15.s2"
+        },
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p15.s3"
+        },
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p15.s4"
+        },
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p15.s5"
+        },
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p15.s6"
+        }
+      ],
+      "inputs": [
+        "inputs/gummibear_trials.csv",
+        "inputs/gummibear_apriori_long.csv",
+        "inputs/gummibear_apriori.csv"
+      ],
+      "depends_on": [
+        "A03",
+        "L01",
+        "L03",
+        "L04"
+      ],
+      "produces": [
+        "T002"
+      ]
+    },
+    {
+      "id": "A08",
+      "kind": "analysis",
+      "summary": "For each perceiver compute accuracy (hits/25), the Clopper-Pearson exact 95% CI, and the exact two-sided binomial p against 1/6; compute pooled accuracy 42/100 with CI and p; report the average accuracy (42%), and the minimum (12%) and maximum (68%) individual accuracies.",
+      "quote": "Pooled accuracy, the proportion of trials correctly identified, was 42 of 100, .42 [.32, .52]. ... Ella named 17 of 25 correctly, .68 [.46, .85], p < .001, and Mitja 15 of 25, .60 [.39, .79], p < .001, against Natalie's 7 of 25, .28 [.12, .49], p = .17, and Ada's 3 of 25, .12 [.03, .31], p = .79.",
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p16.s1"
+        },
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p16.s3"
+        },
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p2.s6"
+        }
+      ],
+      "inputs": [
+        "inputs/gummibear_trials.csv"
+      ],
+      "depends_on": [
+        "A01",
+        "A03",
+        "L01"
+      ],
+      "produces": [
+        "T006",
+        "T007",
+        "T008",
+        "T009",
+        "T011",
+        "T012",
+        "T018",
+        "T019",
+        "T020",
+        "T021",
+        "T022",
+        "T023",
+        "T024",
+        "T025",
+        "T026",
+        "T027",
+        "T028",
+        "T029",
+        "T030",
+        "T031",
+        "T032",
+        "T033"
+      ]
+    },
+    {
+      "id": "A09",
+      "kind": "analysis",
+      "summary": "Test perceiver heterogeneity in the 4x2 table of hits out of 25 using the Pearson chi-square(3) statistic and the exact conditional (Fisher-Freeman-Halton) p-value.",
+      "quote": "Perceivers differed strongly: two of the four identified flavors far above chance and two did not (Figure 1A), χ²(3) = 21.51, exact conditional p < .001.",
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p16.s2"
+        }
+      ],
+      "inputs": [
+        "inputs/gummibear_trials.csv"
+      ],
+      "depends_on": [
+        "A08",
+        "L01"
+      ],
+      "produces": [
+        "T016",
+        "T017"
+      ]
+    },
+    {
+      "id": "A10",
+      "kind": "analysis",
+      "summary": "Compute the one-sided p-value for zero hits in 25 trials against 1/6, the only outcome that would reject below-chance responding.",
+      "quote": "Only zero hits in 25 trials would reject downward (one-sided p = .010).",
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p16.s5"
+        }
+      ],
+      "inputs": [
+        "inputs/gummibear_trials.csv"
+      ],
+      "depends_on": [
+        "A01",
+        "L01"
+      ],
+      "produces": [
+        "T034"
+      ]
+    },
+    {
+      "id": "A11",
+      "kind": "analysis",
+      "summary": "Map each perceiver's accuracy to their age and report accuracies at ages 8, 13, 42, and 47.",
+      "quote": "Mapped onto age, accuracy was .12 at age 8, .68 at 13, .28 at 42, and .60 at 47.",
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p16.s8"
+        }
+      ],
+      "inputs": [
+        "inputs/gummibear_trials.csv"
+      ],
+      "depends_on": [
+        "A08",
+        "L01"
+      ],
+      "produces": [
+        "T035",
+        "T036",
+        "T037",
+        "T038"
+      ]
+    },
+    {
+      "id": "A12",
+      "kind": "analysis",
+      "summary": "Build the pooled 6x6 confusion matrix (true flavor x judged flavor), report the most frequent off-diagonal confusions (lemon->orange, apple->raspberry, orange->lemon, pineapple->lemon), and the per-flavor pooled accuracies.",
+      "quote": "The most frequent confusions (see Figure 1B) were lemon named orange (6 trials), apple named raspberry (6), orange named lemon (5), and pineapple named lemon (4). Per-flavor accuracy pooled over perceivers ran from .33 for pineapple to .53 for orange and raspberry.",
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p18.s1"
+        },
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p18.s2"
+        },
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p17.s3"
+        }
+      ],
+      "inputs": [
+        "inputs/gummibear_trials.csv"
+      ],
+      "depends_on": [
+        "A03",
+        "L01"
+      ],
+      "produces": [
+        "T039",
+        "T040",
+        "T041",
+        "T042",
+        "T043",
+        "T044"
+      ]
+    },
+    {
+      "id": "A13",
+      "kind": "analysis",
+      "summary": "For each perceiver compute the AUC of certainty for correct versus incorrect trials (within-person) with a one-sided permutation p, to test whether certainty carries signal.",
+      "quote": "Certainty discriminated correct from incorrect trials for Ella (AUC = .95, p < .001) and Mitja (.79, p = .005) but not for Natalie (.56, p = .37) or Ada (.38 on three correct trials, p = .81).",
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p18.s6"
+        }
+      ],
+      "inputs": [
+        "inputs/gummibear_trials.csv"
+      ],
+      "depends_on": [
+        "A03",
+        "L01"
+      ],
+      "produces": [
+        "T045",
+        "T046",
+        "T047",
+        "T048",
+        "T049",
+        "T050",
+        "T051",
+        "T052"
+      ]
+    },
+    {
+      "id": "A14",
+      "kind": "analysis",
+      "summary": "Compute certainty-graded one-versus-rest AUCs for all 24 perceiver x flavor cells; macro-average within perceiver and across perceivers (grand) with one-sided permutation p-values; and compute per-flavor macro-AUCs.",
+      "quote": "Macro-averaged within perceiver, Ella reached .95 in identification and Mitja .85, both at one-sided permutation p < .001, against .50 for Natalie (p = .46) and .40 for Ada (p = .94). The grand macro-AUC was .68 (p < .001), and per-flavor macro-AUCs ran from .56 for lemon (p = .27) to .83 for raspberry (p < .001).",
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p17.s5"
+        },
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p18.s8"
+        },
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p18.s9"
+        }
+      ],
+      "inputs": [
+        "inputs/gummibear_trials.csv"
+      ],
+      "depends_on": [
+        "A03",
+        "L01"
+      ],
+      "produces": [
+        "T053",
+        "T054",
+        "T055",
+        "T056",
+        "T057",
+        "T058",
+        "T059",
+        "T060",
+        "T061",
+        "T062",
+        "T063",
+        "T064",
+        "T065"
+      ]
+    },
+    {
+      "id": "A15",
+      "kind": "analysis",
+      "summary": "Generate Figure 1: (A) per-perceiver accuracy with Clopper-Pearson exact 95% intervals and exact binomial p-values against chance (1/6); (B) pooled confusion matrix with row proportions and flavor frequencies; (C) 24-cell certainty-graded one-versus-rest AUCs with macro-averaged AUCs per perceiver.",
+      "quote": "Figure 1 Blind Identification of Gummy Bear Flavors by Four Perceivers",
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p17.s1"
+        },
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p17.s2"
+        },
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p17.s3"
+        },
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p17.s5"
+        },
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p17.s6"
+        }
+      ],
+      "inputs": [
+        "inputs/make_figures.py"
+      ],
+      "depends_on": [
+        "A08",
+        "A12",
+        "A14"
+      ],
+      "produces": [
+        "T003"
+      ]
+    },
+    {
+      "id": "A16",
+      "kind": "analysis",
+      "summary": "Rescale the pooled accuracy (.42 at six alternatives) onto the null-.50 index pi = P(k-1)/(1+P(k-2)) = .78; rescale the Candy Smell Test anosmia cut-off (.57 at four alternatives) to pi = .80; and convert the grand macro-AUC (.68) to d = sqrt(2)*z(AUC) = 0.66 and r = d/sqrt(d^2+4) = .31.",
+      "quote": "Our pooled .42 at six alternatives becomes π = .78 ... the anosmia cut-off of the Candy Smell Test, a four-alternative retronasal test (Renner et al., 2009), rescales to π = .80. ... On the discrimination metric, the grand macro-AUC of .68 corresponds under an equal-variance binormal model to d = 0.66 and an effect-size-equivalent r = .31.",
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p18.s10"
+        },
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p18.s11"
+        },
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p19.s1"
+        },
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p19.s2"
+        }
+      ],
+      "inputs": [
+        "inputs/gummibear_trials.csv"
+      ],
+      "depends_on": [
+        "A08",
+        "A14",
+        "L01"
+      ],
+      "produces": [
+        "T066",
+        "T067",
+        "T068",
+        "T069"
+      ]
+    },
+    {
+      "id": "A17",
+      "kind": "analysis",
+      "summary": "Decompose the variance of the 4x6 accuracy cell means into perceiver, flavor, and relationship components; report raw shares, the SD of perceiver accuracies and of flavor accuracies, the simulated sampling-noise floor share, and the renormalized (noise-removed) shares.",
+      "quote": "A variance decomposition on the accuracy scores reveals that 50% of the accuracy variance was due to perceiver differences in identification ability (SD for the four perceivers = .26, the four accuracies of Figure 1A), against only 11% due to differences in the identifiability of flavors (SD for the six flavors = .09), 15% on the relationship component (unique identification abilities of a particular perceiver regarding a particular flavor), and the remaining 24% the sampling floor of that relationship estimate. ... With every component's simulated noise floor removed and the remainder renormalized, the three components read .70, .07, and .22.",
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p19.s5"
+        },
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p19.s6"
+        }
+      ],
+      "inputs": [
+        "inputs/gummibear_trials.csv",
+        "inputs/gummibear_apriori_long.csv"
+      ],
+      "depends_on": [
+        "A03",
+        "L01",
+        "L03"
+      ],
+      "produces": [
+        "T070",
+        "T071",
+        "T072",
+        "T073",
+        "T074",
+        "T075",
+        "T076",
+        "T077",
+        "T078"
+      ]
+    },
+    {
+      "id": "A18",
+      "kind": "analysis",
+      "summary": "For each perceiver compare overall predicted accuracy (mean of per-flavor predictions) to achieved accuracy, computing the exact binomial p against the person's own prediction; also report the overall predicted accuracies by age.",
+      "quote": "The perceivers' own a priori predictions showed both over- and underestimation. Ada predicted 60% and achieved 12% (p < .001 against her own prediction) and Mitja predicted 31% and achieved 60% (p = .004), while Ella's (63% predicted, 68% achieved) and Natalie's (31%, 28%) predictions were better calibrated. ... The average of these six values is each participant's overall predicted accuracy: 60.0 (age 8), 62.8 (13), 31.3 (42), and 31.3 (47).",
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p19.s9"
+        },
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p11.s8"
+        }
+      ],
+      "inputs": [
+        "inputs/gummibear_apriori.csv",
+        "inputs/gummibear_apriori_long.csv",
+        "inputs/gummibear_trials.csv"
+      ],
+      "depends_on": [
+        "A03",
+        "A08",
+        "L04",
+        "L03",
+        "L01"
+      ],
+      "produces": [
+        "T079",
+        "T080",
+        "T081",
+        "T082",
+        "T083",
+        "T084",
+        "T085",
+        "T086",
+        "T087",
+        "T088",
+        "T160",
+        "T161",
+        "T162",
+        "T163"
+      ]
+    },
+    {
+      "id": "A19",
+      "kind": "analysis",
+      "summary": "Decompose the variance of the 4x6 a priori (stated) liking cell means into perceiver, flavor, and relationship components and report their shares.",
+      "quote": "A variance decomposition of stated liking, before any tasting, shows that a priori preferences were dominated by flavor consensus (55%), against 3% for the perceiver and 42% for the relationship component, which is confounded with error.",
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p19.s10"
+        },
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p20.s1"
+        }
+      ],
+      "inputs": [
+        "inputs/gummibear_apriori_long.csv",
+        "inputs/gummibear_apriori.csv"
+      ],
+      "depends_on": [
+        "A03",
+        "L03",
+        "L04"
+      ],
+      "produces": [
+        "T089",
+        "T090",
+        "T091"
+      ]
+    },
+    {
+      "id": "A20",
+      "kind": "analysis",
+      "summary": "Identify the consensually best stated-liking flavors (raspberry 5.50, strawberry 5.00) and best tasted-liking flavors (pineapple 4.07, apple 4.04); compute the correlation between mean stated and mean tasted liking across the six flavors with its p-value.",
+      "quote": "The flavors the family consensually rated best beforehand were raspberry (5.50) and strawberry (5.00). ... The flavors the family consensually rated as best tasting were pineapple (4.07) and apple (4.04). Mean stated and mean tasted liking was uncorrelated (r = .02) across the six flavors (p = .98).",
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p20.s3"
+        },
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p20.s5"
+        },
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p20.s6"
+        }
+      ],
+      "inputs": [
+        "inputs/gummibear_apriori_long.csv",
+        "inputs/gummibear_trials.csv"
+      ],
+      "depends_on": [
+        "A03",
+        "L03",
+        "L01"
+      ],
+      "produces": [
+        "T092",
+        "T093",
+        "T094",
+        "T095",
+        "T096",
+        "T097"
+      ]
+    },
+    {
+      "id": "A21",
+      "kind": "analysis",
+      "summary": "Decompose the variance of the 4x6 tasted-liking cell means into perceiver, flavor, and relationship components with a simulated sampling-noise floor, and report the shares.",
+      "quote": "There was little consensus regarding which gummy bear flavors actually taste best (flavor variance: 13%), and somewhat more variance between perceivers in how much they liked gummy bears in general (21%). The largest share was the relationship component (37%), with an additional 29% sampling floor.",
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p20.s8"
+        },
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p20.s9"
+        }
+      ],
+      "inputs": [
+        "inputs/gummibear_trials.csv",
+        "inputs/gummibear_apriori_long.csv"
+      ],
+      "depends_on": [
+        "A03",
+        "L01",
+        "L03"
+      ],
+      "produces": [
+        "T098",
+        "T099",
+        "T100",
+        "T101"
+      ]
+    },
+    {
+      "id": "A22",
+      "kind": "analysis",
+      "summary": "Double-center the tasted-liking cell means into relationship effects and report the strongest person-specific unique likings, specifically Mitja's raspberry (+1.54) and Ella's pineapple (+1.35) above expectation.",
+      "quote": "Mitja's liking of raspberry was 1.54 scale points above what would be expected from his general tendency to like gummy bears and the overall popularity of raspberry. Ella rated pineapple 1.35 points higher than expected on the same basis.",
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p20.s11"
+        },
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p20.s12"
+        }
+      ],
+      "inputs": [
+        "inputs/gummibear_trials.csv",
+        "inputs/gummibear_apriori_long.csv"
+      ],
+      "depends_on": [
+        "A03",
+        "L01",
+        "L03"
+      ],
+      "produces": [
+        "T102",
+        "T103"
+      ]
+    },
+    {
+      "id": "A23",
+      "kind": "analysis",
+      "summary": "Generate Figure 2: relative variance components for identification accuracy, stated liking, and tasted liking, splitting each into perceiver, flavor, and relationship components (with the relationship noise floor shown for accuracy and tasted liking).",
+      "quote": "Figure 2 Relative Variance Components for Identification Accuracy, Stated Liking, and Tasted Liking",
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p21.s1"
+        },
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p21.s2"
+        },
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p21.s3"
+        }
+      ],
+      "inputs": [
+        "inputs/make_figures.py"
+      ],
+      "depends_on": [
+        "A17",
+        "A19",
+        "A21"
+      ],
+      "produces": [
+        "T004"
+      ]
+    },
+    {
+      "id": "A24",
+      "kind": "analysis",
+      "summary": "Correlate liking and accuracy at the perceiver level (n=4), flavor level (n=6), and relationship level (24 cells), reporting the relationship-level correlation and its permutation p.",
+      "quote": "Liking and accuracy were unrelated at every level: Perceivers who liked gummy bears more were not more accurate (perceiver r = .05), gummy bear flavors that were liked more were not judged more accurately (flavor r = −.06), and specific liking for a certain gummy bear flavor did not co-occur with unique accuracy in identifying this flavor (relationship r = .21, p = .43).",
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p22.s1"
+        }
+      ],
+      "inputs": [
+        "inputs/gummibear_trials.csv",
+        "inputs/gummibear_apriori_long.csv"
+      ],
+      "depends_on": [
+        "A03",
+        "L01",
+        "L03"
+      ],
+      "produces": [
+        "T104",
+        "T105",
+        "T106",
+        "T107"
+      ]
+    },
+    {
+      "id": "A25",
+      "kind": "analysis",
+      "summary": "Double-center a priori liking and tasted-liking cell means into relationship effects; correlate the stated and tasted unique liking across the 24 cells (unweighted, weighted by cell n, single-trial cell removed, and rank version) with permutation p-values; report the 15 degrees of freedom and the conventional-test p.",
+      "quote": "Across the 24 perceiver-flavor combinations (cells), stated and tasted unique liking correlated r = .31 (p = .21), r = .33 with cells weighted by their number of trials (p = .13), and r = .30 with the single-trial cell removed (p = .24); the rank version gives r = .31. ... That same construction leaves the 24 values with (4-1)(6-1) = 15 degrees of freedom rather than 24. ... A conventional test on 24 observations would report p = .14 for the same correlation.",
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p22.s3"
+        },
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p22.s6"
+        },
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p22.s7"
+        }
+      ],
+      "inputs": [
+        "inputs/gummibear_apriori_long.csv"
+      ],
+      "depends_on": [
+        "A03",
+        "L03"
+      ],
+      "produces": [
+        "T108",
+        "T109",
+        "T110",
+        "T111",
+        "T112",
+        "T113",
+        "T114",
+        "T117",
+        "T118"
+      ]
+    },
+    {
+      "id": "A26",
+      "kind": "analysis",
+      "summary": "For each perceiver correlate the six stated and tasted relationship effects (exact permutation p over 720 orderings) and the raw profile correlations; report the range of the stated-tasted unique liking correspondence.",
+      "quote": "The correlations between stated and tasted relationship effects were .46 for Ada (exact p = .69), .61 for Ella (p = .25), .25 for Natalie (p = .67), and .13 for Mitja (p = .85), on six cells each. ... The raw profile correlations, which retain the consensus component, spread wider: .93 for Ella (exact p = .0056, one of eight uncorrected tests in this block), .52 for Mitja, −.55 for Ada, and −.43 for Natalie. ... the correspondence between stated and tasted unique liking running from .13 to .61.",
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p23.s11"
+        },
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p23.s12"
+        },
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p24.s8"
+        }
+      ],
+      "inputs": [
+        "inputs/gummibear_apriori_long.csv"
+      ],
+      "depends_on": [
+        "A03",
+        "L03"
+      ],
+      "produces": [
+        "T119",
+        "T120",
+        "T121",
+        "T122",
+        "T123",
+        "T124",
+        "T125",
+        "T126",
+        "T127",
+        "T128",
+        "T129",
+        "T130",
+        "T131",
+        "T132",
+        "T133"
+      ]
+    },
+    {
+      "id": "A27",
+      "kind": "analysis",
+      "summary": "Run the crossed random-effects control (lmer) regressing tasted liking on the a priori relationship effect with random intercepts for perceiver, flavor, and their interaction; report the beta coefficient and p-value for awareness.",
+      "quote": "the mixed-model control gives β = .32 at p = .13.",
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p22.s3"
+        },
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p13.s2"
+        }
+      ],
+      "inputs": [
+        "inputs/control_analyses.R",
+        "inputs/r_controls_summary.csv",
+        "inputs/gummibear_trials.csv"
+      ],
+      "depends_on": [
+        "A25",
+        "L07",
+        "L01"
+      ],
+      "produces": [
+        "T115",
+        "T116"
+      ]
+    },
+    {
+      "id": "A28",
+      "kind": "analysis",
+      "summary": "Generate Figure 3: stated vs tasted unique liking (relationship effects) across all 24 cells with a least-squares fit, and per-perceiver panels (B to E) with individual fits, correlations, and exact permutation p-values.",
+      "quote": "Figure 3 Awareness of One's Own Unique Flavor Preferences",
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p23.s1"
+        },
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p23.s2"
+        },
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p23.s4"
+        },
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p23.s6"
+        }
+      ],
+      "inputs": [
+        "inputs/make_figures.py"
+      ],
+      "depends_on": [
+        "A25",
+        "A26"
+      ],
+      "produces": [
+        "T005"
+      ]
+    },
+    {
+      "id": "A29",
+      "kind": "analysis",
+      "summary": "Report the noise-removed, renormalized relationship variance share for experienced liking (63%).",
+      "quote": "When removing the noise floors and renormalizing, relationship variance for experienced liking was 63%.",
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p26.s9"
+        }
+      ],
+      "inputs": [
+        "inputs/gummibear_apriori_long.csv"
+      ],
+      "depends_on": [
+        "A20",
+        "L03"
+      ],
+      "produces": [
+        "T134"
+      ]
+    },
+    {
+      "id": "A30",
+      "kind": "analysis",
+      "summary": "Report the spread of identification accuracy between perceivers (.12 to .68) and apple's stated (3.00) and tasted (4.04) liking.",
+      "quote": "Half of the variance in identification accuracy between the 24 perceiver-by-flavor cells sat on the perceiver, with a spread from .12 to .68. ... Apple showed the reverse pattern. It received a modest stated rating of 3.00, but reached 4.04 when actually tasted, making it one of the two best-tasting flavors.",
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p25.s4"
+        },
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p27.s13"
+        }
+      ],
+      "inputs": [
+        "inputs/gummibear_apriori_long.csv",
+        "inputs/gummibear_trials.csv"
+      ],
+      "depends_on": [
+        "A08",
+        "A19",
+        "L03",
+        "L01"
+      ],
+      "produces": [
+        "T135",
+        "T136",
+        "T137",
+        "T138"
+      ]
+    },
+    {
+      "id": "A31",
+      "kind": "analysis",
+      "summary": "Evaluate the accuracy conclusions: pooled accuracy (42%) was well above chance (16.7%); Ella and Mitja identified flavors far above chance; Natalie and Ada did not identify flavors above chance (Ada treated as guessing).",
+      "quote": "Average accuracy in gummy bear identification (42%) was well above chance level (16.7%). ... Ella named 17 of 25 correctly, .68 [.46, .85], p < .001, and Mitja 15 of 25, .60 [.39, .79], p < .001, against Natalie's 7 of 25, .28 [.12, .49], p = .17, and Ada's 3 of 25, .12 [.03, .31], p = .79. Ada's .12 lies below the chance line descriptively, but we read her performance as guessing.",
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p2.s6"
+        },
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p16.s1"
+        },
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p16.s3"
+        },
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p16.s4"
+        },
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p16.s5"
+        }
+      ],
+      "inputs": [],
+      "depends_on": [
+        "A08",
+        "A09",
+        "A10"
+      ],
+      "produces": [
+        "T164",
+        "T165",
+        "T166",
+        "T167",
+        "T168"
+      ]
+    },
+    {
+      "id": "A32",
+      "kind": "analysis",
+      "summary": "Conclude that the accuracy pattern with age (0.12, 0.68, 0.28, 0.60) is non-monotonic.",
+      "quote": "The pattern is non-monotonic.",
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p16.s8"
+        },
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p16.s9"
+        }
+      ],
+      "inputs": [],
+      "depends_on": [
+        "A11"
+      ],
+      "produces": [
+        "T174"
+      ]
+    },
+    {
+      "id": "A33",
+      "kind": "analysis",
+      "summary": "Conclude that accuracy did not improve across trials, based on the flat stratified correlation (r_strat = .04, p = .83).",
+      "quote": "Accuracy did not improve across trials. The association between outcome and the number of prior feedback occasions on the same flavor, stratified by perceiver x flavor cell, was flat (r_strat = .04, p = .83), as were the global-time variant (r_strat = .03, p = .81) and every per-perceiver test.",
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p13.s7"
+        },
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p13.s8"
+        }
+      ],
+      "inputs": [],
+      "depends_on": [
+        "A04"
+      ],
+      "produces": [
+        "T175"
+      ]
+    },
+    {
+      "id": "A34",
+      "kind": "analysis",
+      "summary": "Conclude that stated liking was largely consensual between family members (flavor consensus dominated) and that tasted liking was driven by the unique perceiver x flavor pairing (relationship component largest).",
+      "quote": "While stated liking was largely consensual between the family members, tasted liking was driven by the unique perceiver x flavor pairing. ... a priori preferences were dominated by flavor consensus (55%). ... The largest share was the relationship component (37%).",
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p19.s10"
+        },
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p20.s1"
+        },
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p20.s7"
+        },
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p20.s9"
+        }
+      ],
+      "inputs": [],
+      "depends_on": [
+        "A19",
+        "A21"
+      ],
+      "produces": [
+        "T169",
+        "T170",
+        "T177",
+        "T178"
+      ]
+    },
+    {
+      "id": "A35",
+      "kind": "analysis",
+      "summary": "Conclude that stated preferences did not track tasted ones on average and that mean stated and mean tasted liking were uncorrelated.",
+      "quote": "Also, stated preferences did not track tasted ones on average. ... Mean stated and mean tasted liking was uncorrelated (r = .02) across the six flavors (p = .98).",
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p20.s4"
+        },
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p20.s6"
+        }
+      ],
+      "inputs": [],
+      "depends_on": [
+        "A20"
+      ],
+      "produces": [
+        "T171",
+        "T172"
+      ]
+    },
+    {
+      "id": "A36",
+      "kind": "analysis",
+      "summary": "Conclude that there is no evidence for general awareness of specific gummy bear preferences, given the aggregate stated-tasted unique liking correlation (r = .31, p = .21).",
+      "quote": "Thus, based on the preliminary data at hand, there is no evidence for general awareness of specific gummy bear preferences.",
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p22.s8"
+        }
+      ],
+      "inputs": [],
+      "depends_on": [
+        "A25"
+      ],
+      "produces": [
+        "T173"
+      ]
+    },
+    {
+      "id": "A37",
+      "kind": "analysis",
+      "summary": "Conclude that liking and accuracy were unrelated at every level (perceiver, flavor, and relationship).",
+      "quote": "Liking and accuracy were unrelated at every level: Perceivers who liked gummy bears more were not more accurate (perceiver r = .05), gummy bear flavors that were liked more were not judged more accurately (flavor r = −.06), and specific liking for a certain gummy bear flavor did not co-occur with unique accuracy in identifying this flavor (relationship r = .21, p = .43).",
+      "refs": [
+        {
+          "extraction": "ex-gummy",
+          "id": "sec1.p22.s1"
+        }
+      ],
+      "inputs": [],
+      "depends_on": [
+        "A24"
+      ],
+      "produces": [
+        "T176"
+      ]
+    },
+    {
+      "id": "OUT",
+      "kind": "results",
+      "summary": "Collect all reproduced results and write outputs/results.json (format: schemas/results-output.schema.json); save figures to outputs/figures/<target id>.png",
+      "quote": "",
+      "refs": [],
+      "inputs": [],
+      "depends_on": [
+        "A02",
+        "A05",
+        "A06",
+        "A07",
+        "A13",
+        "A15",
+        "A16",
+        "A18",
+        "A22",
+        "A23",
+        "A27",
+        "A28",
+        "A29",
+        "A30",
+        "A31",
+        "A32",
+        "A33",
+        "A34",
+        "A35",
+        "A36",
+        "A37"
+      ],
+      "produces": [
+        "T001",
+        "T002",
+        "T003",
+        "T004",
+        "T005",
+        "T006",
+        "T007",
+        "T008",
+        "T009",
+        "T010",
+        "T011",
+        "T012",
+        "T013",
+        "T014",
+        "T015",
+        "T016",
+        "T017",
+        "T018",
+        "T019",
+        "T020",
+        "T021",
+        "T022",
+        "T023",
+        "T024",
+        "T025",
+        "T026",
+        "T027",
+        "T028",
+        "T029",
+        "T030",
+        "T031",
+        "T032",
+        "T033",
+        "T034",
+        "T035",
+        "T036",
+        "T037",
+        "T038",
+        "T039",
+        "T040",
+        "T041",
+        "T042",
+        "T043",
+        "T044",
+        "T045",
+        "T046",
+        "T047",
+        "T048",
+        "T049",
+        "T050",
+        "T051",
+        "T052",
+        "T053",
+        "T054",
+        "T055",
+        "T056",
+        "T057",
+        "T058",
+        "T059",
+        "T060",
+        "T061",
+        "T062",
+        "T063",
+        "T064",
+        "T065",
+        "T066",
+        "T067",
+        "T068",
+        "T069",
+        "T070",
+        "T071",
+        "T072",
+        "T073",
+        "T074",
+        "T075",
+        "T076",
+        "T077",
+        "T078",
+        "T079",
+        "T080",
+        "T081",
+        "T082",
+        "T083",
+        "T084",
+        "T085",
+        "T086",
+        "T087",
+        "T088",
+        "T089",
+        "T090",
+        "T091",
+        "T092",
+        "T093",
+        "T094",
+        "T095",
+        "T096",
+        "T097",
+        "T098",
+        "T099",
+        "T100",
+        "T101",
+        "T102",
+        "T103",
+        "T104",
+        "T105",
+        "T106",
+        "T107",
+        "T108",
+        "T109",
+        "T110",
+        "T111",
+        "T112",
+        "T113",
+        "T114",
+        "T115",
+        "T116",
+        "T117",
+        "T118",
+        "T119",
+        "T120",
+        "T121",
+        "T122",
+        "T123",
+        "T124",
+        "T125",
+        "T126",
+        "T127",
+        "T128",
+        "T129",
+        "T130",
+        "T131",
+        "T132",
+        "T133",
+        "T134",
+        "T135",
+        "T136",
+        "T137",
+        "T138",
+        "T139",
+        "T140",
+        "T141",
+        "T142",
+        "T143",
+        "T144",
+        "T145",
+        "T146",
+        "T147",
+        "T148",
+        "T149",
+        "T150",
+        "T151",
+        "T152",
+        "T153",
+        "T154",
+        "T155",
+        "T156",
+        "T157",
+        "T158",
+        "T159",
+        "T160",
+        "T161",
+        "T162",
+        "T163",
+        "T164",
+        "T165",
+        "T166",
+        "T167",
+        "T168",
+        "T169",
+        "T170",
+        "T171",
+        "T172",
+        "T173",
+        "T174",
+        "T175",
+        "T176",
+        "T177",
+        "T178"
+      ]
+    }
+  ]
+}
