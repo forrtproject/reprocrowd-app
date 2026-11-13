@@ -181,7 +181,8 @@ export class ClaimsReader {
       cls: focused ? "on" : "",
       links: claimMethods(c),
       html: `<div class="al-card-head"><b>${esc(c.id)}</b><span class="badge">${esc(modeText(c))}</span>${c.checked ? `<span class="cl-tick">✓</span>` : ""}<span class="spacer"></span>${pill(st?.state, st?.stale)}
-        <button data-act="review" title="Review this claim">Review</button></div><div class="al-desc">${esc(trunc(c.text, 220))}</div>`,
+        <button data-act="review" title="Review this claim">Review</button></div><div class="al-desc">${esc(trunc(c.text, 220))}</div>
+        ${c.sub_claims.length ? `<ul class="cl-subs">${c.sub_claims.map((s) => `<li><b>${esc(s.id)}</b> ${esc(trunc(s.text, 90))}</li>`).join("")}</ul>` : ""}`,
     };
   }
 

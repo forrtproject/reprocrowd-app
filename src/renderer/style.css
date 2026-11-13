@@ -504,10 +504,14 @@ body.view-library .lib-header { padding-right: 96px; }
 .al-unlinked { margin-bottom: 18px; display: flex; flex-direction: column; gap: 6px; }
 .al-unlinked h4 { margin: 0; font-size: 12.5px; color: var(--muted); font-weight: 600; }
 .al-text .sent, .al-text figure[data-hid] { cursor: pointer; border-radius: 3px; }
-.al-text span.sent.ref { text-decoration: underline; text-decoration-color: var(--accent-line); text-decoration-thickness: 2px; text-underline-offset: 3px; }
-.al-text span.sent.ref-off { text-decoration: underline dotted; text-decoration-color: var(--muted); text-underline-offset: 3px; }
+/* A referenced passage is highlighted, not underlined: the same faint red, as a wash behind the words. */
+.al-text span.sent.ref { background: var(--accent-line); border-radius: 3px; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
+.al-text span.sent.ref-off { background: var(--accent-soft); border-radius: 3px; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
 .al-text p.ref, .al-text figure.ref, .al-text h2.ref, .al-text h3.ref, .al-text h4.ref, .al-text h5.ref { box-shadow: -8px 0 0 -5px var(--accent-line); }
-.al-text .hot { background: var(--accent-soft); }
+/* Hovering reads as stronger than the resting highlight above. The text turns white, so the fill has to be dark
+   enough to carry it: --accent-dark is the deepest of the accents in both themes. The sent.ref selectors above
+   carry a class more, so .hot has to match their specificity to win. */
+.al-text .hot, .al-text span.sent.hot { background: var(--accent-dark); color: var(--on-fill); border-radius: 3px; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
 .al-text .marked { background: #fde68a; color: #2b2430; }
 .al-text .flash { animation: al-flash 1.2s ease-out; }
 @keyframes al-flash { 0% { background: #fcd34d; } 100% { background: transparent; } }
