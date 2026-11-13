@@ -90,6 +90,7 @@ CATALOG: dict[str, tuple[int, str]] = {
     "database_forbidden": (403, "The package database refused this account (e.g. suspended)"),
     # Zenodo
     "zenodo_token_missing": (400, "A Zenodo access token is needed"),
+    "local_paper_text": (409, "The paper's text comes from a local file; only reproductions of published papers, started from their DOI, can be deposited"),
     "zenodo_token_invalid": (403, "Zenodo didn't accept the access token (scopes deposit:write and deposit:actions, on this server)"),
     "zenodo_creators_missing": (422, "The deposit needs at least one creator"),
     "zenodo_rejected": (422, "Zenodo refused the deposit's metadata"),

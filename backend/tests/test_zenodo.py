@@ -35,6 +35,19 @@ def mock_zenodo(server=Z, dep_id=101):
     return routes
 
 
+def ready_published(client, pkg):
+    """A package ready to deposit: as ``ready``, with its full text retrieved for the DOI (as the app fetches the JATS
+    XML from Europe PMC) rather than added from a local file, which Zenodo deposits refuse."""
+    from reprocrowd.package import Registry
+    from reprocrowd.schemas.manifest import UrlOrigin
+
+    ready(client, pkg)
+    with Registry().get(pkg).edit() as m:
+        for r in m.by_kind("fulltext"):
+            r.reprocrowd.origin = UrlOrigin(url=f"https://www.ebi.ac.uk/europepmc/{r.name}", candidate="c1", label="Europe PMC")
+    assert client.put(f"/v1/packages/{pkg}/archive").status_code == 200  # replaces the one ready() made
+
+
 def uploaded_zip(route) -> zipfile.ZipFile:
     return zipfile.ZipFile(io.BytesIO(route.calls.last.request.content))
 
@@ -44,7 +57,7 @@ def test_deposit_draft_then_publish(client, pkg):
     mock_openalex()
     P = f"/v1/packages/{pkg}"
     problem(client.post(P + "/deposits", json={"zenodo_token": "t", "creators": ME}), 409, "run_not_succeeded")
-    ready(client, pkg)
+    ready_published(client, pkg)
     z = mock_zenodo()
 
     problem(client.post(P + "/deposits", json={"creators": ME}), 400, "zenodo_token_missing")
@@ -96,7 +109,7 @@ def test_deposit_draft_then_publish(client, pkg):
 def test_deposit_options(client, pkg):
     mock_openalex()
     P = f"/v1/packages/{pkg}"
-    ready(client, pkg)
+    ready_published(client, pkg)
     z = mock_zenodo(SB, 7)
 
     # everything included, sandbox, published at once, with a community
@@ -116,7 +129,7 @@ def test_deposit_options(client, pkg):
 def test_deposit_failures(client, pkg):
     mock_openalex()
     P = f"/v1/packages/{pkg}"
-    ready(client, pkg)
+    ready_published(client, pkg)
     z = mock_zenodo()
     body = {"zenodo_token": "t", "creators": ME}
 
@@ -146,7 +159,7 @@ def test_open_license_includes_paper(client, pkg):
     mock_openalex()
     respx.get(url__regex=r"https://api\.openalex\.org/works/doi:10\.1371/journal\.pbio\.1002106.*").mock(
         return_value=httpx.Response(200, json=WORK | {"best_oa_location": {"pdf_url": "https://example.org/paper.pdf", "license": "cc-by"}}))
-    ready(client, pkg)
+    ready_published(client, pkg)
     pv = client.post(f"/v1/packages/{pkg}/deposits:preview", json={}).json()
     assert pv["contents"]["paper_license"] == "cc-by" and pv["exclude"] == []
     assert pv["metadata"]["creators"] == [{"name": "(you)"}]
@@ -173,3 +186,41 @@ def test_zenodo_service(client):
     assert client.post("/v1/zenodo:verify-token", json={"zenodo_token": "t", "sandbox": True}).json() == {"ok": True, "url": SB, "sandbox": True}
     respx.get(f"{Z}/api/deposit/depositions").mock(return_value=httpx.Response(403, json={"message": "no"}))
     problem(client.post("/v1/zenodo:verify-token", json={"zenodo_token": "t"}), 403, "zenodo_token_invalid")
+
+
+@respx.mock
+def test_local_paper_is_not_deposited(client, pkg, tmp_path):
+    """A package whose paper text came from the user's disk (New from file, an upload, or a conversion of such a file)
+    may be unpublished research: it can't be deposited, whatever DOI it has."""
+    from reprocrowd.package import Registry
+    from reprocrowd.schemas.manifest import ConvertedOrigin, UrlOrigin
+
+    from test_api import FIXTURES
+
+    mock_openalex()
+    P = f"/v1/packages/{pkg}"
+    ready(client, pkg)  # ft-paper-tei added from a local file, though the package has a DOI
+    z = mock_zenodo()
+    body = problem(client.post(P + "/deposits:preview", json={}), 409, "local_paper_text")
+    assert body["fulltexts"] == ["ft-paper-tei"]
+    problem(client.post(P + "/deposits", json={"zenodo_token": "t", "creators": ME}), 409, "local_paper_text")
+    assert not z["create"].called
+
+    # a conversion of a local PDF is local too
+    with Registry().get(pkg).edit() as m:
+        m.get("ft-paper-tei").reprocrowd.origin = ConvertedOrigin(source="ft-paper-pdf", converter="grobid")
+    assert problem(client.post(P + "/deposits:preview", json={}), 409, "local_paper_text")["fulltexts"] == ["ft-paper-tei"]  # source gone
+    with Registry().get(pkg).edit() as m:
+        m.get("ft-paper-tei").reprocrowd.origin = UrlOrigin(url="https://example.org/paper.tei.xml", candidate="c1", label="OpenAlex")
+    assert client.post(P + "/fulltexts", json={"path": str(FIXTURES / "paper.pdf")}).status_code == 201
+    with Registry().get(pkg).edit() as m:
+        m.get("ft-paper-tei").reprocrowd.origin = ConvertedOrigin(source="ft-paper-pdf", converter="grobid")
+    assert sorted(problem(client.post(P + "/deposits:preview", json={}), 409, "local_paper_text")["fulltexts"]) == ["ft-paper-pdf", "ft-paper-tei"]
+
+    # a package without a DOI (New from file) is refused for its local text, not just for the missing DOI
+    r = client.post("/v1/packages", json={"path": str(tmp_path / "local")})
+    local = r.json()["id"]
+    md = tmp_path / "paper.md"
+    md.write_text("# A paper\n\n## Methods\n\nWe ran a test.\n", encoding="utf-8")
+    assert client.post(f"/v1/packages/{local}/fulltexts", json={"path": str(md)}).status_code == 201
+    problem(client.post(f"/v1/packages/{local}/deposits:preview", json={}), 409, "local_paper_text")

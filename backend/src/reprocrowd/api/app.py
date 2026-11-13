@@ -935,7 +935,7 @@ def get_submission(pkg: Pkg, sub: str):
 
 # ---------- Zenodo ----------
 
-DEPOSIT_PRECONDITIONS = ("no_doi", "run_not_succeeded", "archive_missing", "archive_stale", "openalex_record_missing", "job_running")
+DEPOSIT_PRECONDITIONS = ("local_paper_text", "no_doi", "run_not_succeeded", "archive_missing", "archive_stale", "openalex_record_missing", "job_running")
 
 
 def _tok(body: M.ZenodoAuth) -> str | None:
@@ -973,7 +973,8 @@ def preview_deposit(pkg: Pkg, body: M.DepositOptions = Body(default_factory=M.De
 @api.post("/packages/{pkg}/deposits", tags=["zenodo"], status_code=201, response_model=ZenodoDeposit, summary="Deposit the package on Zenodo",
           description="Creates a draft on Zenodo with the metadata (from OpenAlex, looked up now) and the package ZIP, without the excluded "
                       "groups of files, and reserves a DOI. With `publish: true` it is published at once; otherwise publish it on Zenodo "
-                      "or with `…/deposits/{id}:publish`. Same preconditions as a database submission.",
+                      "or with `…/deposits/{id}:publish`. Same preconditions as a database submission, and the paper's "
+                      "text must have been retrieved for its DOI, not added from a local file or uploaded (`local_paper_text`).",
           responses=errors(*DEPOSIT_PRECONDITIONS, "duplicate_submission", "zenodo_token_missing", "zenodo_token_invalid",
                            "zenodo_creators_missing", "zenodo_rejected", "zenodo_unreachable", "zenodo_error"))
 def create_deposit(pkg: Pkg, response: Response, body: M.DepositCreate = Body(default_factory=M.DepositCreate)):

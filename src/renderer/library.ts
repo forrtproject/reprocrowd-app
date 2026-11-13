@@ -9,10 +9,10 @@ import { $, confirmDialog, esc, modal, showError } from "./util";
 import sticker from "../../resources/hex-sticker.png";
 
 const STEPS: [string, string][] = [
-  ["Choose an article", "A paper with open data and code. Start from its DOI (ReproCrowd fetches the metadata and its JATS XML) or from a local PDF, DOCX or Markdown file."],
+  ["Choose an article", "A paper with open data and code. Start from its DOI (ReproCrowd fetches the metadata and its JATS XML) or from a local PDF, DOCX or Markdown file (kept local, not deposited)."],
   ["Run the reproducibility check", "Extract the results to reproduce, plan the analysis, let a coding agent write the script, run it and compare."],
   ["Check and sign it", "Look at every number and its provenance in the report. The deposit carries your name and ORCID."],
-  ["Deposit on Zenodo", "The package becomes a citable record with a DOI that links to the paper, for anyone to find, re-run or compare."],
+  ["Deposit on Zenodo", "For a published paper, the package becomes a citable record with a DOI that links to the paper, for anyone to find, re-run or compare."],
 ];
 
 export const openPackage = (id: string) => {
@@ -359,6 +359,7 @@ function newFileDialog() {
   const dlg = modal("dlg-new", `<form method="dialog">
     <h3>New from file</h3>
     <p class="hint">Point ReproCrowd at a paper you already have. The text is extracted (PDF, DOCX and Markdown) and you work from it; no DOI or JATS XML is needed.</p>
+    <p class="warn-soft small">A reproduction from a local file stays on your computer: it can't be deposited on Zenodo, since the file may be unpublished research (a draft or a manuscript under review). For a published paper, start from its DOI.</p>
     <label>Paper file <span class="row"><input name="file" placeholder="paper.pdf, paper.docx or paper.md" spellcheck="false" /><button type="button" id="nf-file">Choose…</button></span></label>
     <label>Folder <span class="row"><input name="folder" spellcheck="false" /><button type="button" id="nf-folder">Choose…</button></span></label>
     <p class="hint">The package is a folder of plain files (a Frictionless data package); the folder must be new or empty.</p>

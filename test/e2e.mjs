@@ -315,6 +315,25 @@ json.dump({"results": [{"id": "T001", "value": 2.3149}, {"id": "T002", "value": 
   await win.waitForSelector(".pkg-card .badge.st-published", { timeout: 20_000 });
   await shot("08-library");
 
+  step("new from file: a local Markdown paper is parsed, and can't be deposited on Zenodo");
+  const paperMd = path.join(userData, "local-paper.md");
+  fs.writeFileSync(paperMd, "# A Local Manuscript\n\n## Methods\n\nWe ran a t-test on 40 participants. Data are at https://osf.io/abcde/.\n\n## Results\n\nThe effect was 2.31.\n");
+  await win.click("#file-btn");
+  assert.match(await win.locator(".dlg-new").innerText(), /can't be deposited on Zenodo/);
+  await win.fill(".dlg-new [name=file]", paperMd);
+  await win.fill(".dlg-new [name=folder]", path.join(packagesRoot, "local-paper"));
+  await Promise.all([win.waitForEvent("load"), win.click("#nf-create:not([disabled])")]);
+  await win.waitForSelector("#route button", { timeout: 120_000 });
+  const local = (await call("connect")).jats;
+  assert.deepEqual((await P("/fulltexts")).data.map((f) => [f.reprocrowd.flavor, f.reprocrowd.origin.type]), [["md", "local"]]);
+  assert.deepEqual((await P(`/extractions/${local}`)).data.sections.map((s) => s.title), ["Methods", "Results"]);
+  await win.locator("#route button").nth(6).click();
+  await win.waitForSelector("#rp-report");
+  assert.match(await win.locator(".checklist").innerText(), /comes from a file on your computer/);
+  assert.equal(await win.locator("#rp-deposit:not([disabled])").count(), 0);
+  await assert.rejects(call("depositPreview", { note: "" }), /local_paper_text/);
+  await shot("09-local-file-not-deposited");
+
   assert.deepEqual(errors, [], "no errors in the page");
   console.log("✓ end-to-end check passed");
 } catch (e) {

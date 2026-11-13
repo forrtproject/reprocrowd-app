@@ -5,7 +5,10 @@ can look at it on Zenodo, and publish it there or through ``…/deposits/{id}:pu
 DOI, and a published record can't be deleted any more; that is why it is a separate, explicit step.
 
 Preconditions are those of the package database (``database.Prepared``): a DOI, a last run that succeeded, an
-up-to-date archive, and the work's OpenAlex record, from which the bibliographic metadata comes.
+up-to-date archive, and the work's OpenAlex record, from which the bibliographic metadata comes. In addition, the
+paper's text must have been retrieved for the DOI (e.g. its JATS XML from Europe PMC), not taken from the user's disk:
+a local file may be unpublished research (a draft, a manuscript under review), and nothing ties it to the DOI. Such
+reproductions stay local (``local_fulltexts``).
 
 What is uploaded: the package archive, or a copy of it without some groups of files, since a Zenodo record is
 public and permanent:
@@ -137,6 +140,37 @@ def find(doi: str, sandbox: bool | None = None) -> list[dict[str, Any]]:
 # ---------- what goes into the upload ----------
 
 
+#: Origins of full texts that come from the user's disk rather than from the published paper.
+LOCAL_ORIGINS = ("local", "upload")
+
+
+def local_fulltexts(pkg: Package) -> list[str]:
+    """The full texts that came from the user's disk (added from a file or uploaded, or converted from such a file).
+    A converted full text whose source is gone counts as local too: its origin can't be told."""
+    fts = {r.name: r for r in pkg.load().by_kind("fulltext")}
+
+    def local(r: Resource, seen: frozenset[str] = frozenset()) -> bool:
+        o = r.reprocrowd.origin
+        if o.type in LOCAL_ORIGINS:
+            return True
+        if o.type == "conversion":
+            src = fts.get(o.source)
+            return src is None or src.name in seen or local(src, seen | {r.name})
+        return False
+
+    return [name for name, r in fts.items() if local(r)]
+
+
+def _check_published_paper(pkg: Package) -> None:
+    """Refuse packages whose paper text came from the user's disk: only reproductions of published papers go to Zenodo."""
+    names = local_fulltexts(pkg)
+    if names:
+        raise conflict("local_paper_text", "the paper's text in this package comes from a file on your computer "
+                       f"({', '.join(names)}), not from the published paper; only reproductions of published papers, started "
+                       "from their DOI, can be deposited on Zenodo, because a record there is public and permanent",
+                       {"fulltexts": names})
+
+
 def _group(r: Resource) -> str | None:
     kind = r.reprocrowd.kind
     if kind in ("fulltext", "extraction") or kind == "figure":
@@ -254,6 +288,7 @@ def _links(server_url: str, dep: dict[str, Any]) -> tuple[str, str | None]:
 
 def preview(pkg: Package, exclude: list[str] | None, note: str, creators: list[ZenodoCreator] | None, community: str | None) -> dict[str, Any]:
     """What a deposit would send, without sending anything."""
+    _check_published_paper(pkg)
     p = Prepared(pkg)
     c = contents(pkg, p.work)
     ex = c["default_exclude"] if exclude is None else [g for g in exclude if c["groups"][g]["resources"]]
@@ -268,6 +303,7 @@ def preview(pkg: Package, exclude: list[str] | None, note: str, creators: list[Z
 def create(pkg: Package, *, token: str | None, sandbox: bool | None, exclude: list[str] | None, note: str,
            creators: list[ZenodoCreator] | None, community: str | None, publish: bool) -> ZenodoDeposit:
     url, sb = server(sandbox)
+    _check_published_paper(pkg)
     tok = _token(token)
     creators = _creators(creators)
     p = Prepared(pkg)
