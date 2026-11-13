@@ -1,4 +1,4 @@
-// Step 6: code generation. Either in the user's own editor (the package folder plus AGENT_PROMPT.md), or by the
+// Step 5: code generation. Either in the user's own editor (the package folder plus AGENT_PROMPT.md), or by the
 // backend's headless coding agent as a job: its messages and tool calls stream in while it works, the package's
 // files are listed (most recently changed first) with the TODO(LLM) markers left.
 import { host, pkg } from "../api";
@@ -47,7 +47,7 @@ export class CodegenStep implements Step {
     <div class="cols cols-codegen">
       <section class="card col-flex">
         <h3>Implement the master script</h3>
-        ${ready ? "" : `<p class="warn">Create the master script in step 5 first.</p>`}
+        ${ready ? "" : `<p class="warn">Create the master script in step 4 first.</p>`}
         <div class="gen-row">
           <div><b>Your own editor</b><div class="hint">Opens the package folder in your code editor. AGENT_PROMPT.md tells a coding agent there what to implement; copy it into the agent's chat.</div></div>
           <button id="rp-editor" ${ready ? "" : "disabled"}>Open in editor</button>

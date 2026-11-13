@@ -512,7 +512,7 @@ body.view-library .lib-header { padding-right: 96px; }
 .refusal { border: 1px solid var(--warn); background: var(--warn-soft); color: var(--warn-ink); border-radius: 10px; padding: 8px 12px; font-size: 13.5px; margin: 4px 0; }
 @media (prefers-color-scheme: dark) { .al-text .marked { background: #8a6d1a; color: #fff; } }
 
-/* ---------- claims review (step 2) ---------- */
+/* ---------- claims review (step 3) ---------- */
 .cl-split { display: grid; grid-template-columns: minmax(240px, 32%) 1fr; gap: 14px; align-items: start; margin-top: 6px; }
 .cl-tree { display: flex; flex-direction: column; gap: 6px; max-height: 70vh; overflow-y: auto; }
 .cl-item { border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: 8px; padding: 6px 10px; background: var(--panel); cursor: pointer; font-size: 13px; }

@@ -195,7 +195,7 @@ export class InputsStep implements Step {
         try {
           await pkg.del(`/inputs/${encodeURIComponent(name)}`);
         } catch (err) {
-          if (err instanceof ApiError && err.code === "in_use") throw new ApiError(`${name} is used by analysis steps (step 4); remove it there first.`, err.problem);
+          if (err instanceof ApiError && err.code === "in_use") throw new ApiError(`${name} is used by methods (step 3, Claims); remove it there first.`, err.problem);
           throw err;
         }
       });

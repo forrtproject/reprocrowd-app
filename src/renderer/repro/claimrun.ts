@@ -1,5 +1,5 @@
-// Running one claim end to end, from the Claims step: write its script files (step 5), let the coding agent implement
-// them (step 6), run the pipeline (step 7) and make the report (step 8). Each stage is a backend call or job, so a
+// Running one claim end to end, from the Claims step: write its script files (step 4), let the coding agent implement
+// them (step 5), run the pipeline (step 6) and make the report (step 7). Each stage is a backend call or job, so a
 // window closed half-way leaves the package consistent: the claim then shows its real state when the package is
 // opened again.
 import { ApiError, pkg } from "../api";
@@ -43,7 +43,7 @@ async function writeScript(template: string): Promise<boolean> {
 }
 
 /**
- * Steps 5–8 for one claim, in sequence; stops at the first error and shows it (or when the user cancels keeping an
+ * Steps 4–7 for one claim, in sequence; stops at the first error and shows it (or when the user cancels keeping an
  * edited master script).
  */
 export async function runClaim(w: Wizard, claimId: string, template: string, onStage: (s: ClaimStage) => void): Promise<void> {

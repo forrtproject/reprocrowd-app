@@ -3,7 +3,7 @@ import type { CompareSettings } from "./types";
 
 export interface Scope { sections: string[]; items: string[] }
 
-/** Height of the figures in the comparison table of step 7 (px). */
+/** Height of the figures in the comparison table of step 6 (px). */
 export const FIGURE_HEIGHT = { min: 160, max: 900, default: 320 };
 
 export interface UiState {

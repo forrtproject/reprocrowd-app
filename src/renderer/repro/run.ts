@@ -1,4 +1,4 @@
-// Step 7: run the master script (a job of the backend, with its log streaming in), then compare the reproduced
+// Step 6: run the master script (a job of the backend, with its log streaming in), then compare the reproduced
 // results with the targets: numbers by the reported rounding and a tolerance, tables cell by cell, figures side by
 // side with crops of the originals.
 import { ApiError, pkg } from "../api";
@@ -34,7 +34,7 @@ export class RunStep implements Step {
       this.cmpError = undefined;
     } catch (e) {
       this.cmp = undefined;
-      this.cmpError = e instanceof ApiError && e.code === "results_missing" ? "No outputs/results.json yet: run the master script." : e instanceof ApiError && e.code === "script_missing" ? "No master script yet (step 5)." : (e as Error).message;
+      this.cmpError = e instanceof ApiError && e.code === "results_missing" ? "No outputs/results.json yet: run the master script." : e instanceof ApiError && e.code === "script_missing" ? "No master script yet (step 4)." : (e as Error).message;
     }
   }
 

@@ -37,7 +37,7 @@ const modeText = (c: Claim) => (!c.testable ? "Not testable" : c.sub_claims.leng
 
 export class ClaimsStep implements Step {
   title = "Claims";
-  /** Run the claim (steps 5–8 for it); the button is enabled only for claims that are ready. */
+  /** Run the claim (steps 4–7 for it); the button is enabled only for claims that are ready. */
   onRun?: (claimId: string) => Promise<void> = (id) => this.runOne(id);
 
   private file?: ClaimsFile;
@@ -50,9 +50,8 @@ export class ClaimsStep implements Step {
   private selected = "";
   private view: View = "review";
   private marked = new Set<string>();
-  /** The old targets table, for packages made before claims. */
-  private legacy?: CurationStep;
-  private showLegacy = false;
+  /** The old targets or analysis steps table, for packages made before claims; shown in place of the claims. */
+  private legacy?: { kind: "targets" | "actions"; step: CurationStep };
 
   constructor(private w: Wizard) {}
 
@@ -72,7 +71,7 @@ export class ClaimsStep implements Step {
     this.trace = trace;
     this.doc = doc;
     if (!this.profiles.length) this.profiles = await host.service<LlmProfile[]>("/v1/llm-profiles").catch(() => []);
-    if (this.showLegacy) await (this.legacy ??= new CurationStep(this.w, "targets")).load();
+    if (this.legacy) await this.legacy.step.load();
   }
 
   // ---------- data ----------
@@ -94,7 +93,7 @@ export class ClaimsStep implements Step {
     return this.w.app.state;
   }
 
-  /** The step-7 comparison settings, so verdicts here agree with the comparison table and the report. */
+  /** The step-6 comparison settings, so verdicts here agree with the comparison table and the report. */
   private compare() {
     const c = this.state.compare;
     return { rounding: String(c.rounding), threshold: c.threshold };
@@ -112,15 +111,15 @@ export class ClaimsStep implements Step {
   // ---------- drawing ----------
 
   draw(body: HTMLElement) {
-    if (this.showLegacy && this.legacy) {
-      this.legacy.draw(body);
+    if (this.legacy) {
+      this.legacy.step.draw(body);
       const back = document.createElement("p");
       back.className = "pad";
       back.innerHTML = `<a href="#" id="cl-back">← Back to the claims</a>`;
       body.prepend(back);
       back.querySelector("a")!.addEventListener("click", (e) => {
         e.preventDefault();
-        this.showLegacy = false;
+        this.legacy = undefined;
         this.w.render();
       });
       return;
@@ -138,6 +137,7 @@ export class ClaimsStep implements Step {
         <div class="seg" id="cl-view">${seg}</div>
         <span class="spacer"></span>
         <a href="#" id="cl-targets" title="The flat table of reproduction targets, for packages made before claims">Targets table</a>
+        <a href="#" id="cl-actions-table" title="The analysis steps, for packages made before claims">Analysis steps table</a>
         <button id="cl-extract" class="primary" ${generating ? "disabled" : ""}>${generating ? "Extracting…" : rows.length ? "Extract again…" : "Extract claims…"}</button></div>
       <p class="hint">The paper's claims, broken into testable sub-claims with the values that report them and the method that tests them. Review each claim and tick it when you are happy; only ticked claims are run. Edits to evidence or methods untick the claims that use them.</p>
       ${this.banners()}
@@ -149,12 +149,12 @@ export class ClaimsStep implements Step {
       this.w.draw();
     });
     body.querySelector("#cl-extract")!.addEventListener("click", () => this.extractDialog());
-    body.querySelector("#cl-targets")!.addEventListener("click", async (e) => {
-      e.preventDefault();
-      this.legacy ??= new CurationStep(this.w, "targets");
-      this.showLegacy = true;
-      await this.w.render();
-    });
+    for (const kind of ["targets", "actions"] as const)
+      body.querySelector(kind === "targets" ? "#cl-targets" : "#cl-actions-table")!.addEventListener("click", async (e) => {
+        e.preventDefault();
+        this.legacy = { kind, step: new CurationStep(this.w, kind) };
+        await this.w.render();
+      });
     this.bindBanners(body);
     const main = body.querySelector<HTMLElement>("#cl-main")!;
     if (!rows.length) {
@@ -367,7 +367,7 @@ export class ClaimsStep implements Step {
     });
   }
 
-  /** Steps 5–8 for one claim, with the template already chosen (else Python). */
+  /** Steps 4–7 for one claim, with the template already chosen (else Python). */
   private async runOne(id: string) {
     const key = `claim-${id}`;
     if (this.w.running.has(key)) return;

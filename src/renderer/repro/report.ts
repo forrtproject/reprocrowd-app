@@ -1,4 +1,4 @@
-// Step 8: the report, the package archive, and the deposit on Zenodo. A deposit is uploaded as a draft (with a
+// Step 7: the report, the package archive, and the deposit on Zenodo. A deposit is uploaded as a draft (with a
 // reserved DOI) that you can look at on Zenodo; publishing registers the DOI for good and is a separate step here or
 // on Zenodo. What goes into the upload can be chosen: the paper's own material only when its license allows.
 import { ApiError, DepositPreview, host, pkg, ZenodoAccount, ZenodoRecord } from "../api";
@@ -89,7 +89,7 @@ export class ReportStep implements Step {
     const newVersion = this.newVersion();
     const checks: [boolean, string, string?][] = [
       [!!doi, doi ? `DOI ${doi}` : "The paper has a DOI (the record links to it, and OpenAlex provides its metadata)"],
-      [this.lastRun?.status === "succeeded", this.lastRun ? `Last run: ${this.lastRun.status}${this.lastRun.status === "succeeded" ? "" : " (step 7)"}` : "The master script ran successfully (step 7)"],
+      [this.lastRun?.status === "succeeded", this.lastRun ? `Last run: ${this.lastRun.status}${this.lastRun.status === "succeeded" ? "" : " (step 6)"}` : "The master script ran successfully (step 6)"],
       ...(this.claims.length ? [[ran.length > 0, ran.length ? `${ran.length} claim${ran.length === 1 ? "" : "s"} run` : "Run at least one claim first."] as [boolean, string]] : []),
       [!!this.report, "Report created"],
       [!!archive, archive ? `ZIP created ${when(archive.created_at)}` : "ZIP created"],
@@ -111,7 +111,7 @@ export class ReportStep implements Step {
       <div class="col-flex">
         <section class="card">
           <h3>Report</h3>
-          <p class="hint">The comparison (rounding ${c.rounding === "reported" ? "as reported" : `${c.rounding} decimals`}, tolerance ${c.threshold} %, as set in step 7), the provenance of every target, the sources, LLM calls, inputs, plan and every file with its hash.</p>
+          <p class="hint">The comparison (rounding ${c.rounding === "reported" ? "as reported" : `${c.rounding} decimals`}, tolerance ${c.threshold} %, as set in step 6), the provenance of every target, the sources, LLM calls, inputs, plan and every file with its hash.</p>
           <div class="actions"><button id="rp-report" class="primary" ${this.w.running.has("report") ? "disabled" : ""}>${this.report ? "Regenerate report" : "Create report"}</button>${this.report ? `<button id="rp-report-show">Show file</button>` : ""}</div>
           ${this.reportResult ? `<p class="ok">✓ ${esc(this.reportResult.reproduced)} reproduced · ${Object.entries(this.reportResult.summary).map(([k, v]) => `${STATUS_LABEL[k as keyof typeof STATUS_LABEL] ?? k}: ${v}`).join(", ")}</p>` : ""}
         </section>
