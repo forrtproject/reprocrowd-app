@@ -1,4 +1,4 @@
-// Step 1: the inputs of the reproduction.
+// Step 2: the inputs of the reproduction.
 //   The paper's text: its JATS XML from Europe PMC, parsed (retrieved by the app; shown here, nothing to choose).
 //   Input files:      the study's data and, if available, the authors' code (POST …/inputs; zip archives are unpacked).
 import { ApiError, host, pkg } from "../api";
@@ -110,7 +110,7 @@ export class InputsStep implements Step {
     <div class="card">
       <div class="card-head"><h3>The paper's text</h3><span class="ok small">✓ JATS XML${ids.pmcid ? ` from Europe PMC (${esc(ids.pmcid)})` : ""}</span></div>
       <p class="small">${contents}</p>
-      <p class="hint">Targets (step 2) and analysis steps (step 3) are extracted from this text and point into it.</p>
+      <p class="hint">Step 1 (Paper) shows this text in full. Claims (step 3) are extracted from it and point into it.</p>
     </div>
     <div class="card rp-drop">
       <div class="card-head"><h3>Input files</h3><span class="muted">${counts}</span><span class="spacer"></span>

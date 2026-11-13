@@ -1,4 +1,4 @@
-// Step 2: claims. The paper's claims as a tree (claim → sub-claims → evidence values and the method that tests them),
+// Step 3: claims. The paper's claims as a tree (claim → sub-claims → evidence values and the method that tests them),
 // reviewed by the user before anything is run. Left: the tree with a status pill per claim. Right: the selected
 // claim's evidence, quotes, sub-claims, notes, the tick that says "reviewed", the last result and the assumptions the
 // coding agent flagged. Four views: Review (this), Reader (the paper with a card per claim), Table, JSON (the claim's
@@ -36,7 +36,7 @@ const modeText = (c: Claim) => (!c.testable ? "Not testable" : c.sub_claims.leng
 
 export class ClaimsStep implements Step {
   title = "Claims";
-  /** Run the claim (steps 4–7 for it); the button is enabled only for claims that are ready. */
+  /** Run the claim (steps 5–8 for it); the button is enabled only for claims that are ready. */
   onRun?: (claimId: string) => Promise<void> = (id) => this.runOne(id);
 
   private file?: ClaimsFile;
@@ -157,7 +157,8 @@ export class ClaimsStep implements Step {
     this.bindBanners(body);
     const main = body.querySelector<HTMLElement>("#cl-main")!;
     if (!rows.length) {
-      main.innerHTML = `<p class="muted">No claims yet. Extract them from the paper's text with an LLM.</p>`;
+      const last = this.file!.llm_runs.filter((r) => !r.disabled).at(-1);
+      main.innerHTML = last ? `<div class="warn-soft">${this.emptyRunHtml(last)}</div>` : `<p class="muted">No claims yet. Extract them from the paper's text with an LLM.</p>`;
       return;
     }
     if (this.view === "reader") return this.drawReader(main, live);
@@ -166,6 +167,15 @@ export class ClaimsStep implements Step {
     main.innerHTML = `<div class="cl-split"><div class="cl-tree">${this.treeHtml(rows)}<div class="cl-skipped muted small">${skipped} sentence${skipped === 1 ? "" : "s"} passed over as background or study design</div></div>
       <div class="cl-detail">${cur ? this.detailHtml(cur) : `<p class="muted">Select a claim.</p>`}</div></div>`;
     this.bindReview(main);
+  }
+
+  /** An extraction that returned no claims: say so, with what the LLM left out, and point at the text it read. */
+  private emptyRunHtml(run: LlmRun<Claim>) {
+    const skipped = this.file!.skipped[run.id]?.length ?? 0;
+    const rejected = run.rejected?.length ?? 0;
+    const extra = [rejected && `${rejected} item${rejected === 1 ? " was" : "s were"} rejected as invalid`, skipped && `${skipped} sentence${skipped === 1 ? " was" : "s were"} passed over as background or study design`].filter(Boolean).join("; ");
+    return `<b>The extraction ${esc(run.id)} (${esc(run.call.profile)}) found no claims in this text.</b>
+      <span class="small">${extra ? `${esc(extra)}. ` : ""}Check the paper's text in step 1 (Paper): an extraction finds nothing when the text is a correction or retraction notice, the wrong article, or missing its abstract and results.</span>`;
   }
 
   private skippedCount() {
@@ -177,6 +187,7 @@ export class ClaimsStep implements Step {
     return this.pendingRuns()
       .map((run) => {
         const n = run.entries.length;
+        if (!n) return `<div class="cl-banner" data-run="${esc(run.id)}">${this.emptyRunHtml(run)}</div>`;
         return `<div class="cl-banner" data-run="${esc(run.id)}"><b>New extraction: ${n} claim${n === 1 ? "" : "s"}, switched off</b>
           <span class="muted small">${esc(run.id)} · ${esc(run.call.profile)}. Its claims are not used until you switch the run on. Individual claims of a run that is off cannot be picked.</span>
           <span class="spacer"></span><button data-act="use-run" class="primary">Use this run</button>
@@ -355,7 +366,7 @@ export class ClaimsStep implements Step {
     });
   }
 
-  /** Steps 4–7 for one claim, with the template already chosen (else Python). */
+  /** Steps 5–8 for one claim, with the template already chosen (else Python). */
   private async runOne(id: string) {
     const key = `claim-${id}`;
     if (this.w.running.has(key)) return;

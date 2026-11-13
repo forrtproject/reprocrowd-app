@@ -74,7 +74,7 @@ export type UpdateStatus =
 export interface UpdateInfo { mode: "auto" | "notify" | "off"; explain: string; status: UpdateStatus }
 export interface JatsAvailability { doi: string; available: boolean; pmcid: string | null; url: string | null; title: string | null; reason: string | null }
 export const JATS_ONLY = "Only articles with JATS XML full text (the open-access subset of PubMed Central) are supported at this time.";
-export interface Work { doi: string; title: string | null; authors: string[]; year: number | null; venue: string | null; license: string | null; open_access: boolean | null }
+export interface Work { doi: string; title: string | null; authors: string[]; year: number | null; venue: string | null; license: string | null; open_access: boolean | null; type: string | null; refersTo: { doi: string; title: string | null } | null }
 export interface ZenodoRecord { id: number | string | null; doi: string | null; title: string | null; creators: string[]; published: string | null; url: string }
 export interface ZenodoAccount { sandbox: boolean; hasToken: boolean; creator: Creator; community: string }
 export interface DepositPreview {

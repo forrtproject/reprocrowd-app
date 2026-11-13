@@ -149,6 +149,9 @@ async function render() {
 
 // ---------- a new reproduction ----------
 
+/** OpenAlex work types that are notices about another article, as words for the New reproduction dialog. */
+const NOTICES: Record<string, string> = { erratum: "a correction notice", retraction: "a retraction notice" };
+
 function newDialog() {
   const dlg = modal("dlg-new", `<form method="dialog">
     <h3>New reproduction</h3>
@@ -204,6 +207,19 @@ function newDialog() {
     err("");
     suggest();
     jbox.hidden = false;
+    const notice = NOTICES[work.type ?? ""];
+    if (notice) {
+      // A correction or retraction notice has no results of its own; offer the article it refers to instead.
+      const to = work.refersTo;
+      jbox.innerHTML = `<div class="refusal"><b>This DOI is ${notice}, not a research article.</b> It has no results to reproduce.
+        ${to ? `<br><span class="small">It refers to: <i>${esc(to.title ?? to.doi)}</i> (${esc(to.doi)})</span><br><button type="button" id="nd-use">Use ${esc(to.doi)} instead</button>` : `<br><span class="small">Enter the DOI of the article it refers to.</span>`}</div>`;
+      jbox.querySelector("#nd-use")?.addEventListener("click", () => {
+        doiIn.value = to!.doi;
+        lookedUp = "";
+        lookup();
+      });
+      return;
+    }
     jbox.innerHTML = `<p class="muted small">Checking Europe PMC for the article's JATS XML…</p>`;
     try {
       jats = await host.jatsAvailability(work.doi);

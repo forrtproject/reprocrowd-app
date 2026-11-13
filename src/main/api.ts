@@ -79,6 +79,10 @@ export interface Work {
   venue: string | null;
   license: string | null;
   open_access: boolean | null;
+  /** OpenAlex work type (article, erratum, retraction, …). */
+  type: string | null;
+  /** For a correction or retraction notice: the article it refers to (OpenAlex's first referenced work). */
+  refersTo: { doi: string; title: string | null } | null;
 }
 
 /** The paper's OpenAlex record, to confirm a DOI before creating the package. */
@@ -95,6 +99,7 @@ async function lookupDoi(raw: string): Promise<Work> {
   if (!r.ok) throw new Error(`OpenAlex answered HTTP ${r.status}.`);
   const w = await r.json();
   const loc = w.best_oa_location ?? w.primary_location ?? {};
+  const type: string | null = w.type ?? null;
   return {
     doi,
     title: w.title ?? null,
@@ -103,7 +108,28 @@ async function lookupDoi(raw: string): Promise<Work> {
     venue: w.primary_location?.source?.display_name ?? null,
     license: loc.license ?? null,
     open_access: w.open_access?.is_oa ?? null,
+    type,
+    refersTo: type && NOTICE_TYPES.has(type) ? await referredArticle(w.referenced_works) : null,
   };
+}
+
+/** OpenAlex types of notices about another article: nothing to reproduce in them. */
+const NOTICE_TYPES = new Set(["erratum", "retraction"]);
+
+/** The article a correction or retraction notice refers to: OpenAlex lists it as the notice's first referenced work. */
+async function referredArticle(refs: unknown): Promise<{ doi: string; title: string | null } | null> {
+  const first = Array.isArray(refs) ? refs[0] : undefined;
+  const id = typeof first === "string" ? first.split("/").pop() : undefined;
+  if (!id || !/^W\d+$/.test(id)) return null;
+  try {
+    const r = await fetch(`https://api.openalex.org/works/${id}?select=doi,title`, { signal: AbortSignal.timeout(15_000) });
+    if (!r.ok) return null;
+    const x = await r.json();
+    const doi = normalizeDoi(x.doi ?? "");
+    return doi ? { doi, title: x.title ?? null } : null;
+  } catch {
+    return null;
+  }
 }
 
 async function uploadPath(id: string, file: string, fields: Record<string, unknown> = {}) {

@@ -544,3 +544,6 @@ body.view-library .lib-header { padding-right: 96px; }
 .pill.st-not_reproduced { background: var(--warn-soft); color: var(--warn-ink); }
 .pill.st-not_testable { background: var(--surface-3); color: var(--muted); }
 .pill.st-stale { background: var(--caution-soft); color: var(--caution); }
+
+/* step 1: the extracted text; "Show sentence ids" prints each sentence's id before it */
+.tx-ids .sent[data-hid]::before { content: "[" attr(data-hid) "] "; font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 11px; color: var(--muted); }

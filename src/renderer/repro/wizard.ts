@@ -1,4 +1,4 @@
-// The numbered workflow: seven reproduction steps, each backed by the ReproCrowd backend. A step
+// The numbered workflow: eight reproduction steps, each backed by the ReproCrowd backend. A step
 // loads what it shows from the backend (load), then draws it (draw); the wizard runs them in that order, drops stale
 // loads, and polls steps that watch long-running jobs. The route in the header shows where you are; Back and Next in
 // the footer move between the steps.
@@ -12,6 +12,7 @@ import { CurationStep } from "./curation";
 import { InputsStep } from "./inputs";
 import { ReportStep } from "./report";
 import { RunStep } from "./run";
+import { TextStep } from "./text";
 import { ScriptStep } from "./script";
 
 export interface AppContext {
@@ -51,6 +52,7 @@ export class Wizard {
   constructor(readonly app: AppContext) {
     this.body = $("#rp-body");
     this.steps = [
+      new TextStep(this),
       new InputsStep(this),
       new ClaimsStep(this),
       new CurationStep(this, "actions"),

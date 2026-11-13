@@ -187,7 +187,7 @@ json.dump({"results": [{"id": "T001", "value": 2.3149}, {"id": "T002", "value": 
 
   step("every step renders, and there is no PDF pane");
   const steps = await win.locator("#route button").count();
-  assert.equal(steps, 7);
+  assert.equal(steps, 8);
   assert.equal(await win.locator("#pdf, #pdf-pane, #sources-btn").count(), 0);
   for (let k = 0; k < steps; k++) {
     await win.locator("#route button").nth(k).click();
@@ -196,8 +196,17 @@ json.dump({"results": [{"id": "T001", "value": 2.3149}, {"id": "T002", "value": 
     await shot(`03-step-${k + 1}`);
   }
 
-  step("targets: the reader with the cards aligned (the targets table of step 2)");
-  await win.locator("#route button").nth(1).click();
+  step("paper: step 1 shows the extracted text, with sentence ids on request");
+  await win.locator("#route button").nth(0).click();
+  await win.waitForSelector(".tx-paper article.reader .sent[data-hid]");
+  assert.match(await win.locator(".tx-paper").innerText(), /p-hacking/i);
+  assert.equal(await win.locator(".tx-paper.tx-ids").count(), 0);
+  await win.click("#tx-ids");
+  await win.waitForSelector(".tx-paper.tx-ids");
+  await shot("03a-paper-text");
+
+  step("targets: the reader with the cards aligned (the targets table of step 3)");
+  await win.locator("#route button").nth(2).click();
   await win.waitForSelector("#cl-targets");
   await win.click("#cl-targets");
   await win.waitForSelector(".al-cards .al-card");
@@ -251,12 +260,12 @@ json.dump({"results": [{"id": "T001", "value": 2.3149}, {"id": "T002", "value": 
   await P(`/targets/${added.id}`, "DELETE");
 
   step("analysis plan: the reader too");
-  await win.locator("#route button").nth(2).click();
+  await win.locator("#route button").nth(3).click();
   await win.waitForSelector(".al-cards .al-card[data-id=A01]");
   await shot("04c-plan-reader");
 
-  step("claims: extract, tick C1 and run it (steps 4–7 for that claim)");
-  await win.locator("#route button").nth(1).click();
+  step("claims: extract, tick C1 and run it (steps 5–8 for that claim)");
+  await win.locator("#route button").nth(2).click();
   await win.waitForSelector("#cl-back"); // the targets table is still open
   await win.click("#cl-back");
   await win.waitForSelector("#cl-extract:not([disabled])");
@@ -290,9 +299,9 @@ json.dump({"results": [{"id": "T001", "value": 2.3149}, {"id": "T002", "value": 
   assert.ok(fs.existsSync(path.join(folder, "claims", "C1.py")) && fs.existsSync(path.join(folder, "analysis.pre-claims.py")));
   await shot("04e-claim-ran");
 
-  await win.locator("#route button").nth(6).click();
+  await win.locator("#route button").nth(7).click();
   await win.waitForSelector("#rp-report");
-  step("report, ZIP and deposit (step 7)");
+  step("report, ZIP and deposit (step 8)");
   await win.click("#rp-report");
   await win.waitForSelector("#rp-report-show", { timeout: 60_000 });
   await win.click("#rp-zip");
