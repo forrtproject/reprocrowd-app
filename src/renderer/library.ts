@@ -7,7 +7,7 @@ import { withProgress } from "./progress";
 import { settingsDialog } from "./settings";
 import type { ZenodoDeposit } from "./types";
 import { $, confirmDialog, esc, modal, showError } from "./util";
-import sticker from "../../resources/hex-sticker.png";
+import sticker from "../../resources/hex-sticker.gif";
 
 const STEPS: [string, string][] = [
   ["Choose an article", "A paper with open data and code. Start from its DOI (ReproCrowd fetches the metadata and its JATS XML) or from a local PDF, DOCX or Markdown file (kept local, not deposited)."],
