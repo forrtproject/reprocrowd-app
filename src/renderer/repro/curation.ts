@@ -1,7 +1,6 @@
-// The analysis steps table (actions) and the targets table, legacy views reached from the Claims step (step 3) for packages
-// made before claims. Both are curated lists in the
-// backend: items added by hand, plus LLM runs whose entries keep the LLM's version and store the user's changes on
-// top (restorable). Two views: Reader, the paper with each item as a card next to the passage it comes from (marking
+// The analysis steps table (actions) and the targets table, legacy views reached from the Claims step (step 3) for
+// packages made before claims. Both are curated lists in the backend: items added by hand, plus LLM runs whose
+// entries keep the LLM's version and store the user's changes on top (restorable). Two views: Reader, the paper with each item as a card next to the passage it comes from (marking
 // sentences there leads to new items), and Table, manual items first, then one group per LLM run.
 import { ApiError, host, pkg } from "../api";
 import { refText } from "../doc";
@@ -162,7 +161,7 @@ export class CurationStep implements Step {
         <span class="spacer"></span>
         <button id="rp-add">+ Add ${NOUN[this.kind]}…</button>
         <button id="rp-llm" class="primary" ${generating || !sources.length ? "disabled" : ""}>${generating ? "Generating…" : "Generate with LLM…"}</button></div>
-      <p class="hint">${isT ? "The reported results the reproduction should recompute." : "The analysis steps described in the paper, linked to input files (Inputs) and to the targets they produce. Load steps (one per data file) and the final results step are added when the master script is created."}
+      <p class="hint">${isT ? "The reported results the reproduction should recompute." : "The analysis steps described in the paper, linked to the input files from the Inputs step and to the targets they produce. Load steps (one per data file) and the final results step are added when the master script is created."}
         ${view === "reader" ? `Each ${NOUN[this.kind]} sits next to the passage it comes from. Click sentences, figures or tables to mark them, then add a ${NOUN[this.kind]} or let the LLM read just those.` : "Rows from an LLM run are grouped under it."} Your changes to LLM entries are stored on top of the LLM's version and can be restored. Unticked ${NOUN[this.kind]}s are not used.</p>
       <datalist id="rp-input-names">${this.inputs.map((i) => `<option value="${esc(i.name)}">${esc(i.path)}</option>`).join("")}</datalist>
       ${view === "reader" ? `<div class="al-host"></div>` : `<table class="tbl-list rp-items"><thead><tr><th>Use</th><th>ID</th>${this.head().map((h) => `<th>${h}</th>`).join("")}<th></th></tr></thead>

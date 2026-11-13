@@ -433,6 +433,25 @@ json.dump({"results": [{"id": "T001", "value": 2.3149}, {"id": "T002", "value": 
   await win.locator(".cl-tree .cl-item[data-id=C1]").click();
   await win.waitForSelector(`${m3} input[data-f=depends_on]`);
 
+  // A bare click into a field whose stored text has stray whitespace must not save: the Reader compares the trimmed
+  // value, and a stray PATCH would untick every claim using the method.
+  const padded = "  Exclude incomplete records (padded)  ";
+  await P("/actions/A02", "PATCH", { summary: padded });
+  await P("/claims/C1", "PATCH", { checked: true });
+  assert.equal((await P("/actions/A02")).data.item.summary, padded, "the backend keeps the padding");
+  assert.equal((await P("/claims/C1")).data.item.checked, true);
+  await win.locator("#route button").nth(0).click();
+  await win.locator("#route button").nth(2).click();
+  await win.click("#cl-view [data-view=reader]");
+  await win.locator(".al-chip[data-id=A02]").click();
+  const sum2 = ".al-card.open[data-id=A02] textarea[data-f=summary]";
+  await win.waitForSelector(sum2);
+  await win.locator(sum2).click();
+  await win.locator(sum2).blur();
+  await win.waitForTimeout(1500); // a stray PATCH would land well within this
+  assert.equal((await P("/actions/A02")).data.item.summary, padded, "a click does not rewrite the field");
+  assert.equal((await P("/claims/C1")).data.item.checked, true, "a click does not untick the claims using the method");
+
   await win.click("#cl-view [data-view=review]");
   await win.waitForSelector(".cl-tree .cl-item[data-id=C1]");
 

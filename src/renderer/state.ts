@@ -8,7 +8,7 @@ export const FIGURE_HEIGHT = { min: 160, max: 900, default: 320 };
 
 export interface UiState {
   layout: 2;
-  step: number; // 0: inputs, 1: targets, 2: claims, …
+  step: number; // 0: paper, 1: inputs, 2: claims, 3: script, 4: code, 5: run, 6: report
   /** The targets and analysis steps tables (legacy views): the paper with the items aligned next to it, or the table. */
   curationView: "reader" | "table";
   /** Last scope per "<kind>:<extraction>" chosen in the LLM dialogs. */
