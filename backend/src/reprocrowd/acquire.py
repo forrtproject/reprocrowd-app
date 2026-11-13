@@ -205,12 +205,18 @@ class _Job:
     unpack: bool = True
     budget: _Budget | None = None
     resources: list[Resource] = field(default_factory=list)
+    existing: list[Resource] = field(default_factory=list)
     failures: list[dict[str, str]] = field(default_factory=list)
     error: str = ""  # set when the repository itself couldn't be read (listing, API record, ...)
     error_code: str = ""
     preview: bool = False  # list the files (with sizes) instead of downloading them
     selected: set[str] | None = None  # file keys (repo:id:path) to fetch; None fetches all
     files: list[File] = field(default_factory=list)
+
+    known_inputs: list[Resource] = field(init=False, repr=False)
+
+    def __post_init__(self) -> None:
+        self.known_inputs = list(self.pkg.load().by_kind("input"))
 
     def fail(self, filename: str, url: str, code: str, error: str) -> None:
         self.failures.append({"file": filename, "url": url, "code": code, "error": error})
@@ -228,6 +234,21 @@ class _Job:
         if self.preview:
             self.files.append(File(repo=self.link.repo, id=self.link.id, path=path, name=filename,
                                    size=size, download_url=download_url))
+            return
+        # Acquiring the same manuscript link again must be idempotent.  Match on
+        # provenance rather than filename: a user may legitimately upload a
+        # same-named file, while repositories can contain equal filenames in
+        # different records.  Archive members share the archive's fetched
+        # origin, so returning every match also gives the caller an accurate
+        # count of the resources that are already present.
+        matches = [r for r in self.known_inputs
+                   if r.reprocrowd.origin.type == "fetched"
+                   and r.reprocrowd.origin.repo == self.link.repo
+                   and r.reprocrowd.origin.id == self.link.id
+                   and r.reprocrowd.origin.url == download_url]
+        if matches:
+            known = {r.name for r in self.existing}
+            self.existing += [r for r in matches if r.name not in known]
             return
         budget = self.budget = self.budget or _Budget(settings().max_download_mb * 2**20)
         if reason := budget.skip_reason(size):
@@ -255,6 +276,7 @@ class _Job:
             return
         budget.spend(downloaded)
         self.resources += r
+        self.known_inputs += r
 
 
 # --------------------------------------------------------------------------- adapters
@@ -513,7 +535,7 @@ def fetch(pkg: Package, link: Link, role: str | None = None, note: str = "",
     """Download the files of one detected link into the package as inputs; raises if nothing could be added.
     ``selected`` restricts the download to those file keys (``repo:id:path``); ``None`` fetches all."""
     job = _run(pkg, link, role, note, unpack, selected=selected)
-    if job.error and not job.resources:
+    if job.error and not job.resources and not job.existing:
         raise ApiError(502, job.error_code if job.error_code.startswith("acquire_") else "acquire_failed", job.error)
     return job.resources
 
@@ -572,13 +594,15 @@ def acquire(pkg: Package, fulltext: str | None = None, role: str | None = None,
     text = manuscript_text(pkg, fulltext)
     links = detect(text, repos)
     resources: list[Resource] = []
+    existing: list[Resource] = []
     failures: list[dict[str, str]] = []
     for link in links:
         job = _run(pkg, link, role, note, unpack, selected=selected)
         resources += job.resources
+        existing += job.existing
         where = {"repo": link.repo, "id": link.id, "url": link.url}
         if job.error:
             failures.append({**where, "code": job.error_code, "error": job.error})
         for f in job.failures:
             failures.append({**where, "file": f["file"], "file_url": f["url"], "code": f["code"], "error": f["error"]})
-    return {"links": [l.__dict__ for l in links], "resources": resources, "failures": failures}
+    return {"links": [l.__dict__ for l in links], "resources": resources, "existing": existing, "failures": failures}

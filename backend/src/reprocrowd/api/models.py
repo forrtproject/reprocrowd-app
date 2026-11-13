@@ -221,10 +221,11 @@ class AcquirePreview(BaseModel):
 
 
 class AcquireResult(BaseModel):
-    """Result of an acquire run: the links found and the resources (inputs) added."""
+    """Result of an acquire run: the links found and the resources added or already present."""
 
     links: list[dict[str, Any]] = Field(description="detected repository links, with their repo, id, kind and label")
     resources: list[Resource] = Field(description="input resources added")
+    existing: list[Resource] = Field(default_factory=list, description="input resources skipped because the same repository file is already present")
     failures: list[dict[str, Any]] = Field(default_factory=list, description="what could not be fetched: per link (repo, id, url, code, error) when the repository itself "
                                           "couldn't be read, or per file (the same plus file and file_url) when one file couldn't be downloaded "
                                           "or was skipped; the link's other files are still added. code: acquire_too_large (skipped for the "
