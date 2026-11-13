@@ -1,0 +1,2479 @@
+{
+  "schema_version": "1.0",
+  "source": {
+    "method": "parse",
+    "format": "pdf",
+    "fulltexts": [
+      "ft-gummy"
+    ]
+  },
+  "sections": [
+    {
+      "id": "sec1",
+      "title": "",
+      "level": 1,
+      "paragraphs": [
+        {
+          "id": "sec1.p1",
+          "sentences": [
+            {
+              "id": "sec1.p1.s1",
+              "text": "PERCEPTION OF GUMMY BEARS 1 Individual differences in the perception of abiotic individuals: The case of gummy bears Natalie Förster1, Ella Back2, Ada M. Förster2, and Mitja D. Back3 1University of Wuppertal, Institute for Educational Research, Germany 2 independent researcher 3University of Münster, Department of Psychology, Germany Preprint, 29 August 2026."
+            },
+            {
+              "id": "sec1.p1.s2",
+              "text": "Not peer reviewed."
+            },
+            {
+              "id": "sec1.p1.s3",
+              "text": "Please cite as Förster, N., Back, E., Förster, A. M., & Back, M. D. (2026)."
+            },
+            {
+              "id": "sec1.p1.s4",
+              "text": "Individual differences in the perception of abiotic individuals: The case of gummy bears."
+            },
+            {
+              "id": "sec1.p1.s5",
+              "text": "Zenodo. https://doi.org/10.5281/zenodo.22163292"
+            }
+          ]
+        },
+        {
+          "id": "sec1.p2",
+          "sentences": [
+            {
+              "id": "sec1.p2.s1",
+              "text": "PERCEPTION OF GUMMY BEARS 2 Abstract People routinely perceive and evaluate things that are not alive, yet research on those perceptions and evaluations has focused on the level of the category (e.g., perceiving flowers, wine, food, artwork)."
+            },
+            {
+              "id": "sec1.p2.s2",
+              "text": "Here we translate research on interpersonal perception to abiotic individuals and investigate individual differences between human perceivers in the accurate perception of and their unique preferences for gummy bear individuals of different flavors."
+            },
+            {
+              "id": "sec1.p2.s3",
+              "text": "Four members of one family, aged 8 to 47, each tasted 25 gummy bears drawn blind (100 trials in total)."
+            },
+            {
+              "id": "sec1.p2.s4",
+              "text": "On each trial, the participant named the flavor among six known alternatives (strawberry, orange, apple, raspberry, lemon, pineapple), rated their certainty, and indicated their liking for the gummy bear."
+            },
+            {
+              "id": "sec1.p2.s5",
+              "text": "Liking for each flavor had also been stated before the tasting trials."
+            },
+            {
+              "id": "sec1.p2.s6",
+              "text": "Average accuracy in gummy bear identification (42%) was well above chance level (16.7%), with large interindividual variability (individual accuracies ranged from 12% to 68%)."
+            },
+            {
+              "id": "sec1.p2.s7",
+              "text": "While stated liking was largely consensual between the family members, tasted liking was driven by the unique perceiver x flavor pairing."
+            },
+            {
+              "id": "sec1.p2.s8",
+              "text": "Also, stated preferences did not track tasted ones on average, and the correspondence varied widely across the four perceivers."
+            },
+            {
+              "id": "sec1.p2.s9",
+              "text": "Results underline the existence of individual differences in accurate perceptions of and unique preferences for gummy bears and point to fruitful avenues for future research on the perception of abiotic individuals in general."
+            },
+            {
+              "id": "sec1.p2.s10",
+              "text": "Keywords: interpersonal perception, individual differences, flavor identification, accuracy, uniqueness, gummy bears"
+            }
+          ]
+        },
+        {
+          "id": "sec1.p3",
+          "sentences": [
+            {
+              "id": "sec1.p3.s1",
+              "text": "PERCEPTION OF GUMMY BEARS 3 Statement of Relevance People spend a great deal of their lives evaluating things that are not people: foods, products, objects, media."
+            },
+            {
+              "id": "sec1.p3.s2",
+              "text": "Psychology usually measures these evaluations at the level of the category, by asking which flavors, brands, or designs a person prefers."
+            },
+            {
+              "id": "sec1.p3.s3",
+              "text": "We measured what happens one level down, when a person meets a single member of a category without knowing which category it belongs to, in this case a gummy bear of unknown flavor placed directly in the mouth."
+            },
+            {
+              "id": "sec1.p3.s4",
+              "text": "What our participants said about the flavors in advance agreed well across family members, but the two flavors they named as best beforehand were not the two they liked best in the mouth."
+            },
+            {
+              "id": "sec1.p3.s5",
+              "text": "How well they could identify what they were eating also differed sharply from person to person."
+            },
+            {
+              "id": "sec1.p3.s6",
+              "text": "Two of the four could name the gummy bear flavor in their mouth far more often than guessing would allow, and two were found to be bad gummy bear judges."
+            },
+            {
+              "id": "sec1.p3.s7",
+              "text": "Surveys, menus, gift choices, and reward schemes for children all assume that a stated preference for a category describes the experience of its members."
+            },
+            {
+              "id": "sec1.p3.s8",
+              "text": "Measuring that experience directly is feasible, and it gives a different answer."
+            }
+          ]
+        },
+        {
+          "id": "sec1.p4",
+          "sentences": [
+            {
+              "id": "sec1.p4.s1",
+              "text": "PERCEPTION OF GUMMY BEARS 4 Introduction \"I only like the red ones!"
+            },
+            {
+              "id": "sec1.p4.s2",
+              "text": "(Anonymous, 8 years) People form perceptions of things that are not alive as readily as they form perceptions of one another."
+            },
+            {
+              "id": "sec1.p4.s3",
+              "text": "Processes similar to those that characterize perceptions between humans can not only be found for human perceptions of animals (Gosling et al., 2003), but they also run across perceptions of machines and other objects, stopping at no clear boundary (Epley et al., 2007; Gray et al., 2007)."
+            },
+            {
+              "id": "sec1.p4.s4",
+              "text": "The degree to which human-like perceptions are applied to objects varies across human perceivers (Waytz et al., 2010) with consequences for how much individuals are attached to these objects (Chandler & Schwarz, 2010)."
+            },
+            {
+              "id": "sec1.p4.s5",
+              "text": "None of this prior work is about individuals."
+            },
+            {
+              "id": "sec1.p4.s6",
+              "text": "Perceptions and evaluations of non-living (i.e., abiotic) things are typically studied at the level of the category (e.g., brands; Aaker, 1997), with less attention to individual exemplars (e.g., a specific product)."
+            },
+            {
+              "id": "sec1.p4.s7",
+              "text": "Where interpersonal perception research has applied ratings of abiotic individuals, it has used them to approximate scale-use bias (Rau et al., 2021) but not as a phenomenon in its own right."
+            },
+            {
+              "id": "sec1.p4.s8",
+              "text": "Thus, the psychology of perceptions of abiotic individuals, and of individual perceiver differences therein, is largely unclear."
+            },
+            {
+              "id": "sec1.p4.s9",
+              "text": "Whether a perceiver can differentiate abiotic individuals from another, how much liking of certain abiotic individuals is unique to or shared among perceivers, how aware perceivers are of their preferences for certain abiotic individuals, and how much individual perceivers differ in accuracy and awareness are all open empirical questions."
+            },
+            {
+              "id": "sec1.p4.s10",
+              "text": "In the current research, we explore these questions by transferring the methodology established in interpersonal perception research to perceptions of abiotic individuals."
+            },
+            {
+              "id": "sec1.p4.s11",
+              "text": "In doing so, we focus on perceptions of individual gummy bears (i.e., gummy bears of different flavors)."
+            },
+            {
+              "id": "sec1.p4.s12",
+              "text": "Gummy bears are particularly well-suited because (a) individuals are near-identical and reproducible in unlimited numbers, (b) cuteness, texture, size, and shape are held"
+            }
+          ]
+        },
+        {
+          "id": "sec1.p5",
+          "sentences": [
+            {
+              "id": "sec1.p5.s1",
+              "text": "PERCEPTION OF GUMMY BEARS 5 constant by manufacture, and (c) the color-to-flavor mapping is industrially stable and familiar to experienced gummy bear eaters."
+            },
+            {
+              "id": "sec1.p5.s2",
+              "text": "An individual, in the present case, is a gummy bear of a given flavor, met in many near-identical copies."
+            },
+            {
+              "id": "sec1.p5.s3",
+              "text": "The six flavors are therefore the individuals of this study and not categories above them."
+            },
+            {
+              "id": "sec1.p5.s4",
+              "text": "Psychological research has used gummy bears almost only as instruments, as rewards, reinforcers, and divisible stakes (Melis et al., 2015; Sutter et al., 2015), and only rarely regarding flavor recognition (Miyaoka et al., 2018), without systematic analyses of individual differences in accuracy, unique liking, and liking awareness."
+            },
+            {
+              "id": "sec1.p5.s5",
+              "text": "Regarding accuracy in differentiating gummy bear flavors, it is hard to derive any a priori expectations."
+            },
+            {
+              "id": "sec1.p5.s6",
+              "text": "The existing literature on cued identification suggests rather high levels of accuracy for the identification of defined smells."
+            },
+            {
+              "id": "sec1.p5.s7",
+              "text": "For example, adults identified odorants among six named alternatives (chance level 16.7%) in about 76% of trials (de Wijk & Cain, 1994), and the four-alternative Sniffin' Sticks test (chance level 25%) yields about 85% in healthy adults (Oleszkiewicz et al., 2019)."
+            },
+            {
+              "id": "sec1.p5.s8",
+              "text": "Research on the accuracy of personality judgments suggests a substantially lower accuracy, with correlations between individual perceiver judgments and actual target personality scores typically ranging between .10 and .30 (translating to 55%-65% accuracy for dichotomous choices), with large variation depending on the trait being judged and the judgment context (Back & Nestler, 2016)."
+            },
+            {
+              "id": "sec1.p5.s9",
+              "text": "Recent research on the discrimination of introverted and extraverted targets based on face photographs found an accuracy of 51.1% in a two-alternative forced choice, that is, at the 50% chance level (Jaeger et al., 2024)."
+            },
+            {
+              "id": "sec1.p5.s10",
+              "text": "Similarly low levels of 54%, again against a 50% chance level, have been found for lie-truth discrimination (Bond & DePaulo, 2006)."
+            },
+            {
+              "id": "sec1.p5.s11",
+              "text": "Beyond average accuracy, we systematically explore contributions of the perceiver (more or less accurate gummy bear judges), target (more or less easy to identify gummy bear flavors), and perceiver-target"
+            }
+          ]
+        },
+        {
+          "id": "sec1.p6",
+          "sentences": [
+            {
+              "id": "sec1.p6.s1",
+              "text": "PERCEPTION OF GUMMY BEARS 6 interaction (more or less expertise in judging particular flavors; Funder, 1995; Rogers & Biesanz, 2019)."
+            },
+            {
+              "id": "sec1.p6.s2",
+              "text": "Regarding unique liking, we transfer the componential nature of interpersonal perceptions (Kenny & La Voie, 1984; Back & Kenny, 2010) to gummy bear perceptions."
+            },
+            {
+              "id": "sec1.p6.s3",
+              "text": "In the same way liking of other human individuals consists of perceiver components (differences in being a liker), target (differences in popularity), and relationship components (differences in unique liking; Back et al., 2011; Dufner & Krause, 2023; Eastwick & Hunt, 2014), gummy bear perceptions can be separated into a perceiver component (differences in the tendency to like gummy bears in general), a target component (differences in the popularity of gummy bear flavors), and a relationship component (the unique gummy bear liking that is due to the particular perceiver-gummy bear pairing)."
+            },
+            {
+              "id": "sec1.p6.s4",
+              "text": "Across relational contexts, relationship variance is the largest component when it comes to interpersonal attraction and liking (see Back et al., 2023, for an overview)."
+            },
+            {
+              "id": "sec1.p6.s5",
+              "text": "That is, unique taste for specific other human individuals is particularly prevalent."
+            },
+            {
+              "id": "sec1.p6.s6",
+              "text": "Even for something as widely shared as judgments of facial attractiveness, private taste can be as strong as shared taste (Hönekopp, 2006)."
+            },
+            {
+              "id": "sec1.p6.s7",
+              "text": "Whether this also holds for the liking of gummy bears is unclear."
+            },
+            {
+              "id": "sec1.p6.s8",
+              "text": "Regarding awareness of one's own unique liking, interpersonal perception research paints a relatively clear picture: People tend to be bad at it: Stated ideals predict evaluations of hypothetical partners but lose that validity for partners actually encountered (Eastwick et al., 2014), and the fit between a person's stated ideals and their realized evaluations is negligible (Sparks et al., 2020)."
+            },
+            {
+              "id": "sec1.p6.s9",
+              "text": "Preliminary evidence suggests that this might also hold for non-living individuals: Most people fail to notice when the jam they chose is replaced by a clearly different one (Hall et al., 2010)."
+            },
+            {
+              "id": "sec1.p6.s10",
+              "text": "Attitude research points in the same direction: a dissociation of the degree of explicitly stated prejudice toward a category of individuals and the actually expressed prejudiced behavior toward an individual member of that group (Glasman &"
+            }
+          ]
+        },
+        {
+          "id": "sec1.p7",
+          "sentences": [
+            {
+              "id": "sec1.p7.s1",
+              "text": "PERCEPTION OF GUMMY BEARS 7 Albarracín, 2006; Kurdi et al., 2019; LaPiere, 1934)."
+            },
+            {
+              "id": "sec1.p7.s2",
+              "text": "Contact changes attitudes when members cannot be processed as instances of a category (Brewer & Miller, 1984; Pettigrew & Tropp, 2006)."
+            },
+            {
+              "id": "sec1.p7.s3",
+              "text": "Similar principles could apply to the perception of gummy bears."
+            },
+            {
+              "id": "sec1.p7.s4",
+              "text": "A stated preference for a gummy bear flavor is also an attitude toward a label that is primarily driven by color (“the red ones”)."
+            },
+            {
+              "id": "sec1.p7.s5",
+              "text": "Color preferences track the average affective value of the objects a person associates with a color rather than any property of the wavelength (Palmer & Schloss, 2010), and they can dominate flavor expectations and override the aroma (Morrot et al., 2001; Spence, 2015)."
+            },
+            {
+              "id": "sec1.p7.s6",
+              "text": "A gummy bear drawn color-blind into the gummy bear eater's mouth arrives without its label, and it is an open question how much actual taste preferences during such encounters with individual gummy bears correspond with explicitly stated general preferences for certain gummy bear flavors."
+            },
+            {
+              "id": "sec1.p7.s7",
+              "text": "In this study, we provide a first exploration of individual differences in the perception of abiotic individuals, focusing on gummy bears."
+            },
+            {
+              "id": "sec1.p7.s8",
+              "text": "We ask three questions."
+            },
+            {
+              "id": "sec1.p7.s9",
+              "text": "(1) Can perceivers identify gummy bears of different flavors in their mouths, and do they differ in accuracy?"
+            },
+            {
+              "id": "sec1.p7.s10",
+              "text": "(2) Does the variance in how much a bear is liked sit in the gummy bear eater (differences in how much perceivers like gummy bears in general), in the gummy bear (differences in how much certain gummy bear flavors are liked), or in their unique pairing (specific preference of a certain gummy bear eater for certain gummy bear flavors)?"
+            },
+            {
+              "id": "sec1.p7.s11",
+              "text": "(3) Do gummy bear eaters know their own unique preferences, and do they differ in this knowledge?"
+            },
+            {
+              "id": "sec1.p7.s12",
+              "text": "We also explore the possibility of systematic age differences, since adults showed stronger smell identification accuracy (Doty et al., 1984; Oleszkiewicz et al., 2019) and children weighted color, the cue we removed, more heavily than flavor (Oram et al., 1995)."
+            },
+            {
+              "id": "sec1.p7.s13",
+              "text": "Open Practices Statement This study is exploratory and was not preregistered."
+            },
+            {
+              "id": "sec1.p7.s14",
+              "text": "Every analysis reported here was specified after the data had been collected and inspected, and all results are labeled"
+            }
+          ]
+        },
+        {
+          "id": "sec1.p8",
+          "sentences": [
+            {
+              "id": "sec1.p8.s1",
+              "text": "PERCEPTION OF GUMMY BEARS 8 accordingly."
+            },
+            {
+              "id": "sec1.p8.s2",
+              "text": "We report how we determined our sample size, all data exclusions, all manipulations, and all measures in the study."
+            },
+            {
+              "id": "sec1.p8.s3",
+              "text": "There were no exclusions and no manipulations: all 100 trials from all four participants were included in the analyses."
+            },
+            {
+              "id": "sec1.p8.s4",
+              "text": "Inference relies on effect sizes, exact intervals, and permutation tests rather than on asymptotic approximations."
+            },
+            {
+              "id": "sec1.p8.s5",
+              "text": "The raw data, the analysis-ready data files, the codebook, the analysis code, and the figure\u0002generation code are openly available at https://doi.org/10.5281/zenodo.22163083 (Förster et al., 2026)."
+            },
+            {
+              "id": "sec1.p8.s6",
+              "text": "All analyses are reproduced from one script with a fixed seed, and all figures and supplementary tables are regenerated from the locked data files with one command."
+            },
+            {
+              "id": "sec1.p8.s7",
+              "text": "Materials were commercially available Haribo Goldbears (Haribo Goldbären), all of which were eaten in the course of the study."
+            },
+            {
+              "id": "sec1.p8.s8",
+              "text": "Method Participants Four members of one household took part: two children, aged 8 and 13, and two adults, aged 42 and 47 at the time of data collection in August 2024."
+            },
+            {
+              "id": "sec1.p8.s9",
+              "text": "Three participants were female, and one was male."
+            },
+            {
+              "id": "sec1.p8.s10",
+              "text": "All four are native speakers of German, all four are authors of this report, and all four had eaten Haribo Goldbears before, in quantities none of them recorded."
+            },
+            {
+              "id": "sec1.p8.s11",
+              "text": "We conducted no power analysis before data collection."
+            },
+            {
+              "id": "sec1.p8.s12",
+              "text": "Sample size was determined by the number of people in the household."
+            },
+            {
+              "id": "sec1.p8.s13",
+              "text": "We selected the sample on co-residence and on being on holiday together, which are the only two selection criteria we can state precisely."
+            },
+            {
+              "id": "sec1.p8.s14",
+              "text": "The four perceivers are not independent observations: they share a household, a diet, a shopping pattern, and a history of joint gummy bear consumption, and two of them are the children of the other two."
+            },
+            {
+              "id": "sec1.p8.s15",
+              "text": "Age is fully confounded with person, because exactly one participant occupies each age, and with everything else that distinguishes an 8-year-old from a 47-year-old."
+            },
+            {
+              "id": "sec1.p8.s16",
+              "text": "Two"
+            }
+          ]
+        },
+        {
+          "id": "sec1.p9",
+          "sentences": [
+            {
+              "id": "sec1.p9.s1",
+              "text": "PERCEPTION OF GUMMY BEARS 9 of the four designed the study and conducted the analyses."
+            },
+            {
+              "id": "sec1.p9.s2",
+              "text": "Every estimate reported below describes these four people."
+            },
+            {
+              "id": "sec1.p9.s3",
+              "text": "We sought no ethics approval."
+            },
+            {
+              "id": "sec1.p9.s4",
+              "text": "The study began as a holiday activity and was written up afterwards."
+            },
+            {
+              "id": "sec1.p9.s5",
+              "text": "The two adults consented to participation and to publication."
+            },
+            {
+              "id": "sec1.p9.s6",
+              "text": "The two minors gave assent, with parental consent from the two adults, and both later read and approved the manuscript."
+            },
+            {
+              "id": "sec1.p9.s7",
+              "text": "The gummy bears did not consent."
+            },
+            {
+              "id": "sec1.p9.s8",
+              "text": "Materials Stimuli were Haribo Goldbears from two 175 g packages, both bought in Italy in August 2024."
+            },
+            {
+              "id": "sec1.p9.s9",
+              "text": "Both packages held the standard German Goldbears product as distributed in the Italian market."
+            },
+            {
+              "id": "sec1.p9.s10",
+              "text": "The product contains six flavors, printed on the package: strawberry, orange, apple, raspberry, lemon, and pineapple."
+            },
+            {
+              "id": "sec1.p9.s11",
+              "text": "Each flavor corresponds to one color, although the strawberry and raspberry shades are less visually distinct than the others."
+            },
+            {
+              "id": "sec1.p9.s12",
+              "text": "Color was not perceivable to the test person at any point during a trial (see Procedure), so the color-to-flavor mapping was a property of the stimulus material and not an available cue."
+            },
+            {
+              "id": "sec1.p9.s13",
+              "text": "The manufacturer does not declare the flavor composition of a package, and we did not count the packages before use."
+            },
+            {
+              "id": "sec1.p9.s14",
+              "text": "Bears were drawn without replacement and eaten, so the realized flavor frequencies reflect package composition and sampling jointly: apple was administered on 23 trials, orange, raspberry, and lemon on 17 each, pineapple on 15, and strawberry on 11."
+            },
+            {
+              "id": "sec1.p9.s15",
+              "text": "A goodness-of-fit test against equal frequencies did not reject uniformity, χ²(5) = 4.52, p = .477."
+            },
+            {
+              "id": "sec1.p9.s16",
+              "text": "We kept both packages in the refrigerator throughout (outdoor temperature at the Italian location averaged approximately 30 °C) and took them out approximately 10 minutes before each session, so bear temperature rose across the five rounds of a session by an unmeasured amount; we measured neither refrigerator temperature nor bear temperature at administration."
+            }
+          ]
+        },
+        {
+          "id": "sec1.p10",
+          "sentences": [
+            {
+              "id": "sec1.p10.s1",
+              "text": "PERCEPTION OF GUMMY BEARS 10 Package 1 supplied trials 1 to 72, package 2 trials 73 to 100, with the changeover falling between rounds 3 and 4 of session 4."
+            },
+            {
+              "id": "sec1.p10.s2",
+              "text": "Procedure We ran five sessions on five days: 5, 6, 8, and 9 August 2024 at a holiday location in Italy, and 18 August 2024 at home in Germany."
+            },
+            {
+              "id": "sec1.p10.s3",
+              "text": "Each session consisted of five rounds in a single sitting, and each round consisted of one trial for each of the four participants in the fixed order Ada, Ella, Natalie, Mitja."
+            },
+            {
+              "id": "sec1.p10.s4",
+              "text": "This gives 25 trials per person and 100 trials in total, with no missing data."
+            },
+            {
+              "id": "sec1.p10.s5",
+              "text": "The number of trials per participant was determined pragmatically by the number of days available and the amount of gummy bear consumption deemed acceptable by the parents."
+            },
+            {
+              "id": "sec1.p10.s6",
+              "text": "Time of day was not recorded."
+            },
+            {
+              "id": "sec1.p10.s7",
+              "text": "Session, package, and country breakdowns are given in Table S5."
+            },
+            {
+              "id": "sec1.p10.s8",
+              "text": "Seating was fixed across all five sessions, so each test person received every bear from the same neighbor."
+            },
+            {
+              "id": "sec1.p10.s9",
+              "text": "The administering person is thus confounded with the test person and cannot be separated as a factor."
+            },
+            {
+              "id": "sec1.p10.s10",
+              "text": "A trial ran as follows."
+            },
+            {
+              "id": "sec1.p10.s11",
+              "text": "The test person closed their eyes."
+            },
+            {
+              "id": "sec1.p10.s12",
+              "text": "The person seated to their right reached into the package without looking, drew one bear, and placed it directly into the test person's mouth."
+            },
+            {
+              "id": "sec1.p10.s13",
+              "text": "The test person thus never saw or handled the bear and had no opportunity to smell it before ingestion."
+            },
+            {
+              "id": "sec1.p10.s14",
+              "text": "Retronasal olfaction during chewing was not blocked with a nose clip."
+            },
+            {
+              "id": "sec1.p10.s15",
+              "text": "Because the administering person drew without looking, selection could not be guided by color."
+            },
+            {
+              "id": "sec1.p10.s16",
+              "text": "That person did see the bear once it was out of the package and therefore knew the correct answer while the test person judged."
+            },
+            {
+              "id": "sec1.p10.s17",
+              "text": "We used no procedure to prevent unintended cueing."
+            },
+            {
+              "id": "sec1.p10.s18",
+              "text": "The test person then gave three judgments aloud, in German, in a fixed order: flavor, then certainty, then liking."
+            },
+            {
+              "id": "sec1.p10.s19",
+              "text": "One of the two adults entered each judgment on a laptop as it was given."
+            },
+            {
+              "id": "sec1.p10.s20",
+              "text": "Response time was unlimited."
+            },
+            {
+              "id": "sec1.p10.s21",
+              "text": "Immediately after the liking judgment, and before the next person's turn, the correct flavor was announced to everyone present."
+            },
+            {
+              "id": "sec1.p10.s22",
+              "text": "All four participants"
+            }
+          ]
+        },
+        {
+          "id": "sec1.p11",
+          "sentences": [
+            {
+              "id": "sec1.p11.s1",
+              "text": "PERCEPTION OF GUMMY BEARS 11 therefore received corrective feedback on their own 25 trials as the test person."
+            },
+            {
+              "id": "sec1.p11.s2",
+              "text": "Water was freely available between trials, but we prescribed no rinsing protocol."
+            },
+            {
+              "id": "sec1.p11.s3",
+              "text": "Measures Measures collected before tasting."
+            },
+            {
+              "id": "sec1.p11.s4",
+              "text": "These were collected on one occasion before the first tasting session."
+            },
+            {
+              "id": "sec1.p11.s5",
+              "text": "They were stated aloud in the group and entered on a laptop by one of the two adults as they were given, so each participant heard the ratings that preceded their own, and the ratings are not independent."
+            },
+            {
+              "id": "sec1.p11.s6",
+              "text": "Predicted accuracy."
+            },
+            {
+              "id": "sec1.p11.s7",
+              "text": "For each of the six flavors, each participant predicted the percentage of trials on which they would identify that flavor correctly, from 0 (no judgments correct) to 100 (all judgments correct)."
+            },
+            {
+              "id": "sec1.p11.s8",
+              "text": "The average of these six values is each participant's overall predicted accuracy: 60.0 (age 8), 62.8 (13), 31.3 (42), and 31.3 (47)."
+            },
+            {
+              "id": "sec1.p11.s9",
+              "text": "Stated liking."
+            },
+            {
+              "id": "sec1.p11.s10",
+              "text": "Each participant rated how much they like each of the six flavors, from 1 (gar nicht, not at all) to 6 (super gerne, like it very much)."
+            },
+            {
+              "id": "sec1.p11.s11",
+              "text": "This rating, given with the flavor name available and before any blind tasting, is the study's measure of stated preference."
+            },
+            {
+              "id": "sec1.p11.s12",
+              "text": "Additional measures collected and not analyzed."
+            },
+            {
+              "id": "sec1.p11.s13",
+              "text": "On the same occasion, each participant also estimated the overall accuracy across flavors of each of the four participants, including themselves, on the 0 to 100 scale, and rated their liking of gummy bears in general on the 1 to 6 scale."
+            },
+            {
+              "id": "sec1.p11.s14",
+              "text": "Both items ask at the general level what the per-flavor items ask more precisely, so the analyses use the per-flavor measures throughout and average across the six flavors wherever an overall value from before the tasting is needed."
+            },
+            {
+              "id": "sec1.p11.s15",
+              "text": "The general liking item has no variance: all four participants gave 3."
+            },
+            {
+              "id": "sec1.p11.s16",
+              "text": "Both measures are included in the openly archived data."
+            },
+            {
+              "id": "sec1.p11.s17",
+              "text": "Per-trial measures."
+            },
+            {
+              "id": "sec1.p11.s18",
+              "text": "Flavor judgment."
+            },
+            {
+              "id": "sec1.p11.s19",
+              "text": "Six-alternative forced choice among the six flavors named above."
+            },
+            {
+              "id": "sec1.p11.s20",
+              "text": "The flavor set was known to all four participants before the first trial and was printed on the package, so chance accuracy is 1/6 = 16.7%."
+            },
+            {
+              "id": "sec1.p11.s21",
+              "text": "Guessing was permitted, and no response could be withheld."
+            }
+          ]
+        },
+        {
+          "id": "sec1.p12",
+          "sentences": [
+            {
+              "id": "sec1.p12.s1",
+              "text": "PERCEPTION OF GUMMY BEARS 12 Certainty."
+            },
+            {
+              "id": "sec1.p12.s2",
+              "text": "The rating of how certain the test person was about the flavor judgment was given on a scale from 1 (sehr unsicher, very uncertain) to 6 (sehr sicher, very certain)."
+            },
+            {
+              "id": "sec1.p12.s3",
+              "text": "Tasted liking."
+            },
+            {
+              "id": "sec1.p12.s4",
+              "text": "How much the test person liked the gummy bear just tasted was also rated from 1 (gar nicht lecker, not tasty at all) to 6 (super lecker, very tasty)."
+            },
+            {
+              "id": "sec1.p12.s5",
+              "text": "This blind, per-trial rating is the study's measure of experienced preference."
+            },
+            {
+              "id": "sec1.p12.s6",
+              "text": "Identification accuracy."
+            },
+            {
+              "id": "sec1.p12.s7",
+              "text": "A trial was scored 1 when the flavor named matched the flavor administered and 0 otherwise."
+            },
+            {
+              "id": "sec1.p12.s8",
+              "text": "The administering person scored each trial at the moment of feedback, and the data were entered into the laptop right away."
+            },
+            {
+              "id": "sec1.p12.s9",
+              "text": "The scoring requires no coder judgment, and we verified that the recorded accuracy variable reproduces the comparison of named and administered flavor on all 100 trials."
+            },
+            {
+              "id": "sec1.p12.s10",
+              "text": "Design and Analysis Each perceiver judged bears of every flavor but the bears judged nothing, so the design is fully crossed in one direction only (a half-block design; Biesanz, 2010; Kenny et al., 2006; see also Stecker et al., 2021)."
+            },
+            {
+              "id": "sec1.p12.s11",
+              "text": "Because each perceiver tasted each flavor between one and eight times, the perceiver x flavor component of the per-trial judgments is separable from trial-level error, which requires repeated ratings per cell (Xie et al., 2019); with one rating per perceiver-target pair, that component stays inside the residual."
+            },
+            {
+              "id": "sec1.p12.s12",
+              "text": "The variance decompositions follow the logic of the social relations model but are estimated as a plain two-way decomposition of the 4 x 6 matrix of cell means."
+            },
+            {
+              "id": "sec1.p12.s13",
+              "text": "Round-robin estimating equations subtract the expected sampling-noise contribution from each variance component analytically; our design does not meet their assumptions, with two modes, cell sizes of 1 to 8, and a binary accuracy outcome, so we subtract noise floors simulated under the observed design instead."
+            },
+            {
+              "id": "sec1.p12.s14",
+              "text": "Raw, floor, and corrected values for every component are reported in Table S10."
+            },
+            {
+              "id": "sec1.p12.s15",
+              "text": "We rely on permutation and exact tests throughout."
+            },
+            {
+              "id": "sec1.p12.s16",
+              "text": "We report the variance decompositions descriptively and interpret only the ordering of the components, because random-effect"
+            }
+          ]
+        },
+        {
+          "id": "sec1.p13",
+          "sentences": [
+            {
+              "id": "sec1.p13.s1",
+              "text": "PERCEPTION OF GUMMY BEARS 13 variances estimated from four perceivers and six flavors are unstable by construction (McNeish & Stapleton, 2016)."
+            },
+            {
+              "id": "sec1.p13.s2",
+              "text": "Crossed random-effects models with random intercepts for perceiver, flavor, and their interaction (Judd et al., 2012) accompany every decomposition as control variables."
+            },
+            {
+              "id": "sec1.p13.s3",
+              "text": "All of them reach singular fits, which is expected at these cluster counts and does not indicate that a variance is zero (Matuschek et al., 2017; Table S13)."
+            },
+            {
+              "id": "sec1.p13.s4",
+              "text": "Primary analyses were run in Python 3.10.12 (pandas 2.3.3, numpy 2.2.6, scipy 1.15.3); control analyses were run in R 4.5.3 (lme4 2.0-6, pROC 1.19.0.1), with the agreement between the two pipelines documented in Table S13."
+            },
+            {
+              "id": "sec1.p13.s5",
+              "text": "Results Preliminary Analyses Unless noted otherwise, intervals are Clopper-Pearson exact 95% intervals, binomial tests are exact and two-sided against 1/6, and permutation tests use 10,000 draws, with p computed as (1 + the number of draws at least as extreme as the observed value) / 10,001, so the smallest attainable value is 1/10001 and is reported as p < .001."
+            },
+            {
+              "id": "sec1.p13.s6",
+              "text": "Tables 1 and 2 report descriptives at every level the design affords; session, package, and country breakdowns are in Table S5."
+            },
+            {
+              "id": "sec1.p13.s7",
+              "text": "Accuracy did not improve across trials."
+            },
+            {
+              "id": "sec1.p13.s8",
+              "text": "The association between outcome and the number of prior feedback occasions on the same flavor, stratified by perceiver x flavor cell, was flat (r_strat = .04, p = .83), as were the global-time variant (r_strat = .03, p = .81) and every per\u0002perceiver test (Table S6, Figure S2)."
+            },
+            {
+              "id": "sec1.p13.s9",
+              "text": "Thus, no analysis reported below carries a trial-order covariate."
+            },
+            {
+              "id": "sec1.p13.s10",
+              "text": "The two perceivers who ended accurately were accurate from the start, with 9 of 12 and 8 of 12 correct in their first halves (Figure S2B; pooled halves 22/48 against 20/52, Table S6)."
+            },
+            {
+              "id": "sec1.p13.s11",
+              "text": "The accuracy of a perceiver's trials in one half was closely related to their accuracy in the other half, with a correlation of r = .86 for odd versus even trials and r = .94 for sessions 1 to"
+            }
+          ]
+        },
+        {
+          "id": "sec1.p14",
+          "sentences": [
+            {
+              "id": "sec1.p14.s1",
+              "text": "PERCEPTION OF GUMMY BEARS 14 3 compared to sessions 4 and 5."
+            },
+            {
+              "id": "sec1.p14.s2",
+              "text": "These correlations were calculated across the four perceivers (see Table S6)."
+            },
+            {
+              "id": "sec1.p14.s3",
+              "text": "The differences reported next therefore describe stable performance."
+            },
+            {
+              "id": "sec1.p14.s4",
+              "text": "No perceiver departed from uniform use of the six response options (χ²(5) between 0.68 and 6.44, smallest p = .29), the pooled response distribution was likewise uniform (χ²(5) = 5.00, p = .42), and individual response biases stayed between −.16 and +.16 (Table S3)."
+            },
+            {
+              "id": "sec1.p14.s5",
+              "text": "Table 1 Predicted Accuracy, Identification Accuracy, Certainty, and Liking for Each Flavor, Aggregated Across Perceivers Flavor predicted accuracy accuracy certainty stated liking tasted liking strawberry 43% 36% (4/11) 2.91 5.00 3.18 orange 44% 53% (9/17) 3.41 3.25 3.59 apple 54% 35% (8/23) 3.04 3.00 4.04 raspberry 44% 53% (9/17) 3.12 5.50 3.94 lemon 46% 41% (7/17) 2.71 3.50 3.35 pineapple 48% 33% (5/15) 2.93 4.75 4.07 All flavors 46% 42% (42/100) 3.03 (1.46) 4.17 3.74 (1.31) Note."
+            },
+            {
+              "id": "sec1.p14.s6",
+              "text": "Four perceivers tasted 25 gummy bears each under blind-tasting conditions (100 trials)."
+            },
+            {
+              "id": "sec1.p14.s7",
+              "text": "Rows show the six flavors and, in the final row, all flavors combined; values are pooled across perceivers, with perceiver-specific results reported in Table 2."
+            },
+            {
+              "id": "sec1.p14.s8",
+              "text": "Predicted accuracy and stated liking were assessed before tasting."
+            },
+            {
+              "id": "sec1.p14.s9",
+              "text": "Accuracy is the percentage of correctly identified trials, with hits/trials in brackets; chance is 16.7% (six alternatives)."
+            },
+            {
+              "id": "sec1.p14.s10",
+              "text": "Certainty and tasted liking are per-trial judgments from 1 to 6, averaged within flavor; the final row values include standard deviations."
+            },
+            {
+              "id": "sec1.p14.s11",
+              "text": "Exact intervals and binomial tests for accuracy are in Table S1; full certainty and liking distributions are in Table S4."
+            }
+          ]
+        },
+        {
+          "id": "sec1.p15",
+          "sentences": [
+            {
+              "id": "sec1.p15.s1",
+              "text": "PERCEPTION OF GUMMY BEARS 15 Table 2 Predicted Accuracy, Identification Accuracy, Certainty, and Liking for Each Flavor, Separately for Each Perceiver Flavor Ada Ella predicted accuracy accuracy certainty stated liking tasted liking predicted accuracy accuracy certainty stated liking tasted liking strawberry 60% 33% (1/3) 2.67 5.00 3.00 48% 67% (2/3) 3.67 5.00 4.33 orange 40% 0% (0/3) 3.00 4.00 5.00 82% 71% (5/7) 4.00 3.00 3.57 apple 80% 14% (1/7) 2.29 3.00 4.43 81% 20% (1/5) 2.60 3.00 3.60 raspberry 60% 17% (1/6) 2.50 6.00 3.50 50% 100% (3/3) 5.00 5.00 4.67 lemon 60% 0% (0/1) 6.00 4.00 6.00 51% 75% (3/4) 3.00 4.00 4.00 pineapple 60% 0% (0/5) 2.80 4.00 4.00 65% 100% (3/3) 5.00 6.00 6.00 All flavors 60% 12% (3/25) 2.72 (1.74) 4.33 4.08 (1.85) 63% 68% (17/25) 3.76 (1.36) 4.33 4.16 (0.99) Flavor Natalie Mitja predicted accuracy accuracy certainty stated liking tasted liking predicted accuracy accuracy certainty stated liking tasted liking strawberry 35% 0% (0/2) 3.00 6.00 2.50 28% 33% (1/3) 2.33 4.00 2.67 orange 30% 0% (0/3) 2.00 3.00 3.33 24% 100% (4/4) 3.75 3.00 2.75 apple 20% 0% (0/3) 3.67 3.00 4.33 35% 75% (6/8) 3.75 3.00 3.88 raspberry 38% 50% (3/6) 2.33 6.00 3.50 26% 100% (2/2) 4.50 5.00 5.50 lemon 35% 43% (3/7) 2.00 4.00 3.00 40% 20% (1/5) 2.80 2.00 2.80 pineapple 30% 25% (1/4) 1.75 3.00 3.00 35% 33% (1/3) 2.67 6.00 3.67 All flavors 31% 28% (7/25) 2.32 (1.07) 4.17 3.28 (0.98) 31% 60% (15/25) 3.32 (1.22) 3.83 3.44 (1.04) Note."
+            },
+            {
+              "id": "sec1.p15.s2",
+              "text": "Same design and measures as Table 1: four perceivers, 25 gummy bears each under blind-tasting conditions, chance 16.7%."
+            },
+            {
+              "id": "sec1.p15.s3",
+              "text": "The upper panel gives Ada and Ella, the lower panel Natalie and Mitja."
+            },
+            {
+              "id": "sec1.p15.s4",
+              "text": "Accuracy cells give hits/trials in brackets."
+            },
+            {
+              "id": "sec1.p15.s5",
+              "text": "Certainty and tasted liking are averaged within perceiver x flavor cells."
+            },
+            {
+              "id": "sec1.p15.s6",
+              "text": "Final rows give each perceiver's overall values with SDs for certainty and tasted liking."
+            },
+            {
+              "id": "sec1.p15.s7",
+              "text": "The Ada x lemon cell is based on a single trial."
+            },
+            {
+              "id": "sec1.p15.s8",
+              "text": "Exact intervals and binomial tests for accuracy are in Table S1; full certainty and liking distributions are in Table S4."
+            }
+          ]
+        },
+        {
+          "id": "sec1.p16",
+          "sentences": [
+            {
+              "id": "sec1.p16.s1",
+              "text": "PERCEPTION OF GUMMY BEARS 16 Accurate Differentiation Pooled accuracy, the proportion of trials correctly identified, was 42 of 100, .42 [.32, .52]; that interval treats the 100 trials as independent, which they are not, since they come from four perceivers."
+            },
+            {
+              "id": "sec1.p16.s2",
+              "text": "Perceivers differed strongly: two of the four identified flavors far above chance and two did not (Figure 1A), χ²(3) = 21.51, exact conditional p < .001 (Table S1)."
+            },
+            {
+              "id": "sec1.p16.s3",
+              "text": "Ella named 17 of 25 correctly, .68 [.46, .85], p < .001, and Mitja 15 of 25, .60 [.39, .79], p < .001, against Natalie's 7 of 25, .28 [.12, .49], p = .17, and Ada's 3 of 25, .12 [.03, .31], p = .79."
+            },
+            {
+              "id": "sec1.p16.s4",
+              "text": "Ada's .12 lies below the chance line descriptively, but we read her performance as guessing."
+            },
+            {
+              "id": "sec1.p16.s5",
+              "text": "Only zero hits in 25 trials would reject downward (one-sided p = .010)."
+            },
+            {
+              "id": "sec1.p16.s6",
+              "text": "Detecting a true accuracy of .05 or .10 against the 1/6 chance level with 80% power would take about 45 or 163 trials per perceiver, respectively."
+            },
+            {
+              "id": "sec1.p16.s7",
+              "text": "At this point, parental concerns about Ada's health outweighed concerns about statistical power."
+            },
+            {
+              "id": "sec1.p16.s8",
+              "text": "Mapped onto age, accuracy was .12 at age 8, .68 at 13, .28 at 42, and .60 at 47."
+            },
+            {
+              "id": "sec1.p16.s9",
+              "text": "The pattern is non-monotonic."
+            },
+            {
+              "id": "sec1.p16.s10",
+              "text": "Its within-generation spread exceeds its between-generation differences, and it does not support a systematic age effect."
+            }
+          ]
+        },
+        {
+          "id": "sec1.p17",
+          "sentences": [
+            {
+              "id": "sec1.p17.s1",
+              "text": "PERCEPTION OF GUMMY BEARS 17 Figure 1 Blind Identification of Gummy Bear Flavors by Four Perceivers Note."
+            },
+            {
+              "id": "sec1.p17.s2",
+              "text": "(A) Proportion correctly identified, with Clopper-Pearson exact 95% intervals and exact binomial p-values against chance (1/6)."
+            },
+            {
+              "id": "sec1.p17.s3",
+              "text": "(B) Confusion matrix pooled across perceivers; rows show tasted flavors, columns named flavors, cells trial counts, and shading row proportions."
+            },
+            {
+              "id": "sec1.p17.s4",
+              "text": "Boxes mark correct responses; the right column gives flavor frequencies."
+            },
+            {
+              "id": "sec1.p17.s5",
+              "text": "(C) One-versus-rest discrimination for all 24 perceiver x flavor cells, quantified as the area under the receiver operating characteristic (ROC) curve (AUC) of a certainty-graded score (positive certainty when the flavor was named, negative otherwise)."
+            },
+            {
+              "id": "sec1.p17.s6",
+              "text": "Horizontal bars show macro\u0002averaged AUCs per perceiver with one-sided permutation p-values; .50 indicates chance."
+            },
+            {
+              "id": "sec1.p17.s7",
+              "text": "Point size and numbers indicate cell sizes (1-8 trials)."
+            },
+            {
+              "id": "sec1.p17.s8",
+              "text": "Colors correspond to the product flavors but were unavailable to perceivers during tasting."
+            },
+            {
+              "id": "sec1.p17.s9",
+              "text": "Str = strawberry, Ora = orange, App = apple, Ras = raspberry, Lem = lemon, Pin = pineapple."
+            }
+          ]
+        },
+        {
+          "id": "sec1.p18",
+          "sentences": [
+            {
+              "id": "sec1.p18.s1",
+              "text": "PERCEPTION OF GUMMY BEARS 18 The most frequent confusions (see Figure 1B) were lemon named orange (6 trials), apple named raspberry (6), orange named lemon (5), and pineapple named lemon (4)."
+            },
+            {
+              "id": "sec1.p18.s2",
+              "text": "Per-flavor accuracy pooled over perceivers ran from .33 for pineapple to .53 for orange and raspberry (Tables S1, S2)."
+            },
+            {
+              "id": "sec1.p18.s3",
+              "text": "Some of these pooled confusions resemble within-fruit confusions reported in cued identification research (Brandão et al., 2025)."
+            },
+            {
+              "id": "sec1.p18.s4",
+              "text": "However, most errors in the pooled matrix came from the two less accurate gummy bear judges, so this pattern cannot establish sensory confusability."
+            },
+            {
+              "id": "sec1.p18.s5",
+              "text": "Figure 1C gives one-versus-rest discrimination for all 24 perceiver x flavor cells, as rank\u0002based areas under the receiver operating characteristic (ROC) curve (AUC) of a certainty\u0002graded score that considers both sensitivity (the ability of a perceiver to detect a gummy bear flavor when eating one) and specificity (the ability of a perceiver to not name a gummy bear flavor when not eating one)."
+            },
+            {
+              "id": "sec1.p18.s6",
+              "text": "The certainty-graded models were warranted given that certainty carried relevant signal, at least for some of the perceivers: Certainty discriminated correct from incorrect trials for Ella (AUC = .95, p < .001) and Mitja (.79, p = .005) but not for Natalie (.56, p = .37) or Ada (.38 on three correct trials, p = .81; Table S7)."
+            },
+            {
+              "id": "sec1.p18.s7",
+              "text": "Cells rest on 1 to 8 positive trials, which is why the figure prints each cell's n."
+            },
+            {
+              "id": "sec1.p18.s8",
+              "text": "Macro-averaged within perceiver, Ella reached .95 in identification and Mitja .85, both at one-sided permutation p < .001, against .50 for Natalie (p = .46) and .40 for Ada (p = .94)."
+            },
+            {
+              "id": "sec1.p18.s9",
+              "text": "The grand macro-AUC was .68 (p < .001), and per-flavor macro-AUCs ran from .56 for lemon (p = .27) to .83 for raspberry (p < .001; see Table S8, Figure S3)."
+            },
+            {
+              "id": "sec1.p18.s10",
+              "text": "To compare the found identification values with those in the literature, we rescaled the hit rate at k alternatives onto an index whose null value is .50 regardless of k (Rosenthal & Rubin, 1989; Tskhay & Rule, 2013)."
+            },
+            {
+              "id": "sec1.p18.s11",
+              "text": "Our pooled .42 at six alternatives becomes π = .78, against .51 for picking the more extraverted of two faces (Jaeger et al., 2024), .54 for detecting deception (Bond & DePaulo, 2006), and .88 or higher for cued flavor and odor"
+            }
+          ]
+        },
+        {
+          "id": "sec1.p19",
+          "sentences": [
+            {
+              "id": "sec1.p19.s1",
+              "text": "PERCEPTION OF GUMMY BEARS 19 identification; the index equalizes the number of alternatives and not the difficulty of the task, and the anosmia cut-off of the Candy Smell Test, a four-alternative retronasal test (Renner et al., 2009), rescales to π = .80, just above our own value (Table S14)."
+            },
+            {
+              "id": "sec1.p19.s2",
+              "text": "On the discrimination metric, the grand macro-AUC of .68 corresponds under an equal-variance binormal model to d = 0.66 and an effect-size-equivalent r = .31 (Rice & Harris, 2005)."
+            },
+            {
+              "id": "sec1.p19.s3",
+              "text": "Reported mean single\u0002judge first-impression accuracy is r = .25 (Carney et al., 2007), and self-stranger agreement runs from .08 to .28 (Connelly & Ones, 2010, Table 5 and Table 9)."
+            },
+            {
+              "id": "sec1.p19.s4",
+              "text": "Table S14 sets out the forced-choice benchmarks with their raw values, numbers of alternatives, and chance levels, and its note gives the conversion behind the discrimination-metric values."
+            },
+            {
+              "id": "sec1.p19.s5",
+              "text": "A variance decomposition on the accuracy scores reveals that 50% of the accuracy variance was due to perceiver differences in identification ability (SD for the four perceivers = .26, the four accuracies of Figure 1A), against only 11% due to differences in the identifiability of flavors (SD for the six flavors = .09), 15% on the relationship component (unique identification abilities of a particular perceiver regarding a particular flavor), and the remaining 24% the sampling floor of that relationship estimate (Figure 2, left bar)."
+            },
+            {
+              "id": "sec1.p19.s6",
+              "text": "With every component's simulated noise floor removed and the remainder renormalized, the three components read .70, .07, and .22 (Table S10)."
+            },
+            {
+              "id": "sec1.p19.s7",
+              "text": "The crossed random-effects control reproduces these results (Table S13)."
+            },
+            {
+              "id": "sec1.p19.s8",
+              "text": "The perceivers' own a priori predictions showed both over- and underestimation."
+            },
+            {
+              "id": "sec1.p19.s9",
+              "text": "Ada predicted 60% and achieved 12% (p < .001 against her own prediction) and Mitja predicted 31% and achieved 60% (p = .004), while Ella's (63% predicted, 68% achieved) and Natalie's (31%, 28%) predictions were better calibrated (Figure S1, Table S12)."
+            },
+            {
+              "id": "sec1.p19.s10",
+              "text": "Specific Preferences A variance decomposition of stated liking, before any tasting, shows that a priori preferences were dominated by flavor consensus (55%), against 3% for the perceiver and 42% for the"
+            }
+          ]
+        },
+        {
+          "id": "sec1.p20",
+          "sentences": [
+            {
+              "id": "sec1.p20.s1",
+              "text": "PERCEPTION OF GUMMY BEARS 20 relationship component, which is confounded with error (Figure 2, middle bar)."
+            },
+            {
+              "id": "sec1.p20.s2",
+              "text": "That is, when participants thought about their gummy bear preferences in abstract terms, they agreed on which flavors are particularly tasty, and there was little difference between perceivers."
+            },
+            {
+              "id": "sec1.p20.s3",
+              "text": "The flavors the family consensually rated best beforehand were raspberry (5.50) and strawberry (5.00)."
+            },
+            {
+              "id": "sec1.p20.s4",
+              "text": "This consensus, however, was not reflected in tasted liking."
+            },
+            {
+              "id": "sec1.p20.s5",
+              "text": "The flavors the family consensually rated as best tasting were pineapple (4.07) and apple (4.04)."
+            },
+            {
+              "id": "sec1.p20.s6",
+              "text": "Mean stated and mean tasted liking was uncorrelated (r = .02) across the six flavors (p = .98; Table S9)."
+            },
+            {
+              "id": "sec1.p20.s7",
+              "text": "Most importantly, tasted liking had a different composition, and both general and unique differences between perceivers emerged."
+            },
+            {
+              "id": "sec1.p20.s8",
+              "text": "There was little consensus regarding which gummy bear flavors actually taste best (flavor variance: 13%), and somewhat more variance between perceivers in how much they liked gummy bears in general (21%)."
+            },
+            {
+              "id": "sec1.p20.s9",
+              "text": "The largest share was the relationship component (37%), with an additional 29% sampling floor (Figure 2, right bar)."
+            },
+            {
+              "id": "sec1.p20.s10",
+              "text": "Two of the strongest person-specific preferences were Mitja's liking for raspberry, and Ella's liking for pineapple."
+            },
+            {
+              "id": "sec1.p20.s11",
+              "text": "Mitja's liking of raspberry was 1.54 scale points above what would be expected from his general tendency to like gummy bears and the overall popularity of raspberry."
+            },
+            {
+              "id": "sec1.p20.s12",
+              "text": "Ella rated pineapple 1.35 points higher than expected on the same basis."
+            },
+            {
+              "id": "sec1.p20.s13",
+              "text": "These estimates were based on two and three trials, respectively (Table S9)."
+            },
+            {
+              "id": "sec1.p20.s14",
+              "text": "That is, when it came to actual gummy bear tastes, perceivers varied substantially in their specific preferences (see Table S10 for absolute values and Table S13 for the mixed-model control)."
+            }
+          ]
+        },
+        {
+          "id": "sec1.p21",
+          "sentences": [
+            {
+              "id": "sec1.p21.s1",
+              "text": "PERCEPTION OF GUMMY BEARS 21 Figure 2 Relative Variance Components for Identification Accuracy, Stated Liking, and Tasted Liking Note."
+            },
+            {
+              "id": "sec1.p21.s2",
+              "text": "Each bar divides the variance between the 24 perceiver x flavor cell means into perceiver, flavor, and relationship components."
+            },
+            {
+              "id": "sec1.p21.s3",
+              "text": "For tasted liking and identification accuracy, the relationship component is split into the noise-corrected part (solid) and the simulated sampling-noise floor (hatched)."
+            },
+            {
+              "id": "sec1.p21.s4",
+              "text": "Stated liking was rated once per cell, so its relationship component cannot be separated from measurement error."
+            },
+            {
+              "id": "sec1.p21.s5",
+              "text": "Trial-level variance within cells is excluded to keep the three decompositions comparable."
+            },
+            {
+              "id": "sec1.p21.s6",
+              "text": "Estimates of all components contain sampling noise; only the relationship component is shown split because its noise floor is substantial."
+            },
+            {
+              "id": "sec1.p21.s7",
+              "text": "Table S10 reports raw, noise-floors, corrected, and renormalized estimates with bootstrap intervals."
+            },
+            {
+              "id": "sec1.p21.s8",
+              "text": "For accuracy, the fully corrected shares are 70% perceiver, 7% flavor, and 22% relationship."
+            },
+            {
+              "id": "sec1.p21.s9",
+              "text": "Mixed-model controls are in Table S13."
+            },
+            {
+              "id": "sec1.p21.s10",
+              "text": "Percentages are rounded and may not sum to 100."
+            }
+          ]
+        },
+        {
+          "id": "sec1.p22",
+          "sentences": [
+            {
+              "id": "sec1.p22.s1",
+              "text": "PERCEPTION OF GUMMY BEARS 22 Liking and accuracy were unrelated at every level: Perceivers who liked gummy bears more were not more accurate (perceiver r = .05), gummy bear flavors that were liked more were not judged more accurately (flavor r = −.06), and specific liking for a certain gummy bear flavor did not co-occur with unique accuracy in identifying this flavor (relationship r = .21, p = .43; Table S11)."
+            },
+            {
+              "id": "sec1.p22.s2",
+              "text": "Awareness of Specific Preferences We also explored whether perceivers knew the unique preferences that would be revealed from their blind tasting."
+            },
+            {
+              "id": "sec1.p22.s3",
+              "text": "Across the 24 perceiver-flavor combinations (cells), stated and tasted unique liking correlated r = .31 (p = .21), r = .33 with cells weighted by their number of trials (p = .13), and r = .30 with the single-trial cell removed (p = .24); the rank version gives r = .31, and the mixed-model control gives β = .32 at p = .13 (Figure 3A; Tables S9, S13)."
+            },
+            {
+              "id": "sec1.p22.s4",
+              "text": "Because both sides are relationship effects, no perceiver-level response tendency and no flavor-level consensus can contribute to this association."
+            },
+            {
+              "id": "sec1.p22.s5",
+              "text": "Each perceiver's six values and each flavor's four sum to zero by construction."
+            },
+            {
+              "id": "sec1.p22.s6",
+              "text": "That same construction leaves the 24 values with (4-1)(6-1) = 15 degrees of freedom rather than 24, so the permutation test shuffles each perceiver's stated ratings within perceiver and re-derives the margins on every draw."
+            },
+            {
+              "id": "sec1.p22.s7",
+              "text": "A conventional test on 24 observations would report p = .14 for the same correlation."
+            },
+            {
+              "id": "sec1.p22.s8",
+              "text": "Thus, based on the preliminary data at hand, there is no evidence for general awareness of specific gummy bear preferences."
+            },
+            {
+              "id": "sec1.p22.s9",
+              "text": "However, we did not have the statistical power to detect medium\u0002sized correlations and cannot exclude the possibility that a better-powered study including more participants will find significant average awareness."
+            }
+          ]
+        },
+        {
+          "id": "sec1.p23",
+          "sentences": [
+            {
+              "id": "sec1.p23.s1",
+              "text": "PERCEPTION OF GUMMY BEARS 23 Figure 3Awareness of One's Own Unique Flavor Preferences Note."
+            },
+            {
+              "id": "sec1.p23.s2",
+              "text": "(A) Stated vs. tasted unique liking across all 24 perceiver x flavor cells."
+            },
+            {
+              "id": "sec1.p23.s3",
+              "text": "Both axes are relationship effects, that is, deviations from the perceiver and flavor means."
+            },
+            {
+              "id": "sec1.p23.s4",
+              "text": "The dashed line shows the least-squares fit; r = .31, permutation p = .21, and r = .33, p = .13 when cells are weighted by trial count."
+            },
+            {
+              "id": "sec1.p23.s5",
+              "text": "Marker shape indicates perceiver and color flavor."
+            },
+            {
+              "id": "sec1.p23.s6",
+              "text": "(B to E) The same relationship effects shown separately for each perceiver (six flavors each), with individual fits, correlations, and exact permutation p-values based on all 720 orderings."
+            },
+            {
+              "id": "sec1.p23.s7",
+              "text": "These per\u0002perceiver correlations are descriptive only."
+            },
+            {
+              "id": "sec1.p23.s8",
+              "text": "Flavor colors correspond to the product, but were unavailable during tasting."
+            },
+            {
+              "id": "sec1.p23.s9",
+              "text": "Str = strawberry, Ora = orange, App = apple, Ras = raspberry, Lem = lemon, Pin = pineapple."
+            },
+            {
+              "id": "sec1.p23.s10",
+              "text": "Again, as for accuracy, the per-perceiver correlations vary widely, although none of them differs from zero and each is based on six cells only."
+            },
+            {
+              "id": "sec1.p23.s11",
+              "text": "The correlations between stated and tasted relationship effects were .46 for Ada (exact p = .69), .61 for Ella (p = .25), .25 for Natalie (p = .67), and .13 for Mitja (p = .85), on six cells each (Figure 3B to 3E)."
+            },
+            {
+              "id": "sec1.p23.s12",
+              "text": "The raw profile correlations, which retain the consensus component, spread wider: .93 for Ella (exact p = .0056, one of eight uncorrected tests in this block), .52 for Mitja, −.55 for Ada, and −.43 for Natalie (Table S9)."
+            }
+          ]
+        },
+        {
+          "id": "sec1.p24",
+          "sentences": [
+            {
+              "id": "sec1.p24.s1",
+              "text": "PERCEPTION OF GUMMY BEARS 24 Discussion Our initial exploration of individual gummy bear perception revealed novel findings that might be taken up in future research."
+            },
+            {
+              "id": "sec1.p24.s2",
+              "text": "Most generally, across all three investigated questions, the gummy bears alone contributed remarkably little to their own perception."
+            },
+            {
+              "id": "sec1.p24.s3",
+              "text": "Instead, flavor identification, liking, and awareness were revealed in the mouth of the perceivers, the gummy bear eaters."
+            },
+            {
+              "id": "sec1.p24.s4",
+              "text": "How accurately a gummy bear was identified was mainly a property of the perceiver (i.e., the gummy bear eater), ranging from strong to chance-level accuracy."
+            },
+            {
+              "id": "sec1.p24.s5",
+              "text": "Some accurately identified flavors on most trials, while others rarely did so."
+            },
+            {
+              "id": "sec1.p24.s6",
+              "text": "How much a gummy bear was liked was a property of the gummy bear eater and flavor together."
+            },
+            {
+              "id": "sec1.p24.s7",
+              "text": "Ella specifically liked pineapple and liked apple less, while Mitja liked raspberry most and lemon less."
+            },
+            {
+              "id": "sec1.p24.s8",
+              "text": "How aware gummy bear eaters were of their specific gummy bear preferences differed across perceivers, with the correspondence between stated and tasted unique liking running from .13 to .61 and none of the four values differing from zero."
+            },
+            {
+              "id": "sec1.p24.s9",
+              "text": "There was no evidence for awareness on average."
+            },
+            {
+              "id": "sec1.p24.s10",
+              "text": "Future research across a larger set of perceivers is needed for a fuller examination of the degree of awareness and individual differences therein."
+            },
+            {
+              "id": "sec1.p24.s11",
+              "text": "Concerning accuracy, results differ markedly from those in related research areas."
+            },
+            {
+              "id": "sec1.p24.s12",
+              "text": "The average level of accuracy was below that found in cued identification research (also see Table S14)."
+            },
+            {
+              "id": "sec1.p24.s13",
+              "text": "Each trial was a single retronasal encounter during chewing, the aroma inside a matrix whose acidity and texture do not distinguish the flavors."
+            },
+            {
+              "id": "sec1.p24.s14",
+              "text": "Despite name availability and feedback, two of the keys to odor identification (Cain, 1979), this task was more difficult than sniffing a labeled pen in typical cued identification paradigms."
+            },
+            {
+              "id": "sec1.p24.s15",
+              "text": "This finding could be due both to a less distinct sensory input and to a stronger influence of individual preconceptions regarding the experiences when interacting with gummy bears of a certain color that could interfere with the tasting task."
+            },
+            {
+              "id": "sec1.p24.s16",
+              "text": "At the same time, accuracy was above the level typically found in zero- or short-term acquaintance interpersonal perception research."
+            },
+            {
+              "id": "sec1.p24.s17",
+              "text": "So, once the differing"
+            }
+          ]
+        },
+        {
+          "id": "sec1.p25",
+          "sentences": [
+            {
+              "id": "sec1.p25.s1",
+              "text": "PERCEPTION OF GUMMY BEARS 25 numbers of response alternatives are taken into account, identifying a gummy bear flavor in the mouth was easier than reading extraversion off a stranger's face (Jaeger et al., 2024), detecting lies (Bond & DePaulo, 2006), distinguishing a spontaneous from a posed smile (Perusquía-Hernández et al., 2019), or deciding whether a human face was real or a deepfake (Stockner et al., 2026)."
+            },
+            {
+              "id": "sec1.p25.s2",
+              "text": "Again, this could be due to a more identifiable and less ambiguous set of sensory inputs (cues) as well as an even stronger role of preconceptions in the case of perceiving other living individuals as opposed to abiotic individuals."
+            },
+            {
+              "id": "sec1.p25.s3",
+              "text": "Even more important than the average accuracy found is the large degree of accuracy differences between perceivers."
+            },
+            {
+              "id": "sec1.p25.s4",
+              "text": "Half of the variance in identification accuracy between the 24 perceiver-by-flavor cells sat on the perceiver, with a spread from .12 to .68."
+            },
+            {
+              "id": "sec1.p25.s5",
+              "text": "This is a stark contrast to findings in interpersonal perception research."
+            },
+            {
+              "id": "sec1.p25.s6",
+              "text": "Individual perceiver differences in interpersonal accuracy, in the sense of judging what other people are like, are typically small, show only modest generalization across judgment tasks, and emerge particularly when the target is a good one (Rogers & Biesanz, 2019; Schlegel et al., 2017)."
+            },
+            {
+              "id": "sec1.p25.s7",
+              "text": "Where individual differences in accuracy appear, they are explained socially, through motivation, empathic skill, or experience with people, rather than through perceptual skill."
+            },
+            {
+              "id": "sec1.p25.s8",
+              "text": "Importantly, the pronounced differences between gummy bear eaters were already present from the beginning of the study and did not increase across trials, making differential learning during the tasting sessions an unlikely explanation."
+            },
+            {
+              "id": "sec1.p25.s9",
+              "text": "Against this background, the findings raise the possibility that gummy bear identification constitutes an individual-difference ability in its own right: Some people may simply be good gummy bear judges, whereas others are not."
+            },
+            {
+              "id": "sec1.p25.s10",
+              "text": "Whether this ability deserves the status of a genuine gummy bear identification competence would require further evidence that it is reliable across repeated assessments and stable across occasions."
+            },
+            {
+              "id": "sec1.p25.s11",
+              "text": "An exciting perspective for future research is to identify the process differences underlying this variability in identification accuracy among gummy bear eaters."
+            },
+            {
+              "id": "sec1.p25.s12",
+              "text": "Potential sources of this"
+            }
+          ]
+        },
+        {
+          "id": "sec1.p26",
+          "sentences": [
+            {
+              "id": "sec1.p26.s1",
+              "text": "PERCEPTION OF GUMMY BEARS 26 variability might include differences in sensory abilities also involved in basic olfactory identification (Doty et al., 1984) as well as social processes including the motivation to get it right with gummy bears, experiences in interacting with gummy bears, and the social identification with certain gummy bear colors."
+            },
+            {
+              "id": "sec1.p26.s2",
+              "text": "Other open questions regard generalization and consequences of this ability beyond identifying gummy bears."
+            },
+            {
+              "id": "sec1.p26.s3",
+              "text": "It may be narrowly confined to Goldbears, generalize to other brands or fruit-flavored confectionery, or constitute one manifestation of a broader flavor- or odor-identification ability."
+            },
+            {
+              "id": "sec1.p26.s4",
+              "text": "Future research might examine whether good gummy bear judges are good judges of other abiotic and living individuals as well and whether this ability is related to intrapersonal, interpersonal, and institutional consequential outcomes (Ozer & Benet-Martínez, 2006)."
+            },
+            {
+              "id": "sec1.p26.s5",
+              "text": "However, whether being a good gummy bear judge is actually beneficial remains open."
+            },
+            {
+              "id": "sec1.p26.s6",
+              "text": "Research on judgments of humans suggests that greater accuracy does not invariably translate into better outcomes (e.g., Förster et al., 2022)."
+            },
+            {
+              "id": "sec1.p26.s7",
+              "text": "Findings for liking gummy bears show some remarkable resemblance to interpersonal perception research on interpersonal attraction and liking."
+            },
+            {
+              "id": "sec1.p26.s8",
+              "text": "While stated preferences were consensual and driven by the color/flavor category (participants agreed that raspberry gummy bears are among the tastiest), experienced preferences were specific and driven by the pairing of a gummy bear eater and a flavor (for example, Ella specifically liked pineapple more than expected from her general liking and pineapple's overall popularity)."
+            },
+            {
+              "id": "sec1.p26.s9",
+              "text": "When removing the noise floors and renormalizing, relationship variance for experienced liking was 63% (instead of 37% when including noise) which is in the same range that is found for initial liking (around 50%) and liking in established relationships (close to 70%) of humans, in both romantic and nonromantic (peer) contexts (see Figure 2 in Back et al., 2023)."
+            },
+            {
+              "id": "sec1.p26.s10",
+              "text": "Thus, in the same way that liking humans is particularly due to the specific matching of two human individuals, liking gummy bears is driven by the unique chemistry between a specific gummy"
+            }
+          ]
+        },
+        {
+          "id": "sec1.p27",
+          "sentences": [
+            {
+              "id": "sec1.p27.s1",
+              "text": "PERCEPTION OF GUMMY BEARS 27 bear eater (perceiver) and a specific gummy bear flavor (target)."
+            },
+            {
+              "id": "sec1.p27.s2",
+              "text": "Importantly, this unique chemistry emerged only when the gummy bear was actually encountered: placed in the eater's mouth without its color, flavor name, or reputation available at the time of judgment."
+            },
+            {
+              "id": "sec1.p27.s3",
+              "text": "Under these conditions, who liked which gummy bear flavor became substantially more individual than the consensual preferences stated beforehand."
+            },
+            {
+              "id": "sec1.p27.s4",
+              "text": "Regarding awareness of these specific preferences, the same asymmetry is found where the targets are people: stated ideals predict evaluations of hypothetical partners, but not for partners actually met (Eastwick et al., 2014), and show negligible unique fit with realized evaluations (Sparks et al., 2020)."
+            },
+            {
+              "id": "sec1.p27.s5",
+              "text": "Although interacting with gummy bears is arguably less influenced by self-presentation and by prior individual acquaintance, and less personally at stake, the same deviation of judgments appears: Judging gummy bear flavors in an a priori abstract sense deviates from gummy bear evaluations when actually interacting with an individual."
+            },
+            {
+              "id": "sec1.p27.s6",
+              "text": "Attitude research offers a potential answer: A stated judgment is more driven by categorical information and a tasted one by individual information."
+            },
+            {
+              "id": "sec1.p27.s7",
+              "text": "Our two measures sit at opposite ends of that continuum by construction (Fiske & Neuberg, 1990): stated liking rated a named flavor aloud, with the label available; tasted liking rated the gummy bear met without it."
+            },
+            {
+              "id": "sec1.p27.s8",
+              "text": "A consensual category attitude, besides unrelated evaluations of individual members, is the structure LaPiere (1934) reported and the reason the contact literature exists (Allport, 1954)."
+            },
+            {
+              "id": "sec1.p27.s9",
+              "text": "Explicit measures of group attitudes are only weakly related to intergroup behavior toward individuals (Kurdi et al., 2019)."
+            },
+            {
+              "id": "sec1.p27.s10",
+              "text": "A similar dissociation and weak relation were found for the perception of gummy bears."
+            },
+            {
+              "id": "sec1.p27.s11",
+              "text": "Take the two reds as an example: raspberry and strawberry are near-identical on the product, took the top two stated positions at 5.50 and 5.00 on a 1 to 6 scale, and split in the mouth to third and last of six."
+            },
+            {
+              "id": "sec1.p27.s12",
+              "text": "Apple showed the reverse pattern."
+            },
+            {
+              "id": "sec1.p27.s13",
+              "text": "It received a modest stated rating of 3.00, but reached 4.04 when actually tasted, making it one of the two best-tasting flavors."
+            },
+            {
+              "id": "sec1.p27.s14",
+              "text": "The red gummy bears therefore entered the"
+            }
+          ]
+        },
+        {
+          "id": "sec1.p28",
+          "sentences": [
+            {
+              "id": "sec1.p28.s1",
+              "text": "PERCEPTION OF GUMMY BEARS 28 tasting with a considerable reputational advantage, whereas apple performed better once that reputation was removed from the judgment."
+            },
+            {
+              "id": "sec1.p28.s2",
+              "text": "The stated liking for the red ones might be an attitude toward a color driven by a learning history (Palmer & Schloss, 2010) that is partly independent of actual taste (e.g., by associating all sorts of positive concepts with the color red)."
+            },
+            {
+              "id": "sec1.p28.s3",
+              "text": "Attitudes built through that history might be a suboptimal predictor of actual conduct toward their object (Glasman & Albarracín, 2006)."
+            },
+            {
+              "id": "sec1.p28.s4",
+              "text": "Our results also speak to the issue of self-knowledge."
+            },
+            {
+              "id": "sec1.p28.s5",
+              "text": "Self-knowledge has recently been defined as the extent to which people accurately perceive their own relatively stable characteristics and momentary states, explicitly including their preferences (Thielmann et al., 2026)."
+            },
+            {
+              "id": "sec1.p28.s6",
+              "text": "Preferences are an intriguing case because liking is inherently subjective and there is no obvious external observer who should know better than the person herself what she likes."
+            },
+            {
+              "id": "sec1.p28.s7",
+              "text": "In the present study, repeated liking judgments during blind tasting provided a criterion against which previously stated preferences could be compared."
+            },
+            {
+              "id": "sec1.p28.s8",
+              "text": "Nevertheless, stated unique preferences only imperfectly corresponded to the unique preferences that emerged during tasting."
+            },
+            {
+              "id": "sec1.p28.s9",
+              "text": "Thus, even for something as personally accessible as what tastes good in one's own mouth, knowing oneself may not be straightforward."
+            },
+            {
+              "id": "sec1.p28.s10",
+              "text": "Correspondence also varied descriptively across perceivers, raising the possibility that some gummy bear eaters know their own tastes better than others."
+            },
+            {
+              "id": "sec1.p28.s11",
+              "text": "With only six flavors per person, however, the present data cannot establish such individual differences."
+            },
+            {
+              "id": "sec1.p28.s12",
+              "text": "More generally, work on self-knowledge proceeds domain by domain, from traits and feelings to behavior and relationships (Vazire & Wilson, 2012)."
+            },
+            {
+              "id": "sec1.p28.s13",
+              "text": "An important question is how narrowly gummy bear preference self\u0002knowledge is bounded: whether it generalizes to self-knowledge regarding preferences for other foods, and preferences for other abiotic and/or living individuals, or remains specific even within the confectionery domain."
+            },
+            {
+              "id": "sec1.p28.s14",
+              "text": "A further question is whether people who know more accurately what they like are better able to select and shape environments that fit their actual"
+            }
+          ]
+        },
+        {
+          "id": "sec1.p29",
+          "sentences": [
+            {
+              "id": "sec1.p29.s1",
+              "text": "PERCEPTION OF GUMMY BEARS 29 preferences, an idea that connects to work on self-knowledge and person-environment fit (Rottinghaus & Van Esbroeck, 2011)."
+            },
+            {
+              "id": "sec1.p29.s2",
+              "text": "Given that research on gummy bear perceptions is still in its infancy, and we were only able to provide first results, it is premature to delineate broad practical implications."
+            },
+            {
+              "id": "sec1.p29.s3",
+              "text": "Nevertheless, one practice these results already bear on is handing gummy bears out."
+            },
+            {
+              "id": "sec1.p29.s4",
+              "text": "Developmental and behavioral-economic research administers them as rewards by category (Melis et al., 2015), and in one design the reward was selected by the child's stated category preference (Sutter et al., 2015)."
+            },
+            {
+              "id": "sec1.p29.s5",
+              "text": "Our results indicate that most of the systematic variation in a gummy bear's hedonic value lies in the perceiver-flavor pairing, and that a gummy bear eater's stated preference only poorly predicts the experienced liking."
+            },
+            {
+              "id": "sec1.p29.s6",
+              "text": "The applied literature has measured a similar gap: reinforcer surveys agreed with behavioral assessment on about 57% of items in 20 children (Northup, 2000), and caregiver report matched direct assessment for one toddler in nine (Cote et al., 2007)."
+            },
+            {
+              "id": "sec1.p29.s7",
+              "text": "Items selected by someone else do still function as reinforcers even where their rank ordering is wrong (Cote et al., 2007), a low-preference item sustains responding when it is the only one on offer (Roscoe et al., 1999), and reinforcer selection did not affect performance in typically developing schoolchildren (Resetar & Noell, 2008)."
+            },
+            {
+              "id": "sec1.p29.s8",
+              "text": "These findings make a simple recommendation difficult."
+            },
+            {
+              "id": "sec1.p29.s9",
+              "text": "If a child states that raspberry is preferred but blind tasting indicates greater liking for apple, giving apple may better match the child's experienced liking while disregarding the child's stated choice."
+            },
+            {
+              "id": "sec1.p29.s10",
+              "text": "The reinforcing value of a gummy bear may therefore depend not only on how much it is enjoyed when eaten, but also on what is expected, requested, and chosen."
+            },
+            {
+              "id": "sec1.p29.s11",
+              "text": "Direct assessment of tasted liking should consequently not simply replace stated preference."
+            },
+            {
+              "id": "sec1.p29.s12",
+              "text": "Rather, future research could examine how stated preference, experienced liking, and choice jointly determine the value of a gummy bear reward."
+            }
+          ]
+        },
+        {
+          "id": "sec1.p30",
+          "sentences": [
+            {
+              "id": "sec1.p30.s1",
+              "text": "PERCEPTION OF GUMMY BEARS 30 Future research on gummy bear perceptions should first provide well-powered direct replications of the present findings on accuracy, specific preferences, and awareness using a considerably larger and more diverse sample of gummy bear eaters."
+            },
+            {
+              "id": "sec1.p30.s2",
+              "text": "The person who drew the bear knew its flavor while the test person judged, and a replication should prevent that."
+            },
+            {
+              "id": "sec1.p30.s3",
+              "text": "A machine drawing the bears from a larger deposit would take the administering person out of the procedure altogether."
+            },
+            {
+              "id": "sec1.p30.s4",
+              "text": "Such samples would also allow researchers to establish whether the pronounced differences in identification accuracy and the descriptive differences in preference self-knowledge constitute reliable individual differences and to investigate their predictors."
+            },
+            {
+              "id": "sec1.p30.s5",
+              "text": "The present pattern suggests one particularly interesting possibility."
+            },
+            {
+              "id": "sec1.p30.s6",
+              "text": "Ella was the best differentiator, the best calibrated about it, and showed the strongest stated-tasted correspondence."
+            },
+            {
+              "id": "sec1.p30.s7",
+              "text": "Future research could examine whether these characteristics systematically cluster within the same gummy bear eaters."
+            },
+            {
+              "id": "sec1.p30.s8",
+              "text": "It could also test how narrowly gummy bear identification ability and preference self-knowledge are bounded to the gummy bear domain and whether they generalize to related abilities and forms of self-knowledge."
+            },
+            {
+              "id": "sec1.p30.s9",
+              "text": "Similarly, a larger sample would allow tests of age differences."
+            },
+            {
+              "id": "sec1.p30.s10",
+              "text": "In the current data, identification accuracy showed no monotonic pattern with age, even though olfactory identification performance varies systematically with age, with adults performing better than children and older adults (Doty et al., 1984; Oleszkiewicz et al., 2019), and children rely more strongly on color cues in flavor identification (Oram et al., 1995)."
+            },
+            {
+              "id": "sec1.p30.s11",
+              "text": "A larger sample spanning different ages could test these developmental differences while also separating age from differences in prior experience with gummy bears."
+            },
+            {
+              "id": "sec1.p30.s12",
+              "text": "Second, variations of the design could be used to investigate the role of color and a priori attitudes toward gummy bears more directly (e.g., between- or within-individual variation of color-visible vs. color blind liking judgments), and analyze the role of motivational factors for accurate identification (e.g., providing different sorts of social or material rewards)."
+            },
+            {
+              "id": "sec1.p30.s13",
+              "text": "The"
+            }
+          ]
+        },
+        {
+          "id": "sec1.p31",
+          "sentences": [
+            {
+              "id": "sec1.p31.s1",
+              "text": "PERCEPTION OF GUMMY BEARS 31 availability of category information could also be manipulated more systematically by comparing blind tasting with conditions in which the flavor identity is announced before tasting or the gummy bear is seen before it is eaten."
+            },
+            {
+              "id": "sec1.p31.s2",
+              "text": "Such designs would allow direct tests of whether the discrepancy between stated and tasted liking is partly produced by knowing the gummy bear's category and whether the experience of the same flavor changes when its identity is known."
+            },
+            {
+              "id": "sec1.p31.s3",
+              "text": "Similarly, manipulating incentives for correct identification could help establish whether good gummy bear judging reflects primarily sensory discrimination or also the motivation to use the available sensory information accurately."
+            },
+            {
+              "id": "sec1.p31.s4",
+              "text": "Third, future research could examine what happens when gummy bear eaters are confronted with discrepancies between their stated preferences and their own blind tasting data."
+            },
+            {
+              "id": "sec1.p31.s5",
+              "text": "After completing the tasting task, participants could receive feedback showing how their initial preference ratings corresponded to the liking ratings they gave when flavor identity was unavailable."
+            },
+            {
+              "id": "sec1.p31.s6",
+              "text": "Their preferences and subsequent choices could then be assessed again."
+            },
+            {
+              "id": "sec1.p31.s7",
+              "text": "This would allow researchers to examine whether people revise their prior beliefs in light of their own experienced liking, retain their original preferences, or change their interpretation of the tasting experience instead."
+            },
+            {
+              "id": "sec1.p31.s8",
+              "text": "Of particular interest would be individual differences in such belief updating."
+            },
+            {
+              "id": "sec1.p31.s9",
+              "text": "Some gummy bear eaters might readily incorporate discrepant evidence into their self-knowledge, whereas others might continue to prefer the gummy bears they believed they preferred before seeing the data."
+            },
+            {
+              "id": "sec1.p31.s10",
+              "text": "This extension connects the present findings to broader questions about the changeability of self-knowledge and the role of feedback in correcting or maintaining self-perceptions."
+            },
+            {
+              "id": "sec1.p31.s11",
+              "text": "Finally, the present study illustrates how established approaches from sensory research can be combined with methods from interpersonal perception to study individual differences in the perception and evaluation of abiotic targets."
+            },
+            {
+              "id": "sec1.p31.s12",
+              "text": "Gummy bears provide a particularly convenient model system because they are highly standardized and reproducible, belong to familiar"
+            }
+          ]
+        },
+        {
+          "id": "sec1.p32",
+          "sentences": [
+            {
+              "id": "sec1.p32.s1",
+              "text": "PERCEPTION OF GUMMY BEARS 32 categories whose identity cues can be made available or concealed, and allow repeated encounters with exemplars of the same target category."
+            },
+            {
+              "id": "sec1.p32.s2",
+              "text": "This combination permits researchers to examine not only how category information shapes perception and liking, but also how much these processes differ between perceivers, how well perceivers know their own idiosyncratic responses, and how they respond when subsequent evidence conflicts with their prior beliefs."
+            },
+            {
+              "id": "sec1.p32.s3",
+              "text": "It is an exciting open question for future research whether these processes operate similarly for the multitude of further abiotic individuals, such as plush toys, dolls, paintings, even personalized stones, pens, and so forth, we deal with, perceive, and evaluate in our everyday lives."
+            }
+          ]
+        },
+        {
+          "id": "sec1.p33",
+          "sentences": [
+            {
+              "id": "sec1.p33.s1",
+              "text": "PERCEPTION OF GUMMY BEARS 33 References Aaker, J. L. (1997)."
+            },
+            {
+              "id": "sec1.p33.s2",
+              "text": "Dimensions of brand personality."
+            },
+            {
+              "id": "sec1.p33.s3",
+              "text": "Journal of Marketing Research, 34(3), 347-356. https://doi.org/10.1177/002224379703400304 Allport, G. W. (1954)."
+            },
+            {
+              "id": "sec1.p33.s4",
+              "text": "The nature of prejudice."
+            },
+            {
+              "id": "sec1.p33.s5",
+              "text": "Addison-Wesley."
+            },
+            {
+              "id": "sec1.p33.s6",
+              "text": "Back, M. D., Branje, S., Eastwick, P. W., Human, L. J., Penke, L., Sadikaj, G., Slatcher, R. B., Thielmann, I., van Zalk, M. H. W., & Wrzus, C. (2023)."
+            },
+            {
+              "id": "sec1.p33.s7",
+              "text": "Personality and social relationships: What do we know and where do we go."
+            },
+            {
+              "id": "sec1.p33.s8",
+              "text": "Personality Science, 4, 1-32. https://doi.org/10.5964/ps.7505 Back, M. D., & Kenny, D. A. (2010)."
+            },
+            {
+              "id": "sec1.p33.s9",
+              "text": "The Social Relations Model: How to understand dyadic processes."
+            },
+            {
+              "id": "sec1.p33.s10",
+              "text": "Social and Personality Psychology Compass, 4(10), 855-870. https://doi.org/10.1111/j.1751-9004.2010.00303.x Back, M. D., & Nestler, S. (2016)."
+            },
+            {
+              "id": "sec1.p33.s11",
+              "text": "Accuracy of judging personality."
+            },
+            {
+              "id": "sec1.p33.s12",
+              "text": "In J. A. Hall, M. Schmid Mast, & T. V. West (Eds.), The social psychology of perceiving others accurately (pp. 98-124)."
+            },
+            {
+              "id": "sec1.p33.s13",
+              "text": "Cambridge University Press."
+            },
+            {
+              "id": "sec1.p33.s14",
+              "text": "Back, M. D., Schmukle, S. C., & Egloff, B. (2011)."
+            },
+            {
+              "id": "sec1.p33.s15",
+              "text": "A closer look at first sight: Social relations lens model analysis of personality and interpersonal attraction at zero acquaintance."
+            },
+            {
+              "id": "sec1.p33.s16",
+              "text": "European Journal of Personality, 25(3), 225-238. https://doi.org/10.1002/per.790 Biesanz, J. C. (2010)."
+            },
+            {
+              "id": "sec1.p33.s17",
+              "text": "The social accuracy model of interpersonal perception: Assessing individual differences in perceptive and expressive accuracy."
+            },
+            {
+              "id": "sec1.p33.s18",
+              "text": "Multivariate Behavioral Research, 45(5), 853-885. https://doi.org/10.1080/00273171.2010.519262 Bond, C. F., Jr., & DePaulo, B. M. (2006)."
+            },
+            {
+              "id": "sec1.p33.s19",
+              "text": "Accuracy of deception judgments."
+            },
+            {
+              "id": "sec1.p33.s20",
+              "text": "Personality and Social Psychology Review, 10(3), 214-234. https://doi.org/10.1207/s15327957pspr1003_2"
+            }
+          ]
+        },
+        {
+          "id": "sec1.p34",
+          "sentences": [
+            {
+              "id": "sec1.p34.s1",
+              "text": "PERCEPTION OF GUMMY BEARS 34 Brandão, P. R. de P., Pereira, D. A., Bispo, D. D. de C., von Glehn, F., Silveira-Moriyama, L., Titze-de-Almeida, S. S., Nakanishi, M., Saldanha-Araujo, F., Arganaraz, E. R., Ribeiro, A. P., Santos, A. L. dos, & Titze-de-Almeida, R. (2025)."
+            },
+            {
+              "id": "sec1.p34.s2",
+              "text": "Sniffin' Sticks smell identification test: Exploring measurement properties in an adult Brazilian healthcare professionals sample."
+            },
+            {
+              "id": "sec1.p34.s3",
+              "text": "PeerJ, 13, Article e19733. https://doi.org/10.7717/peerj.19733 Brewer, M. B., & Miller, N. (1984)."
+            },
+            {
+              "id": "sec1.p34.s4",
+              "text": "Beyond the contact hypothesis: Theoretical perspectives on desegregation."
+            },
+            {
+              "id": "sec1.p34.s5",
+              "text": "In N. Miller & M. B. Brewer (Eds.), Groups in contact: The psychology of desegregation (pp. 281-302)."
+            },
+            {
+              "id": "sec1.p34.s6",
+              "text": "Academic Press. https://doi.org/10.1016/B978-0-12-497780-8.50019-X Cain, W. S. (1979)."
+            },
+            {
+              "id": "sec1.p34.s7",
+              "text": "To know with the nose: Keys to odor identification."
+            },
+            {
+              "id": "sec1.p34.s8",
+              "text": "Science, 203(4379), 467-470. https://doi.org/10.1126/science.760202 Carney, D. R., Colvin, C. R., & Hall, J. A. (2007)."
+            },
+            {
+              "id": "sec1.p34.s9",
+              "text": "A thin slice perspective on the accuracy of first impressions."
+            },
+            {
+              "id": "sec1.p34.s10",
+              "text": "Journal of Research in Personality, 41(5), 1054-1072. https://doi.org/10.1016/j.jrp.2007.01.004 Chandler, J., & Schwarz, N. (2010)."
+            },
+            {
+              "id": "sec1.p34.s11",
+              "text": "Use does not wear ragged the fabric of friendship: Thinking of objects as alive makes people less willing to replace them."
+            },
+            {
+              "id": "sec1.p34.s12",
+              "text": "Journal of Consumer Psychology, 20(2), 138-145. https://doi.org/10.1016/j.jcps.2009.12.008 Connelly, B. S., & Ones, D. S. (2010)."
+            },
+            {
+              "id": "sec1.p34.s13",
+              "text": "An other perspective on personality: Meta-analytic integration of observers' accuracy and predictive validity."
+            },
+            {
+              "id": "sec1.p34.s14",
+              "text": "Psychological Bulletin, 136(6), 1092-1122. https://doi.org/10.1037/a0021212 Cote, C. A., Thompson, R. H., Hanley, G. P., & McKerchar, P. M. (2007)."
+            },
+            {
+              "id": "sec1.p34.s15",
+              "text": "Teacher report and direct assessment of preferences for identifying reinforcers for young children."
+            },
+            {
+              "id": "sec1.p34.s16",
+              "text": "Journal of Applied Behavior Analysis, 40(1), 157-166. https://doi.org/10.1901/jaba.2007.177-05"
+            }
+          ]
+        },
+        {
+          "id": "sec1.p35",
+          "sentences": [
+            {
+              "id": "sec1.p35.s1",
+              "text": "PERCEPTION OF GUMMY BEARS 35 de Wijk, R. A., & Cain, W. S. (1994)."
+            },
+            {
+              "id": "sec1.p35.s2",
+              "text": "Odor quality: Discrimination versus free and cued identification."
+            },
+            {
+              "id": "sec1.p35.s3",
+              "text": "Perception & Psychophysics, 56(1), 12-18. https://doi.org/10.3758/BF03211686 Doty, R. L., Shaman, P., Applebaum, S. L., Giberson, R., Siksorski, L., & Rosenberg, L. (1984)."
+            },
+            {
+              "id": "sec1.p35.s4",
+              "text": "Smell identification ability: Changes with age."
+            },
+            {
+              "id": "sec1.p35.s5",
+              "text": "Science, 226(4681), 1441- 1443. https://doi.org/10.1126/science.6505700 Dufner, M., & Krause, S. (2023)."
+            },
+            {
+              "id": "sec1.p35.s6",
+              "text": "On how to be liked in first encounters: The effects of agentic and communal behaviors on popularity and unique liking."
+            },
+            {
+              "id": "sec1.p35.s7",
+              "text": "Psychological Science, 34(4), 481-489. https://doi.org/10.1177/09567976221147258 Eastwick, P. W., & Hunt, L. L. (2014)."
+            },
+            {
+              "id": "sec1.p35.s8",
+              "text": "Relational mate value: Consensus and uniqueness in romantic evaluations."
+            },
+            {
+              "id": "sec1.p35.s9",
+              "text": "Journal of Personality and Social Psychology, 106(5), 728-751. https://doi.org/10.1037/a0035884 Eastwick, P. W., Luchies, L. B., Finkel, E. J., & Hunt, L. L. (2014)."
+            },
+            {
+              "id": "sec1.p35.s10",
+              "text": "The predictive validity of ideal partner preferences: A review and meta-analysis."
+            },
+            {
+              "id": "sec1.p35.s11",
+              "text": "Psychological Bulletin, 140(3), 623-665. https://doi.org/10.1037/a0032432 Epley, N., Waytz, A., & Cacioppo, J. T. (2007)."
+            },
+            {
+              "id": "sec1.p35.s12",
+              "text": "On seeing human: A three-factor theory of anthropomorphism."
+            },
+            {
+              "id": "sec1.p35.s13",
+              "text": "Psychological Review, 114(4), 864-886. https://doi.org/10.1037/0033-295X.114.4.864 Fiske, S. T., & Neuberg, S. L. (1990)."
+            },
+            {
+              "id": "sec1.p35.s14",
+              "text": "A continuum of impression formation, from category\u0002based to individuating processes: Influences of information and motivation on attention and interpretation."
+            },
+            {
+              "id": "sec1.p35.s15",
+              "text": "In M. P. Zanna (Ed.), Advances in experimental social psychology (Vol. 23, pp. 1-74)."
+            },
+            {
+              "id": "sec1.p35.s16",
+              "text": "Academic Press. https://doi.org/10.1016/S0065- 2601(08)60317-2"
+            }
+          ]
+        },
+        {
+          "id": "sec1.p36",
+          "sentences": [
+            {
+              "id": "sec1.p36.s1",
+              "text": "PERCEPTION OF GUMMY BEARS 36 Förster, N., Back, E., Förster, A. M., & Back, M. D. (2026)."
+            },
+            {
+              "id": "sec1.p36.s2",
+              "text": "Individual differences in the perception of abiotic individuals: The case of gummy bears [Data set, code, and supplement]."
+            },
+            {
+              "id": "sec1.p36.s3",
+              "text": "Zenodo. https://doi.org/10.5281/zenodo.22163083 Förster, N., Humberg, S., Hebbecker, K., Back, M. D., & Souvignier, E. (2022)."
+            },
+            {
+              "id": "sec1.p36.s4",
+              "text": "Should teachers be accurate or (overly) positive?"
+            },
+            {
+              "id": "sec1.p36.s5",
+              "text": "A competitive test of teacher judgment effects on students' reading progress."
+            },
+            {
+              "id": "sec1.p36.s6",
+              "text": "Learning and Instruction, 77, Article 101519. https://doi.org/10.1016/j.learninstruc.2021.101519 Funder, D. C. (1995)."
+            },
+            {
+              "id": "sec1.p36.s7",
+              "text": "On the accuracy of personality judgment: A realistic approach."
+            },
+            {
+              "id": "sec1.p36.s8",
+              "text": "Psychological Review, 102(4), 652-670. https://doi.org/10.1037/0033-295X.102.4.652 Glasman, L. R., & Albarracín, D. (2006)."
+            },
+            {
+              "id": "sec1.p36.s9",
+              "text": "Forming attitudes that predict future behavior: A meta-analysis of the attitude-behavior relation."
+            },
+            {
+              "id": "sec1.p36.s10",
+              "text": "Psychological Bulletin, 132(5), 778- 822. https://doi.org/10.1037/0033-2909.132.5.778 Gosling, S. D., Kwan, V. S. Y., & John, O. P. (2003)."
+            },
+            {
+              "id": "sec1.p36.s11",
+              "text": "A dog's got personality: A cross\u0002species comparative approach to personality judgments in dogs and humans."
+            },
+            {
+              "id": "sec1.p36.s12",
+              "text": "Journal of Personality and Social Psychology, 85(6), 1161-1169. https://doi.org/10.1037/0022-3514.85.6.1161 Gray, H. M., Gray, K., & Wegner, D. M. (2007)."
+            },
+            {
+              "id": "sec1.p36.s13",
+              "text": "Dimensions of mind perception."
+            },
+            {
+              "id": "sec1.p36.s14",
+              "text": "Science, 315(5812), 619. https://doi.org/10.1126/science.1134475 Hall, L., Johansson, P., Tärning, B., Sikström, S., & Deutgen, T. (2010)."
+            },
+            {
+              "id": "sec1.p36.s15",
+              "text": "Magic at the marketplace: Choice blindness for the taste of jam and the smell of tea."
+            },
+            {
+              "id": "sec1.p36.s16",
+              "text": "Cognition, 117(1), 54-61. https://doi.org/10.1016/j.cognition.2010.06.010 Hönekopp, J. (2006)."
+            },
+            {
+              "id": "sec1.p36.s17",
+              "text": "Once more: Is beauty in the eye of the beholder?"
+            },
+            {
+              "id": "sec1.p36.s18",
+              "text": "Relative contributions of private and shared taste to judgments of facial attractiveness."
+            },
+            {
+              "id": "sec1.p36.s19",
+              "text": "Journal of Experimental Psychology: Human Perception and Performance, 32(2), 199-209. https://doi.org/10.1037/0096-1523.32.2.199"
+            }
+          ]
+        },
+        {
+          "id": "sec1.p37",
+          "sentences": [
+            {
+              "id": "sec1.p37.s1",
+              "text": "PERCEPTION OF GUMMY BEARS 37 Jaeger, B., Sleegers, W. W. A., Stern, J., Penke, L., & Jones, A. L. (2024)."
+            },
+            {
+              "id": "sec1.p37.s2",
+              "text": "Testing perceivers' accuracy and accuracy awareness when forming personality impressions from faces."
+            },
+            {
+              "id": "sec1.p37.s3",
+              "text": "European Journal of Personality, 38(6), 907-927. https://doi.org/10.1177/08902070231225728 Judd, C. M., Westfall, J., & Kenny, D. A. (2012)."
+            },
+            {
+              "id": "sec1.p37.s4",
+              "text": "Treating stimuli as a random factor in social psychology: A new and comprehensive solution to a pervasive but largely ignored problem."
+            },
+            {
+              "id": "sec1.p37.s5",
+              "text": "Journal of Personality and Social Psychology, 103(1), 54-69. https://doi.org/10.1037/a0028347 Kenny, D. A., Kashy, D. A., & Cook, W. L. (2006)."
+            },
+            {
+              "id": "sec1.p37.s6",
+              "text": "Dyadic data analysis."
+            },
+            {
+              "id": "sec1.p37.s7",
+              "text": "Guilford Press."
+            },
+            {
+              "id": "sec1.p37.s8",
+              "text": "Kenny, D. A., & La Voie, L. (1984)."
+            },
+            {
+              "id": "sec1.p37.s9",
+              "text": "The social relations model."
+            },
+            {
+              "id": "sec1.p37.s10",
+              "text": "In L. Berkowitz (Ed.), Advances in experimental social psychology (Vol. 18, pp. 141-182)."
+            },
+            {
+              "id": "sec1.p37.s11",
+              "text": "Academic Press. https://doi.org/10.1016/S0065-2601(08)60144-6 Kurdi, B., Seitchik, A. E., Axt, J. R., Carroll, T. J., Karapetyan, A., Kaushik, N., Tomezsko, D., Greenwald, A. G., & Banaji, M. R. (2019)."
+            },
+            {
+              "id": "sec1.p37.s12",
+              "text": "Relationship between the Implicit Association Test and intergroup behavior: A meta-analysis."
+            },
+            {
+              "id": "sec1.p37.s13",
+              "text": "American Psychologist, 74(5), 569-586. https://doi.org/10.1037/amp0000364 LaPiere, R. T. (1934)."
+            },
+            {
+              "id": "sec1.p37.s14",
+              "text": "Attitudes vs. actions."
+            },
+            {
+              "id": "sec1.p37.s15",
+              "text": "Social Forces, 13(2), 230-237. https://doi.org/10.2307/2570339 Matuschek, H., Kliegl, R., Vasishth, S., Baayen, H., & Bates, D. (2017)."
+            },
+            {
+              "id": "sec1.p37.s16",
+              "text": "Balancing Type I error and power in linear mixed models."
+            },
+            {
+              "id": "sec1.p37.s17",
+              "text": "Journal of Memory and Language, 94, 305- 315. https://doi.org/10.1016/j.jml.2017.01.001 McNeish, D. M., & Stapleton, L. M. (2016)."
+            },
+            {
+              "id": "sec1.p37.s18",
+              "text": "The effect of small sample size on two-level model estimates: A review and illustration."
+            },
+            {
+              "id": "sec1.p37.s19",
+              "text": "Educational Psychology Review, 28(2), 295-314. https://doi.org/10.1007/s10648-014-9287-x"
+            }
+          ]
+        },
+        {
+          "id": "sec1.p38",
+          "sentences": [
+            {
+              "id": "sec1.p38.s1",
+              "text": "PERCEPTION OF GUMMY BEARS 38 Melis, A. P., Floedl, A., & Tomasello, M. (2015)."
+            },
+            {
+              "id": "sec1.p38.s2",
+              "text": "Non-egalitarian allocations among preschool peers in a face-to-face bargaining task."
+            },
+            {
+              "id": "sec1.p38.s3",
+              "text": "PLOS ONE, 10(3), Article e0120494. https://doi.org/10.1371/journal.pone.0120494 Miyaoka, S., Iwamori, H., & Miyaoka, Y. (2018)."
+            },
+            {
+              "id": "sec1.p38.s4",
+              "text": "Distribution of recognition times to fruity flavor of gummy candies in healthy adults."
+            },
+            {
+              "id": "sec1.p38.s5",
+              "text": "Perception, 47(8), 851-859. https://doi.org/10.1177/0301006618777940 Morrot, G., Brochet, F., & Dubourdieu, D. (2001)."
+            },
+            {
+              "id": "sec1.p38.s6",
+              "text": "The color of odors."
+            },
+            {
+              "id": "sec1.p38.s7",
+              "text": "Brain and Language, 79(2), 309-320. https://doi.org/10.1006/brln.2001.2493 Northup, J. (2000)."
+            },
+            {
+              "id": "sec1.p38.s8",
+              "text": "Further evaluation of the accuracy of reinforcer surveys: A systematic replication."
+            },
+            {
+              "id": "sec1.p38.s9",
+              "text": "Journal of Applied Behavior Analysis, 33(3), 335-338. https://doi.org/10.1901/jaba.2000.33-335 Oleszkiewicz, A., Schriever, V. A., Croy, I., Hähner, A., & Hummel, T. (2019)."
+            },
+            {
+              "id": "sec1.p38.s10",
+              "text": "Updated Sniffin' Sticks normative data based on an extended sample of 9139 subjects."
+            },
+            {
+              "id": "sec1.p38.s11",
+              "text": "European Archives of Oto-Rhino-Laryngology, 276(3), 719-728. https://doi.org/10.1007/s00405-018-5248-1 Oram, N., Laing, D. G., Hutchinson, I., Owen, J., Rose, G., Freeman, M., & Newell, G. (1995)."
+            },
+            {
+              "id": "sec1.p38.s12",
+              "text": "The influence of flavor and color on drink identification by children and adults."
+            },
+            {
+              "id": "sec1.p38.s13",
+              "text": "Developmental Psychobiology, 28(4), 239-246. https://doi.org/10.1002/dev.420280405 Ozer, D. J., & Benet-Martínez, V. (2006)."
+            },
+            {
+              "id": "sec1.p38.s14",
+              "text": "Personality and the prediction of consequential outcomes."
+            },
+            {
+              "id": "sec1.p38.s15",
+              "text": "Annual Review of Psychology, 57, 401-421. https://doi.org/10.1146/annurev.psych.57.102904.190127 Palmer, S. E., & Schloss, K. B. (2010)."
+            },
+            {
+              "id": "sec1.p38.s16",
+              "text": "An ecological valence theory of human color preference."
+            },
+            {
+              "id": "sec1.p38.s17",
+              "text": "Proceedings of the National Academy of Sciences, 107(19), 8877-8882. https://doi.org/10.1073/pnas.0906172107"
+            }
+          ]
+        },
+        {
+          "id": "sec1.p39",
+          "sentences": [
+            {
+              "id": "sec1.p39.s1",
+              "text": "PERCEPTION OF GUMMY BEARS 39 Perusquía-Hernández, M., Ayabe-Kanamura, S., & Suzuki, K. (2019)."
+            },
+            {
+              "id": "sec1.p39.s2",
+              "text": "Human perception and biosignal-based identification of posed and spontaneous smiles."
+            },
+            {
+              "id": "sec1.p39.s3",
+              "text": "PLOS ONE, 14(12), Article e0226328. https://doi.org/10.1371/journal.pone.0226328 Pettigrew, T. F., & Tropp, L. R. (2006)."
+            },
+            {
+              "id": "sec1.p39.s4",
+              "text": "A meta-analytic test of intergroup contact theory."
+            },
+            {
+              "id": "sec1.p39.s5",
+              "text": "Journal of Personality and Social Psychology, 90(5), 751-783. https://doi.org/10.1037/0022-3514.90.5.751 Rau, R., Nestler, W., Dufner, M., & Nestler, S. (2021)."
+            },
+            {
+              "id": "sec1.p39.s6",
+              "text": "Seeing the best or worst in others: A measure of generalized other-perceptions."
+            },
+            {
+              "id": "sec1.p39.s7",
+              "text": "Assessment, 28(8), 1897-1914. https://doi.org/10.1177/1073191120905015 Renner, B., Mueller, C. A., Dreier, J., Faulhaber, S., Rascher, W., & Kobal, G. (2009)."
+            },
+            {
+              "id": "sec1.p39.s8",
+              "text": "The Candy Smell Test: A new test for retronasal olfactory performance."
+            },
+            {
+              "id": "sec1.p39.s9",
+              "text": "The Laryngoscope, 119(3), 487-495. https://doi.org/10.1002/lary.20123 Resetar, J. L., & Noell, G. H. (2008)."
+            },
+            {
+              "id": "sec1.p39.s10",
+              "text": "Evaluating preference assessments for use in the general education population."
+            },
+            {
+              "id": "sec1.p39.s11",
+              "text": "Journal of Applied Behavior Analysis, 41(3), 447-451. https://doi.org/10.1901/jaba.2008.41-447 Rice, M. E., & Harris, G. T. (2005)."
+            },
+            {
+              "id": "sec1.p39.s12",
+              "text": "Comparing effect sizes in follow-up studies: ROC Area, Cohen's d, and r."
+            },
+            {
+              "id": "sec1.p39.s13",
+              "text": "Law and Human Behavior, 29(5), 615-620. https://doi.org/10.1007/s10979-005-6832-7 Rogers, K. H., & Biesanz, J. C. (2019)."
+            },
+            {
+              "id": "sec1.p39.s14",
+              "text": "Reassessing the good judge of personality."
+            },
+            {
+              "id": "sec1.p39.s15",
+              "text": "Journal of Personality and Social Psychology, 117(1), 186-200. https://doi.org/10.1037/pspp0000197 Roscoe, E. M., Iwata, B. A., & Kahng, S. (1999)."
+            },
+            {
+              "id": "sec1.p39.s16",
+              "text": "Relative versus absolute reinforcement effects: Implications for preference assessments."
+            },
+            {
+              "id": "sec1.p39.s17",
+              "text": "Journal of Applied Behavior Analysis, 32(4), 479-493. https://doi.org/10.1901/jaba.1999.32-479"
+            }
+          ]
+        },
+        {
+          "id": "sec1.p40",
+          "sentences": [
+            {
+              "id": "sec1.p40.s1",
+              "text": "PERCEPTION OF GUMMY BEARS 40 Rosenthal, R., & Rubin, D. B. (1989)."
+            },
+            {
+              "id": "sec1.p40.s2",
+              "text": "Effect size estimation for one-sample multiple-choice\u0002type data: Design, analysis, and meta-analysis."
+            },
+            {
+              "id": "sec1.p40.s3",
+              "text": "Psychological Bulletin, 106(2), 332- 337. https://doi.org/10.1037/0033-2909.106.2.332 Rottinghaus, P. J., & Van Esbroeck, R. (2011)."
+            },
+            {
+              "id": "sec1.p40.s4",
+              "text": "Improving person-environment fit and self\u0002knowledge."
+            },
+            {
+              "id": "sec1.p40.s5",
+              "text": "In P. J. Hartung & L. M. Subich (Eds.), Developing self in work and career: Concepts, cases, and contexts (pp. 35-52)."
+            },
+            {
+              "id": "sec1.p40.s6",
+              "text": "American Psychological Association. https://doi.org/10.1037/12348-003 Schlegel, K., Boone, R. T., & Hall, J. A. (2017)."
+            },
+            {
+              "id": "sec1.p40.s7",
+              "text": "Individual differences in interpersonal accuracy: A multi-level meta-analysis to assess whether judging other people is one skill or many."
+            },
+            {
+              "id": "sec1.p40.s8",
+              "text": "Journal of Nonverbal Behavior, 41(2), 103-137. https://doi.org/10.1007/s10919-017-0249-0 Sparks, J., Daly, C., Wilkey, B. M., Molden, D. C., Finkel, E. J., & Eastwick, P. W. (2020)."
+            },
+            {
+              "id": "sec1.p40.s9",
+              "text": "Negligible evidence that people desire partners who uniquely fit their ideals."
+            },
+            {
+              "id": "sec1.p40.s10",
+              "text": "Journal of Experimental Social Psychology, 90, Article 103968. https://doi.org/10.1016/j.jesp.2020.103968 Spence, C. (2015)."
+            },
+            {
+              "id": "sec1.p40.s11",
+              "text": "On the psychological impact of food colour."
+            },
+            {
+              "id": "sec1.p40.s12",
+              "text": "Flavour, 4, Article 21. https://doi.org/10.1186/s13411-015-0031-3 Stecker, J., Bürkner, P. C., Hellmann, J. H., Nestler, S., & Back, M. D. (2021)."
+            },
+            {
+              "id": "sec1.p40.s13",
+              "text": "First impressions of faces of refugees are more strongly influenced by target cues and perceiver attitudes than by sheer group affiliation."
+            },
+            {
+              "id": "sec1.p40.s14",
+              "text": "Collabra: Psychology, 7(1), Article 22160. https://doi.org/10.1525/collabra.22160 Stockner, M., Convertino, G., Cambedda, S., & Mazzoni, G. (2026)."
+            },
+            {
+              "id": "sec1.p40.s15",
+              "text": "Are humans able to discriminate between real and deepfake faces?"
+            },
+            {
+              "id": "sec1.p40.s16",
+              "text": "A systematic review and meta\u0002analysis."
+            },
+            {
+              "id": "sec1.p40.s17",
+              "text": "Computers in Human Behavior: Artificial Humans, 9, Article 100332. https://doi.org/10.1016/j.chbah.2026.100332"
+            }
+          ]
+        },
+        {
+          "id": "sec1.p41",
+          "sentences": [
+            {
+              "id": "sec1.p41.s1",
+              "text": "PERCEPTION OF GUMMY BEARS 41 Sutter, M., Yilmaz, L., & Oberauer, M. (2015)."
+            },
+            {
+              "id": "sec1.p41.s2",
+              "text": "Delay of gratification and the role of defaults: An experiment with kindergarten children."
+            },
+            {
+              "id": "sec1.p41.s3",
+              "text": "Economics Letters, 137, 21-24. https://doi.org/10.1016/j.econlet.2015.08.028 Thielmann, I., Back, M. D., Bleidorn, W., Bukowski, H., Carlson, E. N., Dufner, M., Hofer, G., Hofmann, W., Hopwood, C. J., Human, L. J., Jordan, C. H., Krueger, J. I., Langdon, J., Rau, R., Smillie, L. D., Strohminger, N., Sun, J., Vazire, S., Burghart, M., . . ."
+            },
+            {
+              "id": "sec1.p41.s4",
+              "text": "Seidl, A. (2026)."
+            },
+            {
+              "id": "sec1.p41.s5",
+              "text": "A consensus statement on self-knowledge conceptualization, measurement, outcomes and changeability."
+            },
+            {
+              "id": "sec1.p41.s6",
+              "text": "Nature Reviews Psychology, 5, 338-351. https://doi.org/10.1038/s44159-026-00554-1 Tskhay, K. O., & Rule, N. O. (2013)."
+            },
+            {
+              "id": "sec1.p41.s7",
+              "text": "Accuracy in categorizing perceptually ambiguous groups: A review and meta-analysis."
+            },
+            {
+              "id": "sec1.p41.s8",
+              "text": "Personality and Social Psychology Review, 17(1), 72-86. https://doi.org/10.1177/1088868312461308 Vazire, S., & Wilson, T. D. (Eds.)."
+            },
+            {
+              "id": "sec1.p41.s9",
+              "text": "(2012)."
+            },
+            {
+              "id": "sec1.p41.s10",
+              "text": "Handbook of self-knowledge."
+            },
+            {
+              "id": "sec1.p41.s11",
+              "text": "Guilford Press."
+            },
+            {
+              "id": "sec1.p41.s12",
+              "text": "Waytz, A., Cacioppo, J., & Epley, N. (2010)."
+            },
+            {
+              "id": "sec1.p41.s13",
+              "text": "Who sees human?"
+            },
+            {
+              "id": "sec1.p41.s14",
+              "text": "The stability and importance of individual differences in anthropomorphism."
+            },
+            {
+              "id": "sec1.p41.s15",
+              "text": "Perspectives on Psychological Science, 5(3), 219-232. https://doi.org/10.1177/1745691610369336 Xie, S. Y., Flake, J. K., & Hehman, E. (2019)."
+            },
+            {
+              "id": "sec1.p41.s16",
+              "text": "Perceiver and target characteristics contribute to impression formation differently across race and gender."
+            },
+            {
+              "id": "sec1.p41.s17",
+              "text": "Journal of Personality and Social Psychology, 117(2), 364-385. https://doi.org/10.1037/pspi0000160 Supplementary Material Tables S1 to S14 and Figures S1 to S3 are provided in the supplement (available with the data and code at https://doi.org/10.5281/zenodo.22163083)."
+            },
+            {
+              "id": "sec1.p41.s18",
+              "text": "Table S14 carries the benchmark comparison behind the between-domain sentences in the Results and Discussion."
+            }
+          ]
+        },
+        {
+          "id": "sec1.p42",
+          "sentences": [
+            {
+              "id": "sec1.p42.s1",
+              "text": "PERCEPTION OF GUMMY BEARS 42 Author Note Natalie Förster, ORCID: https://orcid.org/0000-0003-0634-5993."
+            },
+            {
+              "id": "sec1.p42.s2",
+              "text": "Mitja D. Back, ORCID: https://orcid.org/0000-0003-2186-1558."
+            },
+            {
+              "id": "sec1.p42.s3",
+              "text": "Ella Back and Ada M. Förster have no ORCID iDs."
+            },
+            {
+              "id": "sec1.p42.s4",
+              "text": "This research received no external funding."
+            },
+            {
+              "id": "sec1.p42.s5",
+              "text": "The gummy bears were purchased by the first and last author with their own money, and no financial or material support was received from Haribo."
+            },
+            {
+              "id": "sec1.p42.s6",
+              "text": "The authors would, however, welcome Haribo funding for a larger, preregistered replication study."
+            },
+            {
+              "id": "sec1.p42.s7",
+              "text": "Data collection, analysis, and manuscript preparation were conducted entirely during vacation time."
+            },
+            {
+              "id": "sec1.p42.s8",
+              "text": "We have no conflicts of interest to disclose."
+            },
+            {
+              "id": "sec1.p42.s9",
+              "text": "The study was exploratory and not preregistered; data, analysis code, and materials are openly available at https://doi.org/10.5281/zenodo.22163083."
+            },
+            {
+              "id": "sec1.p42.s10",
+              "text": "Ethics and consent are described in the Method section."
+            },
+            {
+              "id": "sec1.p42.s11",
+              "text": "Author contributions (CRediT): Conceptualization: all authors."
+            },
+            {
+              "id": "sec1.p42.s12",
+              "text": "Methodology: all authors."
+            },
+            {
+              "id": "sec1.p42.s13",
+              "text": "Gummy bear procurement: all authors."
+            },
+            {
+              "id": "sec1.p42.s14",
+              "text": "Investigation: all authors."
+            },
+            {
+              "id": "sec1.p42.s15",
+              "text": "Data curation: N.F. and M.D.B. Formal analysis: M.D.B. Visualization: M.D.B. Writing, original draft: M.D.B. and N.F. Writing, review and editing: all authors."
+            },
+            {
+              "id": "sec1.p42.s16",
+              "text": "The authors used Claude (Anthropic) and ChatGPT (OpenAI) during preparation of this work for structural sparring, language editing, code assistance, and argument pressure-testing."
+            },
+            {
+              "id": "sec1.p42.s17",
+              "text": "All analyses, claims, and final wording are the authors' responsibility."
+            },
+            {
+              "id": "sec1.p42.s18",
+              "text": "Correspondence concerning this article should be addressed to Natalie Förster, Institute for Educational Research, University of Wuppertal, Germany."
+            },
+            {
+              "id": "sec1.p42.s19",
+              "text": "Email: natalie.foerster@uni\u0002wuppertal.de and Mitja D. Back, Department of Psychology, University of Münster, Germany."
+            },
+            {
+              "id": "sec1.p42.s20",
+              "text": "Email: mitja.back@uni-muenster.de"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "figures": [],
+  "tables": []
+}

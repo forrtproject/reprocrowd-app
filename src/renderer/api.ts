@@ -91,7 +91,7 @@ export interface DepositPreview {
   contents: { groups: Record<string, { description: string; resources: string[]; bytes: number }>; paper_license: string | null; default_exclude: string[] };
   exclude: string[];
 }
-export type LibraryEntry = PackageSummary & { missing: boolean };
+export type LibraryEntry = PackageSummary & { missing: boolean; example?: boolean };
 
 /** A file the user picked or dropped: by path (the backend runs on this computer), or its bytes if it has none. */
 async function fileArg(file: File) {
@@ -123,6 +123,8 @@ export const host = {
   downloadUpdate: () => call<UpdateStatus>("downloadUpdate"),
   installUpdate: () => call<void>("installUpdate"),
   listPackages: () => call<LibraryEntry[]>("listPackages"),
+  listExamples: () => call<{ id: string; name: string; description?: string; source?: string }[]>("listExamples"),
+  openExample: (id: string) => call<string>("openExample", id),
   packageDeposits: (id: string) => call<ZenodoDeposit[]>("packageDeposits", id),
   lookupDoi: (doi: string) => call<Work>("lookupDoi", doi),
   zenodoRecords: (doi: string) => call<ZenodoRecord[]>("zenodoRecords", doi),

@@ -1,0 +1,1083 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://reprocrowd.example/schemas/datapackage.schema.json",
+  "title": "Manifest (datapackage.json)",
+  "$defs": {
+    "ArchiveInfo": {
+      "additionalProperties": false,
+      "description": "The last ZIP of the package (PUT …/archive).",
+      "properties": {
+        "path": {
+          "description": "package-relative, under archive/ (not itself a resource)",
+          "title": "Path",
+          "type": "string"
+        },
+        "bytes": {
+          "title": "Bytes",
+          "type": "integer"
+        },
+        "sha256": {
+          "title": "Sha256",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "manifest_sha256": {
+          "description": "hash of the datapackage.json inside the archive",
+          "title": "Manifest Sha256",
+          "type": "string"
+        },
+        "files": {
+          "title": "Files",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "path",
+        "bytes",
+        "sha256",
+        "created_at",
+        "manifest_sha256",
+        "files"
+      ],
+      "title": "ArchiveInfo",
+      "type": "object"
+    },
+    "CheckResult": {
+      "additionalProperties": false,
+      "properties": {
+        "passed": {
+          "title": "Passed",
+          "type": "boolean"
+        },
+        "checked_at": {
+          "format": "date-time",
+          "title": "Checked At",
+          "type": "string"
+        },
+        "notes": {
+          "description": "non-fatal observations (e.g. page count)",
+          "items": {
+            "type": "string"
+          },
+          "title": "Notes",
+          "type": "array"
+        }
+      },
+      "required": [
+        "passed",
+        "checked_at"
+      ],
+      "title": "CheckResult",
+      "type": "object"
+    },
+    "ConvertedOrigin": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "conversion",
+          "default": "conversion",
+          "title": "Type",
+          "type": "string"
+        },
+        "source": {
+          "description": "resource name of the PDF it was converted from",
+          "title": "Source",
+          "type": "string"
+        },
+        "converter": {
+          "description": "converter name (grobid, docling)",
+          "title": "Converter",
+          "type": "string"
+        },
+        "detail": {
+          "default": "",
+          "description": "e.g. the GROBID URL or the docling command",
+          "title": "Detail",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source",
+        "converter"
+      ],
+      "title": "ConvertedOrigin",
+      "type": "object"
+    },
+    "ExtractionMeta": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "extraction",
+          "default": "extraction",
+          "title": "Kind",
+          "type": "string"
+        },
+        "added_at": {
+          "format": "date-time",
+          "title": "Added At",
+          "type": "string"
+        },
+        "method": {
+          "enum": [
+            "parse",
+            "reconcile"
+          ],
+          "title": "Method",
+          "type": "string"
+        },
+        "fulltexts": {
+          "description": "full-text resources it was made from",
+          "items": {
+            "type": "string"
+          },
+          "title": "Fulltexts",
+          "type": "array"
+        },
+        "llm_call": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Llm Call"
+        }
+      },
+      "required": [
+        "added_at",
+        "method",
+        "fulltexts"
+      ],
+      "title": "ExtractionMeta",
+      "type": "object"
+    },
+    "FetchedOrigin": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "fetched",
+          "default": "fetched",
+          "title": "Type",
+          "type": "string"
+        },
+        "url": {
+          "description": "download URL (secrets such as API keys removed)",
+          "title": "Url",
+          "type": "string"
+        },
+        "repo": {
+          "description": "repository type the file came from (zenodo, github, gitlab, osf, figshare, ...)",
+          "title": "Repo",
+          "type": "string"
+        },
+        "id": {
+          "description": "repository-specific identifier (DOI, owner/repo, record id, ...)",
+          "title": "Id",
+          "type": "string"
+        },
+        "label": {
+          "description": "where the link was found, e.g. 'data availability statement'",
+          "title": "Label",
+          "type": "string"
+        }
+      },
+      "required": [
+        "url",
+        "repo",
+        "id",
+        "label"
+      ],
+      "title": "FetchedOrigin",
+      "type": "object"
+    },
+    "FulltextMeta": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "fulltext",
+          "default": "fulltext",
+          "title": "Kind",
+          "type": "string"
+        },
+        "added_at": {
+          "format": "date-time",
+          "title": "Added At",
+          "type": "string"
+        },
+        "flavor": {
+          "enum": [
+            "pdf",
+            "tei",
+            "jats",
+            "docling",
+            "docx",
+            "md"
+          ],
+          "title": "Flavor",
+          "type": "string"
+        },
+        "origin": {
+          "discriminator": {
+            "mapping": {
+              "conversion": "#/$defs/ConvertedOrigin",
+              "local": "#/$defs/LocalOrigin",
+              "upload": "#/$defs/UploadOrigin",
+              "url": "#/$defs/UrlOrigin"
+            },
+            "propertyName": "type"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/LocalOrigin"
+            },
+            {
+              "$ref": "#/$defs/UrlOrigin"
+            },
+            {
+              "$ref": "#/$defs/ConvertedOrigin"
+            },
+            {
+              "$ref": "#/$defs/UploadOrigin"
+            }
+          ],
+          "title": "Origin"
+        },
+        "check": {
+          "$ref": "#/$defs/CheckResult"
+        }
+      },
+      "required": [
+        "added_at",
+        "flavor",
+        "origin",
+        "check"
+      ],
+      "title": "FulltextMeta",
+      "type": "object"
+    },
+    "Identifier": {
+      "additionalProperties": false,
+      "description": "A work identifier that OpenAlex can resolve.",
+      "properties": {
+        "scheme": {
+          "enum": [
+            "doi",
+            "openalex",
+            "pmid",
+            "pmcid"
+          ],
+          "title": "Scheme",
+          "type": "string"
+        },
+        "value": {
+          "description": "normalized: DOI lower-case without resolver prefix, OpenAlex id like W123, PMID digits, PMCID like PMC123",
+          "minLength": 1,
+          "title": "Value",
+          "type": "string"
+        }
+      },
+      "required": [
+        "scheme",
+        "value"
+      ],
+      "title": "Identifier",
+      "type": "object"
+    },
+    "InputMeta": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "input",
+          "default": "input",
+          "title": "Kind",
+          "type": "string"
+        },
+        "added_at": {
+          "format": "date-time",
+          "title": "Added At",
+          "type": "string"
+        },
+        "role": {
+          "enum": [
+            "data",
+            "code",
+            "other"
+          ],
+          "title": "Role",
+          "type": "string"
+        },
+        "note": {
+          "default": "",
+          "title": "Note",
+          "type": "string"
+        },
+        "used": {
+          "default": true,
+          "description": "false: kept on disk but not part of the reproduction",
+          "title": "Used",
+          "type": "boolean"
+        },
+        "archive": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "resource name of the zip archive this file was unpacked from",
+          "title": "Archive"
+        },
+        "origin": {
+          "discriminator": {
+            "mapping": {
+              "fetched": "#/$defs/FetchedOrigin",
+              "local": "#/$defs/LocalOrigin",
+              "upload": "#/$defs/UploadOrigin"
+            },
+            "propertyName": "type"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/LocalOrigin"
+            },
+            {
+              "$ref": "#/$defs/UploadOrigin"
+            },
+            {
+              "$ref": "#/$defs/FetchedOrigin"
+            }
+          ],
+          "title": "Origin"
+        }
+      },
+      "required": [
+        "added_at",
+        "role",
+        "origin"
+      ],
+      "title": "InputMeta",
+      "type": "object"
+    },
+    "LocalOrigin": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "local",
+          "default": "local",
+          "title": "Type",
+          "type": "string"
+        },
+        "path": {
+          "description": "absolute path the file was copied from",
+          "title": "Path",
+          "type": "string"
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "title": "LocalOrigin",
+      "type": "object"
+    },
+    "OtherMeta": {
+      "additionalProperties": false,
+      "description": "metadata: OpenAlex record · curation: targets/actions · export: files derived for the agent · schema: JSON Schema\ncopies · code: files created by the agent or the user · output: files under outputs/ (written by runs) ·\nreport: report.html and comparison.json · figure: originals of figure targets (targets/figures/).",
+      "properties": {
+        "kind": {
+          "enum": [
+            "metadata",
+            "curation",
+            "export",
+            "schema",
+            "code",
+            "output",
+            "report",
+            "figure"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "added_at": {
+          "format": "date-time",
+          "title": "Added At",
+          "type": "string"
+        },
+        "method": {
+          "anyOf": [
+            {
+              "enum": [
+                "published",
+                "crop",
+                "page"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "figure: the image as published, an exact crop, or the whole page the figure is on",
+          "title": "Method"
+        },
+        "page": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "figure: page of the PDF",
+          "title": "Page"
+        },
+        "source": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "figure: where a published image was downloaded from",
+          "title": "Source"
+        }
+      },
+      "required": [
+        "kind",
+        "added_at"
+      ],
+      "title": "OtherMeta",
+      "type": "object"
+    },
+    "PackageMeta": {
+      "additionalProperties": false,
+      "properties": {
+        "version": {
+          "const": "1.0",
+          "default": "1.0",
+          "title": "Version",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "identifier": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Identifier"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "identifier the package was created for"
+        },
+        "identifiers": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "all identifiers known from OpenAlex (doi, openalex, pmid, pmcid)",
+          "title": "Identifiers",
+          "type": "object"
+        },
+        "metadata_fetched_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Metadata Fetched At"
+        },
+        "archive": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ArchiveInfo"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "submissions": {
+          "items": {
+            "$ref": "#/$defs/Submission"
+          },
+          "title": "Submissions",
+          "type": "array"
+        },
+        "deposits": {
+          "description": "Zenodo deposits",
+          "items": {
+            "$ref": "#/$defs/ZenodoDeposit"
+          },
+          "title": "Deposits",
+          "type": "array"
+        }
+      },
+      "required": [
+        "created_at"
+      ],
+      "title": "PackageMeta",
+      "type": "object"
+    },
+    "Resource": {
+      "additionalProperties": false,
+      "description": "One file of the package (Frictionless Data Resource).",
+      "properties": {
+        "name": {
+          "description": "unique id, e.g. ft-grobid, ex-grobid, in-data-csv",
+          "pattern": "^[a-z0-9][a-z0-9._-]*$",
+          "title": "Name",
+          "type": "string"
+        },
+        "path": {
+          "description": "package-relative, /-separated",
+          "title": "Path",
+          "type": "string"
+        },
+        "type": {
+          "description": "\"json\" for JSON files (frictionless parses them), \"file\" otherwise",
+          "enum": [
+            "file",
+            "json"
+          ],
+          "title": "Type",
+          "type": "string"
+        },
+        "format": {
+          "title": "Format",
+          "type": "string"
+        },
+        "mediatype": {
+          "title": "Mediatype",
+          "type": "string"
+        },
+        "bytes": {
+          "minimum": 0,
+          "title": "Bytes",
+          "type": "integer"
+        },
+        "hash": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Hash",
+          "type": "string"
+        },
+        "jsonSchema": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "package-relative path of the JSON Schema the file must satisfy",
+          "title": "Jsonschema"
+        },
+        "reprocrowd": {
+          "discriminator": {
+            "mapping": {
+              "code": "#/$defs/OtherMeta",
+              "curation": "#/$defs/OtherMeta",
+              "export": "#/$defs/OtherMeta",
+              "extraction": "#/$defs/ExtractionMeta",
+              "figure": "#/$defs/OtherMeta",
+              "fulltext": "#/$defs/FulltextMeta",
+              "input": "#/$defs/InputMeta",
+              "metadata": "#/$defs/OtherMeta",
+              "output": "#/$defs/OtherMeta",
+              "report": "#/$defs/OtherMeta",
+              "schema": "#/$defs/OtherMeta",
+              "script": "#/$defs/ScriptMeta"
+            },
+            "propertyName": "kind"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/FulltextMeta"
+            },
+            {
+              "$ref": "#/$defs/ExtractionMeta"
+            },
+            {
+              "$ref": "#/$defs/InputMeta"
+            },
+            {
+              "$ref": "#/$defs/ScriptMeta"
+            },
+            {
+              "$ref": "#/$defs/OtherMeta"
+            }
+          ],
+          "title": "Reprocrowd"
+        }
+      },
+      "required": [
+        "name",
+        "path",
+        "type",
+        "format",
+        "mediatype",
+        "bytes",
+        "hash",
+        "reprocrowd"
+      ],
+      "title": "Resource",
+      "type": "object"
+    },
+    "ScriptMeta": {
+      "additionalProperties": false,
+      "description": "A file written from a master-script template.",
+      "properties": {
+        "kind": {
+          "const": "script",
+          "default": "script",
+          "title": "Kind",
+          "type": "string"
+        },
+        "added_at": {
+          "format": "date-time",
+          "title": "Added At",
+          "type": "string"
+        },
+        "template": {
+          "description": "template id",
+          "title": "Template",
+          "type": "string"
+        },
+        "generated_hash": {
+          "description": "hash as generated; a different current hash means the file was edited (e.g. by the agent)",
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Generated Hash",
+          "type": "string"
+        }
+      },
+      "required": [
+        "added_at",
+        "template",
+        "generated_hash"
+      ],
+      "title": "ScriptMeta",
+      "type": "object"
+    },
+    "Submission": {
+      "additionalProperties": false,
+      "description": "An upload of the archive to the package database.",
+      "properties": {
+        "id": {
+          "pattern": "^sub-[0-9a-f]+$",
+          "title": "Id",
+          "type": "string"
+        },
+        "database": {
+          "description": "database URL at the time",
+          "title": "Database",
+          "type": "string"
+        },
+        "upload_id": {
+          "title": "Upload Id",
+          "type": "string"
+        },
+        "finish_url": {
+          "description": "where the user signs in and confirms the submission",
+          "title": "Finish Url",
+          "type": "string"
+        },
+        "status_url": {
+          "title": "Status Url",
+          "type": "string"
+        },
+        "expires": {
+          "description": "unconfirmed uploads expire",
+          "title": "Expires",
+          "type": "string"
+        },
+        "status": {
+          "description": "gone: expired or discarded without confirmation",
+          "enum": [
+            "pending",
+            "submitted",
+            "deleted",
+            "gone"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "submitted_at": {
+          "format": "date-time",
+          "title": "Submitted At",
+          "type": "string"
+        },
+        "checked_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Checked At"
+        },
+        "archive_sha256": {
+          "title": "Archive Sha256",
+          "type": "string"
+        },
+        "note": {
+          "default": "",
+          "title": "Note",
+          "type": "string"
+        },
+        "package_url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "the package's page once confirmed",
+          "title": "Package Url"
+        }
+      },
+      "required": [
+        "id",
+        "database",
+        "upload_id",
+        "finish_url",
+        "status_url",
+        "expires",
+        "status",
+        "submitted_at",
+        "archive_sha256"
+      ],
+      "title": "Submission",
+      "type": "object"
+    },
+    "UploadOrigin": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "upload",
+          "default": "upload",
+          "title": "Type",
+          "type": "string"
+        },
+        "filename": {
+          "description": "file name the client sent (multipart upload)",
+          "title": "Filename",
+          "type": "string"
+        }
+      },
+      "required": [
+        "filename"
+      ],
+      "title": "UploadOrigin",
+      "type": "object"
+    },
+    "UrlOrigin": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "url",
+          "default": "url",
+          "title": "Type",
+          "type": "string"
+        },
+        "url": {
+          "description": "download URL (secrets such as API keys removed)",
+          "title": "Url",
+          "type": "string"
+        },
+        "candidate": {
+          "description": "candidate id it was chosen as",
+          "title": "Candidate",
+          "type": "string"
+        },
+        "label": {
+          "description": "where the candidate came from, e.g. \"OpenAlex best OA location\"",
+          "title": "Label",
+          "type": "string"
+        }
+      },
+      "required": [
+        "url",
+        "candidate",
+        "label"
+      ],
+      "title": "UrlOrigin",
+      "type": "object"
+    },
+    "ZenodoCreator": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "description": "\"Family, Given\"",
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "orcid": {
+          "anyOf": [
+            {
+              "pattern": "^\\d{4}-\\d{4}-\\d{4}-\\d{3}[\\dX]$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Orcid"
+        },
+        "affiliation": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Affiliation"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "title": "ZenodoCreator",
+      "type": "object"
+    },
+    "ZenodoDeposit": {
+      "additionalProperties": false,
+      "description": "A deposit of the package on Zenodo: a draft until it is published (then it has its DOI for good).",
+      "properties": {
+        "id": {
+          "pattern": "^zen-[0-9a-f]+$",
+          "title": "Id",
+          "type": "string"
+        },
+        "server": {
+          "description": "Zenodo base URL at the time",
+          "title": "Server",
+          "type": "string"
+        },
+        "sandbox": {
+          "description": "deposited to Zenodo's test instance",
+          "title": "Sandbox",
+          "type": "boolean"
+        },
+        "deposition_id": {
+          "title": "Deposition Id",
+          "type": "integer"
+        },
+        "status": {
+          "description": "gone: deleted on Zenodo (only drafts can be)",
+          "enum": [
+            "draft",
+            "published",
+            "discarded",
+            "gone"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "doi": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "reserved while a draft, registered once published",
+          "title": "Doi"
+        },
+        "url": {
+          "description": "the draft's edit page, or the published record",
+          "title": "Url",
+          "type": "string"
+        },
+        "file": {
+          "description": "name of the uploaded ZIP",
+          "title": "File",
+          "type": "string"
+        },
+        "sha256": {
+          "description": "hash of the uploaded ZIP",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "archive_sha256": {
+          "description": "hash of the package archive it was made from",
+          "title": "Archive Sha256",
+          "type": "string"
+        },
+        "exclude": {
+          "description": "groups of files left out of the upload",
+          "items": {
+            "enum": [
+              "paper",
+              "inputs"
+            ],
+            "type": "string"
+          },
+          "title": "Exclude",
+          "type": "array"
+        },
+        "excluded": {
+          "description": "the resources that were left out",
+          "items": {
+            "type": "string"
+          },
+          "title": "Excluded",
+          "type": "array"
+        },
+        "community": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Community"
+        },
+        "creators": {
+          "items": {
+            "$ref": "#/$defs/ZenodoCreator"
+          },
+          "title": "Creators",
+          "type": "array"
+        },
+        "note": {
+          "default": "",
+          "title": "Note",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "published_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Published At"
+        },
+        "checked_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Checked At"
+        }
+      },
+      "required": [
+        "id",
+        "server",
+        "sandbox",
+        "deposition_id",
+        "status",
+        "title",
+        "url",
+        "file",
+        "sha256",
+        "archive_sha256",
+        "creators",
+        "created_at"
+      ],
+      "title": "ZenodoDeposit",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "datapackage.json",
+  "properties": {
+    "name": {
+      "pattern": "^[a-z0-9][a-z0-9._-]*$",
+      "title": "Name",
+      "type": "string"
+    },
+    "title": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Title"
+    },
+    "resources": {
+      "items": {
+        "$ref": "#/$defs/Resource"
+      },
+      "title": "Resources",
+      "type": "array"
+    },
+    "reprocrowd": {
+      "$ref": "#/$defs/PackageMeta"
+    }
+  },
+  "required": [
+    "name",
+    "reprocrowd"
+  ],
+  "type": "object"
+}

@@ -1,0 +1,2228 @@
+{
+  "schema_version": "1.0",
+  "paper": {
+    "identifiers": {}
+  },
+  "results": [
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p7.s5"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Original effect size eta-squared (η²) = .04",
+      "quote": "η²original = .04, 90% CI [.005, .10]",
+      "expected": 0.04,
+      "decimals": 2,
+      "id": "T001"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p7.s5"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Original 90% CI lower bound for η²",
+      "quote": "90% CI [.005, .10]",
+      "expected": 0.005,
+      "decimals": 3,
+      "id": "T002"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p7.s5"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Original 90% CI upper bound for η²",
+      "quote": "90% CI [.005, .10]",
+      "expected": 0.1,
+      "decimals": 2,
+      "id": "T003"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p7.s5"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Replication η²",
+      "quote": "η²replication < 0.01, 90% CI [0, 0.02]",
+      "expected": 0.01,
+      "comparator": "<",
+      "decimals": 2,
+      "id": "T004"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p7.s5"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Replication 90% CI lower bound for η²",
+      "quote": "90% CI [0, 0.02]",
+      "expected": 0,
+      "decimals": 0,
+      "id": "T005"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p7.s5"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Replication 90% CI upper bound for η²",
+      "quote": "90% CI [0, 0.02]",
+      "expected": 0.02,
+      "decimals": 2,
+      "id": "T006"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p7.s5"
+        }
+      ],
+      "unreferenced": false,
+      "type": "categorical",
+      "description": "No evidence for a difference between groups nor moderation by NFC",
+      "quote": "there was no evidence for a difference between the groups nor for a moderation of affective experiences by need for cognition",
+      "expected": "no evidence",
+      "id": "T007"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p13.s6"
+        },
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p37.s3"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Original Study 1 sample size",
+      "quote": "160 undergraduates were asked to watch and evaluate a video",
+      "expected": 160,
+      "id": "T008"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p37.s1"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Original F statistic for negative-expectation effect F(1,156)",
+      "quote": "F(1, 156) = 12.09, MSE = 3.30, p = .001, r² = .07",
+      "expected": 12.09,
+      "decimals": 2,
+      "id": "T009"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p37.s1"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Original MSE for negative-expectation effect",
+      "quote": "MSE = 3.30",
+      "expected": 3.3,
+      "decimals": 2,
+      "id": "T010"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p37.s1"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Original p-value for negative-expectation effect",
+      "quote": "p = .001",
+      "expected": 0.001,
+      "decimals": 3,
+      "id": "T011"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p37.s1"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Original r² for negative-expectation effect",
+      "quote": "r² = .07",
+      "expected": 0.07,
+      "decimals": 2,
+      "id": "T012"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p37.s1"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Original f effect size for negative-expectation effect",
+      "quote": "f = 0.270",
+      "expected": 0.27,
+      "decimals": 3,
+      "id": "T013"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p37.s1"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Original η² for negative-expectation effect",
+      "quote": "η² = .07",
+      "expected": 0.07,
+      "decimals": 2,
+      "id": "T014"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p37.s1"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Original 90% CI lower bound for negative-expectation effect",
+      "quote": "90% CI [.02, .14]",
+      "expected": 0.02,
+      "decimals": 2,
+      "id": "T015"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p37.s1"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Original 90% CI upper bound for negative-expectation effect",
+      "quote": "90% CI [.02, .14]",
+      "expected": 0.14,
+      "decimals": 2,
+      "id": "T016"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p37.s2"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Original F statistic for expectation x NFC interaction F(1,154)",
+      "quote": "F(1, 154) = 6.40, MSE = 3.21, p = .01, r² = .04",
+      "expected": 6.4,
+      "decimals": 2,
+      "id": "T017"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p37.s2"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Original MSE for interaction effect",
+      "quote": "MSE = 3.21",
+      "expected": 3.21,
+      "decimals": 2,
+      "id": "T018"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p37.s2"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Original p-value for interaction effect",
+      "quote": "p = .01",
+      "expected": 0.01,
+      "decimals": 2,
+      "id": "T019"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p37.s2"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Original r² for interaction effect",
+      "quote": "r² = .04",
+      "expected": 0.04,
+      "decimals": 2,
+      "id": "T020"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p37.s2"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Original f effect size for interaction effect",
+      "quote": "f = 0.200",
+      "expected": 0.2,
+      "decimals": 3,
+      "id": "T021"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p37.s2"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Original η² for interaction effect",
+      "quote": "η² = .04",
+      "expected": 0.04,
+      "decimals": 2,
+      "id": "T022"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p37.s2"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Original 90% CI lower bound for interaction effect",
+      "quote": "90% CI [.005, .10]",
+      "expected": 0.005,
+      "decimals": 3,
+      "id": "T023"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p37.s2"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Original 90% CI upper bound for interaction effect",
+      "quote": "90% CI [.005, .10]",
+      "expected": 0.1,
+      "decimals": 2,
+      "id": "T024"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p37.s4"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Participants needed for 95% power",
+      "quote": "we would have needed 390 participants",
+      "expected": 390,
+      "id": "T025"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p37.s6"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Target sample size rounded to",
+      "quote": "N = 400",
+      "expected": 400,
+      "id": "T026"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p37.s6"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Multiple of original sample size",
+      "quote": "2.5 times the original sample size",
+      "expected": 2.5,
+      "decimals": 1,
+      "id": "T027"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p37.s8"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Participants used in analysis",
+      "quote": "only N = 252 participants took part",
+      "expected": 252,
+      "id": "T028"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p37.s9"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Achieved power for f = 0.2",
+      "quote": "Achieved power was thus 81.37% for f = 0.2",
+      "expected": 81.37,
+      "decimals": 2,
+      "unit": "%",
+      "id": "T029"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p39.s14"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Replication sample size",
+      "quote": "Our sample consisted of N = 252 participants",
+      "expected": 252,
+      "id": "T030"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p39.s15"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Detectable effect size with 95% power",
+      "quote": "sufficient to detect effects of f = 0.249 with 95% power",
+      "expected": 0.249,
+      "decimals": 3,
+      "id": "T031"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p39.s16"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Achieved power for original f = 0.200",
+      "quote": "The achieved power for the original effect size of f = 0.200 was 81.37%",
+      "expected": 81.37,
+      "decimals": 2,
+      "unit": "%",
+      "id": "T032"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p39.s17"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Participants who reported age",
+      "quote": "Only 138 participants reported their age",
+      "expected": 138,
+      "id": "T033"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p39.s17"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Missing age values",
+      "quote": "(114 missing values)",
+      "expected": 114,
+      "id": "T034"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p39.s18"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Mean age",
+      "quote": "The reported mean age was M = 47.11",
+      "expected": 47.11,
+      "decimals": 2,
+      "id": "T035"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p39.s18"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Age standard deviation",
+      "quote": "SD = 16.48",
+      "expected": 16.48,
+      "decimals": 2,
+      "id": "T036"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p39.s18"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Age range lower bound",
+      "quote": "with a range from 19 to 77",
+      "expected": 19,
+      "id": "T037"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p39.s18"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Age range upper bound",
+      "quote": "with a range from 19 to 77",
+      "expected": 77,
+      "id": "T038"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p39.s19"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Male participants",
+      "quote": "76 male",
+      "expected": 76,
+      "id": "T039"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p39.s19"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Female participants",
+      "quote": "169 female",
+      "expected": 169,
+      "id": "T040"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p39.s19"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Diverse participants",
+      "quote": "four diverse",
+      "expected": 4,
+      "id": "T041"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p41.s1"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Participants not disclosing gender",
+      "quote": "2 did not want to disclose",
+      "expected": 2,
+      "id": "T042"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p41.s1"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Missing gender value",
+      "quote": "1 missing value",
+      "expected": 1,
+      "id": "T043"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p41.s2"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Students in sample",
+      "quote": "31 participants reported that they were either bachelor- or master students",
+      "expected": 31,
+      "id": "T044"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p41.s2"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Apprentices in sample",
+      "quote": "only one person was in an apprenticeship",
+      "expected": 1,
+      "id": "T045"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p41.s3"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Employed participants",
+      "quote": "153 subjects were employed",
+      "expected": 153,
+      "id": "T046"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p41.s3"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Participants in search of employment",
+      "quote": "5 in search for employment",
+      "expected": 5,
+      "id": "T047"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p41.s3"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Retired participants",
+      "quote": "61 in retirement",
+      "expected": 61,
+      "id": "T048"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p41.s3"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Missing occupation value",
+      "quote": "(1 missing value)",
+      "expected": 1,
+      "id": "T049"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p41.s5"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Original affect index internal consistency",
+      "quote": "reached an internal consistency of α = .93",
+      "expected": 0.93,
+      "decimals": 2,
+      "id": "T050"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p41.s6"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Replication affect index internal consistency",
+      "quote": "we analyzed the internal consistency of our affect index items and found α = .96",
+      "expected": 0.96,
+      "decimals": 2,
+      "id": "T051"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p41.s6"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Replication affect index 95% CI lower bound",
+      "quote": "(95% CI [0.95, 0.97])",
+      "expected": 0.95,
+      "decimals": 2,
+      "id": "T052"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p41.s6"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Replication affect index 95% CI upper bound",
+      "quote": "(95% CI [0.95, 0.97])",
+      "expected": 0.97,
+      "decimals": 2,
+      "id": "T053"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p41.s9"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Replication NFC internal consistency",
+      "quote": "we found a value of α = 0.85",
+      "expected": 0.85,
+      "decimals": 2,
+      "id": "T054"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p41.s9"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Replication NFC 95% CI lower bound",
+      "quote": "(95% CI [0.83, 0.88], 16 items)",
+      "expected": 0.83,
+      "decimals": 2,
+      "id": "T055"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p41.s9"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Replication NFC 95% CI upper bound",
+      "quote": "(95% CI [0.83, 0.88], 16 items)",
+      "expected": 0.88,
+      "decimals": 2,
+      "id": "T056"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p41.s9"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "NFC scale item count",
+      "quote": "(95% CI [0.83, 0.88], 16 items)",
+      "expected": 16,
+      "id": "T057"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p41.s11"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "F statistic for remembered expectation ANOVA",
+      "quote": "F(2, 249) = 3.90",
+      "expected": 3.9,
+      "decimals": 2,
+      "id": "T058"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p41.s11"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "p-value for remembered expectation ANOVA",
+      "quote": "p = .021",
+      "expected": 0.021,
+      "decimals": 3,
+      "id": "T059"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p41.s11"
+        }
+      ],
+      "unreferenced": false,
+      "type": "categorical",
+      "description": "Significant influence of induced expectation on remembered expectations",
+      "quote": "A one-way ANOVA revealed a significant influence of induced expectation on remembered expectations",
+      "expected": "significant",
+      "id": "T060"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p41.s13"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Positive expectation group mean",
+      "quote": "positive (M = 5.21",
+      "expected": 5.21,
+      "decimals": 2,
+      "id": "T061"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p41.s13"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Positive expectation group SD",
+      "quote": "SD = 2.00",
+      "expected": 2.0,
+      "decimals": 2,
+      "id": "T062"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p41.s13"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Positive expectation group N",
+      "quote": "N = 75",
+      "expected": 75,
+      "id": "T063"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p41.s13"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Negative expectation group mean",
+      "quote": "negative (M = 4.35",
+      "expected": 4.35,
+      "decimals": 2,
+      "id": "T064"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p41.s13"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Negative expectation group SD",
+      "quote": "SD = 1.94",
+      "expected": 1.94,
+      "decimals": 2,
+      "id": "T065"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p41.s13"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Negative expectation group N",
+      "quote": "N = 94",
+      "expected": 94,
+      "id": "T066"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p41.s13"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Mean difference positive vs negative",
+      "quote": "Δ = 0.862",
+      "expected": 0.862,
+      "decimals": 3,
+      "id": "T067"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p41.s13"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Mean difference 95% CI lower bound",
+      "quote": "95% CI [0.127, 1.597]",
+      "expected": 0.127,
+      "decimals": 3,
+      "id": "T068"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p41.s13"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Mean difference 95% CI upper bound",
+      "quote": "95% CI [0.127, 1.597]",
+      "expected": 1.597,
+      "decimals": 3,
+      "id": "T069"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p41.s13"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "p-value for Tukey positive vs negative comparison",
+      "quote": "p = .017",
+      "expected": 0.017,
+      "decimals": 3,
+      "id": "T070"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p43.s1"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Control group mean",
+      "quote": "M = 4.63",
+      "expected": 4.63,
+      "decimals": 2,
+      "id": "T071"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p43.s1"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Control group SD",
+      "quote": "SD = 2.11",
+      "expected": 2.11,
+      "decimals": 2,
+      "id": "T072"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p43.s1"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Control group N",
+      "quote": "N = 83",
+      "expected": 83,
+      "id": "T073"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p48.s3"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Overall model F statistic",
+      "quote": "F(5, 246) = 1.86",
+      "expected": 1.86,
+      "decimals": 2,
+      "id": "T074"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p48.s3"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Overall model p-value",
+      "quote": "p = .103",
+      "expected": 0.103,
+      "decimals": 3,
+      "id": "T075"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p48.s3"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Overall model R-squared",
+      "quote": "R2 = 0.036",
+      "expected": 0.036,
+      "decimals": 3,
+      "id": "T076"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p48.s3"
+        }
+      ],
+      "unreferenced": false,
+      "type": "categorical",
+      "description": "Overall model test significance",
+      "quote": "The overall model test was not significant",
+      "expected": "not significant",
+      "id": "T077"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p48.s4"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Threshold for model effects p-values",
+      "quote": "none of the model’s effects were significant (all ps > .143",
+      "expected": 0.143,
+      "comparator": ">",
+      "decimals": 3,
+      "id": "T078"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p48.s4"
+        }
+      ],
+      "unreferenced": false,
+      "type": "categorical",
+      "description": "None of the model effects significant",
+      "quote": "none of the model’s effects were significant",
+      "expected": "not significant",
+      "id": "T079"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p48.s5"
+        }
+      ],
+      "unreferenced": false,
+      "type": "table",
+      "description": "Table 2 Linear Regression of Affective Reaction on Expectation, NFC, and Their Interaction",
+      "quote": "Table 2 Linear Regression of Affective Reaction on Expectation, NFC, and Their Interaction",
+      "expected": [
+        [
+          "Coefficient",
+          "B",
+          "SE",
+          "t",
+          "p"
+        ],
+        [
+          "Intercept",
+          "1.88",
+          "1.44",
+          "1.31",
+          ".192"
+        ],
+        [
+          "Expectation (none)",
+          "2.53",
+          "2.10",
+          "1.21",
+          ".229"
+        ],
+        [
+          "Expectation (positive)",
+          "1.36",
+          "2.04",
+          "0.67",
+          ".506"
+        ],
+        [
+          "NFC",
+          "0.42",
+          "0.29",
+          "1.47",
+          ".143"
+        ],
+        [
+          "Expectation (none) × NFC",
+          "−0.55",
+          "0.42",
+          "−1.32",
+          ".190"
+        ],
+        [
+          "Expectation (positive) × NFC",
+          "−0.13",
+          "0.41",
+          "−0.32",
+          ".750"
+        ]
+      ],
+      "id": "T080"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p49.s3"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Residual standard error",
+      "quote": "Residual SE = 2.30 on 246 df",
+      "expected": 2.3,
+      "decimals": 2,
+      "id": "T081"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p49.s4"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Adjusted R-squared",
+      "quote": "adjusted R² = .017",
+      "expected": 0.017,
+      "decimals": 3,
+      "id": "T082"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p50.s3"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "ANOVA main effect of expectation F statistic",
+      "quote": "F(2, 246) = 3.00",
+      "expected": 3.0,
+      "decimals": 2,
+      "id": "T083"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p50.s3"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "ANOVA main effect of expectation p-value",
+      "quote": "p = .051",
+      "expected": 0.051,
+      "decimals": 3,
+      "id": "T084"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p50.s3"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "ANOVA main effect of expectation eta-squared",
+      "quote": "η² = 0.02",
+      "expected": 0.02,
+      "decimals": 2,
+      "id": "T085"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p50.s3"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "ANOVA expectation effect 90% CI lower bound",
+      "quote": "90% CI [0, 0.05]",
+      "expected": 0,
+      "decimals": 0,
+      "id": "T086"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p50.s3"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "ANOVA expectation effect 90% CI upper bound",
+      "quote": "90% CI [0, 0.05]",
+      "expected": 0.05,
+      "decimals": 2,
+      "id": "T087"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p50.s3"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "ANOVA main effect of NFC F statistic",
+      "quote": "need for cognition F(1, 246) = 1.43",
+      "expected": 1.43,
+      "decimals": 2,
+      "id": "T088"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p50.s3"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "ANOVA main effect of NFC p-value",
+      "quote": "p = .233",
+      "expected": 0.233,
+      "decimals": 3,
+      "id": "T089"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p50.s3"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "ANOVA main effect of NFC eta-squared",
+      "quote": "η² < 0.01",
+      "expected": 0.01,
+      "comparator": "<",
+      "decimals": 2,
+      "id": "T090"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p50.s3"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "ANOVA NFC effect 90% CI lower bound",
+      "quote": "90% CI [0, 0.02]",
+      "expected": 0,
+      "decimals": 0,
+      "id": "T091"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p50.s3"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "ANOVA NFC effect 90% CI upper bound",
+      "quote": "90% CI [0, 0.02]",
+      "expected": 0.02,
+      "decimals": 2,
+      "id": "T092"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p50.s3"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "ANOVA interaction F statistic",
+      "quote": "interaction effect F(2, 246) = 0.92",
+      "expected": 0.92,
+      "decimals": 2,
+      "id": "T093"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p50.s3"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "ANOVA interaction p-value",
+      "quote": "p = .398",
+      "expected": 0.398,
+      "decimals": 3,
+      "id": "T094"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p50.s3"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "ANOVA interaction eta-squared",
+      "quote": "η² < 0.01",
+      "expected": 0.01,
+      "comparator": "<",
+      "decimals": 2,
+      "id": "T095"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p50.s3"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "ANOVA interaction 90% CI lower bound",
+      "quote": "90% CI [0, 0.02]",
+      "expected": 0,
+      "decimals": 0,
+      "id": "T096"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p50.s3"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "ANOVA interaction 90% CI upper bound",
+      "quote": "90% CI [0, 0.02]",
+      "expected": 0.02,
+      "decimals": 2,
+      "id": "T097"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p50.s2"
+        }
+      ],
+      "unreferenced": false,
+      "type": "categorical",
+      "description": "ANOVA general effects of NFC, expectation and interaction not significant",
+      "quote": "Again, no significant effect was found (all ps ≥ .051)",
+      "expected": "not significant",
+      "id": "T098"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p52.s2"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Positive expectation slope b",
+      "quote": "Positive expectations: b = 0.288",
+      "expected": 0.288,
+      "decimals": 3,
+      "id": "T099"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p52.s2"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Positive expectation slope SE",
+      "quote": "se = 0.306",
+      "expected": 0.306,
+      "decimals": 3,
+      "id": "T100"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p52.s2"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Positive expectation slope t statistic",
+      "quote": "t(73) = 0.94",
+      "expected": 0.94,
+      "decimals": 2,
+      "id": "T101"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p52.s2"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Positive expectation slope p-value",
+      "quote": "p = .349",
+      "expected": 0.349,
+      "decimals": 3,
+      "id": "T102"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p52.s2"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Negative expectation slope b",
+      "quote": "Negative expectations: b = 0.420",
+      "expected": 0.42,
+      "decimals": 3,
+      "id": "T103"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p52.s2"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Negative expectation slope SE",
+      "quote": "se = 0.275",
+      "expected": 0.275,
+      "decimals": 3,
+      "id": "T104"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p52.s2"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Negative expectation slope t statistic",
+      "quote": "t(92) = 1.53",
+      "expected": 1.53,
+      "decimals": 2,
+      "id": "T105"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p52.s2"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Negative expectation slope p-value",
+      "quote": "p = .130",
+      "expected": 0.13,
+      "decimals": 3,
+      "id": "T106"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p52.s2"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Control group slope b",
+      "quote": "Control group (no specific expectations): b = -0.131",
+      "expected": -0.131,
+      "decimals": 3,
+      "id": "T107"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p52.s2"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Control group slope SE",
+      "quote": "se = 0.312",
+      "expected": 0.312,
+      "decimals": 3,
+      "id": "T108"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p52.s2"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Control group slope t statistic",
+      "quote": "t(81) = -0.420",
+      "expected": -0.42,
+      "decimals": 3,
+      "id": "T109"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p52.s2"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Control group slope p-value",
+      "quote": "p = .675",
+      "expected": 0.675,
+      "decimals": 3,
+      "id": "T110"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p52.s2"
+        }
+      ],
+      "unreferenced": false,
+      "type": "categorical",
+      "description": "None of the slopes significantly different from zero",
+      "quote": "None of them was significantly different from zero",
+      "expected": "not significant",
+      "id": "T111"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p57.s2"
+        }
+      ],
+      "unreferenced": false,
+      "type": "table",
+      "description": "Table 3 Comparison of original and replication results with interpretations according to LeBel et al. (2019)",
+      "quote": "Table 3 Comparison of original and replication results with interpretations according to LeBel et al. (2019)",
+      "expected": [
+        [
+          "Test",
+          "Original Study",
+          "Replication (preregistered Tukey HSD)2",
+          "Replication (planned contrasts)2",
+          "Interpretation"
+        ],
+        [
+          "Expectation × NFC",
+          "F(1, 154) = 6.40, MSE = 3.21, p = .01, r²= .04, f = 0.200, η² = .04, 90% CI [.005, .10]”",
+          "F(2, 246) = 0.92, p = .398, η² < 0.01, 90% CI [0, 0.02]",
+          "—",
+          "No signal, inconsistent"
+        ],
+        [
+          "Slope for the positive expectation condition",
+          "b = -0.03, SE = .02, t(154) = 1.91, p = .051",
+          "b = 0.288, se = 0.306, t(73) = 0.94, p = .349",
+          "t(1, 246) = 0.969, p = .334",
+          "No signal, inconsistent1"
+        ],
+        [
+          "Slope for the negative expectation condition",
+          "b = -.008, SE = .019, t(154) = 0.42, p = .67",
+          "b = 0.420, se = 0.275, t(92) = 1.53, p = .130",
+          "t(1, 246) = 1.469, p = .143",
+          "No signal, consistent"
+        ],
+        [
+          "Slope for the no expectation condition",
+          "b = .03, SE = .02, t(154) = 1.62, p = .10",
+          "b = -0.131, se = 0.312, t(81) = -0.420, p = .675",
+          "t(1, 246) = -0.428, p = .669",
+          "No signal, consistent"
+        ]
+      ],
+      "id": "T112"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p62.s6"
+        }
+      ],
+      "unreferenced": false,
+      "type": "table",
+      "description": "Table 4 Fixed-Effects Moderator Model Testing Replication Success (Lakens, 2022) and Effect Sizes Converted to r",
+      "quote": "Table 4 Fixed-Effects Moderator Model Testing Replication Success (Lakens, 2022) and Effect Sizes Converted to r",
+      "expected": [
+        [
+          "Coefficient",
+          "b",
+          "SE",
+          "z",
+          "p",
+          "95% CI"
+        ],
+        [
+          "Intercept",
+          "0.200",
+          "0.076",
+          "2.63",
+          ".009",
+          "[.051, .349]"
+        ],
+        [
+          "Study (replication)",
+          "−0.200",
+          "0.099",
+          "−2.02",
+          ".043",
+          "[-.394, -.006]"
+        ]
+      ],
+      "id": "T113"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p62.s4"
+        }
+      ],
+      "unreferenced": false,
+      "type": "categorical",
+      "description": "Replication effect significantly smaller than original effect",
+      "quote": "the replication effect was significantly smaller than the original effect",
+      "expected": "significant",
+      "id": "T114"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p63.s4"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Meta-analytic moderator test Q statistic",
+      "quote": "The moderator test QM(1) = 4.09",
+      "expected": 4.09,
+      "decimals": 2,
+      "id": "T115"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p63.s4"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Meta-analytic moderator test p-value",
+      "quote": "p = .043",
+      "expected": 0.043,
+      "decimals": 3,
+      "id": "T116"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p70.s2"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Exploratory one-way ANOVA F statistic",
+      "quote": "F(2, 249) = 3.00",
+      "expected": 3.0,
+      "decimals": 2,
+      "id": "T117"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p70.s2"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Exploratory one-way ANOVA p-value",
+      "quote": "p = .052",
+      "expected": 0.052,
+      "decimals": 3,
+      "id": "T118"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p75.s1"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Participants identifying all four statements correctly",
+      "quote": "149 participants (59.13%) identified all statements correctly",
+      "expected": 149,
+      "id": "T119"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p75.s1"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Percent identifying all four statements correctly",
+      "quote": "149 participants (59.13%)",
+      "expected": 59.13,
+      "decimals": 2,
+      "unit": "%",
+      "id": "T120"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p75.s1"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Participants identifying 3 of 4 statements",
+      "quote": "77 (30.56%) identified 3/4",
+      "expected": 77,
+      "id": "T121"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p75.s1"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Percent identifying 3 of 4 statements",
+      "quote": "77 (30.56%)",
+      "expected": 30.56,
+      "decimals": 2,
+      "unit": "%",
+      "id": "T122"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p75.s1"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Participants identifying 2 of 4 statements",
+      "quote": "22 (8.73%) identified 2/4",
+      "expected": 22,
+      "id": "T123"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p75.s1"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Percent identifying 2 of 4 statements",
+      "quote": "22 (8.73%)",
+      "expected": 8.73,
+      "decimals": 2,
+      "unit": "%",
+      "id": "T124"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p75.s1"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Participants identifying 1 of 4 statements",
+      "quote": "3 (1.19%) only identified 1/4",
+      "expected": 3,
+      "id": "T125"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p75.s1"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Percent identifying 1 of 4 statements",
+      "quote": "3 (1.19%)",
+      "expected": 1.19,
+      "decimals": 2,
+      "unit": "%",
+      "id": "T126"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p75.s1"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Missing value for attention check",
+      "quote": "(1 missing value, 0.40%)",
+      "expected": 1,
+      "id": "T127"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p75.s1"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Percent missing attention check value",
+      "quote": "(1 missing value, 0.40%)",
+      "expected": 0.4,
+      "decimals": 2,
+      "unit": "%",
+      "id": "T128"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p75.s2"
+        }
+      ],
+      "unreferenced": false,
+      "type": "categorical",
+      "description": "No participant got all four statements wrong",
+      "quote": "No participant got all four statements wrong",
+      "expected": "none",
+      "id": "T129"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p75.s3"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Attention-check restricted model F statistic",
+      "quote": "F(5, 143) = 0.94",
+      "expected": 0.94,
+      "decimals": 2,
+      "id": "T130"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p75.s3"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Attention-check restricted model p-value",
+      "quote": "p = .459",
+      "expected": 0.459,
+      "decimals": 3,
+      "id": "T131"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p75.s3"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Attention-check restricted model R-squared",
+      "quote": "R² = .032",
+      "expected": 0.032,
+      "decimals": 3,
+      "id": "T132"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p77.s3"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Replication sample size in discussion",
+      "quote": "Nreplication= 252",
+      "expected": 252,
+      "id": "T133"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p77.s3"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Original sample size in discussion",
+      "quote": "Noriginal = 160",
+      "expected": 160,
+      "id": "T134"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p77.s3"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Approximate statistical power in discussion",
+      "quote": "a lack of statistical power (~80%)",
+      "expected": 80,
+      "comparator": "~",
+      "unit": "%",
+      "id": "T135"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p79.s7"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Preregistered target sample size",
+      "quote": "target sample size for N = 400 participants",
+      "expected": 400,
+      "id": "T136"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p79.s7"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Achieved sample size greater than 80% power",
+      "quote": "which still had >80% power for the original effect",
+      "expected": 80,
+      "comparator": ">",
+      "unit": "%",
+      "id": "T137"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p84.s1"
+        }
+      ],
+      "unreferenced": false,
+      "type": "number",
+      "description": "Recommended minimum sample size",
+      "quote": "use a very large sample size (N ≥ 400)",
+      "expected": 400,
+      "comparator": ">=",
+      "id": "T138"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p43.s3"
+        }
+      ],
+      "unreferenced": false,
+      "type": "figure",
+      "description": "Figure 1 Remembered expectation by induced expectation",
+      "quote": "Figure 1 Remembered expectation by induced expectation",
+      "id": "T139"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p54.s1"
+        }
+      ],
+      "unreferenced": false,
+      "type": "figure",
+      "description": "Figure 2 Regression lines predicting affect scores from need for cognition and expectation condition",
+      "quote": "Figure 2 Regression lines predicting affect scores from need for cognition and expectation condition",
+      "id": "T140"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p65.s1"
+        }
+      ],
+      "unreferenced": false,
+      "type": "figure",
+      "description": "Figure 3 Distribution of Affect Index Scores",
+      "quote": "Figure 3 Distribution of Affect Index Scores",
+      "id": "T141"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p68.s1"
+        }
+      ],
+      "unreferenced": false,
+      "type": "figure",
+      "description": "Figure 4 Distribution of Need for Cognition Scores",
+      "quote": "Figure 4 Distribution of Need for Cognition Scores",
+      "id": "T142"
+    },
+    {
+      "refs": [
+        {
+          "extraction": "ex-local",
+          "id": "sec1.p72.s1"
+        }
+      ],
+      "unreferenced": false,
+      "type": "figure",
+      "description": "Figure 5 Affect scores by expectation condition",
+      "quote": "Figure 5 Affect scores by expectation condition",
+      "id": "T143"
+    }
+  ]
+}

@@ -1,0 +1,291 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://reprocrowd.example/schemas/document-draft.schema.json",
+  "title": "DocumentDraft (parser / reconcile-LLM output, before ids are assigned)",
+  "$defs": {
+    "Box": {
+      "additionalProperties": false,
+      "description": "A rectangle on a PDF page.",
+      "properties": {
+        "page": {
+          "description": "1-based page number",
+          "minimum": 1,
+          "title": "Page",
+          "type": "integer"
+        },
+        "x0": {
+          "title": "X0",
+          "type": "number"
+        },
+        "y0": {
+          "title": "Y0",
+          "type": "number"
+        },
+        "x1": {
+          "title": "X1",
+          "type": "number"
+        },
+        "y1": {
+          "title": "Y1",
+          "type": "number"
+        },
+        "origin": {
+          "description": "\"top\": y measured from the page top (GROBID); \"bottom\": PDF native",
+          "enum": [
+            "top",
+            "bottom"
+          ],
+          "title": "Origin",
+          "type": "string"
+        }
+      },
+      "required": [
+        "page",
+        "x0",
+        "y0",
+        "x1",
+        "y1",
+        "origin"
+      ],
+      "title": "Box",
+      "type": "object"
+    },
+    "DraftFigure": {
+      "additionalProperties": false,
+      "properties": {
+        "label": {
+          "description": "e.g. \"Figure 2\"",
+          "title": "Label",
+          "type": "string"
+        },
+        "caption": {
+          "items": {
+            "$ref": "#/$defs/DraftSentence"
+          },
+          "title": "Caption",
+          "type": "array"
+        },
+        "boxes": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/Box"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Boxes"
+        }
+      },
+      "required": [
+        "label"
+      ],
+      "title": "DraftFigure",
+      "type": "object"
+    },
+    "DraftParagraph": {
+      "additionalProperties": false,
+      "properties": {
+        "sentences": {
+          "description": "sentences in order; a plain string is shorthand for {\"text\": ...}",
+          "items": {
+            "$ref": "#/$defs/DraftSentence"
+          },
+          "minItems": 1,
+          "title": "Sentences",
+          "type": "array"
+        },
+        "boxes": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/Box"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Boxes"
+        }
+      },
+      "required": [
+        "sentences"
+      ],
+      "title": "DraftParagraph",
+      "type": "object"
+    },
+    "DraftSection": {
+      "additionalProperties": false,
+      "properties": {
+        "title": {
+          "description": "section heading; \"\" if the source has none",
+          "title": "Title",
+          "type": "string"
+        },
+        "level": {
+          "default": 1,
+          "description": "1 = top level, 2 = subsection, …",
+          "minimum": 1,
+          "title": "Level",
+          "type": "integer"
+        },
+        "paragraphs": {
+          "items": {
+            "$ref": "#/$defs/DraftParagraph"
+          },
+          "title": "Paragraphs",
+          "type": "array"
+        },
+        "figures": {
+          "description": "figures that appear in this section",
+          "items": {
+            "$ref": "#/$defs/DraftFigure"
+          },
+          "title": "Figures",
+          "type": "array"
+        },
+        "tables": {
+          "description": "tables that appear in this section",
+          "items": {
+            "$ref": "#/$defs/DraftTable"
+          },
+          "title": "Tables",
+          "type": "array"
+        }
+      },
+      "required": [
+        "title"
+      ],
+      "title": "DraftSection",
+      "type": "object"
+    },
+    "DraftSentence": {
+      "additionalProperties": false,
+      "properties": {
+        "text": {
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "boxes": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/Box"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Boxes"
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "title": "DraftSentence",
+      "type": "object"
+    },
+    "DraftTable": {
+      "additionalProperties": false,
+      "properties": {
+        "label": {
+          "description": "e.g. \"Table 1\"",
+          "title": "Label",
+          "type": "string"
+        },
+        "caption": {
+          "items": {
+            "$ref": "#/$defs/DraftSentence"
+          },
+          "title": "Caption",
+          "type": "array"
+        },
+        "boxes": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/Box"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Boxes"
+        },
+        "rows": {
+          "description": "cell texts, header row(s) included",
+          "items": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "title": "Rows",
+          "type": "array"
+        }
+      },
+      "required": [
+        "label"
+      ],
+      "title": "DraftTable",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Document content without ids, in reading order (output of parsers and of the reconcile LLM).",
+  "properties": {
+    "title": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Title"
+    },
+    "sections": {
+      "items": {
+        "$ref": "#/$defs/DraftSection"
+      },
+      "title": "Sections",
+      "type": "array"
+    },
+    "figures": {
+      "description": "figures not tied to a section",
+      "items": {
+        "$ref": "#/$defs/DraftFigure"
+      },
+      "title": "Figures",
+      "type": "array"
+    },
+    "tables": {
+      "description": "tables not tied to a section",
+      "items": {
+        "$ref": "#/$defs/DraftTable"
+      },
+      "title": "Tables",
+      "type": "array"
+    }
+  },
+  "required": [
+    "sections"
+  ],
+  "type": "object"
+}

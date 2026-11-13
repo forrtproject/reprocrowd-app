@@ -459,6 +459,9 @@ body.view-library .lib-header { padding-right: 96px; }
 .hero-sticker { width: 100%; max-width: 220px; height: auto; filter: drop-shadow(0 10px 24px rgba(133,57,83,.18)); }
 #setup-note { margin-top: 1.2rem; max-width: 62ch; }
 .lib-list { padding: 2rem 0 3rem; }
+.examples { margin-top: 2.5rem; }
+.example-card { border-style: dashed; }
+.example-badge { background: var(--accent-soft); color: var(--accent-dark); text-transform: none; }
 .lib-toolbar { display: flex; gap: .6rem; align-items: center; flex-wrap: wrap; margin: 0 0 1rem; }
 .lib-toolbar label { display: inline-flex; align-items: center; gap: .35rem; }
 .lib-toolbar input[type="search"] { flex: 1; min-width: 14rem; }

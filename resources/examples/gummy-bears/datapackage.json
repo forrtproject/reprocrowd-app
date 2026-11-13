@@ -1,0 +1,253 @@
+{
+  "name": "gummy-bears",
+  "resources": [
+    {
+      "name": "schema-datapackage",
+      "path": "schemas/datapackage.schema.json",
+      "type": "json",
+      "format": "json",
+      "mediatype": "application/schema+json",
+      "bytes": 26899,
+      "hash": "sha256:909cc9460c1b5a971e531b098e409d820341c987834a61b01451c9d97691dbf0",
+      "reprocrowd": {
+        "kind": "schema",
+        "added_at": "2026-11-13T12:54:30Z"
+      }
+    },
+    {
+      "name": "schema-document",
+      "path": "schemas/document.schema.json",
+      "type": "json",
+      "format": "json",
+      "mediatype": "application/schema+json",
+      "bytes": 8416,
+      "hash": "sha256:6f9b3a2f898de93a7f8cc7a97b82e1700317b8f9a4c66346646ddfd4b9eb40b8",
+      "reprocrowd": {
+        "kind": "schema",
+        "added_at": "2026-11-13T12:54:30Z"
+      }
+    },
+    {
+      "name": "schema-document-draft",
+      "path": "schemas/document-draft.schema.json",
+      "type": "json",
+      "format": "json",
+      "mediatype": "application/schema+json",
+      "bytes": 6681,
+      "hash": "sha256:ef16b4730865eda6576ac72d64efb48be56e972ce286c07496197f0453457d0c",
+      "reprocrowd": {
+        "kind": "schema",
+        "added_at": "2026-11-13T12:54:30Z"
+      }
+    },
+    {
+      "name": "schema-targets",
+      "path": "schemas/targets.schema.json",
+      "type": "json",
+      "format": "json",
+      "mediatype": "application/schema+json",
+      "bytes": 10669,
+      "hash": "sha256:311a46f22366e87a462200d09bc65abb9554e60a7933ffa5a98b787ca1f70288",
+      "reprocrowd": {
+        "kind": "schema",
+        "added_at": "2026-11-13T12:54:30Z"
+      }
+    },
+    {
+      "name": "schema-actions",
+      "path": "schemas/actions.schema.json",
+      "type": "json",
+      "format": "json",
+      "mediatype": "application/schema+json",
+      "bytes": 9507,
+      "hash": "sha256:e1df51b038fec84875c5d06a25ea0924599dbc9b4ba0a5155f69885779b16add",
+      "reprocrowd": {
+        "kind": "schema",
+        "added_at": "2026-11-13T12:54:30Z"
+      }
+    },
+    {
+      "name": "schema-target-llm-output",
+      "path": "schemas/target-llm-output.schema.json",
+      "type": "json",
+      "format": "json",
+      "mediatype": "application/schema+json",
+      "bytes": 2823,
+      "hash": "sha256:95ac8b98f9dd0c5b28e068de934e0903876a279bd35ea791fd0a2568f53f3748",
+      "reprocrowd": {
+        "kind": "schema",
+        "added_at": "2026-11-13T12:54:30Z"
+      }
+    },
+    {
+      "name": "schema-action-llm-output",
+      "path": "schemas/action-llm-output.schema.json",
+      "type": "json",
+      "format": "json",
+      "mediatype": "application/schema+json",
+      "bytes": 2040,
+      "hash": "sha256:85b410427e1a3cc9fba5c9fbd6c0c4e3f21c4cbf25c4fe0e0d63e836f7db9563",
+      "reprocrowd": {
+        "kind": "schema",
+        "added_at": "2026-11-13T12:54:30Z"
+      }
+    },
+    {
+      "name": "schema-results-schema",
+      "path": "schemas/results-schema.schema.json",
+      "type": "json",
+      "format": "json",
+      "mediatype": "application/schema+json",
+      "bytes": 6598,
+      "hash": "sha256:028da489954a79626a6c3f9247902b56ff23b621190ec94e3985b5d85b562f62",
+      "reprocrowd": {
+        "kind": "schema",
+        "added_at": "2026-11-13T12:54:30Z"
+      }
+    },
+    {
+      "name": "schema-analysis-plan",
+      "path": "schemas/analysis-plan.schema.json",
+      "type": "json",
+      "format": "json",
+      "mediatype": "application/schema+json",
+      "bytes": 2829,
+      "hash": "sha256:f099341c944d9b6aba2f8b08bd5254f9619ee84ad50d57b1c8fd13582d4f52f3",
+      "reprocrowd": {
+        "kind": "schema",
+        "added_at": "2026-11-13T12:54:30Z"
+      }
+    },
+    {
+      "name": "schema-inputs",
+      "path": "schemas/inputs.schema.json",
+      "type": "json",
+      "format": "json",
+      "mediatype": "application/schema+json",
+      "bytes": 1469,
+      "hash": "sha256:2ee0b1953aff2d7ea9282082be42664720194c22afad828780f8e9a3cc61c552",
+      "reprocrowd": {
+        "kind": "schema",
+        "added_at": "2026-11-13T12:54:30Z"
+      }
+    },
+    {
+      "name": "schema-results-output",
+      "path": "schemas/results-output.schema.json",
+      "type": "json",
+      "format": "json",
+      "mediatype": "application/schema+json",
+      "bytes": 2893,
+      "hash": "sha256:f4c966d3814e08f14c97079edc873fb4e904ad902e88083c387efcf9d40f67b3",
+      "reprocrowd": {
+        "kind": "schema",
+        "added_at": "2026-11-13T12:54:30Z"
+      }
+    },
+    {
+      "name": "schema-job",
+      "path": "schemas/job.schema.json",
+      "type": "json",
+      "format": "json",
+      "mediatype": "application/schema+json",
+      "bytes": 7949,
+      "hash": "sha256:27b86c72e8c9110de9f2e643b83cb25614c1d1c5e86db17dee76f6cd4765bd79",
+      "reprocrowd": {
+        "kind": "schema",
+        "added_at": "2026-11-13T12:54:30Z"
+      }
+    },
+    {
+      "name": "schema-comparison",
+      "path": "schemas/comparison.schema.json",
+      "type": "json",
+      "format": "json",
+      "mediatype": "application/schema+json",
+      "bytes": 5764,
+      "hash": "sha256:505d5d631edf49947c8393149d1fb00ef2c6f70b28092105a829f4d30dcfeab8",
+      "reprocrowd": {
+        "kind": "schema",
+        "added_at": "2026-11-13T12:54:30Z"
+      }
+    },
+    {
+      "name": "targets",
+      "path": "targets.json",
+      "type": "json",
+      "format": "json",
+      "mediatype": "application/json",
+      "bytes": 85,
+      "hash": "sha256:bf5f7e198f97c11d40e987437bd896d70908dde560dadf1e165af241254dd11d",
+      "jsonSchema": "schemas/targets.schema.json",
+      "reprocrowd": {
+        "kind": "curation",
+        "added_at": "2026-11-13T12:54:30Z"
+      }
+    },
+    {
+      "name": "actions",
+      "path": "actions.json",
+      "type": "json",
+      "format": "json",
+      "mediatype": "application/json",
+      "bytes": 85,
+      "hash": "sha256:121befdb1bce88c17be326eb4ca251a5e5bbe8340a4fee97a4a974f7dc43d250",
+      "jsonSchema": "schemas/actions.schema.json",
+      "reprocrowd": {
+        "kind": "curation",
+        "added_at": "2026-11-13T12:54:30Z"
+      }
+    },
+    {
+      "name": "ft-gummy",
+      "path": "fulltext/gummy-bears-2.pdf",
+      "type": "file",
+      "format": "pdf",
+      "mediatype": "application/pdf",
+      "bytes": 733088,
+      "hash": "sha256:f77ebf64ef1201357f697cc07a5f9adaf9302671161849576d47bc117464aca4",
+      "reprocrowd": {
+        "kind": "fulltext",
+        "added_at": "2026-11-13T12:54:30Z",
+        "flavor": "pdf",
+        "origin": {
+          "type": "local",
+          "path": "gummy-bears.pdf"
+        },
+        "check": {
+          "passed": true,
+          "checked_at": "2026-11-13T12:54:30Z",
+          "notes": [
+            "42 page(s)"
+          ]
+        }
+      }
+    },
+    {
+      "name": "ex-gummy",
+      "path": "extractions/ex-gummy.json",
+      "type": "json",
+      "format": "json",
+      "mediatype": "application/json",
+      "bytes": 130058,
+      "hash": "sha256:8d0fc2bf9405868b34ed3af274dfacfeaa90fa4dee87b149996d9dd142176e9e",
+      "jsonSchema": "schemas/document.schema.json",
+      "reprocrowd": {
+        "kind": "extraction",
+        "added_at": "2026-11-13T12:54:30Z",
+        "method": "parse",
+        "fulltexts": [
+          "ft-gummy"
+        ]
+      }
+    }
+  ],
+  "reprocrowd": {
+    "version": "1.0",
+    "created_at": "2026-11-13T12:54:30Z",
+    "identifiers": {},
+    "submissions": [],
+    "deposits": []
+  },
+  "title": "Förster et al.: Gummy bear perceptions (preprint)"
+}

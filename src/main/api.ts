@@ -3,7 +3,7 @@
 //   package   requests to the one package the window shows (bound by openPackage), like a Zotero tab of the plugin
 // Package requests are restricted to that package and a few read-only backend endpoints. The Zenodo token is added
 // here, never handed to the renderer.
-import { BrowserWindow, dialog, shell, WebContents } from "electron";
+import { app, BrowserWindow, dialog, shell, WebContents } from "electron";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -72,6 +72,16 @@ function suggestFolder(name: string): string {
   for (let i = 2; fs.existsSync(p) && fs.readdirSync(p).length; i++) p = path.join(root, `${slug(name)}-${i}`);
   return p;
 }
+
+// ---------- bundled examples ----------
+
+/** Where the bundled example packages live (resources/examples in a checkout, examples/ in a packaged app). */
+function examplesDir() {
+  return app.isPackaged ? path.join(process.resourcesPath, "examples") : path.join(app.getAppPath(), "resources", "examples");
+}
+/** The marker file that says a package is a bundled example (and which one). */
+const exampleMarker = (p: string) => path.join(p, ".reprocrowd-example");
+const exampleOf = (p: string) => (fs.existsSync(exampleMarker(p)) ? fs.readFileSync(exampleMarker(p), "utf8").trim() : "");
 
 export interface Work {
   doi: string;
@@ -230,7 +240,39 @@ export function makeApi(wc: WebContents) {
     installUpdate: async () => updater.installUpdate(),
     listPackages: async () => {
       const all = await get<any[]>("/v1/packages");
-      return all.map((p) => ({ ...p, missing: !fs.existsSync(path.join(p.path, "datapackage.json")) }));
+      return all.map((p) => ({ ...p, missing: !fs.existsSync(path.join(p.path, "datapackage.json")), example: !!exampleOf(p.path) }));
+    },
+    listExamples: async () => {
+      const dir = examplesDir();
+      if (!fs.existsSync(dir)) return [];
+      const out: any[] = [];
+      // Sorted by folder name, so the first one (opened by "Try an example") doesn't depend on the file system.
+      for (const d of fs.readdirSync(dir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+        if (!d.isDirectory()) continue;
+        const meta = path.join(dir, d.name, "example.json");
+        if (!fs.existsSync(meta)) continue;
+        try {
+          out.push({ ...JSON.parse(fs.readFileSync(meta, "utf8")), id: d.name }); // the folder is what openExample opens
+        } catch {
+          /* skip a malformed example */
+        }
+      }
+      return out;
+    },
+    openExample: async (id: string) => {
+      if (!/^[\w.-]+$/.test(id) || id.startsWith(".")) throw new Error(`No bundled example ${id}`);
+      const src = path.join(examplesDir(), id);
+      if (!fs.existsSync(path.join(src, "datapackage.json"))) throw new Error(`No bundled example ${id}`);
+      const all = await get<any[]>("/v1/packages");
+      const known = all.find((p) => exampleOf(p.path) === id);
+      if (known) return known.id as string; // already opened before
+      const root = loadSettings().packagesRoot;
+      let dest = path.join(root, slug(id));
+      for (let i = 2; fs.existsSync(dest); i++) dest = path.join(root, `${slug(id)}-${i}`);
+      // example.json only describes the example for the library; it isn't part of the package
+      fs.cpSync(src, dest, { recursive: true, filter: (f) => f !== path.join(src, "example.json") });
+      fs.writeFileSync(exampleMarker(dest), id);
+      return ((await request("POST", "/v1/packages", { json: { path: dest, adopt: true } })).data as any).id as string;
     },
     packageDeposits: async (id: string) => get<any[]>(`/v1/packages/${enc(id)}/deposits`),
     lookupDoi,
@@ -404,7 +446,7 @@ export function makeApi(wc: WebContents) {
           metadata_error = (e as Error).message;
         }
       }
-      return { ...s, metadata_error, jats };
+      return { ...s, metadata_error, jats, example: !!exampleOf(s.path) };
     }),
     pkg,
     pkgBytes: async (sub: string) => (await pkg("GET", sub, undefined, undefined, "bytes")).data as ArrayBuffer,

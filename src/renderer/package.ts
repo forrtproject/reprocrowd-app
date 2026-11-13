@@ -26,7 +26,7 @@ document.querySelector("#app")!.innerHTML = `
 // ---------- state ----------
 
 let info: Info;
-let summary: (PackageSummary & { jats?: string }) | undefined;
+let summary: (PackageSummary & { jats?: string; example?: boolean }) | undefined;
 let meta: any = null;
 let state: UiState = loadUiState(null);
 let restoring = true;
@@ -150,6 +150,13 @@ export async function start(id: string) {
     else status("");
     meta = await pkg.get<any>("/metadata").catch(() => null);
     if (meta?.title) $("#paper-title").textContent = meta.title;
+    if (summary.example) {
+      const b = document.createElement("span");
+      b.className = "badge example-badge";
+      b.textContent = "example";
+      b.title = "This is a bundled example reproduction";
+      $("#paper-title")?.after(b);
+    }
     restoring = false;
     await wizard.start();
   } catch (e) {

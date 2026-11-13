@@ -1,0 +1,744 @@
+{
+  "name": "260707-aemreplication-rev1",
+  "resources": [
+    {
+      "name": "schema-datapackage",
+      "path": "schemas/datapackage.schema.json",
+      "type": "json",
+      "format": "json",
+      "mediatype": "application/schema+json",
+      "bytes": 26899,
+      "hash": "sha256:909cc9460c1b5a971e531b098e409d820341c987834a61b01451c9d97691dbf0",
+      "reprocrowd": {
+        "kind": "schema",
+        "added_at": "2026-11-13T10:36:51Z"
+      }
+    },
+    {
+      "name": "schema-document",
+      "path": "schemas/document.schema.json",
+      "type": "json",
+      "format": "json",
+      "mediatype": "application/schema+json",
+      "bytes": 8416,
+      "hash": "sha256:6f9b3a2f898de93a7f8cc7a97b82e1700317b8f9a4c66346646ddfd4b9eb40b8",
+      "reprocrowd": {
+        "kind": "schema",
+        "added_at": "2026-11-13T10:36:51Z"
+      }
+    },
+    {
+      "name": "schema-document-draft",
+      "path": "schemas/document-draft.schema.json",
+      "type": "json",
+      "format": "json",
+      "mediatype": "application/schema+json",
+      "bytes": 6681,
+      "hash": "sha256:ef16b4730865eda6576ac72d64efb48be56e972ce286c07496197f0453457d0c",
+      "reprocrowd": {
+        "kind": "schema",
+        "added_at": "2026-11-13T10:36:51Z"
+      }
+    },
+    {
+      "name": "schema-targets",
+      "path": "schemas/targets.schema.json",
+      "type": "json",
+      "format": "json",
+      "mediatype": "application/schema+json",
+      "bytes": 10669,
+      "hash": "sha256:311a46f22366e87a462200d09bc65abb9554e60a7933ffa5a98b787ca1f70288",
+      "reprocrowd": {
+        "kind": "schema",
+        "added_at": "2026-11-13T10:36:51Z"
+      }
+    },
+    {
+      "name": "schema-actions",
+      "path": "schemas/actions.schema.json",
+      "type": "json",
+      "format": "json",
+      "mediatype": "application/schema+json",
+      "bytes": 9507,
+      "hash": "sha256:e1df51b038fec84875c5d06a25ea0924599dbc9b4ba0a5155f69885779b16add",
+      "reprocrowd": {
+        "kind": "schema",
+        "added_at": "2026-11-13T10:36:51Z"
+      }
+    },
+    {
+      "name": "schema-target-llm-output",
+      "path": "schemas/target-llm-output.schema.json",
+      "type": "json",
+      "format": "json",
+      "mediatype": "application/schema+json",
+      "bytes": 2823,
+      "hash": "sha256:95ac8b98f9dd0c5b28e068de934e0903876a279bd35ea791fd0a2568f53f3748",
+      "reprocrowd": {
+        "kind": "schema",
+        "added_at": "2026-11-13T10:36:51Z"
+      }
+    },
+    {
+      "name": "schema-action-llm-output",
+      "path": "schemas/action-llm-output.schema.json",
+      "type": "json",
+      "format": "json",
+      "mediatype": "application/schema+json",
+      "bytes": 2040,
+      "hash": "sha256:85b410427e1a3cc9fba5c9fbd6c0c4e3f21c4cbf25c4fe0e0d63e836f7db9563",
+      "reprocrowd": {
+        "kind": "schema",
+        "added_at": "2026-11-13T10:36:51Z"
+      }
+    },
+    {
+      "name": "schema-results-schema",
+      "path": "schemas/results-schema.schema.json",
+      "type": "json",
+      "format": "json",
+      "mediatype": "application/schema+json",
+      "bytes": 6598,
+      "hash": "sha256:028da489954a79626a6c3f9247902b56ff23b621190ec94e3985b5d85b562f62",
+      "reprocrowd": {
+        "kind": "schema",
+        "added_at": "2026-11-13T10:36:51Z"
+      }
+    },
+    {
+      "name": "schema-analysis-plan",
+      "path": "schemas/analysis-plan.schema.json",
+      "type": "json",
+      "format": "json",
+      "mediatype": "application/schema+json",
+      "bytes": 2829,
+      "hash": "sha256:f099341c944d9b6aba2f8b08bd5254f9619ee84ad50d57b1c8fd13582d4f52f3",
+      "reprocrowd": {
+        "kind": "schema",
+        "added_at": "2026-11-13T10:36:51Z"
+      }
+    },
+    {
+      "name": "schema-inputs",
+      "path": "schemas/inputs.schema.json",
+      "type": "json",
+      "format": "json",
+      "mediatype": "application/schema+json",
+      "bytes": 1469,
+      "hash": "sha256:2ee0b1953aff2d7ea9282082be42664720194c22afad828780f8e9a3cc61c552",
+      "reprocrowd": {
+        "kind": "schema",
+        "added_at": "2026-11-13T10:36:51Z"
+      }
+    },
+    {
+      "name": "schema-results-output",
+      "path": "schemas/results-output.schema.json",
+      "type": "json",
+      "format": "json",
+      "mediatype": "application/schema+json",
+      "bytes": 2893,
+      "hash": "sha256:f4c966d3814e08f14c97079edc873fb4e904ad902e88083c387efcf9d40f67b3",
+      "reprocrowd": {
+        "kind": "schema",
+        "added_at": "2026-11-13T10:36:51Z"
+      }
+    },
+    {
+      "name": "schema-job",
+      "path": "schemas/job.schema.json",
+      "type": "json",
+      "format": "json",
+      "mediatype": "application/schema+json",
+      "bytes": 7949,
+      "hash": "sha256:27b86c72e8c9110de9f2e643b83cb25614c1d1c5e86db17dee76f6cd4765bd79",
+      "reprocrowd": {
+        "kind": "schema",
+        "added_at": "2026-11-13T10:36:51Z"
+      }
+    },
+    {
+      "name": "schema-comparison",
+      "path": "schemas/comparison.schema.json",
+      "type": "json",
+      "format": "json",
+      "mediatype": "application/schema+json",
+      "bytes": 5764,
+      "hash": "sha256:505d5d631edf49947c8393149d1fb00ef2c6f70b28092105a829f4d30dcfeab8",
+      "reprocrowd": {
+        "kind": "schema",
+        "added_at": "2026-11-13T10:36:51Z"
+      }
+    },
+    {
+      "name": "ft-local",
+      "path": "fulltext/260707-aemreplication-rev1.pdf",
+      "type": "file",
+      "format": "pdf",
+      "mediatype": "application/pdf",
+      "bytes": 1481467,
+      "hash": "sha256:b130f133b6606750779593179358a4dedcfa8b8aef2d19967fe0027eac8ec59e",
+      "reprocrowd": {
+        "kind": "fulltext",
+        "added_at": "2026-11-13T10:36:51Z",
+        "flavor": "pdf",
+        "origin": {
+          "type": "local",
+          "path": "260707_AEMreplication_rev1.pdf"
+        },
+        "check": {
+          "passed": true,
+          "checked_at": "2026-11-13T10:36:51Z",
+          "notes": [
+            "36 page(s)"
+          ]
+        }
+      }
+    },
+    {
+      "name": "ex-local",
+      "path": "extractions/ex-local.json",
+      "type": "json",
+      "format": "json",
+      "mediatype": "application/json",
+      "bytes": 89864,
+      "hash": "sha256:07a9a9f4d38c4297a8691a1ab01acaf4e7cd5073b84f8fa26ce4176fb31a94c6",
+      "jsonSchema": "schemas/document.schema.json",
+      "reprocrowd": {
+        "kind": "extraction",
+        "added_at": "2026-11-13T10:36:51Z",
+        "method": "parse",
+        "fulltexts": [
+          "ft-local"
+        ]
+      }
+    },
+    {
+      "name": "in-glrep-hypothesis.png",
+      "path": "inputs/glrep_hypothesis.png",
+      "type": "file",
+      "format": "png",
+      "mediatype": "image/png",
+      "bytes": 108655,
+      "hash": "sha256:b214ec00dd60fcbf52471d874d0135a46247a82f713f53759b103b9546a857a8",
+      "reprocrowd": {
+        "kind": "input",
+        "added_at": "2026-11-13T10:38:44Z",
+        "role": "other",
+        "note": "",
+        "used": true,
+        "origin": {
+          "type": "fetched",
+          "url": "https://osf.io/download/czw5a/",
+          "repo": "osf",
+          "id": "rge23",
+          "label": "fetched from OSF project rge23"
+        }
+      }
+    },
+    {
+      "name": "in-questionnaire-german.pdf",
+      "path": "inputs/questionnaire_german.pdf",
+      "type": "file",
+      "format": "pdf",
+      "mediatype": "application/pdf",
+      "bytes": 165166,
+      "hash": "sha256:a0b4a383acbe04b6a2653bcdb7c8e7723e6f85a95d4a44bb3478cdddd8f90a00",
+      "reprocrowd": {
+        "kind": "input",
+        "added_at": "2026-11-13T10:38:46Z",
+        "role": "other",
+        "note": "",
+        "used": true,
+        "origin": {
+          "type": "fetched",
+          "url": "https://osf.io/download/rnt74/",
+          "repo": "osf",
+          "id": "rge23",
+          "label": "fetched from OSF project rge23"
+        }
+      }
+    },
+    {
+      "name": "in-analyses-prereg.r",
+      "path": "inputs/analyses_prereg.R",
+      "type": "file",
+      "format": "r",
+      "mediatype": "application/octet-stream",
+      "bytes": 7935,
+      "hash": "sha256:87cf82e33af65b9caaf1e283b2649b7a03df453b3e6c460710778c6fe7302362",
+      "reprocrowd": {
+        "kind": "input",
+        "added_at": "2026-11-13T10:38:48Z",
+        "role": "code",
+        "note": "",
+        "used": true,
+        "origin": {
+          "type": "fetched",
+          "url": "https://osf.io/download/6ua4s/",
+          "repo": "osf",
+          "id": "rge23",
+          "label": "fetched from OSF project rge23"
+        }
+      }
+    },
+    {
+      "name": "in-analyses-final.r",
+      "path": "inputs/analyses_final.R",
+      "type": "file",
+      "format": "r",
+      "mediatype": "application/octet-stream",
+      "bytes": 12642,
+      "hash": "sha256:ebe8db5838ed3467463f2139635811ba628bfb7985935d5d1f5c20b3fa728fd1",
+      "reprocrowd": {
+        "kind": "input",
+        "added_at": "2026-11-13T10:38:50Z",
+        "role": "code",
+        "note": "",
+        "used": true,
+        "origin": {
+          "type": "fetched",
+          "url": "https://osf.io/download/2m3w6/",
+          "repo": "osf",
+          "id": "rge23",
+          "label": "fetched from OSF project rge23"
+        }
+      }
+    },
+    {
+      "name": "in-gl2003-replication-raw-2023-03-28.csv",
+      "path": "inputs/gl2003-replication-raw-2023-03-28.csv",
+      "type": "file",
+      "format": "csv",
+      "mediatype": "application/vnd.ms-excel",
+      "bytes": 217415,
+      "hash": "sha256:8e86ba0a3a956269f8017a8bf97d6826e8b4ec76e84d76ca7ea8b4105fcd9762",
+      "reprocrowd": {
+        "kind": "input",
+        "added_at": "2026-11-13T10:38:52Z",
+        "role": "data",
+        "note": "",
+        "used": true,
+        "origin": {
+          "type": "fetched",
+          "url": "https://osf.io/download/2s3tv/",
+          "repo": "osf",
+          "id": "rge23",
+          "label": "fetched from OSF project rge23"
+        }
+      }
+    },
+    {
+      "name": "in-gl2003-replication-processed-2023-03-28.csv",
+      "path": "inputs/gl2003-replication-processed-2023-03-28.csv",
+      "type": "file",
+      "format": "csv",
+      "mediatype": "application/vnd.ms-excel",
+      "bytes": 72071,
+      "hash": "sha256:156f1276cb4255f7dc018d8c19856201b19795b2b91f24e49f69dfb2e2ed821a",
+      "reprocrowd": {
+        "kind": "input",
+        "added_at": "2026-11-13T10:38:53Z",
+        "role": "data",
+        "note": "",
+        "used": true,
+        "origin": {
+          "type": "fetched",
+          "url": "https://osf.io/download/4qwyt/",
+          "repo": "osf",
+          "id": "rge23",
+          "label": "fetched from OSF project rge23"
+        }
+      }
+    },
+    {
+      "name": "in-esconversion-red.r",
+      "path": "inputs/esconversion_red.R",
+      "type": "file",
+      "format": "r",
+      "mediatype": "application/octet-stream",
+      "bytes": 952,
+      "hash": "sha256:00bf286dccf127b1b8277f7a482de88414a822e233989393ea99a78fff18b9b6",
+      "reprocrowd": {
+        "kind": "input",
+        "added_at": "2026-11-13T10:38:55Z",
+        "role": "code",
+        "note": "",
+        "used": true,
+        "origin": {
+          "type": "fetched",
+          "url": "https://osf.io/download/7zb3a/",
+          "repo": "osf",
+          "id": "rge23",
+          "label": "fetched from OSF project rge23"
+        }
+      }
+    },
+    {
+      "name": "in-gl2003-replication-processed-2024-05-23.csv",
+      "path": "inputs/gl2003-replication-processed-2024-05-23.csv",
+      "type": "file",
+      "format": "csv",
+      "mediatype": "application/vnd.ms-excel",
+      "bytes": 77767,
+      "hash": "sha256:8663e448ab852bd57951fc90b8118d66e11da05884afb03aeeaf553c53e0782d",
+      "reprocrowd": {
+        "kind": "input",
+        "added_at": "2026-11-13T10:38:56Z",
+        "role": "data",
+        "note": "",
+        "used": true,
+        "origin": {
+          "type": "fetched",
+          "url": "https://osf.io/download/bkgdh/",
+          "repo": "osf",
+          "id": "rge23",
+          "label": "fetched from OSF project rge23"
+        }
+      }
+    },
+    {
+      "name": "in-readme.txt",
+      "path": "inputs/readme.txt",
+      "type": "file",
+      "format": "txt",
+      "mediatype": "text/plain",
+      "bytes": 693,
+      "hash": "sha256:5128b04a4b291275df050e02c2a27629fa1799e08ad66adfddcfd34f209af0de",
+      "reprocrowd": {
+        "kind": "input",
+        "added_at": "2026-11-13T10:38:58Z",
+        "role": "data",
+        "note": "",
+        "used": true,
+        "origin": {
+          "type": "fetched",
+          "url": "https://osf.io/download/ynp4r/",
+          "repo": "osf",
+          "id": "rge23",
+          "label": "fetched from OSF project rge23"
+        }
+      }
+    },
+    {
+      "name": "in-analyses-final-rev1.r",
+      "path": "inputs/analyses_final_rev1.R",
+      "type": "file",
+      "format": "r",
+      "mediatype": "application/octet-stream",
+      "bytes": 14421,
+      "hash": "sha256:6c191df37772f1a34a8836734aaafe11b0a4954071d270f5381d0ea451e09456",
+      "reprocrowd": {
+        "kind": "input",
+        "added_at": "2026-11-13T10:39:02Z",
+        "role": "code",
+        "note": "",
+        "used": true,
+        "origin": {
+          "type": "fetched",
+          "url": "https://osf.io/download/9ja54/",
+          "repo": "osf",
+          "id": "rge23",
+          "label": "fetched from OSF project rge23"
+        }
+      }
+    },
+    {
+      "name": "in-aemreplication-preprint.pdf",
+      "path": "inputs/AEMreplication_preprint.pdf",
+      "type": "file",
+      "format": "pdf",
+      "mediatype": "application/pdf",
+      "bytes": 1063743,
+      "hash": "sha256:130816010bc48737597a6550fcf014908300410bbfa56584d7aa0dd60c1b45d3",
+      "reprocrowd": {
+        "kind": "input",
+        "added_at": "2026-11-13T10:39:07Z",
+        "role": "other",
+        "note": "",
+        "used": true,
+        "origin": {
+          "type": "fetched",
+          "url": "https://osf.io/download/y5auj/",
+          "repo": "osf",
+          "id": "rge23",
+          "label": "fetched from OSF project rge23"
+        }
+      }
+    },
+    {
+      "name": "in-g-l-effectsizes.r",
+      "path": "inputs/g&l_effectsizes.R",
+      "type": "file",
+      "format": "r",
+      "mediatype": "application/octet-stream",
+      "bytes": 1833,
+      "hash": "sha256:190b9531bc004f408b87f28b3b193fb0624dcce8c06a2d0d06d58f9be03f57bb",
+      "reprocrowd": {
+        "kind": "input",
+        "added_at": "2026-11-13T10:39:10Z",
+        "role": "code",
+        "note": "",
+        "used": true,
+        "origin": {
+          "type": "fetched",
+          "url": "https://osf.io/download/wyrvg/",
+          "repo": "osf",
+          "id": "rge23",
+          "label": "fetched from OSF project rge23"
+        }
+      }
+    },
+    {
+      "name": "in-gleffectsizes.jpg",
+      "path": "inputs/GLeffectsizes.jpg",
+      "type": "file",
+      "format": "jpg",
+      "mediatype": "image/jpeg",
+      "bytes": 368020,
+      "hash": "sha256:cb8dc0ae8cb15c5a9d4f348fd5362c3638d66e52aeaa31844c99745de754e563",
+      "reprocrowd": {
+        "kind": "input",
+        "added_at": "2026-11-13T10:39:12Z",
+        "role": "other",
+        "note": "",
+        "used": true,
+        "origin": {
+          "type": "fetched",
+          "url": "https://osf.io/download/apxs4/",
+          "repo": "osf",
+          "id": "rge23",
+          "label": "fetched from OSF project rge23"
+        }
+      }
+    },
+    {
+      "name": "targets",
+      "path": "targets.json",
+      "type": "json",
+      "format": "json",
+      "mediatype": "application/json",
+      "bytes": 173480,
+      "hash": "sha256:41b4867576a292c86b74034044a99e7c1cca7102a065b3a29ac94bebef5979cb",
+      "jsonSchema": "schemas/targets.schema.json",
+      "reprocrowd": {
+        "kind": "curation",
+        "added_at": "2026-11-13T10:36:51Z"
+      }
+    },
+    {
+      "name": "actions",
+      "path": "actions.json",
+      "type": "json",
+      "format": "json",
+      "mediatype": "application/json",
+      "bytes": 174411,
+      "hash": "sha256:ad270c1a7808202fb9d4cf37627d63a954606c297ca30fd19564543d9438fa10",
+      "jsonSchema": "schemas/actions.schema.json",
+      "reprocrowd": {
+        "kind": "curation",
+        "added_at": "2026-11-13T10:36:51Z"
+      }
+    },
+    {
+      "name": "script-analysis.r",
+      "path": "analysis.R",
+      "type": "file",
+      "format": "r",
+      "mediatype": "text/plain",
+      "bytes": 48856,
+      "hash": "sha256:5a3e321314e8e5653c2c90ea5a24010065e2ca4345a7edcc7f15efb6a5591521",
+      "reprocrowd": {
+        "kind": "script",
+        "added_at": "2026-11-13T10:52:57Z",
+        "template": "r",
+        "generated_hash": "sha256:22ee73724b754679be0cf014c7036030c155270cf18ade9f5028174d4e2b4212"
+      }
+    },
+    {
+      "name": "script-readme.md",
+      "path": "README.md",
+      "type": "file",
+      "format": "md",
+      "mediatype": "text/plain",
+      "bytes": 726,
+      "hash": "sha256:c5441c55a8206a4846b8c4e1967884dcbed446877d411d1ebe45b0f8a234359e",
+      "reprocrowd": {
+        "kind": "script",
+        "added_at": "2026-11-13T10:52:57Z",
+        "template": "r",
+        "generated_hash": "sha256:c5441c55a8206a4846b8c4e1967884dcbed446877d411d1ebe45b0f8a234359e"
+      }
+    },
+    {
+      "name": "script-agent-prompt.md",
+      "path": "AGENT_PROMPT.md",
+      "type": "file",
+      "format": "md",
+      "mediatype": "text/plain",
+      "bytes": 2638,
+      "hash": "sha256:eb1e7e78b77469642536c7245f558ad0e77d7f80fafcce270090ee08b495ea26",
+      "reprocrowd": {
+        "kind": "script",
+        "added_at": "2026-11-13T10:52:57Z",
+        "template": "r",
+        "generated_hash": "sha256:eb1e7e78b77469642536c7245f558ad0e77d7f80fafcce270090ee08b495ea26"
+      }
+    },
+    {
+      "name": "results-schema",
+      "path": "results_schema.json",
+      "type": "json",
+      "format": "json",
+      "mediatype": "application/json",
+      "bytes": 52075,
+      "hash": "sha256:b37a3d6575b55a55323de12960b64869e6bc4a4820617da465abdab57bd9033d",
+      "jsonSchema": "schemas/results-schema.schema.json",
+      "reprocrowd": {
+        "kind": "export",
+        "added_at": "2026-11-13T10:52:57Z"
+      }
+    },
+    {
+      "name": "analysis-plan",
+      "path": "analysis_plan.json",
+      "type": "json",
+      "format": "json",
+      "mediatype": "application/json",
+      "bytes": 30350,
+      "hash": "sha256:3a4e190ea620938952e79f350345f16018a98a581fad855a677a6d2219f25c13",
+      "jsonSchema": "schemas/analysis-plan.schema.json",
+      "reprocrowd": {
+        "kind": "export",
+        "added_at": "2026-11-13T10:52:57Z"
+      }
+    },
+    {
+      "name": "code-install.r",
+      "path": "install.R",
+      "type": "file",
+      "format": "r",
+      "mediatype": "application/octet-stream",
+      "bytes": 188,
+      "hash": "sha256:eae4f072a9d538253739812d34e08c4e8c01c17e946af2634452783668554241",
+      "reprocrowd": {
+        "kind": "code",
+        "added_at": "2026-11-13T11:12:23Z"
+      }
+    },
+    {
+      "name": "out-figures-t139.png",
+      "path": "outputs/figures/T139.png",
+      "type": "file",
+      "format": "png",
+      "mediatype": "image/png",
+      "bytes": 152811,
+      "hash": "sha256:649d347711b343589b61c3f7019c366bf898fbce6da712b3f326d2201daae3c7",
+      "reprocrowd": {
+        "kind": "output",
+        "added_at": "2026-11-13T11:12:23Z"
+      }
+    },
+    {
+      "name": "out-figures-t140.png",
+      "path": "outputs/figures/T140.png",
+      "type": "file",
+      "format": "png",
+      "mediatype": "image/png",
+      "bytes": 175235,
+      "hash": "sha256:a0f3a527d95ed58fbfd4986caa9d96c2b73e1cf5111d39d869779e1cd40b5358",
+      "reprocrowd": {
+        "kind": "output",
+        "added_at": "2026-11-13T11:12:23Z"
+      }
+    },
+    {
+      "name": "out-figures-t141.png",
+      "path": "outputs/figures/T141.png",
+      "type": "file",
+      "format": "png",
+      "mediatype": "image/png",
+      "bytes": 36948,
+      "hash": "sha256:c89e5a1c1ffe2f7ce2baa799a35dbf1fbfd7e790b6438019985c78a17b340dba",
+      "reprocrowd": {
+        "kind": "output",
+        "added_at": "2026-11-13T11:12:23Z"
+      }
+    },
+    {
+      "name": "out-figures-t142.png",
+      "path": "outputs/figures/T142.png",
+      "type": "file",
+      "format": "png",
+      "mediatype": "image/png",
+      "bytes": 41456,
+      "hash": "sha256:8b653d95fce9a5486459ed8bc9be84d219f0064127cb7c7ccd85fcc199430206",
+      "reprocrowd": {
+        "kind": "output",
+        "added_at": "2026-11-13T11:12:23Z"
+      }
+    },
+    {
+      "name": "out-figures-t143.png",
+      "path": "outputs/figures/T143.png",
+      "type": "file",
+      "format": "png",
+      "mediatype": "image/png",
+      "bytes": 170211,
+      "hash": "sha256:ca8a1f63b58c63e0c62ad69114352786bda16b196cf07543c33796a75224ae53",
+      "reprocrowd": {
+        "kind": "output",
+        "added_at": "2026-11-13T11:12:23Z"
+      }
+    },
+    {
+      "name": "out-results.json",
+      "path": "outputs/results.json",
+      "type": "json",
+      "format": "json",
+      "mediatype": "application/json",
+      "bytes": 14216,
+      "hash": "sha256:adee43d5dba4c547f82c6816302e64d125df4011e9bdb7cb0b06545a53d014e5",
+      "jsonSchema": "schemas/results-output.schema.json",
+      "reprocrowd": {
+        "kind": "output",
+        "added_at": "2026-11-13T11:12:23Z"
+      }
+    },
+    {
+      "name": "report",
+      "path": "report.html",
+      "type": "file",
+      "format": "html",
+      "mediatype": "text/html",
+      "bytes": 575033,
+      "hash": "sha256:9373aeece174481db74c3d8054d1b9dcd80364ca3659b2656b340a5535ccbdd5",
+      "reprocrowd": {
+        "kind": "report",
+        "added_at": "2026-11-13T11:15:50Z"
+      }
+    },
+    {
+      "name": "comparison",
+      "path": "comparison.json",
+      "type": "json",
+      "format": "json",
+      "mediatype": "application/json",
+      "bytes": 49048,
+      "hash": "sha256:3462ccbb57f638f0e807823700ba64e9bcd9d18d454a7a5c42c59483d95ad059",
+      "jsonSchema": "schemas/comparison.schema.json",
+      "reprocrowd": {
+        "kind": "report",
+        "added_at": "2026-11-13T11:15:50Z"
+      }
+    }
+  ],
+  "reprocrowd": {
+    "version": "1.0",
+    "created_at": "2026-11-13T10:36:51Z",
+    "identifiers": {},
+    "submissions": [],
+    "deposits": []
+  },
+  "title": "Geers & Lassiter (2003): Affective expectations and need for cognition"
+}
