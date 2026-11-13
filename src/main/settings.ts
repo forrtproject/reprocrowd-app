@@ -27,8 +27,8 @@ export interface Settings {
   llmDisabled: string[];
   /** Look for a new version of ReproCrowd a little after start. */
   checkUpdates: boolean;
-  /** The newest version the user was already told about (notify mode asks once per version). */
-  updateNotified: string;
+  /** Where ReproCrowd can update itself: download new versions in the background, and install them on quit too. */
+  autoUpdate: boolean;
 }
 
 export const userData = () => app.getPath("userData");
@@ -42,7 +42,7 @@ export const DEFAULTS: Settings = {
   backendCmd: "",
   llmDisabled: [],
   checkUpdates: true,
-  updateNotified: "",
+  autoUpdate: false,
 };
 
 function readJson(file: string): any {
@@ -77,7 +77,7 @@ export function loadSettings(): Settings {
     backendCmd: str(s.backendCmd, ""),
     llmDisabled: Array.isArray(s.llmDisabled) ? s.llmDisabled.map(String) : [],
     checkUpdates: typeof s.checkUpdates === "boolean" ? s.checkUpdates : DEFAULTS.checkUpdates,
-    updateNotified: str(s.updateNotified, ""),
+    autoUpdate: typeof s.autoUpdate === "boolean" ? s.autoUpdate : DEFAULTS.autoUpdate,
   };
 }
 

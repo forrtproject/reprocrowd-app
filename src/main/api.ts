@@ -163,6 +163,7 @@ export function makeApi(wc: WebContents) {
     // ---------- updates ----------
     checkForUpdates: () => updater.checkForUpdates(),
     updateInfo: async () => updater.updateInfo(),
+    downloadUpdate: async () => updater.startDownload(),
     installUpdate: async () => updater.installUpdate(),
     listPackages: async () => {
       const all = await get<any[]>("/v1/packages");
@@ -234,6 +235,7 @@ export function makeApi(wc: WebContents) {
     setConfig: async (patch: Parameters<typeof saveSettings>[0]) => {
       const before = loadSettings();
       const after = saveSettings(patch);
+      if (before.autoUpdate !== after.autoUpdate) updater.applyUpdateSettings();
       // The backend gets the Zenodo choices and its start command at start.
       if (before.backendCmd !== after.backendCmd || before.zenodo.sandbox !== after.zenodo.sandbox || before.zenodo.community !== after.zenodo.community) await backend.restart().catch(() => {});
     },

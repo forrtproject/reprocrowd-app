@@ -2,15 +2,17 @@
 // electron-builder writes into resources/app-update.yml).
 //
 // How an update arrives depends on how ReproCrowd was installed:
-//   auto    Windows (NSIS installer) and Linux AppImage: electron-updater downloads the new version in the background
-//           and installs it on restart (or when the app quits).
+//   auto    Windows (NSIS installer) and Linux AppImage: electron-updater can install a new version itself. By default
+//           the starting screen says a new version is out and downloads it only when the user asks; it installs on
+//           "Restart & install". With the "autoUpdate" setting it downloads in the background and also installs on quit.
 //   notify  macOS (the builds aren't signed with an Apple Developer ID, and macOS only lets signed apps replace
 //           themselves) and Linux installs made by scripts/install.sh: we read the latest release from the GitHub API
 //           and tell the user where to get it.
 //   off     a development checkout, or REPROCROWD_UPDATES=off.
 // An auto check that can't run (the release lacks this platform's latest*.yml, or electron-updater reports itself
 // inactive) falls back to the notify check, so the user still learns about a new version. Nothing here waits without
-// a timeout, and every failure ends as a status with a readable message.
+// a timeout, and every failure ends as a status with a readable message. The check at start runs only with the
+// "checkUpdates" setting; the starting screen shows its result (no pop-up), Help → Check for Updates… uses dialogs.
 //
 // Testing: REPROCROWD_UPDATE_SERVER=http://host:port serves electron-updater's generic feed (latest*.yml and the
 // installers) and GET /releases/latest in the GitHub API's shape; it also enables the notify check in a development
@@ -19,7 +21,7 @@ import { app, BrowserWindow, dialog, net, shell } from "electron";
 import { autoUpdater, ProgressInfo, UpdateInfo } from "electron-updater";
 import fs from "node:fs";
 import path from "node:path";
-import { loadSettings, saveSettings } from "./settings";
+import { loadSettings } from "./settings";
 
 export type UpdateMode = "auto" | "notify" | "off";
 export type UpdateStatus =
@@ -27,15 +29,23 @@ export type UpdateStatus =
   | { state: "disabled"; current: string; reason: string }
   | { state: "checking"; current: string }
   | { state: "not-available"; current: string; note?: string }
-  | { state: "downloading"; current: string; version: string; percent: number }
-  | { state: "ready"; current: string; version: string }
+  /** auto mode: ReproCrowd can download and install it, once the user asks. `url`: its release notes. */
+  | { state: "available"; current: string; version: string; url: string }
+  | { state: "downloading"; current: string; version: string; percent: number; url: string }
+  | { state: "ready"; current: string; version: string; url: string }
+  /** The user installs it themselves (notify mode, or an auto check that fell back to the release page). */
   | { state: "manual"; current: string; version: string; url: string; howTo: string }
-  | { state: "error"; current: string; message: string; detail?: string; url?: string };
+  /** `during: "download"`: downloading an update the user asked for failed (a failed check is only logged at start). */
+  | { state: "error"; current: string; message: string; detail?: string; url?: string; during?: "download" };
 export interface UpdateInfoForUi {
   mode: UpdateMode;
   /** One sentence on how updates work in this installation. */
   explain: string;
   status: UpdateStatus;
+  /** The check at start is still to come (the starting screen waits for it). */
+  pending: boolean;
+  /** Downloaded updates also install when ReproCrowd quits (auto mode with the "autoUpdate" setting). */
+  installOnQuit: boolean;
 }
 
 const CHECK_TIMEOUT = 30_000;
@@ -54,6 +64,8 @@ function githubRepo(): { owner: string; repo: string } {
   } catch {}
   return { owner: "forrtproject", repo: "reprocrowd-app" };
 }
+const releaseNotes = (version: string) =>
+  server() ? `${server()}/releases/tag/v${version}` : `https://github.com/${githubRepo().owner}/${githubRepo().repo}/releases/tag/v${version}`;
 const releasesPage = () => (server() ? `${server()}/releases` : `https://github.com/${githubRepo().owner}/${githubRepo().repo}/releases/latest`);
 const latestReleaseApi = () => (server() ? `${server()}/releases/latest` : `https://api.github.com/repos/${githubRepo().owner}/${githubRepo().repo}/releases/latest`);
 
@@ -68,8 +80,15 @@ export function updateMode(): { mode: UpdateMode; explain: string } {
       ? { mode: "notify", explain: "A development checkout: new versions are reported, but not installed." }
       : { mode: "off", explain: "This is a development checkout; update it with git. Installed copies of ReproCrowd update from GitHub Releases." };
   }
-  if (process.platform === "win32") return { mode: "auto", explain: "New versions download in the background and install when you restart ReproCrowd." };
-  if (process.platform === "linux" && process.env.APPIMAGE) return { mode: "auto", explain: "New versions download in the background and replace this AppImage when you restart ReproCrowd." };
+  const install = process.platform === "win32" ? "install" : "replace this AppImage";
+  const auto = (): { mode: UpdateMode; explain: string } => ({
+    mode: "auto",
+    explain: loadSettings().autoUpdate
+      ? `New versions download in the background and ${install} when you restart or quit ReproCrowd.`
+      : `ReproCrowd tells you about new versions on its starting screen; one downloads only when you ask, and it ${install === "install" ? "installs" : "replaces this AppImage"} when you choose “Restart & install”.`,
+  });
+  if (process.platform === "win32") return auto();
+  if (process.platform === "linux" && process.env.APPIMAGE) return auto();
   if (process.platform === "darwin") return { mode: "notify", explain: "On macOS, ReproCrowd tells you about new versions; install them by downloading the new .dmg." };
   if (installedByScript()) return { mode: "notify", explain: "ReproCrowd tells you about new versions; this copy was installed with scripts/install.sh, so update it by running that again." };
   return { mode: "notify", explain: "ReproCrowd tells you about new versions; install them by downloading the new AppImage." };
@@ -86,27 +105,35 @@ function howTo(): string {
 
 let status: UpdateStatus = { state: "idle", current: "" };
 let inFlight: Promise<UpdateStatus> | null = null;
+let startupCheckPending = false;
 const set = (s: UpdateStatus) => (status = s);
-export const updateInfo = (): UpdateInfoForUi => ({ ...updateMode(), status: status.state === "idle" ? { state: "idle", current: current() } : status });
+const installOnQuit = () => updateMode().mode === "auto" && loadSettings().autoUpdate;
+export const updateInfo = (): UpdateInfoForUi => ({
+  ...updateMode(),
+  status: status.state === "idle" ? { state: "idle", current: current() } : status,
+  pending: startupCheckPending,
+  installOnQuit: installOnQuit(),
+});
 
 // ---------- errors people can act on ----------
 
 const errText = (err: unknown) => (err instanceof Error ? err.message : String(err ?? "unknown error"));
 
-function describe(err: unknown): { message: string; detail: string } {
+function describe(err: unknown, what: "check" | "download"): { message: string; detail: string } {
   const detail = errText(err);
   const d = detail.toLowerCase();
   const say = (message: string) => ({ message, detail });
   if (/err_internet_disconnected|enotfound|eai_again|err_name_not_resolved|econnrefused|econnreset|err_connection|err_network_changed|err_proxy|enetunreach|socket hang up/.test(d))
-    return say("Couldn't reach GitHub to check for updates. Check your internet connection (or proxy) and try again.");
+    return say(`Couldn't reach GitHub to ${what === "check" ? "check for updates" : "download the update"}. Check your internet connection (or proxy) and try again.`);
   if (/timed? ?out|etimedout|err_timed_out/.test(d)) return say("GitHub didn't answer in time. Try again later.");
   if (/rate limit|\b403\b|\b429\b/.test(d)) return say("GitHub is limiting requests from your network right now. Try again in an hour.");
   if (/sha512 checksum mismatch|checksum/.test(d)) return say("The downloaded update was damaged in transit. Check for updates again to retry.");
   if (/eacces|eperm|erofs|access is denied|operation not permitted/.test(d)) return say("ReproCrowd isn't allowed to replace its own files here. Download the new version from the release page instead.");
   if (/enospc|no space/.test(d)) return say("There isn't enough disk space to download the update.");
-  return say("Couldn't check for updates.");
+  return say(what === "check" ? "Couldn't check for updates." : "Couldn't download the update.");
 }
-const errorStatus = (err: unknown): UpdateStatus => ({ state: "error", current: current(), ...describe(err), url: releasesPage() });
+const errorStatus = (err: unknown): UpdateStatus => ({ state: "error", current: current(), ...describe(err, "check"), url: releasesPage() });
+const downloadError = (err: unknown): UpdateStatus => ({ state: "error", current: current(), ...describe(err, "download"), url: releasesPage(), during: "download" });
 // The release exists but has no update file for this platform (only some platforms were built), or none at all.
 const noFeedForPlatform = (err: unknown) => /cannot find (latest|channel)|latest[-\w]*\.yml|\b404\b/i.test(errText(err));
 const noReleases = (err: unknown) => /no published versions|unable to find latest version/i.test(errText(err));
@@ -172,21 +199,25 @@ function setupAuto() {
   if (autoReady) return;
   autoReady = true;
   if (server()) autoUpdater.setFeedURL({ provider: "generic", url: server() });
-  autoUpdater.autoDownload = true;
-  autoUpdater.autoInstallOnAppQuit = true; // "Later" still installs it when ReproCrowd quits
+  autoUpdater.autoDownload = false; // startDownload() fetches it: when the user asks, or right away with "autoUpdate"
+  applyUpdateSettings();
   autoUpdater.logger = null;
   // electron-updater also emits "error"; without a listener an EventEmitter "error" would throw.
   autoUpdater.on("error", (err) => {
     console.error("reprocrowd update:", errText(err));
-    if (status.state === "downloading") set(errorStatus(err));
+    if (status.state === "downloading") set(downloadError(err));
   });
   autoUpdater.on("download-progress", (p: ProgressInfo) => {
     if (status.state === "downloading") set({ ...status, percent: Math.round(p.percent) });
   });
   autoUpdater.on("update-downloaded", (info: UpdateInfo) => {
-    set({ state: "ready", current: current(), version: info.version });
-    void offerRestart(info.version);
+    set({ state: "ready", current: current(), version: info.version, url: releaseNotes(info.version) });
   });
+}
+
+/** After the settings change: install a downloaded update on quit only with "autoUpdate" (read again at quit). */
+export function applyUpdateSettings() {
+  autoUpdater.autoInstallOnAppQuit = installOnQuit();
 }
 
 async function checkAuto(): Promise<UpdateStatus> {
@@ -204,10 +235,7 @@ async function checkAuto(): Promise<UpdateStatus> {
   if (!result) return checkRelease(); // electron-updater considers itself inactive here
   if (!result.isUpdateAvailable) return { state: "not-available", current: current() };
   const version = result.updateInfo.version;
-  // `ready` may already be set (update-downloaded fires during the check when the file is in electron-updater's cache).
-  if ((status as UpdateStatus).state !== "ready") set({ state: "downloading", current: current(), version, percent: 0 });
-  result.downloadPromise?.catch((err) => set(errorStatus(err)));
-  return status;
+  return { state: "available", current: current(), version, url: releaseNotes(version) };
 }
 
 // ---------- the check ----------
@@ -221,9 +249,27 @@ export function checkForUpdates(): Promise<UpdateStatus> {
   set({ state: "checking", current: current() });
   inFlight = (mode === "auto" ? checkAuto() : checkRelease())
     .catch((err) => errorStatus(err))
-    .then((s) => set(s))
+    .then((s) => (s.state === "available" && loadSettings().autoUpdate ? (set(s), startDownload()) : set(s)))
     .finally(() => (inFlight = null));
   return inFlight;
+}
+
+let download: Promise<UpdateStatus> | null = null;
+
+/** Start downloading the update found by the auto check and return at once (the status follows the progress). */
+export function startDownload(): UpdateStatus {
+  if (status.state === "downloading" || status.state === "ready") return status;
+  if (status.state !== "available") throw new Error("There is no update to download; check for updates first.");
+  const { version, url } = status;
+  set({ state: "downloading", current: current(), version, percent: 0, url });
+  download = autoUpdater
+    .downloadUpdate()
+    .then(
+      () => (status.state === "downloading" ? set({ state: "ready", current: current(), version, url }) : status),
+      (err) => set(downloadError(err)),
+    )
+    .finally(() => (download = null));
+  return status;
 }
 
 export function installUpdate() {
@@ -251,7 +297,7 @@ async function offerRestart(version: string) {
       cancelId: 1,
       title: "Update ready",
       message: `ReproCrowd ${version} is ready to install.`,
-      detail: "Restart now to install it, or choose Later: it is then installed when you quit ReproCrowd. Your reproductions, settings and packages stay.",
+      detail: `Restart now to install it, or choose Later: ${installOnQuit() ? "it is then installed when you quit ReproCrowd" : "install it from the starting screen or Settings → Updates whenever you like"}. Your reproductions, settings and packages stay.`,
     });
     if (response === 0) installUpdate();
   } finally {
@@ -272,6 +318,29 @@ async function offerDownload(s: Extract<UpdateStatus, { state: "manual" }>) {
   if (response === 0) await shell.openExternal(s.url);
 }
 
+async function offerAvailable(s: Extract<UpdateStatus, { state: "available" }>) {
+  const { response } = await box({
+    type: "info",
+    buttons: ["Download", "Release notes", "Later"],
+    defaultId: 0,
+    cancelId: 2,
+    title: "Update available",
+    message: `ReproCrowd ${s.version} is available (you have ${s.current}).`,
+    detail: "Download it now; you're asked to restart when it's ready. Your reproductions, settings and packages stay.",
+  });
+  if (response === 1) await shell.openExternal(s.url);
+  if (response !== 0) return;
+  startDownload();
+  await afterDownload();
+}
+
+/** The download the user started from the Help menu: offer the restart when it's done, or say what went wrong. */
+async function afterDownload() {
+  const s = download ? await download : status;
+  if (s.state === "ready") await offerRestart(s.version);
+  else if (s.state === "error") await box({ type: "warning", title: "Updates", message: s.message, detail: `${s.detail ?? ""}\n\nYou can also get new versions from the release page.`.trim() });
+}
+
 /** Help → Check for Updates…: check and say what happened, whatever it is. */
 export async function promptUpdate() {
   const s = await checkForUpdates();
@@ -284,6 +353,10 @@ export async function promptUpdate() {
       break;
     case "downloading":
       await box({ type: "info", title: "Updates", message: `ReproCrowd ${s.version} is downloading (${s.percent} %).`, detail: "You'll be asked to restart when it's ready." });
+      await afterDownload();
+      break;
+    case "available":
+      await offerAvailable(s);
       break;
     case "ready":
       await offerRestart(s.version);
@@ -301,17 +374,16 @@ export async function promptUpdate() {
 
 // ---------- at start ----------
 
-/** Check once, quietly, a little after start: auto mode downloads and then offers a restart; notify mode tells about
- * each new version once. Failures are only logged. */
+/** Check once, quietly, a little after start (with the "checkUpdates" setting); the starting screen shows a new
+ * version, and with "autoUpdate" it downloads right away. Failures are only logged. */
 export function initUpdater() {
   const { mode } = updateMode();
   if (mode === "off" || !loadSettings().checkUpdates) return;
-  setTimeout(async () => {
-    const s = await checkForUpdates();
-    if (s.state === "error") console.error("reprocrowd update:", s.message, s.detail ?? "");
-    if (s.state === "manual" && loadSettings().updateNotified !== s.version) {
-      saveSettings({ updateNotified: s.version });
-      await offerDownload(s);
-    }
+  startupCheckPending = true;
+  setTimeout(() => {
+    startupCheckPending = false; // checkForUpdates() reports "checking" from here on
+    void checkForUpdates().then((s) => {
+      if (s.state === "error") console.error("reprocrowd update:", s.message, s.detail ?? "");
+    });
   }, STARTUP_DELAY).unref?.();
 }
