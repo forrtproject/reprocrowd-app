@@ -15,6 +15,7 @@ const SKIPPED = "acquire_too_large";
 function fetchStatus(r: AcquireResult): [string, "info" | "error"] {
   if (!r.links.length) return [`No data or code links found in the manuscript (looked for ${REPOSITORIES})`, "info"];
   const n = r.resources.length;
+  const existing = r.existing.length;
   const links = r.failures.filter((x) => !x.file).length;
   const skipped = r.failures.filter((x) => x.file && x.code === SKIPPED).length;
   const files = r.failures.filter((x) => x.file && x.code !== SKIPPED).length;
@@ -23,7 +24,8 @@ function fetchStatus(r: AcquireResult): [string, "info" | "error"] {
     files && `${files} file(s) could not be downloaded`,
     skipped && `${skipped} file(s) skipped (download limit)`,
   ].filter(Boolean);
-  return [`Fetched supplemental materials: ${n} file(s) added from ${r.links.length} link(s)${problems.length ? `; ${problems.join(", ")} (see the list below)` : ""}`, n || !problems.length ? "info" : "error"];
+  const result = [n && `${n} file(s) added`, existing && `${existing} already present`].filter(Boolean).join(", ") || "no files added";
+  return [`Fetched supplemental materials: ${result} from ${r.links.length} link(s)${problems.length ? `; ${problems.join(", ")} (see the list below)` : ""}`, n || existing || !problems.length ? "info" : "error"];
 }
 
 type InputRes = Resource & { reprocrowd: Extract<Resource["reprocrowd"], { kind: "input" }> };
@@ -132,10 +134,15 @@ export class InputsStep implements Step {
         const m = r.reprocrowd;
         return m.kind === "input" && m.origin.type === "fetched" && m.origin.repo === l.repo && m.origin.id === l.id;
       }).length;
+      const existing = f.existing.filter((r) => {
+        const m = r.reprocrowd;
+        return m.kind === "input" && m.origin.type === "fetched" && m.origin.repo === l.repo && m.origin.id === l.id;
+      }).length;
       const parts: string[] = [];
       if (files) parts.push(`<span class="ok small">✓ ${files} file(s) added</span>`);
+      if (existing) parts.push(`<span class="muted">${existing} already present</span>`);
       if (linkErr) parts.push(`<span class="warn-inline">${files ? "stopped early" : "could not be fetched"}: ${esc(linkErr.error)}</span>`);
-      if (!files && !linkErr && !fileErrs.length && !skipped.length)
+      if (!files && !existing && !linkErr && !fileErrs.length && !skipped.length)
         parts.push(`<span class="muted">${this.unchosen.has(`${l.repo}:${l.id}`) ? "no files chosen" : "no downloadable files in this record"}</span>`);
       const group = (list: AcquireFailure[], summary: string) =>
         list.length
@@ -208,7 +215,7 @@ export class InputsStep implements Step {
       if (!preview) return;
       if (!preview.links.length) {
         // Show the "no links found" card, with its advice on adding the files by hand.
-        this.fetch = { links: [], resources: [], failures: [] };
+        this.fetch = { links: [], resources: [], existing: [], failures: [] };
         await this.w.render();
         this.w.setStatus(...fetchStatus(this.fetch));
         return;

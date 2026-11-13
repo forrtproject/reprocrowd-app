@@ -8752,6 +8752,14 @@
             "title": "Resources",
             "description": "input resources added"
           },
+          "existing": {
+            "items": {
+              "$ref": "#/components/schemas/Resource"
+            },
+            "type": "array",
+            "title": "Existing",
+            "description": "input resources skipped because the same repository file is already present"
+          },
           "failures": {
             "items": {
               "additionalProperties": true,
@@ -8768,7 +8776,7 @@
           "resources"
         ],
         "title": "AcquireResult",
-        "description": "Result of an acquire run: the links found and the resources (inputs) added."
+        "description": "Result of an acquire run: the links found and the resources added or already present."
       },
       "Action": {
         "properties": {

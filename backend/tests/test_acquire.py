@@ -161,6 +161,26 @@ def test_acquire_orchestration(tmp_path, monkeypatch):
     assert out["resources"][0].reprocrowd.role == "data"
 
 
+@respx.mock
+def test_acquire_again_skips_files_already_fetched(tmp_path, monkeypatch):
+    """Repeated acquisition is idempotent and does not download the same repository file again."""
+    monkeypatch.setattr(acquire, "manuscript_text", lambda pkg, fulltext=None: ZENODO_TEXT)
+    respx.get("https://zenodo.org/api/records/1").mock(return_value=_zenodo_files("data.csv"))
+    download = respx.get("https://zenodo.org/api/files/1/data.csv").mock(
+        return_value=httpx.Response(200, content=b"a,b\n1,2\n"))
+    pkg = _make_pkg(tmp_path)
+
+    first = acquire.acquire(pkg)
+    second = acquire.acquire(pkg)
+
+    assert [r.name for r in first["resources"]] == ["in-data.csv"]
+    assert first["existing"] == []
+    assert second["resources"] == []
+    assert [r.name for r in second["existing"]] == ["in-data.csv"]
+    assert [r.name for r in pkg.load().by_kind("input")] == ["in-data.csv"]
+    assert download.call_count == 1
+
+
 def test_budget():
     b = acquire._Budget(100)
     assert b.allow(100) and not b.allow(101)
