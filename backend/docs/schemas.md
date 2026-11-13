@@ -677,7 +677,7 @@ jobs/<id>.json
 | `exit_code` | integer \| null |  |  |
 | `stdout` | string | yes | package-relative path of the raw stdout |
 | `stderr` | string | yes |  |
-| `events_format` | `"claude-stream-json"` \| `"text"` | yes |  |
+| `events_format` | `"claude-stream-json"` \| `"opencode-json"` \| `"text"` | yes |  |
 | `result` | [CodegenResult](#codegenresult) \| [RunResult](#runresult) \| null |  |  |
 | `error` | string \| null |  |  |
 
