@@ -27,7 +27,7 @@ async function inlineImages(html: string): Promise<string> {
 }
 
 const DEPOSIT_STATUS: Record<ZenodoDeposit["status"], string> = { draft: "Draft", published: "Published", discarded: "Discarded", gone: "Deleted on Zenodo" };
-const GROUP_LABEL: Record<string, string> = { paper: "The paper's full texts, extractions and original figures", inputs: "The input files (the original data and code)" };
+const GROUP_LABEL: Record<string, string> = { paper: "The paper's material: full texts, extractions, original figures and the article's supplementary files", inputs: "The input files you added or fetched from repositories (data and code)" };
 
 export class ReportStep implements Step {
   title = "Report & deposit";
@@ -129,10 +129,11 @@ export class ReportStep implements Step {
           <h4>What is uploaded</h4>
           <p class="hint">A Zenodo record is public and permanent. The ZIP always holds the targets, plan, script, outputs, comparison and report.</p>
           <div class="groups">${groups.map(([g, info]) => `<label class="inline"><input type="checkbox" data-group="${esc(g)}" ${this.exclude?.has(g) ? "" : "checked"} /> ${esc(GROUP_LABEL[g] ?? info.description)} <span class="muted small">(${info.resources.length} file${info.resources.length === 1 ? "" : "s"}, ${sizeText(info.bytes)})</span></label>`).join("") || `<span class="muted small">Nothing optional in this package.</span>`}</div>
-          ${pv.contents.groups.paper?.resources.length ? `<p class="small ${lic && !pv.contents.default_exclude.includes("paper") ? "ok" : "warn-soft"}">${lic ? `OpenAlex reports the license <b>${esc(lic)}</b> for the paper.` : "OpenAlex reports no license for the paper."} ${pv.contents.default_exclude.includes("paper") ? "Include its material only if you may redistribute it." : "Its material may be redistributed with attribution."}</p>` : ""}
+          ${pv.contents.groups.paper?.resources.length ? `<p class="small ${lic && !pv.contents.default_exclude.includes("paper") ? "ok" : "warn-soft"}">${lic ? `OpenAlex reports the license <b>${esc(lic)}</b> for the paper.` : "OpenAlex reports no license for the paper."} ${pv.contents.default_exclude.includes("paper") ? "Its material, including the article's supplementary files, is left out by default: include it only if you may redistribute it." : "Its material, including the article's supplementary files, may be redistributed with attribution."}</p>` : ""}
           ${pv.contents.groups.inputs?.resources.length ? `<p class="hint">Include the input files only if their license allows redistribution (most open data repositories use CC-BY or CC0).</p>` : ""}
           ${this.claims.length ? this.claimsHtml() : ""}
           <label>Note for the record (optional) <textarea id="rp-note" rows="2" placeholder="e.g. what didn't reproduce and why">${esc(this.note)}</textarea></label>
+          <p class="hint">You publish these files under your name: make sure their licenses allow it. ReproCrowd includes the paper's own material by default only when its license is open.</p>
           <div class="actions"><button id="rp-deposit" class="primary big" ${ready ? "" : "disabled"}>${this.w.running.has("deposit") ? "Uploading…" : newVersion ? "Deposit new version" : `Upload to ${server} as a draft`}</button><button id="rp-metadata">Show metadata</button></div>
           ${this.claims.length && !ran.length ? `<p class="hint">Run at least one claim first.</p>` : ""}
           ${newVersion ? `<p class="hint">This package is already published on Zenodo: the deposit becomes a new version of that record (a draft until you publish it).</p>` : ""}

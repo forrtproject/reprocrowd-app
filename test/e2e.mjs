@@ -279,10 +279,12 @@ json.dump({"results": [{"id": "T001", "value": 2.3149}, {"id": "T002", "value": 
   await win.waitForSelector(".cl-detail button[data-act=run][data-claim=C1]:not([disabled])");
   await shot("04d-claims-ticked");
   await win.click(".cl-detail button[data-act=run][data-claim=C1]");
-  // No data files in step 2: the app warns first (the fake agent records values anyway), so run anyway.
-  await win.waitForSelector(".dlg-confirm button[value=ok]", { timeout: 30_000 });
+  // No data files in step 2 (the paper's supplementary file, fetched at creation, is a .docx): the app warns first and
+  // offers the supplementary files; the fake agent records values anyway, so run anyway.
+  await win.waitForSelector(".dlg-confirm button[value=anyway]", { timeout: 30_000 });
   assert.match(await win.locator(".dlg-confirm").innerText(), /No data to analyse/);
-  await win.click(".dlg-confirm button[value=ok]");
+  assert.equal(await win.locator(".dlg-confirm button[value=fetch]").count(), 1);
+  await win.click(".dlg-confirm button[value=anyway]");
   // The monolithic analysis.py written above was edited after it was generated: keep it (moved aside).
   await win.waitForSelector(".dlg-confirm button[value=keep]", { timeout: 30_000 });
   await win.click(".dlg-confirm button[value=keep]");

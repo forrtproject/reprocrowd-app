@@ -19,6 +19,8 @@ const EDITORS = ["code", "codium", "cursor", "zed", "subl", "xdg-open"];
 const LONG = 3 * 3600_000; // LLM calls and conversions are synchronous requests bounded by the backend's own timeouts
 
 const bound = new Map<number, string>(); // webContents id → package id
+/** Packages whose article supplementary files are still being fetched in the background (started at creation). */
+const supplementFetches = new Map<string, Promise<void>>();
 const enc = encodeURIComponent;
 const norm = (p: string) => path.resolve(p).replace(/[\\/]+$/, "");
 const stateFile = (id: string) => path.join(userData(), "ui-state", `${id.replace(/[^\w.-]/g, "_")}.json`);
@@ -218,7 +220,15 @@ export function makeApi(wc: WebContents) {
         else fs.rmSync(target, { recursive: true, force: true });
         throw e;
       }
-      return { id: created.id as string };
+      // The article's own supplementary files (often the study's data, e.g. PLOS "S1 Data"), fetched in the background:
+      // Europe PMC builds the zip on demand, which can take a minute or more, so the package opens at once. Best effort:
+      // a failure leaves the package as it is; step 2 can fetch them again.
+      const id = created.id as string;
+      const fetching = request("POST", `/v1/packages/${enc(id)}/acquire`, { json: { repos: ["supplementary"] }, timeout: LONG })
+        .then(() => {}, () => {})
+        .finally(() => supplementFetches.delete(id));
+      supplementFetches.set(id, fetching);
+      return { id };
     },
     adoptFolder: async () => {
       const r = await dialog.showOpenDialog(win(), { title: "Open a package folder (with datapackage.json)", properties: ["openDirectory"] });
@@ -308,6 +318,12 @@ export function makeApi(wc: WebContents) {
       return { ...s, metadata_error, jats };
     },
     pkg,
+    /** Whether the window's package is still fetching its article's supplementary files (started at creation). */
+    supplementsPending: async () => supplementFetches.has(pkgId(wc)),
+    /** Wait for that fetch to finish (resolves at once when none is running). */
+    awaitSupplements: async () => {
+      await supplementFetches.get(pkgId(wc));
+    },
     pkgBytes: async (sub: string) => (await pkg("GET", sub, undefined, undefined, "bytes")).data as ArrayBuffer,
     pkgText: async (sub: string) => (await pkg("GET", sub, undefined, undefined, "text")).data as string,
     service: async <T>(p: string, query?: Record<string, string>) => {

@@ -493,3 +493,15 @@ def test_acquire_includes_supplementary_files(tmp_path, monkeypatch):
     out = acquire.acquire(_make_pkg(tmp_path))
     assert [l["repo"] for l in out["links"]] == ["supplementary"] and out["failures"] == []
     assert any(r.path.endswith("pgph.0001995.s001.xlsx") for r in out["resources"])
+
+
+@respx.mock
+def test_supplementary_answer_that_is_not_a_zip_is_a_failure(tmp_path):
+    respx.get(EPMC_SUPP).mock(return_value=httpx.Response(200, content=b"<html>Service unavailable</html>"))
+    pkg = _make_pkg(tmp_path)
+    link = acquire.Link(repo="supplementary", url=EPMC_SUPP, id="PMC10473475", kind="data", label="supplementary files (PMC10473475)",
+                        files=["pgph.0001995.s001.xlsx"])
+    with pytest.raises(ApiError) as e:
+        acquire.fetch(pkg, link)
+    assert "not a zip" in e.value.message
+    assert pkg.load().by_kind("input") == []  # no fake archive left behind

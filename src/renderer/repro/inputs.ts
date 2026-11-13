@@ -26,6 +26,15 @@ function fetchStatus(r: AcquireResult): [string, "info" | "error"] {
   return [`Fetched supplemental materials: ${n} file(s) added from ${r.links.length} link(s)${problems.length ? `; ${problems.join(", ")} (see the list below)` : ""}`, n || !problems.length ? "info" : "error"];
 }
 
+/** Where a fetched file came from, after its name: the article's supplementary files carry the paper's license (they
+ * follow it in the deposit), repository files name the repository. Files added by hand get no badge. */
+function originBadge(r: Resource, paperLicense: string | null): string {
+  const o = (r.reprocrowd as { origin?: { type?: string; repo?: string; label?: string } }).origin;
+  if (o?.type !== "fetched") return "";
+  const text = o.repo === "supplementary" ? `article supplement${paperLicense ? ` · ${paperLicense.toUpperCase()}` : " · license unknown"}` : `from ${o.repo}`;
+  return ` <span class="badge" title="${esc(o.label ?? "")}">${esc(text)}</span>`;
+}
+
 type InputRes = Resource & { reprocrowd: Extract<Resource["reprocrowd"], { kind: "input" }> };
 
 export class InputsStep implements Step {
@@ -33,10 +42,19 @@ export class InputsStep implements Step {
   private inputs: InputRes[] = [];
   private docs = new Map<string, Document | Error>();
   private fetch?: AcquireResult;
+  /** The article's supplementary files are being fetched in the background (a package just created). */
+  private supplementsPending = false;
 
   constructor(private w: Wizard) {}
 
+  /** While the background fetch runs, check every few seconds; reload the step once it has finished. */
+  async poll() {
+    if (!this.supplementsPending) return;
+    if (!(await pkg.supplementsPending().catch(() => false))) await this.w.render();
+  }
+
   async load() {
+    this.supplementsPending = await pkg.supplementsPending().catch(() => false);
     this.inputs = (await pkg.get<Resource[]>("/inputs")) as InputRes[];
     const name = this.w.app.jats();
     if (!(this.docs.get(name) && !(this.docs.get(name) instanceof Error))) this.docs.set(name, await this.w.app.loadDoc(name).catch((e) => e as Error));
@@ -86,12 +104,13 @@ export class InputsStep implements Step {
     const d = this.docs.get(app.jats());
     const ids = app.summary().identifiers ?? {};
     const contents = d instanceof Error ? `<span class="warn-inline">${esc(d.message)}</span>` : d ? `${d.sections.length} sections · ${countSentences(d)} sentences · ${d.figures.length} figures · ${d.tables.length} tables` : "";
+    const paperLicense: string | null = app.meta()?.best_oa_location?.license ?? app.meta()?.primary_location?.license ?? null;
     const archives = this.inputs.filter((r) => this.inputs.some((m) => m.reprocrowd.archive === r.name));
     const loose = this.inputs.filter((r) => !r.reprocrowd.archive && !archives.includes(r));
     const roleSel = (r: InputRes) => `<select data-f="role" ${r.reprocrowd.used ? "" : "disabled"}>${ROLES.map((x) => `<option ${x === r.reprocrowd.role ? "selected" : ""}>${x}</option>`).join("")}</select>`;
     const row = (r: InputRes, nested: string) => `<tr data-name="${esc(r.name)}" class="${nested} ${r.reprocrowd.used ? "" : "rp-disabled"}">
         <td><input type="checkbox" data-f="used" ${r.reprocrowd.used ? "checked" : ""} title="Use this file in the reproduction" /></td>
-        <td><code>${esc(nested ? r.path.split("/").slice(2).join("/") || r.path : r.path.replace(/^inputs\//, ""))}</code></td><td>${roleSel(r)}</td>
+        <td><code>${esc(nested ? r.path.split("/").slice(2).join("/") || r.path : r.path.replace(/^inputs\//, ""))}</code>${originBadge(r, paperLicense)}</td><td>${roleSel(r)}</td>
         <td><input data-f="note" value="${esc(r.reprocrowd.note)}" placeholder="note" ${r.reprocrowd.used ? "" : "disabled"} /></td>
         <td class="nowrap">${sizeText(r.bytes)}</td><td>${nested ? "" : `<button data-act="del" title="Delete from the package">✕</button>`}</td></tr>`;
     let rows = loose.map((r) => row(r, "")).join("");
@@ -112,6 +131,7 @@ export class InputsStep implements Step {
       <p class="small">${contents}</p>
       <p class="hint">Step 1 (Paper) shows this text in full. Claims (step 3) are extracted from it and point into it.</p>
     </div>
+    ${this.supplementsPending ? `<p class="notice small">⏳ Fetching the article's supplementary files from Europe PMC in the background (this can take a minute). They appear here when they arrive.</p>` : ""}
     <div class="card rp-drop">
       <div class="card-head"><h3>Input files</h3><span class="muted">${counts}</span><span class="spacer"></span>
         <button id="rp-fetch" ${busy ? "disabled" : ""} title="Download the article's own supplementary files and the data/code repositories the manuscript links to">Fetch supplemental materials…</button>

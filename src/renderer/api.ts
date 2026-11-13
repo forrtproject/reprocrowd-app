@@ -98,6 +98,9 @@ export const pkg = {
   patch: <T>(sub: string, body: unknown) => data(call<Reply<T>>("pkg", "PATCH", sub, body)),
   del: (sub: string) => call<Reply<null>>("pkg", "DELETE", sub),
   bytes: (sub: string) => call<ArrayBuffer>("pkgBytes", sub),
+  /** The article's supplementary files are still being fetched in the background (a new package). */
+  supplementsPending: () => call<boolean>("supplementsPending"),
+  awaitSupplements: () => call<void>("awaitSupplements"),
   text: (sub: string) => call<string>("pkgText", sub),
   upload: async <T>(kind: "inputs", file: File, fields: Record<string, string | boolean | undefined> = {}) => call<T>("upload", kind, await fileArg(file), fields),
   /** Scan a full text for data/code repository links (Zenodo, GitHub, GitLab, OSF, Figshare) and fetch them as inputs. */

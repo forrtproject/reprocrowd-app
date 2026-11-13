@@ -43,7 +43,7 @@ from .schemas.manifest import Resource, ZenodoCreator, ZenodoDeposit
 
 Group = Literal["paper", "inputs"]
 GROUPS: dict[str, str] = {
-    "paper": "the paper's full texts, their extractions and the original figures",
+    "paper": "the paper's full texts, their extractions, the original figures and the article's supplementary files",
     "inputs": "the input files (data and code of the original study)",
 }
 #: OpenAlex license ids under which the paper's material may be redistributed as it is.
@@ -143,7 +143,9 @@ def _group(r: Resource) -> str | None:
     if kind in ("fulltext", "extraction") or kind == "figure":
         return "paper"
     if kind == "input":
-        return "inputs"
+        # The article's own supplementary files are the paper's material: they share its license (see contents()).
+        origin = r.reprocrowd.origin
+        return "paper" if getattr(origin, "type", None) == "fetched" and origin.repo == "supplementary" else "inputs"
     return None
 
 

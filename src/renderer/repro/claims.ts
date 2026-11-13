@@ -4,7 +4,7 @@
 // coding agent flagged. Four views: Review (this), Reader (the paper with a card per claim), Table, JSON (the claim's
 // trace). Edits of evidence and methods untick the claims using them in the backend, so everything reloads after one.
 import { host, pkg } from "../api";
-import { type Action, type Claim, type ClaimResult, type ClaimsFile, type ClaimsTrace, type ClaimState, type ClaimStatus, type ClaimTrace, type Document, type LlmProfile, type LlmRun, type Resource, type ScriptState, type Target } from "../types";
+import { type Action, type Claim, type ClaimResult, type ClaimsFile, type ClaimsTrace, type ClaimState, type ClaimStatus, type ClaimTrace, type Document, type LlmProfile, type LlmRun, type Resource, type ScriptState, type Target, type AcquireResult } from "../types";
 import { choose, confirmDialog, esc, modal, showError, trunc } from "../util";
 import { AlignedItem, AlignedView } from "./aligned";
 import { runClaim, stageLabel } from "./claimrun";
@@ -371,12 +371,30 @@ export class ClaimsStep implements Step {
   private async runOne(id: string) {
     const key = `claim-${id}`;
     if (this.w.running.has(key)) return;
-    // Without the study's data the agent can only report every value as not computed: say so before an agent run.
-    const data = await pkg.get<Resource[]>("/inputs").then((rs) => rs.filter((r) => r.reprocrowd.kind === "input" && r.reprocrowd.used && r.reprocrowd.role === "data")).catch(() => undefined);
-    if (data && !data.length && !(await confirmDialog("No data to analyse",
-      `Step 2 (Inputs) has no data files in use, so the coding agent can't compute claim <b>${esc(id)}</b>'s values: they would all come back "not computed".<br><br>
-       Add the study's data first: <b>Fetch supplemental materials…</b> in step 2 also downloads the article's own supplementary files (such as an "S1 Data" spreadsheet), or use <b>Add files…</b>.`,
-      "Run anyway"))) return;
+    // Without the study's data the agent can only report every value as not computed: say so before an agent run,
+    // and offer the article's own supplementary files (often the data) in one click.
+    if (await pkg.supplementsPending().catch(() => false)) {
+      this.w.setStatus("⏳ Waiting for the article's supplementary files (being fetched in the background)…");
+      await pkg.awaitSupplements().catch(() => {});
+    }
+    const dataFiles = () => pkg.get<Resource[]>("/inputs").then((rs) => rs.filter((r) => r.reprocrowd.kind === "input" && r.reprocrowd.used && r.reprocrowd.role === "data")).catch(() => undefined);
+    const data = await dataFiles();
+    if (data && !data.length) {
+      const choice = await choose("No data to analyse",
+        `Step 2 (Inputs) has no data files in use, so the coding agent can't compute claim <b>${esc(id)}</b>'s values: they would all come back "not computed".<br><br>
+         The article's own supplementary files (such as an "S1 Data" spreadsheet) often hold the data. You can also add files, or fetch linked repositories, in step 2.`,
+        [["cancel", "Cancel"], ["anyway", "Run anyway"], ["fetch", "Fetch supplementary files", "primary"]]);
+      if (choice === "cancel" || !choice) return;
+      if (choice === "fetch") {
+        const r = await this.w.busy("fetch", "Fetching the article's supplementary files", () => pkg.post<AcquireResult>("/acquire", { repos: ["supplementary"] }));
+        if (!r) return;
+        if (!(await dataFiles())?.length) {
+          this.w.setStatus(r.links.length ? "The supplementary files hold no data file: add the study's data in step 2" : "The article lists no supplementary files: add the study's data in step 2", "error");
+          return;
+        }
+        this.w.setStatus(`Fetched ${r.resources.length} supplementary file(s); running claim ${id}`);
+      }
+    }
     const before = this.status.get(id)?.ran_at;
     this.w.running.add(key);
     this.w.draw();

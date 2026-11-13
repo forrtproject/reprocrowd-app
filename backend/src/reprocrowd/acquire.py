@@ -13,6 +13,7 @@ the rest. Messages are written for the user (host, what went wrong, what to do).
 from __future__ import annotations
 
 import re
+import zipfile
 from urllib.parse import quote
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -466,6 +467,11 @@ def supplementary_fetch(job: _Job) -> None:
     """One zip with every supplementary file; unpacked into inputs/<pmcid>-supplementary/ like any archive. Europe PMC
     also puts the article's own figure and table images in it: files the article doesn't list stay, but unused."""
     job.add(f"{job.link.id}-supplementary.zip", job.link.url)
+    if len(job.resources) == 1 and not zipfile.is_zipfile(job.pkg.path(job.resources[0].path)):
+        # e.g. an HTML error page: don't keep it as a fake archive
+        inputs.delete(job.pkg, job.resources[0].name)
+        job.resources.clear()
+        raise ApiError(502, "acquire_failed", f"Europe PMC's answer for {job.link.id} is not a zip of supplementary files")
     listed = set(job.link.files)
     if not listed:
         return

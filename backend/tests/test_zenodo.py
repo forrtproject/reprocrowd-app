@@ -173,3 +173,40 @@ def test_zenodo_service(client):
     assert client.post("/v1/zenodo:verify-token", json={"zenodo_token": "t", "sandbox": True}).json() == {"ok": True, "url": SB, "sandbox": True}
     respx.get(f"{Z}/api/deposit/depositions").mock(return_value=httpx.Response(403, json={"message": "no"}))
     problem(client.post("/v1/zenodo:verify-token", json={"zenodo_token": "t"}), 403, "zenodo_token_invalid")
+
+
+def _add_supplementary(client, pkg):
+    """An input fetched from the article's own supplementary files (as acquire's "supplementary" source does)."""
+    from reprocrowd import inputs
+    from reprocrowd.package import Registry
+    from reprocrowd.schemas.manifest import FetchedOrigin
+    p = Registry().get(pkg)
+    origin = FetchedOrigin(url="https://www.ebi.ac.uk/europepmc/webservices/rest/PMC1/supplementaryFiles", repo="supplementary", id="PMC1",
+                           label="fetched from the article's supplementary files (PMC1, Europe PMC)")
+    [r] = inputs._add_file(p, "S1_Data.xlsx", lambda dest: dest.write_bytes(b"x"), origin, None, "", False)
+    return r.name
+
+
+@respx.mock
+def test_supplementary_files_follow_the_paper_license(client, pkg):
+    """The article's supplementary files are the paper's material: left out by default unless the paper's license is open."""
+    mock_openalex()  # WORK has no license
+    ready(client, pkg)
+    name = _add_supplementary(client, pkg)
+    client.put(f"/v1/packages/{pkg}/archive")
+    pv = client.post(f"/v1/packages/{pkg}/deposits:preview", json={}).json()
+    assert name in pv["contents"]["groups"]["paper"]["resources"]
+    assert name not in pv["contents"]["groups"]["inputs"]["resources"]
+    assert "paper" in pv["exclude"] and "inputs" not in pv["exclude"]
+
+
+@respx.mock
+def test_supplementary_files_included_under_open_license(client, pkg):
+    mock_openalex()
+    respx.get(url__regex=r"https://api\.openalex\.org/works/doi:10\.1371/journal\.pbio\.1002106.*").mock(
+        return_value=httpx.Response(200, json=WORK | {"best_oa_location": {"license": "cc-by"}}))
+    ready(client, pkg)
+    name = _add_supplementary(client, pkg)
+    client.put(f"/v1/packages/{pkg}/archive")
+    pv = client.post(f"/v1/packages/{pkg}/deposits:preview", json={}).json()
+    assert name in pv["contents"]["groups"]["paper"]["resources"] and pv["exclude"] == []
