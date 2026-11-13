@@ -150,6 +150,54 @@ async function renderLlmModels(refresh = false) {
   );
 }
 
+// ---------- sort & filter the list ----------
+
+type LibSort = "newest" | "oldest" | "name-asc" | "name-desc";
+interface LibPrefs { sort: LibSort; query: string; hideMissing: boolean }
+const LIB_PREFS_KEY = "reprocrowd.lib.prefs";
+const libSorts: LibSort[] = ["newest", "oldest", "name-asc", "name-desc"];
+
+const libPrefs = (): LibPrefs => {
+  try {
+    const p = JSON.parse(localStorage.getItem(LIB_PREFS_KEY) ?? "{}");
+    return { sort: libSorts.includes(p.sort) ? p.sort : "newest", query: typeof p.query === "string" ? p.query : "", hideMissing: !!p.hideMissing };
+  } catch {
+    return { sort: "newest", query: "", hideMissing: false };
+  }
+};
+const saveLibPrefs = (p: LibPrefs) => localStorage.setItem(LIB_PREFS_KEY, JSON.stringify(p));
+const pkgName = (p: LibraryEntry) => p.title ?? p.path.split(/[\\/]/).pop() ?? p.id;
+
+function sortLib(list: LibraryEntry[], sort: LibSort): LibraryEntry[] {
+  switch (sort) {
+    case "oldest": return [...list]; // registration order (oldest first)
+    case "name-asc": return [...list].sort((a, b) => pkgName(a).localeCompare(pkgName(b)));
+    case "name-desc": return [...list].sort((a, b) => pkgName(b).localeCompare(pkgName(a)));
+    default: return [...list].reverse(); // newest first
+  }
+}
+
+function filterLib(list: LibraryEntry[], p: LibPrefs): LibraryEntry[] {
+  let out = p.hideMissing ? list.filter((x) => !x.missing) : list;
+  const q = p.query.trim().toLowerCase();
+  if (q) out = out.filter((x) => pkgName(x).toLowerCase().includes(q) || x.path.toLowerCase().includes(q));
+  return out;
+}
+
+function libToolbar(p: LibPrefs): string {
+  return `<div class="lib-toolbar">
+    <label class="small">Sort
+      <select data-lib="sort">
+        <option value="newest">Newest first</option>
+        <option value="oldest">Oldest first</option>
+        <option value="name-asc">Name (A–Z)</option>
+        <option value="name-desc">Name (Z–A)</option>
+      </select></label>
+    <input data-lib="query" type="search" placeholder="Filter by title or folder…" value="${esc(p.query)}" aria-label="Filter reproductions" />
+    <label class="inline small"><input data-lib="hide-missing" type="checkbox" ${p.hideMissing ? "checked" : ""} /> Hide missing folders</label>
+  </div>`;
+}
+
 function card(p: LibraryEntry) {
   const doi = p.identifiers?.doi ?? (p.identifier?.scheme === "doi" ? p.identifier.value : "");
   const r = p.resources ?? {};
@@ -177,9 +225,9 @@ function depositLine(ds: ZenodoDeposit[]) {
 async function render() {
   setupNote();
   const body = $("#lib-body");
-  let list: LibraryEntry[];
+  let all: LibraryEntry[];
   try {
-    list = await host.listPackages();
+    all = await host.listPackages();
   } catch (e) {
     if (isBackendDown(e)) {
       body.innerHTML = `<div class="offline-card"><h2>The ReproCrowd backend isn't running</h2><div class="backend-problem"></div></div>`;
@@ -187,12 +235,17 @@ async function render() {
     } else body.innerHTML = `<p class="warn">${esc((e as Error).message)}</p>`;
     return;
   }
-  list = [...list].reverse();
-  body.innerHTML = list.length
-    ? `<h2 class="section-title">Your reproductions</h2><div class="cards">${list.map(card).join("")}</div>`
-    : `<h2 class="section-title">How it works</h2>
+  if (!all.length) {
+    body.innerHTML = `<h2 class="section-title">How it works</h2>
        <ol class="process-cards">${STEPS.map(([t, d], i) => `<li class="card"><span class="card-step">${i + 1}</span><h3>${esc(t)}</h3><p>${esc(d)}</p></li>`).join("")}</ol>
        <p class="note">Your reproductions will be listed here. Start with <b>New reproduction</b>.</p>`;
+    return;
+  }
+  const prefs = libPrefs();
+  const list = sortLib(filterLib(all, prefs), prefs.sort);
+  body.innerHTML = `<h2 class="section-title">Your reproductions</h2>${libToolbar(prefs)}
+    ${list.length ? `<div class="cards">${list.map(card).join("")}</div>` : `<p class="muted">No reproductions match your filter.</p>`}`;
+  bindLibToolbar(body);
   body.querySelectorAll<HTMLElement>("[data-open]").forEach((b) => b.addEventListener("click", () => openPackage(b.dataset.open!)));
   body.querySelectorAll<HTMLElement>(".pkg-title").forEach((t) =>
     t.addEventListener("click", () => {
@@ -222,6 +275,27 @@ async function render() {
         if (el) el.innerHTML = depositLine(ds);
       })
       .catch(() => {});
+}
+
+function bindLibToolbar(body: HTMLElement) {
+  const sel = body.querySelector<HTMLSelectElement>("[data-lib=sort]");
+  const q = body.querySelector<HTMLInputElement>("[data-lib=query]");
+  const hm = body.querySelector<HTMLInputElement>("[data-lib=hide-missing]");
+  if (!sel || !q || !hm) return;
+  sel.addEventListener("change", () => {
+    saveLibPrefs({ ...libPrefs(), sort: sel.value as LibSort });
+    render();
+  });
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  q.addEventListener("input", () => {
+    saveLibPrefs({ ...libPrefs(), query: q.value });
+    clearTimeout(timer);
+    timer = setTimeout(() => render(), 200);
+  });
+  hm.addEventListener("change", () => {
+    saveLibPrefs({ ...libPrefs(), hideMissing: hm.checked });
+    render();
+  });
 }
 
 // ---------- a new reproduction ----------
