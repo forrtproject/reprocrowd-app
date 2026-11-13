@@ -2838,7 +2838,7 @@
           "inputs"
         ],
         "summary": "Fetch data & code from the manuscript",
-        "description": "Scans a full text for links to data/code repositories (Zenodo, OSF, GitHub, GitLab, Figshare) and downloads the files as inputs, so users don't have to upload anything by hand (metacheck-style).",
+        "description": "Scans a full text for links to data/code repositories (Zenodo, OSF, GitHub, GitLab, Figshare) and downloads the files as inputs, so users don't have to upload anything by hand (metacheck-style). `selected` restricts the download to those file keys (`repo:id:path`); use `…/acquire:preview` first to see sizes.",
         "operationId": "acquire_inputs_v1_packages__pkg__acquire_post",
         "security": [
           {
@@ -2944,6 +2944,111 @@
               }
             },
             "description": "`acquire_too_large`: The repository file exceeds the download budget"
+          }
+        }
+      }
+    },
+    "/v1/packages/{pkg}/acquire:preview": {
+      "post": {
+        "tags": [
+          "inputs"
+        ],
+        "summary": "Preview data & code fetching",
+        "description": "Scans a full text for links and returns the files that would be downloaded (with their sizes) and the total, without downloading anything. Use it to warn the user about the download size before `POST …/acquire`.",
+        "operationId": "acquire_preview_v1_packages__pkg__acquire_preview_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "pkg",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "package id",
+              "title": "Pkg"
+            },
+            "description": "package id"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcquireCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcquirePreview"
+                }
+              }
+            }
+          },
+          "401": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "`unauthorized`: Missing or wrong bearer token"
+          },
+          "422": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "`request_invalid`: The request body or parameters don't match the API schema"
+          },
+          "409": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "`no_fulltext`: Add a full text (JATS XML) to scan first"
+          },
+          "502": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "`acquire_failed`: The repository could not be reached or returned an error"
+          },
+          "404": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "`acquire_not_found`: The repository has no such record or file"
           }
         }
       }
@@ -8511,12 +8616,122 @@
             ],
             "title": "Repos",
             "description": "restrict detection to these repositories (zenodo, github, gitlab, osf, figshare)"
+          },
+          "selected": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Selected",
+            "description": "only fetch these files, by their key (repo:id:path); omit to fetch everything"
           }
         },
         "additionalProperties": false,
         "type": "object",
         "title": "AcquireCreate",
         "description": "Detect data/code repository links in a manuscript and fetch them as inputs."
+      },
+      "AcquireFile": {
+        "properties": {
+          "repo": {
+            "type": "string",
+            "title": "Repo"
+          },
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "path": {
+            "type": "string",
+            "title": "Path"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "size": {
+            "type": "integer",
+            "title": "Size",
+            "description": "bytes, from the repository's metadata; 0 when the repository doesn't say"
+          },
+          "key": {
+            "type": "string",
+            "title": "Key",
+            "description": "stable selection key: repo:id:path"
+          },
+          "download_url": {
+            "type": "string",
+            "title": "Download Url"
+          }
+        },
+        "type": "object",
+        "required": [
+          "repo",
+          "id",
+          "path",
+          "name",
+          "size",
+          "key",
+          "download_url"
+        ],
+        "title": "AcquireFile",
+        "description": "One file an acquire run would download, with its size (before anything is fetched)."
+      },
+      "AcquirePreview": {
+        "properties": {
+          "links": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Links",
+            "description": "detected repository links, with their repo, id, kind and label"
+          },
+          "files": {
+            "items": {
+              "$ref": "#/components/schemas/AcquireFile"
+            },
+            "type": "array",
+            "title": "Files",
+            "description": "files that would be downloaded, with their sizes"
+          },
+          "total_bytes": {
+            "type": "integer",
+            "title": "Total Bytes",
+            "description": "sum of the sizes of every file that would be downloaded (files of unknown size count as 0)"
+          },
+          "limit_bytes": {
+            "type": "integer",
+            "title": "Limit Bytes",
+            "description": "the download limit, which applies to each link separately; files beyond it are skipped"
+          },
+          "failures": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Failures",
+            "description": "per-repository failures: repo, id, url, error"
+          }
+        },
+        "type": "object",
+        "required": [
+          "links",
+          "files",
+          "total_bytes",
+          "limit_bytes"
+        ],
+        "title": "AcquirePreview",
+        "description": "What an acquire would download: the detected links, their files with sizes, and the total."
       },
       "AcquireResult": {
         "properties": {

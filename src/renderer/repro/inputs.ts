@@ -3,8 +3,8 @@
 //   Input files:      the study's published data (POST …/inputs; zip archives are unpacked).
 import { ApiError, host, pkg } from "../api";
 import { countSentences } from "../doc";
-import { ROLES, type AcquireFailure, type AcquireResult, type Document, type Resource, type Role } from "../types";
-import { confirmDialog, esc, sizeText } from "../util";
+import { ROLES, type AcquireFailure, type AcquirePreview, type AcquireResult, type Document, type Resource, type Role } from "../types";
+import { confirmDialog, esc, modal, sizeText } from "../util";
 import type { Step, Wizard } from "./wizard";
 
 const REPOSITORIES = "Zenodo, OSF, GitHub, GitLab, Figshare";
@@ -28,11 +28,82 @@ function fetchStatus(r: AcquireResult): [string, "info" | "error"] {
 
 type InputRes = Resource & { reprocrowd: Extract<Resource["reprocrowd"], { kind: "input" }> };
 
+/** A file's size for the fetch dialog; 0 means the repository didn't say. */
+const fileSize = (n: number) => (n ? sizeText(n) : "size unknown");
+
+/** Ask the user what to download: all files, only the checked ones, or nothing (null). Links that couldn't be
+ *  read are listed with the reason; the download limit applies to each link, so a link whose chosen files add
+ *  up to more than it is flagged (files beyond the limit would be skipped). */
+function fetchDialog(p: AcquirePreview): Promise<{ action: "all" } | { action: "selected"; keys: string[] } | null> {
+  return new Promise((resolve) => {
+    const linkKey = (x: { repo: string; id: string }) => `${x.repo}:${x.id}`;
+    const groups = p.links.map((link) => ({
+      link,
+      files: p.files.filter((f) => linkKey(f) === linkKey(link)),
+      failure: p.failures.find((x) => linkKey(x) === linkKey(link)),
+    }));
+    const html = groups.map(({ link, files, failure }, g) => {
+      const rows = files.map((f) =>
+        `<label class="rp-file"><input type="checkbox" data-group="${g}" data-key="${esc(f.key)}" data-size="${f.size}" checked /><code>${esc(f.path)}</code> <span class="muted">${fileSize(f.size)}</span></label>`).join("");
+      const note = failure ? `<p class="rp-fetch-warn">Could not be read: ${esc(failure.error)}</p>` : files.length ? "" : `<p class="muted">No files found.</p>`;
+      const all = files.length ? `<label class="rp-file"><input type="checkbox" data-all="${g}" checked /> all ${files.length} file(s)</label>` : "";
+      return `<div class="rp-group"><h4><a href="${esc(link.url)}" target="_blank" rel="noopener">${esc(link.label)}</a> <span class="muted">(${esc(link.kind)})</span></h4>
+        ${note}${all}<div class="rp-group-files">${rows}</div><p class="rp-fetch-warn" data-over="${g}" hidden></p></div>`;
+    }).join("");
+    const unknown = p.files.filter((f) => !f.size).length;
+    const dlg = modal("dlg-fetch", `
+      <h3>Fetch supplemental materials</h3>
+      <p>Found ${p.links.length} link(s) with ${p.files.length} file(s), <b>${sizeText(p.total_bytes)}</b> in total${unknown ? ` (plus ${unknown} file(s) of unknown size)` : ""}.
+        Files beyond the ${sizeText(p.limit_bytes)} download limit per link are skipped. Choose what to download:</p>
+      <div class="rp-fetch-list">${html}</div>
+      <p class="muted" id="rp-fetch-sum"></p>
+      <menu>
+        <button value="cancel">Cancel</button>
+        ${p.files.length ? `<button value="selected" class="primary">Download selected</button><button value="all" class="primary">Download all</button>` : ""}
+      </menu>`);
+    const boxes = (g?: number) => [...dlg.querySelectorAll<HTMLInputElement>(g === undefined ? "input[data-key]" : `input[data-group="${g}"]`)];
+    const update = () => {
+      const on = boxes().filter((c) => c.checked);
+      const bytes = on.reduce((n, c) => n + Number(c.dataset.size), 0);
+      dlg.querySelector("#rp-fetch-sum")!.textContent = `Selected: ${on.length} of ${p.files.length} file(s), ${sizeText(bytes)}`;
+      const sel = dlg.querySelector<HTMLButtonElement>('button[value="selected"]');
+      if (sel) sel.disabled = !on.length;
+      groups.forEach((_, g) => {
+        const mine = boxes(g);
+        const all = dlg.querySelector<HTMLInputElement>(`input[data-all="${g}"]`);
+        if (all) { all.checked = mine.every((c) => c.checked); all.indeterminate = !all.checked && mine.some((c) => c.checked); }
+        const used = mine.filter((c) => c.checked).reduce((n, c) => n + Number(c.dataset.size), 0);
+        const over = dlg.querySelector<HTMLElement>(`[data-over="${g}"]`)!;
+        over.hidden = used <= p.limit_bytes;
+        over.textContent = `The chosen files (${sizeText(used)}) exceed the ${sizeText(p.limit_bytes)} download limit; some will be skipped.`;
+      });
+    };
+    dlg.querySelectorAll<HTMLInputElement>("input[data-all]").forEach((all) =>
+      all.addEventListener("change", () => { boxes(Number(all.dataset.all)).forEach((c) => (c.checked = all.checked)); update(); }));
+    boxes().forEach((c) => c.addEventListener("change", update));
+    update();
+    let keys: string[] = [];
+    dlg.querySelectorAll<HTMLButtonElement>("menu button").forEach((b) => {
+      b.addEventListener("click", () => {
+        if (b.value === "selected") keys = boxes().filter((c) => c.checked).map((c) => c.dataset.key!);
+        dlg.close(b.value);
+      });
+    });
+    dlg.addEventListener("close", () => {
+      if (dlg.returnValue === "all") resolve({ action: "all" });
+      else if (dlg.returnValue === "selected") resolve({ action: "selected", keys });
+      else resolve(null);
+    });
+  });
+}
+
 export class InputsStep implements Step {
   title = "Inputs";
   private inputs: InputRes[] = [];
   private docs = new Map<string, Document | Error>();
   private fetch?: AcquireResult;
+  /** Links ("repo:id") the user chose no files from in the last fetch, so the list doesn't call them empty. */
+  private unchosen = new Set<string>();
 
   constructor(private w: Wizard) {}
 
@@ -64,7 +135,8 @@ export class InputsStep implements Step {
       const parts: string[] = [];
       if (files) parts.push(`<span class="ok small">✓ ${files} file(s) added</span>`);
       if (linkErr) parts.push(`<span class="warn-inline">${files ? "stopped early" : "could not be fetched"}: ${esc(linkErr.error)}</span>`);
-      if (!files && !linkErr && !fileErrs.length && !skipped.length) parts.push(`<span class="muted">no downloadable files in this record</span>`);
+      if (!files && !linkErr && !fileErrs.length && !skipped.length)
+        parts.push(`<span class="muted">${this.unchosen.has(`${l.repo}:${l.id}`) ? "no files chosen" : "no downloadable files in this record"}</span>`);
       const group = (list: AcquireFailure[], summary: string) =>
         list.length
           ? `<details><summary class="warn-inline">${list.length} ${summary}</summary><ul>${list
@@ -131,8 +203,23 @@ export class InputsStep implements Step {
     });
     body.querySelector("#rp-add-dir")?.addEventListener("click", () => this.w.busy("upload", "Adding a folder", () => host.addFiles("inputs", true)));
     body.querySelector("#rp-fetch")?.addEventListener("click", async () => {
-      // Keep the result before busy() redraws the step, so the links card shows right away.
-      const r = await this.w.busy("fetch", "Fetching supplemental materials", async () => (this.fetch = await pkg.acquire({})));
+      // busy() reports errors itself and returns undefined.
+      const preview = await this.w.busy("fetch", "Checking supplemental materials", () => pkg.acquirePreview({}));
+      if (!preview) return;
+      if (!preview.links.length) {
+        // Show the "no links found" card, with its advice on adding the files by hand.
+        this.fetch = { links: [], resources: [], failures: [] };
+        await this.w.render();
+        this.w.setStatus(...fetchStatus(this.fetch));
+        return;
+      }
+      const choice = await fetchDialog(preview);
+      if (!choice) return;
+      const chosen = new Set(choice.action === "selected" ? choice.keys : preview.files.map((f) => f.key));
+      this.unchosen = new Set(preview.links.map((l) => `${l.repo}:${l.id}`)
+        .filter((k) => preview.files.some((f) => `${f.repo}:${f.id}` === k) && !preview.files.some((f) => `${f.repo}:${f.id}` === k && chosen.has(f.key))));
+      const r = await this.w.busy("fetch", "Fetching supplemental materials", async () =>
+        (this.fetch = await pkg.acquire(choice.action === "selected" ? { selected: choice.keys } : {})));
       if (r) this.w.setStatus(...fetchStatus(r));
     });
     const card = body.querySelector<HTMLElement>(".rp-drop")!;
