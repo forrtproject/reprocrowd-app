@@ -1,7 +1,7 @@
 // Step 6: code generation. Either in the user's own editor (the package folder plus AGENT_PROMPT.md), or by the
 // backend's headless coding agent as a job: its messages and tool calls stream in while it works, the package's
 // files are listed (most recently changed first) with the TODO(LLM) markers left.
-import { host, pkg } from "../api";
+import { cliModel, host, pkg } from "../api";
 import type { LlmModel, LlmModels } from "../api";
 import type { AgentProfile, FileEntry, PromptPreview, ScriptState } from "../types";
 import { esc, modal, showPrompt, sizeText, when } from "../util";
@@ -44,7 +44,7 @@ export class CodegenStep implements Step {
     const j = this.job.job;
     const running = this.job.running;
     const ready = !!s?.template;
-    const profile = this.profiles.find((p) => p.events === "opencode-json") ?? this.profiles.find((p) => p.name === st.agentProfile) ?? this.profiles.find((p) => p.default) ?? this.profiles[0];
+    const profile = this.profiles.find((p) => p.name === st.agentProfile) ?? this.profiles.find((p) => p.default) ?? this.profiles[0];
     const res = j?.result?.type === "codegen" ? j.result : undefined;
     body.innerHTML = `
     <div class="cols cols-codegen">
@@ -83,11 +83,14 @@ export class CodegenStep implements Step {
     </div>`;
     this.drawLive();
     const prof = body.querySelector<HTMLSelectElement>("#rp-profile")!;
+    const modelSel = body.querySelector<HTMLSelectElement>("#rp-model")!;
     prof.addEventListener("change", () => {
       st.agentProfile = prof.value;
+      // A model another profile runs doesn't go with this one.
+      const p = profileForModel(modelSel.value);
+      if (p && p !== prof.value) st.agentModel = modelSel.value = "";
       this.w.app.save();
     });
-    const modelSel = body.querySelector<HTMLSelectElement>("#rp-model")!;
     /** The agent profile that runs a given model: Claude Code models → the Claude agent, everything else → the OpenCode agent. */
     const profileForModel = (id: string) => {
       if (!id) return undefined;
@@ -137,7 +140,7 @@ export class CodegenStep implements Step {
           profile: prof.value || undefined,
           allow_exec: st.allowExec,
           instructions: body.querySelector<HTMLTextAreaElement>("#rp-instr")!.value.trim(),
-          model: st.agentModel || undefined,
+          model: st.agentModel ? cliModel(st.agentModel) : undefined,
         }),
       ),
     );
@@ -181,20 +184,21 @@ export class CodegenStep implements Step {
     const profile = this.profiles.find((p) => p.name === (document.querySelector<HTMLSelectElement>("#rp-profile")?.value ?? ""));
     const model = document.querySelector<HTMLSelectElement>("#rp-model")?.value || "";
     st.agentModel = model;
+    const cli = model ? cliModel(model) : "";
     st.agentInstructions = document.querySelector<HTMLTextAreaElement>("#rp-instr")?.value.trim() ?? "";
     const tools = profile ? [...profile.tools, ...(st.allowExec ? profile.exec_tools : [])] : [];
     const ok = await new Promise<boolean>((resolve) => {
       const dlg = modal("dlg-wide", `<h3>Run the coding agent?</h3>
         <p>The agent works in <code>${esc(this.w.app.summary().path)}</code> and may take minutes to hours. It can read and write files there${st.allowExec ? " and run the analysis" : ""}.</p>
-        <div class="kv"><span>Profile</span><span>${esc(profile?.name ?? "(default)")} · model ${esc(model || profile?.model || "default")} · effort ${esc(profile?.effort || "default")} · timeout ${profile ? Math.round(profile.timeout_s / 60) : "?"} min</span>
-          <span>Command</span><code>${esc(profile?.argv.join(" ").replace("{model}", model || profile?.model || "").replace("{tools}", tools.join(",")) ?? "")}</code>
+        <div class="kv"><span>Profile</span><span>${esc(profile?.name ?? "(default)")} · model ${esc(cli || profile?.model || "default")} · effort ${esc(profile?.effort || "default")} · timeout ${profile ? Math.round(profile.timeout_s / 60) : "?"} min</span>
+          <span>Command</span><code>${esc(profile?.argv.join(" ").replace("{model}", cli || profile?.model || "").replace("{tools}", tools.join(",")) ?? "")}</code>
           <span>Tools</span><span>${esc(tools.join(", "))}</span></div>
         <form method="dialog"><menu><button value="cancel">Cancel</button><button value="ok" class="primary">Run</button></menu></form>`);
       dlg.addEventListener("close", () => resolve(dlg.returnValue === "ok"));
     });
     if (!ok) return;
     this.w.app.save();
-    await this.w.busy("codegen-start", "Starting the coding agent", () => this.job.start({ profile: profile?.name, allow_exec: st.allowExec, instructions: st.agentInstructions, model: model || undefined }));
+    await this.w.busy("codegen-start", "Starting the coding agent", () => this.job.start({ profile: profile?.name, allow_exec: st.allowExec, instructions: st.agentInstructions, model: cli || undefined }));
     this.w.repoll();
   }
 }

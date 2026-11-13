@@ -51,6 +51,9 @@ export interface BackendStatus {
 }
 export interface LlmModel { provider: string; id: string; name: string }
 export interface LlmModels { available: LlmModel[]; disabled: string[]; claudeNeedsLogin: boolean }
+/** The model as its CLI takes it: Claude Code models are listed as `claude/<alias>` (their own family), but `claude
+ * --model` takes the bare alias; OpenCode's ids (`provider/model`) are used as they are. */
+export const cliModel = (id: string) => (id.startsWith("claude/") ? id.slice("claude/".length) : id);
 export interface Config {
   packagesRoot: string;
   editorCmd: string;
