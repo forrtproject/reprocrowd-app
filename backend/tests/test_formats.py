@@ -70,26 +70,47 @@ def test_docx(tmp_path: Path):
     d.add_heading("A Test Paper", 0)
     d.add_heading("Methods", level=1)
     d.add_paragraph("We ran a t-test on 40 participants. Data were cleaned first.")
+    d.add_heading("Results", level=1)
+    d.add_paragraph("It was significant.")
     p = tmp_path / "paper.docx"
     d.save(str(p))
     fmt, report = formats.check(p, p.name)
     assert report.passed, report.problems
     doc = build_document(fmt.parse(p), DocumentSource(method="parse", format=fmt.name, fulltexts=["ft"]))
     assert doc.title == "A Test Paper"
-    assert [s.title for s in doc.sections] == ["Methods"]
+    assert [s.title for s in doc.sections] == ["Methods", "Results"]
+    # without a Title style, the first Heading 1 stays a section
+    d2 = docx.Document()
+    d2.add_heading("Introduction", level=1)
+    d2.add_paragraph("Some text.")
+    d2.save(str(p))
+    assert [s.title for s in fmt.parse(p).sections] == ["Introduction"]
     assert [s.text for s in doc.sections[0].paragraphs[0].sentences] == ["We ran a t-test on 40 participants.", "Data were cleaned first."]
 
 
-def test_pdf_parse(tmp_path: Path):
-    import pymupdf
+def _text_pdf(pages: list[str]) -> bytes:
+    """A minimal PDF with one line of Helvetica text per page."""
+    n = len(pages)
+    objs = [b"<< /Type /Catalog /Pages 2 0 R >>",
+            b"<< /Type /Pages /Kids [" + b" ".join(b"%d 0 R" % (4 + 2 * i) for i in range(n)) + b"] /Count %d >>" % n,
+            b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>"]
+    for i, text in enumerate(pages):
+        stream = b"BT /F1 12 Tf 72 720 Td (" + text.encode() + b") Tj ET"
+        objs.append(b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents %d 0 R >>" % (5 + 2 * i))
+        objs.append(b"<< /Length %d >>\nstream\n" % len(stream) + stream + b"\nendstream")
+    out, offsets = bytearray(b"%PDF-1.4\n"), []
+    for i, o in enumerate(objs, 1):
+        offsets.append(len(out))
+        out += b"%d 0 obj\n" % i + o + b"\nendobj\n"
+    xref = len(out)
+    out += b"xref\n0 %d\n0000000000 65535 f \n" % (len(objs) + 1) + b"".join(b"%010d 00000 n \n" % off for off in offsets)
+    out += b"trailer\n<< /Size %d /Root 1 0 R >>\nstartxref\n%d\n%%%%EOF\n" % (len(objs) + 1, xref)
+    return bytes(out)
 
-    doc = pymupdf.open()
-    page = doc.new_page()
-    page.insert_text((72, 72), "We ran a t-test on 40 participants.")
-    doc.new_page().insert_text((72, 72), "The effect was significant.")
+
+def test_pdf_parse(tmp_path: Path):
     p = tmp_path / "paper.pdf"
-    doc.save(str(p))
-    doc.close()
+    p.write_bytes(_text_pdf(["We ran a t-test on 40 participants.", "The effect was significant."]))
     fmt, report = formats.check(p, p.name)
     assert report.passed, report.problems
     out = build_document(fmt.parse(p), DocumentSource(method="parse", format=fmt.name, fulltexts=["ft"]))

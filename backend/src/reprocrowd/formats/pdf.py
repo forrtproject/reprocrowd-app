@@ -41,25 +41,28 @@ def check(path: Path) -> CheckReport:
     return r
 
 
-def parse(path: Path) -> DocumentDraft:
-    """Extract the text of each page (PyMuPDF) into paragraphs, sentence-segmented. No sections, tables or figures:
-    PDFs carry no structure, so this is a plain-text first pass. Headers, footers and page numbers are kept."""
-    import pymupdf
+def page_texts(path: Path) -> list[str]:
+    """The text layer of each page (PDFium, through pypdfium2), with plain newlines."""
+    import pypdfium2 as pdfium
 
-    sections: list[DraftSection] = []
-    current: DraftSection | None = None
-    with pymupdf.open(str(path)) as doc:
-        for page in doc:
-            text = page.get_text("text")
-            for block in re.split(r"\n\s*\n", text):
-                p = paragraph_from_text(clean(block))
-                if p is None:
-                    continue
-                if current is None:
-                    sections.append(DraftSection(title="", level=1))
-                    current = sections[-1]
-                current.paragraphs.append(p)
-    return DocumentDraft(title=None, sections=sections)
+    pdf = pdfium.PdfDocument(str(path))
+    try:
+        out = []
+        for page in pdf:
+            tp = page.get_textpage()
+            out.append(tp.get_text_bounded().replace("\r\n", "\n"))
+            tp.close()
+            page.close()
+        return out
+    finally:
+        pdf.close()
+
+
+def parse(path: Path) -> DocumentDraft:
+    """Extract the text of each page into paragraphs, sentence-segmented. No sections, tables or figures: PDFs
+    carry no structure, so this is a plain-text first pass. Headers, footers and page numbers are kept."""
+    paragraphs = [p for text in page_texts(path) for block in re.split(r"\n\s*\n", text) if (p := paragraph_from_text(clean(block)))]
+    return DocumentDraft(title=None, sections=[DraftSection(title="", level=1, paragraphs=paragraphs)] if paragraphs else [])
 
 
 FORMAT = Format(

@@ -46,8 +46,9 @@ def parse(path: Path) -> DocumentDraft:
             m = _LEVEL.search(style)
             if m:
                 level = int(m.group(1))
-            if style.startswith("title") or (level == 1 and title is None):
-                title = text
+            # Only Word's Title style names the paper: a first "Heading 1" is a section (e.g. Introduction).
+            if style.startswith("title"):
+                title = title or text
                 continue
             sections.append(DraftSection(title=text, level=level))
             current = sections[-1]

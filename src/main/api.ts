@@ -220,7 +220,7 @@ export function makeApi(wc: WebContents) {
         title: "The paper file",
         properties: ["openFile"],
         filters: [
-          { name: "Papers (PDF, DOCX, Markdown)", extensions: ["pdf", "docx", "md", "markdown", "txt"] },
+          { name: "Papers (PDF, DOCX, Markdown)", extensions: ["pdf", "docx", "md", "markdown"] },
           { name: "All files", extensions: ["*"] },
         ],
       });

@@ -582,9 +582,8 @@ def _fulltext_text(pkg: Package, r: Resource) -> str:
         d = docx.Document(str(p))
         return " ".join(para.text for para in d.paragraphs if para.text.strip())
     if flavor == "pdf":
-        import pymupdf
-        with pymupdf.open(str(p)) as doc:
-            return " ".join(page.get_text("text") for page in doc)
+        from .formats import pdf
+        return " ".join(pdf.page_texts(p))
     raise ApiError(409, "no_fulltext", f"{r.name} ({formats.BY_NAME[flavor].description}) can't be scanned for links")
 
 
