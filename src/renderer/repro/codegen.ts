@@ -193,7 +193,7 @@ export class CodegenStep implements Step {
         <div class="kv"><span>Profile</span><span>${esc(profile?.name ?? "(default)")} · model ${esc(cli || profile?.model || "default")} · effort ${esc(profile?.effort || "default")} · timeout ${profile ? Math.round(profile.timeout_s / 60) : "?"} min</span>
           <span>Command</span><code>${esc(profile?.argv.join(" ").replace("{model}", cli || profile?.model || "").replace("{tools}", tools.join(",")) ?? "")}</code>
           <span>Tools</span><span>${esc(tools.join(", "))}</span></div>
-        <form method="dialog"><menu><button value="cancel">Cancel</button><button value="ok" class="primary">Run</button></menu></form>`);
+        <form method="dialog"><menu><button value="cancel" formnovalidate>Cancel</button><button value="ok" class="primary">Run</button></menu></form>`);
       dlg.addEventListener("close", () => resolve(dlg.returnValue === "ok"));
     });
     if (!ok) return;

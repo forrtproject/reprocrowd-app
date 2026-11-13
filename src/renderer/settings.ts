@@ -74,7 +74,7 @@ export async function settingsDialog(onSaved: (changed: boolean) => void, focus?
       <p class="upd-status small" id="upd-status" aria-live="polite"></p>
     </fieldset>
     <p class="save-error warn-inline" hidden></p>
-    <menu><button value="cancel">Cancel</button><button value="save" class="primary">Save</button></menu></form>`);
+    <menu><button value="cancel" formnovalidate>Cancel</button><button value="save" class="primary">Save</button></menu></form>`);
   const q = <T extends HTMLElement = HTMLInputElement>(sel: string) => dlg.querySelector<T>(sel)!;
   const server = () => (q<HTMLInputElement>("[name=zserver]:checked").value as "zenodo" | "sandbox");
   const saveError = q<HTMLElement>(".save-error");
