@@ -340,6 +340,53 @@ json.dump({"results": [{"id": "T001", "value": 2.3149}, {"id": "T002", "value": 
   await win.click(".dlg-confirm button[value=ok]");
   await win.waitForFunction(() => !document.querySelector('.al-card[data-id="A01"]'));
   assert.ok(!(await P("/actions")).data.some((a) => a.item.id === "A01"));
+
+  step("claims reader: mark a methods passage and attach it to C2.1");
+  const free2 = sents.find((id) => !picks.includes(id) && id !== free); // a sentence no item cites
+  // nothing focused (the step above ended deselected): the bar asks for a claim
+  await win.locator(`.al-text .sent[data-hid="${free2}"]`).scrollIntoViewIfNeeded();
+  await win.locator(`.al-text .sent[data-hid="${free2}"]`).click();
+  await win.waitForSelector(".al-bar:not([hidden])");
+  assert.match(await win.locator(".al-bar").innerText(), /Select a claim to attach a method/);
+  // Review Focus 4: an untestable claim has no method to attach one to
+  await win.locator(".al-card[data-id=C3] .al-desc").click();
+  assert.match(await win.locator(".al-bar").innerText(), /C3 is not testable/);
+  assert.equal(await win.locator(".al-bar [data-act=attach]").count(), 0);
+  // focus C2: one button per sub-claim
+  await win.locator(".al-card[data-id=C2] .al-desc").click();
+  assert.equal(await win.locator(".al-bar [data-act=attach]").count(), 2);
+  const before = (await P("/actions")).data.map((a) => a.item.id);
+  await win.click(".al-bar [data-act=attach][data-leaf='C2.1']");
+  await until("the marks to be used up", async () => await win.locator(".al-bar").isHidden());
+  const created = (await P("/actions")).data.map((a) => a.item).find((a) => !before.includes(a.id));
+  assert.ok(created, "a new analysis step was added");
+  assert.deepEqual(created.refs, [{ extraction: jats, id: free2 }]);
+  assert.equal(created.summary, created.quote);
+  assert.ok(created.quote.length > 0);
+  assert.deepEqual(created.depends_on, ["A02"], "it runs after the preparation steps");
+  const c2 = (await P("/claims/C2")).data.item;
+  assert.equal(c2.sub_claims.find((s) => s.id === "C2.1").method, created.id);
+  assert.equal(c2.sub_claims.find((s) => s.id === "C2.2").method, "A03", "the other sub-claim keeps its method");
+  assert.deepEqual(created.produces, c2.sub_claims.find((s) => s.id === "C2.1").evidence);
+  assert.equal(c2.checked, false);
+  assert.ok((await P("/actions")).data.some((a) => a.item.id === "A03"), "the old method is kept");
+  assert.match(await win.locator("#status").innerText(), new RegExp(`Attached ${created.id} to C2\\.1`));
+  await win.waitForSelector(`.al-card.open[data-id="${created.id}"]`);
+  // Review Focus 2: attaching again from a figure or table replaces the method, and the new step always has a summary
+  // (this paper's floats all have captions, so the empty-text fallback itself isn't reached here).
+  const fl = await win.locator(".al-text figure[data-hid]").first().getAttribute("data-hid").catch(() => null);
+  if (fl) {
+    await win.locator(`.al-text figure[data-hid="${fl}"]`).scrollIntoViewIfNeeded();
+    await win.locator(`.al-text figure[data-hid="${fl}"]`).click();
+    await win.waitForSelector(".al-bar:not([hidden])");
+    await win.click(".al-bar [data-act=attach][data-leaf='C2.1']");
+    await until("the marks to be used up", async () => await win.locator(".al-bar").isHidden());
+    const m = (await P("/claims/C2")).data.item.sub_claims.find((s) => s.id === "C2.1").method;
+    assert.notEqual(m, created.id, "C2.1 now uses the newer step");
+    assert.ok((await P(`/actions/${m}`)).data.item.summary.length > 0, "the new step always has a summary");
+  }
+  await shot("04e-claims-attach");
+
   await win.click("#cl-view [data-view=review]");
   await win.waitForSelector(".cl-tree .cl-item[data-id=C1]");
 

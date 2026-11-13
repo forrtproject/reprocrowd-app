@@ -459,6 +459,7 @@ export class ClaimsStep implements Step {
         this.w.draw();
       },
       edit: (label, fn) => this.edit(label, fn),
+      setStatus: (msg) => this.w.setStatus(msg),
     });
   }
 

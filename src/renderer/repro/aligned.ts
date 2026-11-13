@@ -30,7 +30,7 @@ export interface AlignedOptions {
   onMark(): void;
   /** Bar shown while something is marked: buttons with data-act are passed to onBar. */
   barHtml(n: number): string;
-  onBar(act: string): void;
+  onBar(act: string, el: HTMLElement): void;
   /** Clicks on [data-act] elements inside a card. */
   onCard(id: string, act: string, el: HTMLElement): void;
   unlinkedLabel: string;
@@ -156,7 +156,7 @@ export class AlignedView {
     });
     this.root.querySelector(".al-bar")!.addEventListener("click", (e) => {
       const b = (e.target as HTMLElement).closest<HTMLElement>("[data-act]");
-      if (b) this.o.onBar(b.dataset.act!);
+      if (b) this.o.onBar(b.dataset.act!, b);
     });
   }
 

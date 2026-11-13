@@ -4,11 +4,12 @@
 // card on its own — preparation steps are edited there, since Review is organised by claim and has no place for them.
 // Every open card carries the cleanup controls: Switch off/on for LLM entries, Delete for manual ones.
 import { ApiError, pkg } from "../api";
-import type { Claim, ClaimStatus, Document } from "../types";
+import { refText } from "../doc";
+import type { Action, Claim, ClaimStatus, Document } from "../types";
 import { confirmDialog, esc, list, trunc } from "../util";
 import { AlignedItem, AlignedView } from "./aligned";
 import { modeText, pill } from "./claims";
-import { claimMethods, type MethodInfo, type MethodRole } from "./methods";
+import { claimMethods, leaves, type Leaf, type MethodInfo, type MethodRole } from "./methods";
 
 export interface ReaderCtx {
   doc: Document | undefined;
@@ -28,6 +29,8 @@ export interface ReaderCtx {
   review(claimId: string): void;
   /** ClaimsStep.edit (Wizard.busy): redraws the whole step at the start and the end, and reloads after. */
   edit(label: string, fn: () => Promise<unknown>): Promise<unknown>;
+  /** The footer's status line (Wizard.setStatus). */
+  setStatus(msg: string): void;
 }
 
 const ROLE_WORD: Record<MethodRole, string> = {
@@ -76,8 +79,9 @@ export class ClaimsReader {
       marked: ctx.marked,
       unlinkedLabel: "Not linked to a passage of the text",
       onMark: () => {},
-      barHtml: (n) => `<span><b>${n}</b> marked</span><span class="spacer"></span><button data-act="clear">Clear marks</button>`,
-      onBar: (act) => {
+      barHtml: (n) => this.barHtml(n),
+      onBar: (act, el) => {
+        if (act === "attach") return this.attach(el.dataset.leaf ?? "");
         if (act !== "clear") return;
         this.ctx.marked.clear();
         this.view.refreshBar();
@@ -104,11 +108,54 @@ export class ClaimsReader {
     this.view.layout();
   }
 
+  /** The focused claim, if one is focused and still live. */
+  private focusedClaim(): Claim | undefined {
+    const focus = this.ctx.focus();
+    return this.ctx.rows.find((r) => !r.off && r.claim.id === focus)?.claim;
+  }
+
+  // ---------- the marks bar ----------
+
+  /**
+   * What marking passages offers: attaching them to the focused claim as its method. A method belongs to one testable
+   * leaf, so the bar names the claim it would change and offers one button per leaf; with nothing focused (or an
+   * untestable claim focused) there is nothing to attach to, and it says so instead.
+   */
+  private barHtml(n: number) {
+    const clear = `<span class="spacer"></span><button data-act="clear">Clear marks</button>`;
+    const claim = this.focusedClaim();
+    if (!claim) return `<span><b>${n}</b> marked</span><span class="muted">Select a claim to attach a method</span>${clear}`;
+    const ls = leaves(claim);
+    if (!ls.length) return `<span class="muted">${esc(claim.id)} is not testable, so it has no method</span>${clear}`;
+    const buttons = ls
+      .map((l) => `<button data-act="attach" data-leaf="${esc(l.id)}" title="Make the marked passages the method of ${esc(l.id)}">${esc(l.id)}: ${esc(trunc(l.text, 40))}</button>`)
+      .join("");
+    return `<span><b>${n}</b> marked</span><span>Attach to <b>${esc(claim.id)}</b> · ${esc(trunc(claim.text, 60))}:</span>${buttons}${clear}`;
+  }
+
+  private attach(leafId: string) {
+    const claim = this.focusedClaim();
+    const leaf = claim && leaves(claim).find((l) => l.id === leafId);
+    if (leaf) void this.runAttach(leaf);
+  }
+
+  private async runAttach(leaf: Leaf) {
+    let id = "";
+    await this.edit(`Attaching a method to ${leaf.id}`, async () => {
+      id = await attachMethod(this.ctx, leaf);
+      this.ctx.marked.clear(); // before the closing redraw, so the bar goes away with it
+    });
+    if (!id) return; // the write failed; Wizard.busy has shown the error
+    // After ctx.edit, so the step has reloaded and `<label>: done` has already been written.
+    this.ctx.setOpenChip(id);
+    this.ctx.setStatus(`Attached ${id} to ${leaf.id}; ${leaf.claim} is unticked. Rewrite the method's summary in Review.`);
+  }
+
   // ---------- cards ----------
 
   private items(): AlignedItem[] {
     const focus = this.ctx.focus();
-    const focused = this.ctx.rows.find((r) => !r.off && r.claim.id === focus)?.claim;
+    const focused = this.focusedClaim();
     const open = this.ctx.openChip();
     const methods = focused ? claimMethods(focused) : [];
     const items = this.ctx.rows.filter((r) => !r.off).map((r) => this.claimItem(r.claim, r.claim.id === focus));
@@ -227,6 +274,42 @@ export class ClaimsReader {
       keptScroll = null;
     }
   }
+}
+
+/**
+ * Make the marked passages the method of one testable leaf: a new analysis step from their text (no LLM call — the
+ * user rewrites the summary in Review), then the claim pointed at it. The step the leaf used before is left alone;
+ * if nothing else uses it, the reader's index shows it as not used by any claim. Returns the new step's id.
+ */
+export async function attachMethod(ctx: ReaderCtx, leaf: Leaf): Promise<string> {
+  const ids = [...ctx.marked];
+  const text = refText(ctx.doc, ids).trim();
+  const old = leaf.method ? ctx.index.get(leaf.method) : undefined;
+  const created = await pkg.post<Action>("/actions", {
+    kind: "analysis",
+    refs: ids.map((id) => ({ extraction: ctx.jats, id })),
+    quote: text,
+    // A marked figure or table without a label or caption has no text at all, and a step needs a summary.
+    summary: text || `Implement the marked passage for ${leaf.id}`,
+    inputs: old?.action.inputs ?? [],
+    depends_on: [...ctx.index.values()].filter((i) => i.role === "preparation" && !i.origin.disabled).map((i) => i.action.id),
+    produces: leaf.evidence,
+  });
+  try {
+    await pkg.patch(`/claims/${encodeURIComponent(leaf.claim)}`, claimPatch(ctx, leaf, created.id));
+  } catch (e) {
+    // The step is only ever a method of this leaf: a half-attach would leave it behind, used by nothing.
+    await pkg.del(`/actions/${encodeURIComponent(created.id)}`).catch(() => {});
+    throw e;
+  }
+  return created.id;
+}
+
+/** JSON merge patch replaces arrays, so changing one sub-claim's method means sending the whole list back. */
+function claimPatch(ctx: ReaderCtx, leaf: Leaf, method: string) {
+  const claim = ctx.rows.find((r) => r.claim.id === leaf.claim)!.claim;
+  if (leaf.id === claim.id) return { method };
+  return { sub_claims: claim.sub_claims.map((s) => (s.id === leaf.id ? { ...s, method } : s)) };
 }
 
 /** Only manual steps can be deleted, and the backend refuses while anything still uses one. */
