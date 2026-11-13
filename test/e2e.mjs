@@ -149,6 +149,21 @@ try {
   assert.match(await win.locator("#nd-jats").innerText(), /PMC4359000/);
   assert.equal(await win.inputValue(".dlg-new [name=folder]"), path.join(packagesRoot, "10-1371-journal-pbio-1002106"));
   await shot("02-new-dialog");
+
+  step("new reproduction: cancelling the creation undoes it");
+  const cancelledFolder = await win.inputValue(".dlg-new [name=folder]");
+  await win.click("#nd-create:not([disabled])");
+  await win.click(".dlg-new button[value=cancel]");
+  await win.waitForSelector(".dlg-new", { state: "detached", timeout: 120_000 });
+  assert.equal((await call("listPackages")).length, 0, "no package after cancelling");
+  assert.ok(!fs.existsSync(cancelledFolder), "the cancelled package's folder is removed");
+  assert.equal(await win.evaluate(() => location.hash), "", "still in the library");
+
+  step("new reproduction: created");
+  await win.click("#new-btn");
+  await win.fill(".dlg-new [name=doi]", DOI);
+  await win.click("#nd-lookup");
+  await win.waitForSelector("#nd-jats .ok", { timeout: 60_000 });
   await Promise.all([win.waitForEvent("load"), win.click("#nd-create:not([disabled])")]);
   await win.waitForSelector("#route button", { timeout: 120_000 });
   await win.waitForFunction(() => document.querySelector("#paper-title")?.textContent?.match(/p-hacking/i));
@@ -347,6 +362,24 @@ json.dump({"results": [{"id": "T001", "value": 2.3149}, {"id": "T002", "value": 
   assert.equal(await win.locator("#rp-deposit:not([disabled])").count(), 0);
   await assert.rejects(call("depositPreview", { note: "" }), /local_paper_text/);
   await shot("09-local-file-not-deposited");
+
+  step("library: sort and filter");
+  await win.selectOption("[data-lib=sort]", "name-desc");
+  assert.equal(await win.locator("[data-lib=sort]").inputValue(), "name-desc", "the sort select shows the choice");
+  await win.click("[data-lib=query]");
+  await win.keyboard.type("zzz-no-such-package", { delay: 60 });
+  await win.waitForSelector("#lib-cards >> text=No reproductions match your filter.");
+  assert.equal(await win.evaluate(() => document.activeElement?.getAttribute("data-lib")), "query", "the filter box keeps focus while typing");
+  assert.equal(await win.locator("[data-lib=query]").inputValue(), "zzz-no-such-package");
+  await win.fill("[data-lib=query]", "");
+  await win.waitForSelector(".pkg-card .badge.st-published", { timeout: 5_000 }); // the deposit badge survives a redraw
+  await win.fill("[data-lib=query]", "hacking");
+  await win.waitForSelector(".pkg-card");
+  await Promise.all([win.waitForEvent("load"), win.evaluate(() => location.reload())]);
+  await win.waitForSelector(".pkg-card", { timeout: 20_000 });
+  assert.equal(await win.locator("[data-lib=query]").inputValue(), "hacking", "the filter text survives a reload in the same session");
+  assert.equal(await win.locator("[data-lib=sort]").inputValue(), "name-desc", "the sort survives a reload");
+  assert.equal(await win.evaluate(() => localStorage.getItem("reprocrowd.lib.prefs")?.includes("hacking")), false, "the filter text is not kept across launches");
 
   assert.deepEqual(errors, [], "no errors in the page");
   console.log("✓ end-to-end check passed");

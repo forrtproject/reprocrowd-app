@@ -122,11 +122,56 @@ async function uploadPath(id: string, file: string, fields: Record<string, unkno
   return (await request("POST", `/v1/packages/${enc(id)}/inputs`, { json: { path: file, ...fields }, timeout: LONG })).data;
 }
 
+// ---------- progress of getting a paper's text ----------
+
+/** The steps of creating or opening a package that can take a while, mostly waiting on OpenAlex and Europe PMC. */
+const STEPS = {
+  open: "Opening the package",
+  create: "Creating the package",
+  metadata: "Fetching the paper's metadata from OpenAlex",
+  locate: "Finding the article's JATS XML on Europe PMC",
+  download: "Downloading the JATS XML from Europe PMC",
+  parse: "Converting the JATS XML into the paper's text",
+  upload: "Adding the paper file to the package",
+  extract: "Extracting the text of the paper file",
+} as const;
+export type Step = keyof typeof STEPS;
+
+/** What a window's running creation or opening is doing: step `step` (1-based) of `steps`, for `elapsed` ms. */
+export interface TextProgress { step: number; steps: number; label: string; elapsed: number; cancelling: boolean }
+
+/**
+ * One creation or opening, as a planned list of steps; the window polls it (textProgress) to show a progress bar.
+ * Steps that turn out not to be needed are skipped; one that wasn't planned is put in next. Cancelling takes effect
+ * when the running step ends: the next one throws a `cancelled` error instead of starting, and the caller undoes what
+ * was done.
+ */
+export class Progress {
+  private i = -1;
+  private since = Date.now();
+  cancelled = false;
+  constructor(private plan: Step[]) {}
+  to(step: Step) {
+    this.check();
+    let k = this.plan.indexOf(step, this.i + 1);
+    if (k < 0) this.plan.splice((k = this.i + 1), 0, step);
+    this.i = k;
+    this.since = Date.now();
+  }
+  check() {
+    if (this.cancelled) throw new ServiceError("Cancelled.", { status: 0, code: "cancelled" });
+  }
+  snapshot(): TextProgress {
+    const i = Math.max(this.i, 0);
+    return { step: i + 1, steps: this.plan.length, label: STEPS[this.plan[i]], elapsed: Date.now() - this.since, cancelling: this.cancelled };
+  }
+}
+
 /**
  * The paper's text: a full text parsed into the common document schema. Returns the extraction's name, retrieving and
  * parsing the JATS XML first if the package has no full text yet. Throws `jats_unavailable` if there is no JATS XML.
  */
-export async function ensureText(id: string): Promise<string> {
+export async function ensureText(id: string, progress?: Progress): Promise<string> {
   const P = `/v1/packages/${enc(id)}`;
   const [fulltexts, extractions] = await Promise.all([get<any[]>(`${P}/fulltexts`), get<any[]>(`${P}/extractions`)]);
   // An extraction already made from a full text (a local PDF/DOCX/MD, or the JATS XML): use it.
@@ -134,13 +179,19 @@ export async function ensureText(id: string): Promise<string> {
   if (parsed) return parsed.name;
   // A full text present but not yet parsed: parse the most structured one (a plain PDF last).
   const ft = fulltexts.find((f) => f.reprocrowd?.flavor !== "pdf") ?? fulltexts[0];
-  if (ft) return ((await request("POST", `${P}/extractions`, { json: { method: "parse", fulltext: ft.name }, timeout: 300_000 })).data as any).name;
+  if (ft) {
+    progress?.to(ft.reprocrowd?.flavor === "jats" ? "parse" : "extract");
+    return ((await request("POST", `${P}/extractions`, { json: { method: "parse", fulltext: ft.name }, timeout: 300_000 })).data as any).name;
+  }
   // No full text: fetch the paper's JATS XML (a DOI package).
+  progress?.to("locate");
   const { candidates, notes } = await get<{ candidates: any[]; notes: string[] }>(`${P}/fulltexts/candidates`, undefined, 60_000);
   const c = candidates.find((x) => x.format === "jats");
   if (!c) throw new ServiceError(`${JATS_ONLY} ${notes.find((n) => /PMCID/.test(n)) ?? "There is no JATS XML for this paper."}`, { status: 409, code: "jats_unavailable" });
   try {
+    progress?.to("download");
     const ftName = ((await request("POST", `${P}/fulltexts`, { json: { candidate: c.id, name: "ft-jats" }, timeout: 300_000 })).data as any).name;
+    progress?.to("parse");
     return ((await request("POST", `${P}/extractions`, { json: { method: "parse", fulltext: ftName }, timeout: 300_000 })).data as any).name;
   } catch (e) {
     const code = (e as ServiceError).problem?.code;
@@ -152,6 +203,17 @@ export async function ensureText(id: string): Promise<string> {
 export function makeApi(wc: WebContents) {
   const win = () => BrowserWindow.fromWebContents(wc)!;
   const base = () => `/v1/packages/${enc(pkgId(wc))}`;
+  // The window's creation or opening of a package in progress, if any (one at a time per window).
+  let running: Progress | null = null;
+  async function track<T>(plan: Step[], work: (p: Progress) => Promise<T>): Promise<T> {
+    const p = new Progress(plan);
+    running = p;
+    try {
+      return await work(p);
+    } finally {
+      if (running === p) running = null;
+    }
+  }
 
   async function pkg(method: string, sub: string, json?: unknown, query?: Record<string, string | number | boolean>, responseType: ResponseType = "json") {
     if (!/^([/:][\w./:%-]*)?$/.test(sub) || sub.split("/").includes("..")) throw new Error(`invalid package path ${sub}`);
@@ -219,16 +281,19 @@ export function makeApi(wc: WebContents) {
       return r.canceled ? null : r.filePaths[0];
     },
     /** A package for the paper's DOI, with its JATS XML retrieved and parsed. Undone if that fails. */
-    createPackage: async (opts: { doi: string; folder: string }) => {
+    createPackage: (opts: { doi: string; folder: string }) => track(["create", "metadata", "locate", "download", "parse"], async (p) => {
       const doi = normalizeDoi(opts.doi);
       if (!doi) throw new Error("A DOI is needed: the paper's JATS XML is found through it.");
       const target = path.resolve(opts.folder);
       const existed = fs.existsSync(target);
       if (existed && fs.readdirSync(target).length) throw new Error(`${target} isn't empty; choose another folder.`);
+      p.to("create");
       const created = (await request("POST", "/v1/packages", { json: { path: target, identifier: doi }, timeout: 60_000 })).data as any;
       try {
+        p.to("metadata");
         await request("POST", `/v1/packages/${enc(created.id)}/metadata`, { json: {}, timeout: 60_000 });
-        await ensureText(created.id);
+        await ensureText(created.id, p);
+        p.check(); // cancelled during the last step: undone all the same
       } catch (e) {
         await request("DELETE", `/v1/packages/${enc(created.id)}`).catch(() => {});
         if (existed) for (const f of fs.readdirSync(target)) fs.rmSync(path.join(target, f), { recursive: true, force: true });
@@ -236,16 +301,20 @@ export function makeApi(wc: WebContents) {
         throw e;
       }
       return { id: created.id as string };
-    },
+    }),
     /** A package from a local paper file (PDF, DOCX or Markdown), with its text parsed. No DOI or JATS needed. */
-    createPackageFromFile: async (opts: { path: string; folder: string }) => {
+    createPackageFromFile: (opts: { path: string; folder: string }) => track(["create", "upload", "extract"], async (p) => {
       const target = path.resolve(opts.folder);
       const existed = fs.existsSync(target);
       if (existed && fs.readdirSync(target).length) throw new Error(`${target} isn't empty; choose another folder.`);
+      p.to("create");
       const created = (await request("POST", "/v1/packages", { json: { path: target }, timeout: 60_000 })).data as any;
       try {
+        p.to("upload");
         const ft = ((await request("POST", `/v1/packages/${enc(created.id)}/fulltexts`, { json: { path: opts.path, name: "ft-local" }, timeout: 300_000 })).data as any).name;
+        p.to("extract");
         await request("POST", `/v1/packages/${enc(created.id)}/extractions`, { json: { method: "parse", fulltext: ft }, timeout: 300_000 });
+        p.check();
       } catch (e) {
         await request("DELETE", `/v1/packages/${enc(created.id)}`).catch(() => {});
         if (existed) for (const f of fs.readdirSync(target)) fs.rmSync(path.join(target, f), { recursive: true, force: true });
@@ -253,6 +322,12 @@ export function makeApi(wc: WebContents) {
         throw e;
       }
       return { id: created.id as string };
+    }),
+    /** What the window's creation or opening of a package is doing (null when there is none): for its progress bar. */
+    textProgress: async () => running?.snapshot() ?? null,
+    /** Cancel the window's creation of a package: it stops when the running step ends, and is undone. */
+    cancelText: async () => {
+      if (running) running.cancelled = true;
     },
     /** A local paper file the user picked (PDF, DOCX, Markdown) to run ReproCrowd on. */
     chooseFile: async () => {
@@ -285,6 +360,7 @@ export function makeApi(wc: WebContents) {
       return id;
     },
     openLibrary: async () => {
+      if (running) running.cancelled = true; // an opening still under way stops at the end of its step
       bindPackage(wc, null);
     },
     openUrl: openOutside,
@@ -352,13 +428,15 @@ export function makeApi(wc: WebContents) {
       const doi = s.identifiers?.doi ?? (s.identifier?.scheme === "doi" ? s.identifier.value : "");
       return { key: s.id, title: s.title ?? path.basename(s.path), doi, folder: s.path, apiUrl: backend.status().url ?? "" };
     },
-    connect: async () => {
+    connect: () => track(["open", "locate", "download", "parse", "metadata"], async (p) => {
+      p.to("open");
       let s = await summary();
-      const jats = await ensureText(s.id);
+      const jats = await ensureText(s.id, p);
       let metadata_error: string | undefined;
       const doi = s.identifier?.scheme === "doi" ? s.identifier.value : "";
       if (doi && !s.metadata_fetched_at) {
         try {
+          p.to("metadata");
           await pkg("POST", "/metadata", {});
           s = await summary();
         } catch (e) {
@@ -366,7 +444,7 @@ export function makeApi(wc: WebContents) {
         }
       }
       return { ...s, metadata_error, jats, example: !!exampleOf(s.path) };
-    },
+    }),
     pkg,
     pkgBytes: async (sub: string) => (await pkg("GET", sub, undefined, undefined, "bytes")).data as ArrayBuffer,
     pkgText: async (sub: string) => (await pkg("GET", sub, undefined, undefined, "text")).data as string,

@@ -293,6 +293,55 @@ def test_targets(client, pkg):
     assert client.post(T, json={"type": "figure", "description": "fig", "refs": [{"extraction": "ex-paper-tei", "id": "fig1"}]}).json()["id"] == "T006"
 
 
+def test_delete_run(client, pkg, tmp_path):
+    setup_paper(client, pkg)
+    T = f"/v1/packages/{pkg}/targets"
+    A = f"/v1/packages/{pkg}/actions"
+    ref = {"extraction": "ex-paper-tei", "id": "sec3.p1.s2"}
+    assert client.post(T, json={"type": "number", "description": "mean RT", "expected": 512.4, "decimals": 1, "unit": "ms", "refs": [ref]}).status_code == 201
+    assert client.post(T, json={"type": "categorical", "description": "from the authors", "expected": "yes", "unreferenced": True, "note": "email from the authors"}).status_code == 201
+    run = client.post(T + "/runs", json={"extraction": "ex-paper-tei", "scope": {"sections": ["sec3"]}}).json()
+    assert run["id"] == "run1" and [e["base"]["id"] for e in run["entries"]] == ["T003", "T004", "T005"]
+    # an action that produces T003 blocks deleting the run
+    a = client.post(A, json={"kind": "analysis", "summary": "compute T003", "produces": ["T003"], "refs": [ref]})
+    assert a.status_code == 201
+    problem(client.delete(T + "/runs/run1"), 409, "in_use")
+    # once nothing references the run's items, it is deleted
+    assert client.delete(A + "/" + a.json()["id"]).status_code == 204
+    # a cropped figure of one of the run's targets goes with it
+    from PIL import Image
+
+    from reprocrowd import figures
+    from reprocrowd.package import Package
+    p = Package(pkg, tmp_path / "pkg")
+    figures._store(p, "T003", figures._save(p, "T003", Image.new("RGB", (4, 4))), "crop")
+    assert client.delete(T + "/runs/run1").status_code == 204
+    raw = client.get(T, params={"view": "raw"}).json()
+    assert raw["llm_runs"] == [] and (raw["last_item"], raw["last_run"]) == (5, 1)
+    assert p.load().get("figure-t003") is None and not p.path("targets/figures/T003.png").exists()
+    problem(client.delete(T + "/runs/run1"), 404, "not_found")
+    # the ids and the number of the deleted run are not issued again (stopgap until issue #65)
+    assert client.post(T, json={"type": "categorical", "description": "x", "expected": "y", "unreferenced": True, "note": "n"}).json()["id"] == "T006"
+    run = client.post(T + "/runs", json={"extraction": "ex-paper-tei", "scope": {"sections": ["sec3"]}}).json()
+    assert run["id"] == "run2" and [e["base"]["id"] for e in run["entries"]] == ["T007", "T008", "T009"]
+    assert client.post(A, json={"kind": "analysis", "summary": "x", "refs": [ref]}).json()["id"] == "A02"
+
+
+def test_delete_action_run(client, pkg):
+    setup_paper(client, pkg)
+    P = f"/v1/packages/{pkg}"
+    ref = [{"extraction": "ex-paper-tei", "id": "sec2.p1.s1"}]
+    client.post(P + "/targets", json={"type": "number", "description": "t", "expected": 2.31, "refs": [{"extraction": "ex-paper-tei", "id": "sec3.p1.s1"}]})
+    run = client.post(P + "/actions/runs", json={"extraction": "ex-paper-tei"}).json()
+    assert [e["base"]["id"] for e in run["entries"]] == ["A01", "A02"] and run["entries"][1]["base"]["depends_on"] == ["A01"]
+    # A02 depends on A01, but both are in the run: no conflict. A step outside the run that depends on one does block.
+    a = client.post(P + "/actions", json={"kind": "analysis", "summary": "robustness", "refs": ref, "depends_on": ["A02"]}).json()["id"]
+    assert problem(client.delete(P + "/actions/runs/run1"), 409, "in_use")["used_by"] == [a]
+    assert client.delete(P + f"/actions/{a}").status_code == 204
+    assert client.delete(P + "/actions/runs/run1").status_code == 204
+    assert client.post(P + "/actions", json={"kind": "analysis", "summary": "x", "refs": ref}).json()["id"] == "A04"
+
+
 def test_actions_script_validation(client, pkg):
     setup_paper(client, pkg)
     P = f"/v1/packages/{pkg}"

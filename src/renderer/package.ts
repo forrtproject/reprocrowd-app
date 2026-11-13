@@ -3,6 +3,7 @@
 import { brandHtml } from "./brand";
 import { ApiError, host, Info, isBackendDown, pkg } from "./api";
 import { backendProblem, TITLES } from "./backend";
+import { withProgress } from "./progress";
 import { Wizard } from "./repro/wizard";
 import { settingsDialog } from "./settings";
 import { loadUiState, UiState } from "./state";
@@ -141,8 +142,10 @@ export async function start(id: string) {
     $("#paper-title").textContent = info.title;
     document.title = `ReproCrowd — ${info.title}`;
     state = loadUiState(await host.loadState().catch(() => null));
-    status("Opening the package (retrieving the paper's text if needed)…");
-    summary = await host.connect();
+    // Opening a package that has no text yet retrieves and converts its JATS XML first; that shows its progress.
+    const body = $("#rp-body");
+    body.innerHTML = `<div class="opening"><div class="opening-progress" hidden></div></div>`;
+    summary = await withProgress($(".opening-progress", body), host.connect());
     if (summary.metadata_error) status(`OpenAlex metadata: ${summary.metadata_error}`, "error");
     else status("");
     meta = await pkg.get<any>("/metadata").catch(() => null);

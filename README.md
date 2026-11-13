@@ -110,6 +110,7 @@ src/renderer/   the UI (vite): main.ts routes to library.ts or package.ts (the w
 resources/      the ReproCrowd hex sticker (app icon and logo)
 scripts/        build.mjs, bundle-backend.mjs, install.sh
 test/e2e.mjs    end-to-end check with a fake Zenodo and the backend tests' fake LLM
+test/quit-early.mjs  quitting while the backend starts closes the app and stops the backend
 ```
 
 The backend is chosen at start: Settings → Advanced start command; else the
@@ -126,6 +127,7 @@ npm start                 # build and run (uses ../reprocrowd-cli through uv if 
 npm run bundle-backend    # build/backend: a standalone Python with reprocrowd installed
 npm run dist              # installers for this system in dist/ (with the bundled backend)
 node test/e2e.mjs         # after npm run build
+node test/quit-early.mjs  # likewise; or give it a packaged app (dist/linux-unpacked/reprocrowd-app)
 npm run test:backend      # the backend's tests (pytest)
 npm run schemas           # regenerate backend/schemas and docs after model or API changes
 ```

@@ -1,8 +1,9 @@
 // The library: your reproductions (packages the app's backend knows), a new one from a DOI, or a package folder
 // opened from disk. Opening one switches the window to its numbered workflow (package.ts).
-import { host, isBackendDown, JATS_ONLY, JatsAvailability, LibraryEntry, LlmModel, LlmModels, UpdateInfo, Work, ZenodoRecord } from "./api";
+import { ApiError, host, isBackendDown, JATS_ONLY, JatsAvailability, LibraryEntry, LlmModel, LlmModels, UpdateInfo, Work, ZenodoRecord } from "./api";
 import { backendProblem } from "./backend";
 import { brandHtml } from "./brand";
+import { withProgress } from "./progress";
 import { settingsDialog } from "./settings";
 import type { ZenodoDeposit } from "./types";
 import { $, confirmDialog, esc, modal, showError } from "./util";
@@ -270,6 +271,56 @@ function bindExamples(body: HTMLElement) {
   );
 }
 
+// ---------- sort & filter the list ----------
+
+type LibSort = "newest" | "oldest" | "name-asc" | "name-desc";
+interface LibPrefs { sort: LibSort; query: string; hideMissing: boolean }
+const LIB_PREFS_KEY = "reprocrowd.lib.prefs"; // sort + hide-missing, kept across launches
+const LIB_QUERY_KEY = "reprocrowd.lib.query"; // filter text, kept only for this session (survives opening a package and coming back)
+const libSorts: LibSort[] = ["newest", "oldest", "name-asc", "name-desc"];
+
+const libPrefs = (): LibPrefs => {
+  const query = sessionStorage.getItem(LIB_QUERY_KEY) ?? "";
+  try {
+    const p = JSON.parse(localStorage.getItem(LIB_PREFS_KEY) ?? "{}");
+    return { sort: libSorts.includes(p.sort) ? p.sort : "newest", query, hideMissing: !!p.hideMissing };
+  } catch {
+    return { sort: "newest", query, hideMissing: false };
+  }
+};
+const saveLibPrefs = ({ query, ...rest }: LibPrefs) => {
+  localStorage.setItem(LIB_PREFS_KEY, JSON.stringify(rest));
+  sessionStorage.setItem(LIB_QUERY_KEY, query);
+};
+const pkgName = (p: LibraryEntry) => p.title ?? p.path.split(/[\\/]/).pop() ?? p.id;
+
+function sortLib(list: LibraryEntry[], sort: LibSort): LibraryEntry[] {
+  switch (sort) {
+    case "oldest": return [...list]; // registration order (oldest first)
+    case "name-asc": return [...list].sort((a, b) => pkgName(a).localeCompare(pkgName(b)));
+    case "name-desc": return [...list].sort((a, b) => pkgName(b).localeCompare(pkgName(a)));
+    default: return [...list].reverse(); // newest first
+  }
+}
+
+function filterLib(list: LibraryEntry[], p: LibPrefs): LibraryEntry[] {
+  let out = p.hideMissing ? list.filter((x) => !x.missing) : list;
+  const q = p.query.trim().toLowerCase();
+  if (q) out = out.filter((x) => pkgName(x).toLowerCase().includes(q) || x.path.toLowerCase().includes(q));
+  return out;
+}
+
+const libSortLabels: Record<LibSort, string> = { newest: "Newest first", oldest: "Oldest first", "name-asc": "Name (A–Z)", "name-desc": "Name (Z–A)" };
+
+function libToolbar(p: LibPrefs): string {
+  return `<div class="lib-toolbar">
+    <label class="small">Sort
+      <select data-lib="sort">${libSorts.map((v) => `<option value="${v}"${p.sort === v ? " selected" : ""}>${libSortLabels[v]}</option>`).join("")}</select></label>
+    <input data-lib="query" type="search" placeholder="Filter by title or folder…" value="${esc(p.query)}" aria-label="Filter reproductions" />
+    <label class="small"><input data-lib="hide-missing" type="checkbox" ${p.hideMissing ? "checked" : ""} /> Hide missing folders</label>
+  </div>`;
+}
+
 function card(p: LibraryEntry) {
   const doi = p.identifiers?.doi ?? (p.identifier?.scheme === "doi" ? p.identifier.value : "");
   const r = p.resources ?? {};
@@ -297,9 +348,9 @@ function depositLine(ds: ZenodoDeposit[]) {
 async function render() {
   setupNote();
   const body = $("#lib-body");
-  let list: LibraryEntry[];
+  let all: LibraryEntry[];
   try {
-    list = await host.listPackages();
+    all = await host.listPackages();
   } catch (e) {
     if (isBackendDown(e)) {
       body.innerHTML = `<div class="offline-card"><h2>The ReproCrowd backend isn't running</h2><div class="backend-problem"></div></div>`;
@@ -307,47 +358,116 @@ async function render() {
     } else body.innerHTML = `<p class="warn">${esc((e as Error).message)}</p>`;
     return;
   }
-  list = [...list].reverse();
   if (!examples.length) examples = await host.listExamples().catch(() => []);
-  body.innerHTML = list.length
-    ? `<h2 class="section-title">Your reproductions</h2><div class="cards">${list.map(card).join("")}</div>${examplesHtml(examples)}`
-    : `<h2 class="section-title">How it works</h2>
+  if (!all.length) {
+    body.innerHTML = `<h2 class="section-title">How it works</h2>
        <ol class="process-cards">${STEPS.map(([t, d], i) => `<li class="card"><span class="card-step">${i + 1}</span><h3>${esc(t)}</h3><p>${esc(d)}</p></li>`).join("")}</ol>
        <p class="note">Your reproductions will be listed here. Start with <b>New reproduction</b>.</p>
        ${examplesHtml(examples)}`;
+    bindExamples(body);
+    return;
+  }
+  body.innerHTML = `<h2 class="section-title">Your reproductions</h2>${libToolbar(libPrefs())}<div id="lib-cards"></div>${examplesHtml(examples)}`;
   bindExamples(body);
-  body.querySelectorAll<HTMLElement>("[data-open]").forEach((b) => b.addEventListener("click", () => openPackage(b.dataset.open!)));
-  body.querySelectorAll<HTMLElement>(".pkg-title").forEach((t) =>
+  const wrap = $("#lib-cards", body);
+  // Deposits are fetched once per list load; sorting/filtering only redraws the cards.
+  const deposits = new Map<string, ZenodoDeposit[]>();
+  for (const p of all.filter((x) => !x.missing))
+    host
+      .packageDeposits(p.id)
+      .then((ds) => {
+        deposits.set(p.id, ds);
+        const el = wrap.querySelector<HTMLElement>(`[data-dep-for="${CSS.escape(p.id)}"]`);
+        if (el) el.innerHTML = depositLine(ds);
+      })
+      .catch(() => {});
+  const redraw = () => renderCards(wrap, all, deposits);
+  bindLibToolbar(body, redraw);
+  redraw();
+}
+
+function renderCards(wrap: HTMLElement, all: LibraryEntry[], deposits: Map<string, ZenodoDeposit[]>) {
+  const prefs = libPrefs();
+  const list = sortLib(filterLib(all, prefs), prefs.sort);
+  wrap.innerHTML = list.length ? `<div class="cards">${list.map(card).join("")}</div>` : `<p class="muted">No reproductions match your filter.</p>`;
+  wrap.querySelectorAll<HTMLElement>("[data-dep-for]").forEach((el) => {
+    const ds = deposits.get(el.dataset.depFor!);
+    if (ds) el.innerHTML = depositLine(ds);
+  });
+  wrap.querySelectorAll<HTMLElement>("[data-open]").forEach((b) => b.addEventListener("click", () => openPackage(b.dataset.open!)));
+  wrap.querySelectorAll<HTMLElement>(".pkg-title").forEach((t) =>
     t.addEventListener("click", () => {
       const c = t.closest<HTMLElement>(".pkg-card")!;
       if (!c.classList.contains("missing")) openPackage(c.dataset.id!);
     }),
   );
-  body.querySelectorAll<HTMLElement>("[data-reveal]").forEach((b) => b.addEventListener("click", () => host.revealPackage(b.dataset.reveal!).catch((e) => showError("Showing the folder", e))));
-  body.querySelectorAll<HTMLElement>("[data-doi]").forEach((a) =>
+  wrap.querySelectorAll<HTMLElement>("[data-reveal]").forEach((b) => b.addEventListener("click", () => host.revealPackage(b.dataset.reveal!).catch((e) => showError("Showing the folder", e))));
+  wrap.querySelectorAll<HTMLElement>("[data-doi]").forEach((a) =>
     a.addEventListener("click", (e) => {
       e.preventDefault();
       host.openUrl(`https://doi.org/${a.dataset.doi}`);
     }),
   );
-  body.querySelectorAll<HTMLElement>("[data-remove]").forEach((b) =>
+  wrap.querySelectorAll<HTMLElement>("[data-remove]").forEach((b) =>
     b.addEventListener("click", async () => {
       if (!(await confirmDialog("Remove from the list", "<p>The package is removed from ReproCrowd's list. Its folder and files stay on disk; open it again with <b>Open a package folder…</b>.</p>", "Remove"))) return;
       await host.removePackage(b.dataset.remove!).catch((e) => showError("Removing", e));
       render();
     }),
   );
-  for (const p of list.filter((x) => !x.missing))
-    host
-      .packageDeposits(p.id)
-      .then((ds) => {
-        const el = body.querySelector<HTMLElement>(`[data-dep-for="${CSS.escape(p.id)}"]`);
-        if (el) el.innerHTML = depositLine(ds);
-      })
-      .catch(() => {});
+}
+
+function bindLibToolbar(body: HTMLElement, redraw: () => void) {
+  const sel = body.querySelector<HTMLSelectElement>("[data-lib=sort]");
+  const q = body.querySelector<HTMLInputElement>("[data-lib=query]");
+  const hm = body.querySelector<HTMLInputElement>("[data-lib=hide-missing]");
+  if (!sel || !q || !hm) return;
+  sel.addEventListener("change", () => {
+    saveLibPrefs({ ...libPrefs(), sort: sel.value as LibSort });
+    redraw();
+  });
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  q.addEventListener("input", () => {
+    saveLibPrefs({ ...libPrefs(), query: q.value });
+    clearTimeout(timer);
+    timer = setTimeout(redraw, 150);
+  });
+  hm.addEventListener("change", () => {
+    saveLibPrefs({ ...libPrefs(), hideMissing: hm.checked });
+    redraw();
+  });
 }
 
 // ---------- a new reproduction ----------
+
+/**
+ * Creates the package with `run`, showing its progress in the dialog (retrieving and converting the paper's text can
+ * take a while). Meanwhile the dialog's fields are locked, and Cancel or Esc cancel the creation instead of closing
+ * the dialog: it stops at the end of the running step and is undone, and `run` fails with a `cancelled` error.
+ */
+async function creating<T>(dlg: HTMLDialogElement, run: () => Promise<T>): Promise<T> {
+  const cancel = dlg.querySelector<HTMLButtonElement>("button[value=cancel]")!;
+  const locked = [...dlg.querySelectorAll<HTMLInputElement | HTMLButtonElement>("input, button[type=button]")].filter((x) => !x.disabled);
+  const stop = (e: Event) => {
+    e.preventDefault();
+    if (cancel.disabled) return;
+    cancel.disabled = true;
+    cancel.textContent = "Cancelling…";
+    host.cancelText().catch(() => {});
+  };
+  locked.forEach((x) => (x.disabled = true));
+  cancel.addEventListener("click", stop);
+  dlg.addEventListener("cancel", stop);
+  try {
+    return await withProgress(dlg.querySelector<HTMLElement>(".nd-progress")!, run());
+  } finally {
+    cancel.removeEventListener("click", stop);
+    dlg.removeEventListener("cancel", stop);
+    cancel.disabled = false;
+    cancel.textContent = "Cancel";
+    locked.forEach((x) => (x.disabled = false));
+  }
+}
 
 function newDialog() {
   const dlg = modal("dlg-new", `<form method="dialog">
@@ -358,6 +478,7 @@ function newDialog() {
     <div id="nd-records" hidden></div>
     <label>Folder <span class="row"><input name="folder" spellcheck="false" /><button type="button" id="nd-folder">Choose…</button></span></label>
     <p class="hint">The package is a folder of plain files (a Frictionless data package); the folder must be new or empty.</p>
+    <div class="nd-progress" hidden></div>
     <p class="nd-error warn-inline" hidden></p>
     <menu><button value="cancel" formnovalidate>Cancel</button><button value="create" class="primary" id="nd-create" disabled>Create</button></menu></form>`);
   const q = <T extends HTMLElement = HTMLInputElement>(s: string) => dlg.querySelector<T>(s)!;
@@ -465,10 +586,11 @@ function newDialog() {
     create.textContent = "Creating…";
     err("");
     try {
-      const r = await host.createPackage({ doi: work.doi, folder: folderIn.value.trim() });
+      const r = await creating(dlg, () => host.createPackage({ doi: work!.doi, folder: folderIn.value.trim() }));
       dlg.close("create");
       openPackage(r.id);
     } catch (e2) {
+      if (e2 instanceof ApiError && e2.code === "cancelled") return dlg.close("cancel");
       create.disabled = false;
       create.textContent = "Create";
       err((e2 as Error).message);
@@ -485,6 +607,7 @@ function newFileDialog() {
     <label>Paper file <span class="row"><input name="file" placeholder="paper.pdf, paper.docx or paper.md" spellcheck="false" /><button type="button" id="nf-file">Choose…</button></span></label>
     <label>Folder <span class="row"><input name="folder" spellcheck="false" /><button type="button" id="nf-folder">Choose…</button></span></label>
     <p class="hint">The package is a folder of plain files (a Frictionless data package); the folder must be new or empty.</p>
+    <div class="nd-progress" hidden></div>
     <p class="nd-error warn-inline" hidden></p>
     <menu><button value="cancel" formnovalidate>Cancel</button><button value="create" class="primary" id="nf-create" disabled>Create</button></menu></form>`);
   const q = <T extends HTMLElement = HTMLInputElement>(s: string) => dlg.querySelector<T>(s)!;
@@ -527,10 +650,11 @@ function newFileDialog() {
     create.textContent = "Creating…";
     err("");
     try {
-      const r = await host.createPackageFromFile({ path: fileIn.value.trim(), folder: folderIn.value.trim() });
+      const r = await creating(dlg, () => host.createPackageFromFile({ path: fileIn.value.trim(), folder: folderIn.value.trim() }));
       dlg.close("create");
       openPackage(r.id);
     } catch (e2) {
+      if (e2 instanceof ApiError && e2.code === "cancelled") return dlg.close("cancel");
       create.disabled = false;
       create.textContent = "Create";
       err((e2 as Error).message);
