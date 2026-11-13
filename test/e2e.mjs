@@ -363,6 +363,24 @@ json.dump({"results": [{"id": "T001", "value": 2.3149}, {"id": "T002", "value": 
   await assert.rejects(call("depositPreview", { note: "" }), /local_paper_text/);
   await shot("09-local-file-not-deposited");
 
+  step("library: sort and filter");
+  await win.selectOption("[data-lib=sort]", "name-desc");
+  assert.equal(await win.locator("[data-lib=sort]").inputValue(), "name-desc", "the sort select shows the choice");
+  await win.click("[data-lib=query]");
+  await win.keyboard.type("zzz-no-such-package", { delay: 60 });
+  await win.waitForSelector("#lib-cards >> text=No reproductions match your filter.");
+  assert.equal(await win.evaluate(() => document.activeElement?.getAttribute("data-lib")), "query", "the filter box keeps focus while typing");
+  assert.equal(await win.locator("[data-lib=query]").inputValue(), "zzz-no-such-package");
+  await win.fill("[data-lib=query]", "");
+  await win.waitForSelector(".pkg-card .badge.st-published", { timeout: 5_000 }); // the deposit badge survives a redraw
+  await win.fill("[data-lib=query]", "hacking");
+  await win.waitForSelector(".pkg-card");
+  await Promise.all([win.waitForEvent("load"), win.evaluate(() => location.reload())]);
+  await win.waitForSelector(".pkg-card", { timeout: 20_000 });
+  assert.equal(await win.locator("[data-lib=query]").inputValue(), "hacking", "the filter text survives a reload in the same session");
+  assert.equal(await win.locator("[data-lib=sort]").inputValue(), "name-desc", "the sort survives a reload");
+  assert.equal(await win.evaluate(() => localStorage.getItem("reprocrowd.lib.prefs")?.includes("hacking")), false, "the filter text is not kept across launches");
+
   assert.deepEqual(errors, [], "no errors in the page");
   console.log("✓ end-to-end check passed");
 } catch (e) {
