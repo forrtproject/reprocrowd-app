@@ -27,8 +27,30 @@ again after `git pull` to update; `scripts/install.sh --uninstall` removes the
 app (your reproductions and settings stay). Windows: use WSL. macOS is untested.
 
 For the AI steps, install [Claude Code](https://claude.com/claude-code) and sign
-in once (`claude`), or configure another LLM command in Settings → Backend. To
-run reproductions you also need what the paper's analysis uses (R, Python, …).
+in once (`claude`), or configure another LLM command in Settings → Backend
+(profiles for [OpenCode](https://opencode.ai) are included). To run
+reproductions you also need what the paper's analysis uses (R, Python, …).
+
+### Linux notes
+
+The installer checks these and tells you what to do:
+
+- **System libraries.** The app needs GTK 3, NSS, libgbm and ALSA. Desktop
+  systems have them; on minimal systems install them with
+  `sudo apt install libgtk-3-0 libnss3 libgbm1 libasound2` (`libasound2t64` on
+  Ubuntu 24.04 and Debian 13).
+- **Ubuntu 23.10 and later** only allow the app's (Chromium's) sandbox with an
+  AppArmor profile. The installer adds `/etc/apparmor.d/reprocrowd` with sudo.
+  Without it the app stops at start with "The SUID sandbox helper binary was
+  found, but is not configured correctly".
+- **`reprocrowd: command not found`**: the command is in `~/.local/bin`; add
+  that folder to your `PATH`.
+
+**In a container** (Docker, Podman), the app needs a display and can't use its
+sandbox. Start an X server (e.g. Xvfb, with x11vnc/noVNC to see it) and run
+`reprocrowd --no-sandbox`. Give the container more shared memory
+(`--shm-size=1g`). Messages about D-Bus and dconf are harmless. Docker on
+Apple silicon Macs runs ARM64 Linux, which works like any other Linux.
 
 ## Using it
 
