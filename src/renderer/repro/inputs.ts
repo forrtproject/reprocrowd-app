@@ -35,7 +35,9 @@ const fileSize = (n: number) => (n ? sizeText(n) : "size unknown");
 
 /** Ask the user what to download: all files, only the checked ones, or nothing (null). Links that couldn't be
  *  read are listed with the reason; the download limit applies to each link, so a link whose chosen files add
- *  up to more than it is flagged (files beyond the limit would be skipped). */
+ *  up to more than it is flagged (files beyond the limit would be skipped). Files already in the package (fetched
+ *  before) are shown as such, can't be chosen, and don't count towards the sizes; when every file is already
+ *  there, the dialog says so and offers no download. */
 function fetchDialog(p: AcquirePreview): Promise<{ action: "all" } | { action: "selected"; keys: string[] } | null> {
   return new Promise((resolve) => {
     const linkKey = (x: { repo: string; id: string }) => `${x.repo}:${x.id}`;
@@ -44,30 +46,40 @@ function fetchDialog(p: AcquirePreview): Promise<{ action: "all" } | { action: "
       files: p.files.filter((f) => linkKey(f) === linkKey(link)),
       failure: p.failures.find((x) => linkKey(x) === linkKey(link)),
     }));
+    const fresh = p.files.filter((f) => !f.present);
+    const present = p.files.length - fresh.length;
     const html = groups.map(({ link, files, failure }, g) => {
-      const rows = files.map((f) =>
-        `<label class="rp-file"><input type="checkbox" data-group="${g}" data-key="${esc(f.key)}" data-size="${f.size}" checked /><code>${esc(f.path)}</code> <span class="muted">${fileSize(f.size)}</span></label>`).join("");
-      const note = failure ? `<p class="rp-fetch-warn">Could not be read: ${esc(failure.error)}</p>` : files.length ? "" : `<p class="muted">No files found.</p>`;
-      const all = files.length ? `<label class="rp-file"><input type="checkbox" data-all="${g}" checked /> all ${files.length} file(s)</label>` : "";
+      const mine = files.filter((f) => !f.present);
+      const rows = files.map((f) => f.present
+        ? `<label class="rp-file rp-present" title="Fetched before; fetching again skips it"><input type="checkbox" disabled /><code>${esc(f.path)}</code> <span class="muted">${fileSize(f.size)}</span> <span class="badge">already added</span></label>`
+        : `<label class="rp-file"><input type="checkbox" data-group="${g}" data-key="${esc(f.key)}" data-size="${f.size}" checked /><code>${esc(f.path)}</code> <span class="muted">${fileSize(f.size)}</span></label>`).join("");
+      const note = failure ? `<p class="rp-fetch-warn">Could not be read: ${esc(failure.error)}</p>`
+        : !files.length ? `<p class="muted">No files found.</p>`
+        : !mine.length ? `<p class="muted">All ${files.length} file(s) are already in the package.</p>` : "";
+      const all = mine.length ? `<label class="rp-file"><input type="checkbox" data-all="${g}" checked /> all ${mine.length}${mine.length < files.length ? " new" : ""} file(s)</label>` : "";
       return `<div class="rp-group"><h4><a href="${esc(link.url)}" target="_blank" rel="noopener">${esc(link.label)}</a> <span class="muted">(${esc(link.kind)})</span></h4>
         ${note}${all}<div class="rp-group-files">${rows}</div><p class="rp-fetch-warn" data-over="${g}" hidden></p></div>`;
     }).join("");
-    const unknown = p.files.filter((f) => !f.size).length;
+    const unknown = fresh.filter((f) => !f.size).length;
+    const found = `Found ${p.links.length} link(s) with ${p.files.length} file(s)`;
+    const summary = !p.files.length ? `${found}.`
+      : !fresh.length ? `${found}. All of them are already in the package, so there is nothing new to download.`
+      : `${found}${present ? `, ${present} of them already in the package. The ${fresh.length} new file(s) take` : ","} <b>${sizeText(p.total_bytes)}</b> in total${unknown ? ` (plus ${unknown} file(s) of unknown size)` : ""}.
+        Files beyond the ${sizeText(p.limit_bytes)} download limit per link are skipped. Choose what to download:`;
     const dlg = modal("dlg-fetch", `
       <h3>Fetch supplemental materials</h3>
-      <p>Found ${p.links.length} link(s) with ${p.files.length} file(s), <b>${sizeText(p.total_bytes)}</b> in total${unknown ? ` (plus ${unknown} file(s) of unknown size)` : ""}.
-        Files beyond the ${sizeText(p.limit_bytes)} download limit per link are skipped. Choose what to download:</p>
+      <p>${summary}</p>
       <div class="rp-fetch-list">${html}</div>
-      <p class="muted" id="rp-fetch-sum"></p>
+      <p class="muted" id="rp-fetch-sum" ${fresh.length ? "" : "hidden"}></p>
       <menu>
-        <button value="cancel">Cancel</button>
-        ${p.files.length ? `<button value="selected" class="primary">Download selected</button><button value="all" class="primary">Download all</button>` : ""}
+        <button value="cancel">${fresh.length ? "Cancel" : "Close"}</button>
+        ${fresh.length ? `<button value="selected" class="primary">Download selected</button><button value="all" class="primary">Download all${present ? " new" : ""}</button>` : ""}
       </menu>`);
     const boxes = (g?: number) => [...dlg.querySelectorAll<HTMLInputElement>(g === undefined ? "input[data-key]" : `input[data-group="${g}"]`)];
     const update = () => {
       const on = boxes().filter((c) => c.checked);
       const bytes = on.reduce((n, c) => n + Number(c.dataset.size), 0);
-      dlg.querySelector("#rp-fetch-sum")!.textContent = `Selected: ${on.length} of ${p.files.length} file(s), ${sizeText(bytes)}`;
+      dlg.querySelector("#rp-fetch-sum")!.textContent = `Selected: ${on.length} of ${fresh.length}${present ? " new" : ""} file(s), ${sizeText(bytes)}`;
       const sel = dlg.querySelector<HTMLButtonElement>('button[value="selected"]');
       if (sel) sel.disabled = !on.length;
       groups.forEach((_, g) => {
@@ -87,7 +99,8 @@ function fetchDialog(p: AcquirePreview): Promise<{ action: "all" } | { action: "
     let keys: string[] = [];
     dlg.querySelectorAll<HTMLButtonElement>("menu button").forEach((b) => {
       b.addEventListener("click", () => {
-        if (b.value === "selected") keys = boxes().filter((c) => c.checked).map((c) => c.dataset.key!);
+        // The files already in the package go along, so the fetch reports them as already present instead of not chosen.
+        if (b.value === "selected") keys = [...boxes().filter((c) => c.checked).map((c) => c.dataset.key!), ...p.files.filter((f) => f.present).map((f) => f.key)];
         dlg.close(b.value);
       });
     });

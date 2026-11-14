@@ -8835,6 +8835,12 @@
           "download_url": {
             "type": "string",
             "title": "Download Url"
+          },
+          "present": {
+            "type": "boolean",
+            "title": "Present",
+            "description": "already in the package: fetched before from the same repository record and download URL, so acquire skips it (it is listed in `existing`)",
+            "default": false
           }
         },
         "type": "object",
@@ -8867,12 +8873,18 @@
             },
             "type": "array",
             "title": "Files",
-            "description": "files that would be downloaded, with their sizes"
+            "description": "the links' files, with their sizes; those already in the package have `present` set"
           },
           "total_bytes": {
             "type": "integer",
             "title": "Total Bytes",
-            "description": "sum of the sizes of every file that would be downloaded (files of unknown size count as 0)"
+            "description": "sum of the sizes of every file that would be downloaded, i.e. not `present` (files of unknown size count as 0)"
+          },
+          "present_bytes": {
+            "type": "integer",
+            "title": "Present Bytes",
+            "description": "sum of the sizes of the files already in the package, which acquire skips",
+            "default": 0
           },
           "limit_bytes": {
             "type": "integer",

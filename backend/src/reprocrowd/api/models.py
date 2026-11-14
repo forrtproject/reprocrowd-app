@@ -208,14 +208,17 @@ class AcquireFile(BaseModel):
     size: int = Field(description="bytes, from the repository's metadata; 0 when the repository doesn't say")
     key: str = Field(description="stable selection key: repo:id:path")
     download_url: str
+    present: bool = Field(default=False, description="already in the package: fetched before from the same repository record and "
+                                                     "download URL, so acquire skips it (it is listed in `existing`)")
 
 
 class AcquirePreview(BaseModel):
     """What an acquire would download: the detected links, their files with sizes, and the total."""
 
     links: list[dict[str, Any]] = Field(description="detected repository links, with their repo, id, kind and label")
-    files: list[AcquireFile] = Field(description="files that would be downloaded, with their sizes")
-    total_bytes: int = Field(description="sum of the sizes of every file that would be downloaded (files of unknown size count as 0)")
+    files: list[AcquireFile] = Field(description="the links' files, with their sizes; those already in the package have `present` set")
+    total_bytes: int = Field(description="sum of the sizes of every file that would be downloaded, i.e. not `present` (files of unknown size count as 0)")
+    present_bytes: int = Field(default=0, description="sum of the sizes of the files already in the package, which acquire skips")
     limit_bytes: int = Field(description="the download limit, which applies to each link separately; files beyond it are skipped")
     failures: list[dict[str, Any]] = Field(default_factory=list, description="per-repository failures: repo, id, url, error")
 
