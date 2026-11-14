@@ -52,6 +52,7 @@ class File:
     name: str  # local file name (basename of path)
     size: int  # bytes, from the repository's metadata
     download_url: str
+    present: bool = False  # already in the package (fetched before), so acquire would skip it
 
     @property
     def key(self) -> str:
@@ -221,11 +222,26 @@ class _Job:
     def fail(self, filename: str, url: str, code: str, error: str) -> None:
         self.failures.append({"file": filename, "url": url, "code": code, "error": error})
 
+    def already_fetched(self, download_url: str) -> list[Resource]:
+        """The inputs already fetched from ``download_url`` for this link (several for an unpacked archive).
+
+        Acquiring the same manuscript link again must be idempotent. Match on provenance rather than filename:
+        a user may legitimately upload a same-named file, while repositories can contain equal filenames in
+        different records. Archive members share the archive's fetched origin, so returning every match also
+        gives the caller an accurate count of the resources that are already present.
+        """
+        return [r for r in self.known_inputs
+                if r.reprocrowd.origin.type == "fetched"
+                and r.reprocrowd.origin.repo == self.link.repo
+                and r.reprocrowd.origin.id == self.link.id
+                and r.reprocrowd.origin.url == download_url]
+
     def add(self, filename: str, download_url: str, size: int = 0, path: str | None = None) -> None:
         """Download one file and register it; on any failure record it in ``failures`` and return.
 
         ``path`` is the repository-relative path used to build the selection key (defaults to ``filename``).
-        In preview mode the file is only listed, never downloaded. ``selected`` restricts the download.
+        In preview mode the file is only listed (marked ``present`` if it was fetched before), never downloaded.
+        ``selected`` restricts the download; files that were fetched before are skipped and listed in ``existing``.
         """
         path = path or filename
         key = f"{self.link.repo}:{self.link.id}:{path}"
@@ -233,20 +249,10 @@ class _Job:
             return
         if self.preview:
             self.files.append(File(repo=self.link.repo, id=self.link.id, path=path, name=filename,
-                                   size=size, download_url=download_url))
+                                   size=size, download_url=download_url,
+                                   present=bool(self.already_fetched(download_url))))
             return
-        # Acquiring the same manuscript link again must be idempotent.  Match on
-        # provenance rather than filename: a user may legitimately upload a
-        # same-named file, while repositories can contain equal filenames in
-        # different records.  Archive members share the archive's fetched
-        # origin, so returning every match also gives the caller an accurate
-        # count of the resources that are already present.
-        matches = [r for r in self.known_inputs
-                   if r.reprocrowd.origin.type == "fetched"
-                   and r.reprocrowd.origin.repo == self.link.repo
-                   and r.reprocrowd.origin.id == self.link.id
-                   and r.reprocrowd.origin.url == download_url]
-        if matches:
+        if matches := self.already_fetched(download_url):
             known = {r.name for r in self.existing}
             self.existing += [r for r in matches if r.name not in known]
             return
@@ -545,7 +551,8 @@ def preview(pkg: Package, fulltext: str | None = None, repos: Iterable[str] | No
 
     Reads the repositories' metadata only (no files are fetched), so the user can be warned about the
     download size before ``acquire`` runs. ``limit_bytes`` is the download limit, which applies to each link
-    separately; a file of size 0 has an unknown size.
+    separately; a file of size 0 has an unknown size. Files fetched before are listed with ``present`` set; acquire
+    skips them, so they count towards ``present_bytes`` instead of ``total_bytes``.
     """
     text = manuscript_text(pkg, fulltext)
     links = detect(text, repos)
@@ -560,7 +567,8 @@ def preview(pkg: Package, fulltext: str | None = None, repos: Iterable[str] | No
     return {
         "links": [l.__dict__ for l in links],
         "files": [f.__dict__ | {"key": f.key} for f in files],
-        "total_bytes": sum(f.size for f in files),
+        "total_bytes": sum(f.size for f in files if not f.present),
+        "present_bytes": sum(f.size for f in files if f.present),
         "limit_bytes": settings().max_download_mb * 2**20,
         "failures": failures,
     }
