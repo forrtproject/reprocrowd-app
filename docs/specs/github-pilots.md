@@ -123,7 +123,7 @@ What CC BY 4.0 has going for it: one licence for everything we author, and the a
   - evidence disclosures (a file added after the run) in the comment and `pilot.json`;
   - the CLI path;
   - the token never written to disk.
-- `backend/tests/pilot_demo.py` is the opt-in live demo, using the synthetic scenario fixture only.
+- `backend/tests/pilot_demo.py` is the opt-in live demo, using the synthetic scenario fixture only. Its first live run showed that GitHub replaces a draft's tag with an `untagged-…` placeholder when the draft is edited without `tag_name`. Every release edit therefore sends `tag_name` and `target_commitish`, releases are also matched by a `reprocrowd-pilot-release` marker in their notes, and the fake GitHub reproduces the behaviour. On 15 November 2026 the demo ran against [forrtproject/reprocrowd-pilots#2](https://github.com/forrtproject/reprocrowd-pilots/issues/2): v1, a retry with no change, a refused stale report, v2 and a second retry left one issue, two comments and two immutable releases with 12 files, and every download matched its SHA-256.
 
 ## Deferred
 
