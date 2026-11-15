@@ -182,6 +182,40 @@ class ZenodoDeposit(Model):
     checked_at: datetime | None = None
 
 
+class PilotAsset(Model):
+    name: str
+    bytes: int
+    sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
+    url: str | None = Field(default=None, description="download URL once the release is published")
+
+
+class GithubPilot(Model):
+    """One run of this reproduction submitted as a GitHub pilot: a pre-release with the files, a comment on the
+    reproduction's issue. Keyed by run_key (archive hash + left-out groups); a retry resumes the same record."""
+
+    id: str = Field(pattern=r"^pil-[0-9a-f]+$")
+    repo: str = Field(description="owner/name")
+    reproduction_id: str
+    run_key: str = Field(pattern=r"^[0-9a-f]{12}$")
+    version: int | None = Field(default=None, ge=1, description="run number within the reproduction, assigned when the release is created")
+    status: Literal["partial", "published"] = Field(description="partial: a step failed; submitting again resumes")
+    tag: str
+    issue_number: int | None = None
+    issue_url: str | None = None
+    release_id: int | None = None
+    release_url: str | None = None
+    comment_url: str | None = None
+    archive_sha256: str = Field(description="hash of the package archive it was made from")
+    exclude: list[Literal["paper", "inputs"]] = Field(default_factory=list)
+    excluded: list[str] = Field(default_factory=list)
+    assets: list[PilotAsset] = Field(default_factory=list)
+    synthetic: bool = False
+    note: str = ""
+    error: str | None = Field(default=None, description="why the last attempt stopped")
+    created_at: datetime
+    published_at: datetime | None = None
+
+
 class PackageMeta(Model):
     track: Literal["recreation"] | None = Field(default=None, description="None: older package with unspecified workflow; recreation is not certified blinding")
     version: Literal["1.0"] = "1.0"
@@ -192,6 +226,9 @@ class PackageMeta(Model):
     archive: ArchiveInfo | None = None
     submissions: list[Submission] = Field(default_factory=list)
     deposits: list[ZenodoDeposit] = Field(default_factory=list, description="Zenodo deposits")
+    reproduction_id: str | None = Field(default=None, pattern=r"^repro-[0-9a-f]{10}$",
+                                        description="identity of this reproduction on pilot destinations (one GitHub issue); set on the first pilot submission")
+    pilots: list[GithubPilot] = Field(default_factory=list, description="GitHub pilot submissions, one per run key")
 
 
 class Manifest(Model):

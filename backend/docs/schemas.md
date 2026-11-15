@@ -121,6 +121,35 @@ The last ZIP of the package (PUT …/archive).
 | `origin` | [LocalOrigin](#localorigin) \| [UrlOrigin](#urlorigin) \| [ConvertedOrigin](#convertedorigin) \| [UploadOrigin](#uploadorigin) | yes |  |
 | `check` | [CheckResult](#checkresult) | yes |  |
 
+### GithubPilot
+
+One run of this reproduction submitted as a GitHub pilot: a pre-release with the files, a comment on the
+reproduction's issue. Keyed by run_key (archive hash + left-out groups); a retry resumes the same record.
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `id` | string | yes | pattern `^pil-[0-9a-f]+$` |
+| `repo` | string | yes | owner/name |
+| `reproduction_id` | string | yes |  |
+| `run_key` | string | yes | pattern `^[0-9a-f]{12}$` |
+| `version` | integer \| null |  | run number within the reproduction, assigned when the release is created |
+| `status` | `"partial"` \| `"published"` | yes | partial: a step failed; submitting again resumes |
+| `tag` | string | yes |  |
+| `issue_number` | integer \| null |  |  |
+| `issue_url` | string \| null |  |  |
+| `release_id` | integer \| null |  |  |
+| `release_url` | string \| null |  |  |
+| `comment_url` | string \| null |  |  |
+| `archive_sha256` | string | yes | hash of the package archive it was made from |
+| `exclude` | list of `"paper"` \| `"inputs"` |  |  |
+| `excluded` | list of string |  |  |
+| `assets` | list of [PilotAsset](#pilotasset) |  |  |
+| `synthetic` | boolean |  | default `False` |
+| `note` | string |  | default `` |
+| `error` | string \| null |  | why the last attempt stopped |
+| `created_at` | string (date-time) | yes |  |
+| `published_at` | string (date-time) \| null |  |  |
+
 ### Identifier
 
 A work identifier that OpenAlex can resolve.
@@ -176,6 +205,17 @@ report: report.html and comparison.json · figure: originals of figure targets (
 | `archive` | [ArchiveInfo](#archiveinfo) \| null |  |  |
 | `submissions` | list of [Submission](#submission) |  |  |
 | `deposits` | list of [ZenodoDeposit](#zenododeposit) |  | Zenodo deposits |
+| `reproduction_id` | string \| null |  | identity of this reproduction on pilot destinations (one GitHub issue); set on the first pilot submission |
+| `pilots` | list of [GithubPilot](#githubpilot) |  | GitHub pilot submissions, one per run key |
+
+### PilotAsset
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `name` | string | yes |  |
+| `bytes` | integer | yes |  |
+| `sha256` | string | yes | pattern `^[0-9a-f]{64}$` |
+| `url` | string \| null |  | download URL once the release is published |
 
 ### Resource
 
@@ -668,6 +708,34 @@ inputs.json: the input files (also in datapackage.json), in the package database
 | `note` | string |  | default `` |
 | `used` | boolean |  | default `True` |
 | `archive` | string \| null |  | path of the zip archive it was unpacked from |
+
+## `licenses`: licenses.json (written with the archive)
+
+File: `schemas/licenses.schema.json`
+
+### Root
+
+licenses.json (written with the archive): which licence applies to which file. Our licence covers only our own
+contribution; third-party articles, data and code keep their original terms.
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `policy` | `"reprocrowd-licensing/1"` |  | default `reprocrowd-licensing/1` |
+| `rules` | map of string | yes | the policy in words, by category |
+| `paper_license` | string \| null |  | the article's licence as reported by OpenAlex; null = unknown |
+| `files` | list of [LicenseEntry](#licenseentry) | yes |  |
+
+### LicenseEntry
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `path` | string | yes | archive-relative path |
+| `kind` | string | yes | resource kind (fulltext, input, script, output, report, …) |
+| `rights` | `"ours"` \| `"third-party"` | yes | ours: authored for this reproduction; third-party: the article's or the source's |
+| `license` | string \| null |  | SPDX id of the licence we grant; null for third-party material (see source_license) |
+| `source_license` | string \| null |  | third-party: the licence reported by the source (e.g. OpenAlex for the article); null = unknown |
+| `source` | string \| null |  | third-party: where it came from (DOI, URL or repository id) |
+| `note` | string |  | default `` |
 
 ## `results-output`: outputs/results.json
 

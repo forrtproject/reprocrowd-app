@@ -458,6 +458,59 @@ class DepositPreview(BaseModel):
     exclude: list[str]
 
 
+# ---------- GitHub pilots ----------
+
+
+class GithubAuth(Req):
+    github_token: SecretStr | None = Field(default=None, description="the user's GitHub token (classic: public_repo; fine-grained: Contents "
+                                                                     "write, Issues write on the repository); passed on, never stored. Default: [github] token")
+    repo: str | None = Field(default=None, pattern=r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$", description="owner/name; default: [github] pilots_repo")
+
+
+class PilotOptions(Req):
+    repo: str | None = Field(default=None, pattern=r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$", description="owner/name; default: [github] pilots_repo")
+    note: str = Field(default="", max_length=2000, description="shown in the run's comment")
+    exclude: list[Literal["paper", "inputs"]] | None = Field(default=None, description="groups of files to leave out of the ZIP, as for Zenodo. "
+                                                                                       "Default: paper, unless OpenAlex reports an open license for it")
+    synthetic: bool = Field(default=False, description="label the issue and files as a synthetic test fixture")
+
+
+class PilotCreate(PilotOptions):
+    github_token: SecretStr | None = Field(default=None, description="the user's GitHub token; passed on, never stored. Default: [github] token")
+
+
+class GithubPilotStatus(BaseModel):
+    repo: str
+    api_url: str
+    token_configured: bool = Field(description="the service has a fallback token ([github] token)")
+    licenses: dict[str, str]
+
+
+class GithubCheck(BaseModel):
+    repo: str
+    url: str | None
+    private: bool | None
+    can_submit: bool = Field(description="the token's account has write access (needed for issues with labels and releases)")
+    default_branch: str | None
+    immutable_releases: bool | None = Field(description="published releases can't be changed (null: couldn't be read)")
+
+
+class PilotPreview(BaseModel):
+    repo: str
+    reproduction_id: str
+    run_key: str
+    tag: str
+    issue_title: str
+    labels: list[str]
+    summary: str
+    assets: list[dict[str, Any]]
+    exclude: list[str]
+    excluded: list[str]
+    contents: dict[str, Any]
+    licenses: dict[str, str]
+    existing: dict[str, Any] | None = Field(description="the local record if this run key was submitted before")
+
+
 # ---------- figure crops ----------
 
 

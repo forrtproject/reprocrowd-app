@@ -12,7 +12,7 @@ from typing import Any
 
 from jinja2 import Environment, PackageLoader, StrictUndefined
 
-from . import jobs, evidence
+from . import jobs, evidence, licensing
 from .errors import conflict
 from .figures import listing as figure_listing
 from .package import MANIFEST, Package, atomic_write, sha256_file, slug
@@ -107,6 +107,11 @@ def write_archive(pkg: Package) -> ArchiveInfo:
                               archive=m.get(r.reprocrowd.archive).path if r.reprocrowd.archive and m.get(r.reprocrowd.archive) else None)
                    for r in m.by_kind("input")]
         pkg.write_json(m, "inputs-list", "inputs.json", InputsList(inputs=entries), schema="inputs", meta=OtherMeta(kind="export", added_at=now()))
+    with pkg.edit() as m:
+        pkg.ensure_schema(m, "licenses")
+    licenses = licensing.license_map(pkg)  # which licence applies to which file, including the schema copy just added
+    with pkg.edit() as m:
+        pkg.write_json(m, "licenses", licensing.FILE, licenses.model_dump(mode="json"), schema="licenses", meta=OtherMeta(kind="export", added_at=now()))
     stem = slug(m.reprocrowd.identifiers.get("doi") or m.name).replace(".", "-")
     rel = f"{ARCHIVE_DIR}/{stem}-reproduction.zip"
     out = pkg.path(rel)

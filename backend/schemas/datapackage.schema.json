@@ -262,6 +262,201 @@
       "title": "FulltextMeta",
       "type": "object"
     },
+    "GithubPilot": {
+      "additionalProperties": false,
+      "description": "One run of this reproduction submitted as a GitHub pilot: a pre-release with the files, a comment on the\nreproduction's issue. Keyed by run_key (archive hash + left-out groups); a retry resumes the same record.",
+      "properties": {
+        "id": {
+          "pattern": "^pil-[0-9a-f]+$",
+          "title": "Id",
+          "type": "string"
+        },
+        "repo": {
+          "description": "owner/name",
+          "title": "Repo",
+          "type": "string"
+        },
+        "reproduction_id": {
+          "title": "Reproduction Id",
+          "type": "string"
+        },
+        "run_key": {
+          "pattern": "^[0-9a-f]{12}$",
+          "title": "Run Key",
+          "type": "string"
+        },
+        "version": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "run number within the reproduction, assigned when the release is created",
+          "title": "Version"
+        },
+        "status": {
+          "description": "partial: a step failed; submitting again resumes",
+          "enum": [
+            "partial",
+            "published"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "tag": {
+          "title": "Tag",
+          "type": "string"
+        },
+        "issue_number": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Issue Number"
+        },
+        "issue_url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Issue Url"
+        },
+        "release_id": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Release Id"
+        },
+        "release_url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Release Url"
+        },
+        "comment_url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Comment Url"
+        },
+        "archive_sha256": {
+          "description": "hash of the package archive it was made from",
+          "title": "Archive Sha256",
+          "type": "string"
+        },
+        "exclude": {
+          "items": {
+            "enum": [
+              "paper",
+              "inputs"
+            ],
+            "type": "string"
+          },
+          "title": "Exclude",
+          "type": "array"
+        },
+        "excluded": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Excluded",
+          "type": "array"
+        },
+        "assets": {
+          "items": {
+            "$ref": "#/$defs/PilotAsset"
+          },
+          "title": "Assets",
+          "type": "array"
+        },
+        "synthetic": {
+          "default": false,
+          "title": "Synthetic",
+          "type": "boolean"
+        },
+        "note": {
+          "default": "",
+          "title": "Note",
+          "type": "string"
+        },
+        "error": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "why the last attempt stopped",
+          "title": "Error"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "published_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Published At"
+        }
+      },
+      "required": [
+        "id",
+        "repo",
+        "reproduction_id",
+        "run_key",
+        "status",
+        "tag",
+        "archive_sha256",
+        "created_at"
+      ],
+      "title": "GithubPilot",
+      "type": "object"
+    },
     "Identifier": {
       "additionalProperties": false,
       "description": "A work identifier that OpenAlex can resolve.",
@@ -551,12 +746,72 @@
           },
           "title": "Deposits",
           "type": "array"
+        },
+        "reproduction_id": {
+          "anyOf": [
+            {
+              "pattern": "^repro-[0-9a-f]{10}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "identity of this reproduction on pilot destinations (one GitHub issue); set on the first pilot submission",
+          "title": "Reproduction Id"
+        },
+        "pilots": {
+          "description": "GitHub pilot submissions, one per run key",
+          "items": {
+            "$ref": "#/$defs/GithubPilot"
+          },
+          "title": "Pilots",
+          "type": "array"
         }
       },
       "required": [
         "created_at"
       ],
       "title": "PackageMeta",
+      "type": "object"
+    },
+    "PilotAsset": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "bytes": {
+          "title": "Bytes",
+          "type": "integer"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "download URL once the release is published",
+          "title": "Url"
+        }
+      },
+      "required": [
+        "name",
+        "bytes",
+        "sha256"
+      ],
+      "title": "PilotAsset",
       "type": "object"
     },
     "Resource": {

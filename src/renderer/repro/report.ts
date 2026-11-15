@@ -1,9 +1,10 @@
 // Step 8: the report, the package archive, and the deposit on Zenodo. A deposit is uploaded as a draft (with a
 // reserved DOI) that you can look at on Zenodo; publishing registers the DOI for good and is a separate step here or
 // on Zenodo. What goes into the upload can be chosen: the paper's own material only when its license allows.
-import { ApiError, DepositPreview, host, pkg, ZenodoAccount, ZenodoRecord } from "../api";
+// A GitHub pilot is the lighter, unreviewed alternative: an issue per reproduction, the files of each run in a release.
+import { ApiError, DepositPreview, host, PilotAccount, PilotPreview, pkg, ZenodoAccount, ZenodoRecord } from "../api";
 import { settingsDialog } from "../settings";
-import type { ArchiveInfo, Job, PackageSummary, ReportResult, ValidationReport, ZenodoDeposit } from "../types";
+import type { ArchiveInfo, GithubPilot, Job, PackageSummary, ReportResult, ValidationReport, ZenodoDeposit } from "../types";
 import { confirmDialog, dataUrl, esc, modal, showError, sizeText, when } from "../util";
 import { STATUS_LABEL } from "./run";
 import type { Step, Wizard } from "./wizard";
@@ -55,6 +56,9 @@ export class ReportStep implements Step {
   private account?: ZenodoAccount;
   private preview?: DepositPreview | Error;
   private records?: ZenodoRecord[] | Error;
+  private pilots: GithubPilot[] = [];
+  private pilotAccount?: PilotAccount;
+  private pilotPreview?: PilotPreview | Error;
   /** Groups left out, as chosen here (undefined: the default from the preview). */
   private exclude?: Set<string>;
   private note = "";
@@ -62,24 +66,28 @@ export class ReportStep implements Step {
   constructor(private w: Wizard) {}
 
   async load() {
-    const [manifest, deposits, jobs, validation, report] = await Promise.all([
+    const [manifest, deposits, pilots, jobs, validation, report] = await Promise.all([
       pkg.get<any>("/manifest"),
       pkg.get<ZenodoDeposit[]>("/deposits"),
+      pkg.get<GithubPilot[]>("/pilots").catch(() => []),
       pkg.get<Job[]>("/jobs"),
       pkg.get<ValidationReport>("/validation").catch(() => undefined),
       pkg.text("/report").catch(() => undefined),
     ]);
     this.manifest = manifest;
     this.deposits = deposits;
+    this.pilots = pilots;
     this.lastRun = jobs.filter((j) => j.type === "run").pop();
     this.validation = validation;
     this.report = report && (await inlineImages(report));
     const doi = this.doi();
     // Account, preview and existing records are shown, but never block the step.
-    [this.account, this.preview, this.records] = await Promise.all([
+    [this.account, this.preview, this.records, this.pilotAccount, this.pilotPreview] = await Promise.all([
       host.zenodoAccount().catch(() => undefined),
       this.manifest?.reprocrowd.archive ? host.depositPreview({ note: "" }).catch((e) => e as Error) : Promise.resolve(undefined),
       doi ? host.zenodoRecords(doi).catch((e) => e as Error) : Promise.resolve([]),
+      host.pilotAccount().catch(() => undefined),
+      this.manifest?.reprocrowd.archive ? host.pilotPreview({ note: "" }).catch((e) => e as Error) : Promise.resolve(undefined),
     ]);
     if (!this.exclude && this.preview && !(this.preview instanceof Error)) this.exclude = new Set(this.preview.exclude);
   }
@@ -149,6 +157,7 @@ export class ReportStep implements Step {
           ${this.deposits.length ? `<h4>Deposits of this package</h4><ul class="deposits">${this.deposits.map((d) => this.depositRow(d)).join("")}</ul>` : ""}
           ${others.length ? `<h4>Other ReproCrowd records for this paper</h4><ul class="small">${others.map((r) => `<li><a href="#" data-open="${esc(r.url)}">${esc(r.creators.join("; ") || "unknown")}, ${esc(r.published ?? "")}</a>${r.doi ? ` · <code>${esc(r.doi)}</code>` : ""}</li>`).join("")}</ul>` : this.records instanceof Error ? `<p class="warn-soft small">Couldn't search ${server} for other records of this paper.</p>` : ""}
         </section>
+        ${this.pilotCard(checks.slice(0, 4), exNow)}
       </div>
       <iframe id="rp-preview" class="preview" sandbox="" title="Report preview"></iframe>
     </div>`;
@@ -177,9 +186,10 @@ export class ReportStep implements Step {
     body.querySelectorAll<HTMLElement>("[data-settings]").forEach((el) =>
       el.addEventListener("click", (e) => {
         e.preventDefault();
-        settingsDialog(() => this.w.render(), "zenodo");
+        settingsDialog(() => this.w.render(), el.dataset.settings === "github" ? "github" : "zenodo");
       }),
     );
+    body.querySelector("#rp-pilot")?.addEventListener("click", () => this.submitPilot());
     body.querySelectorAll<HTMLElement>("[data-open]").forEach((el) =>
       el.addEventListener("click", (e) => {
         e.preventDefault();
@@ -187,6 +197,58 @@ export class ReportStep implements Step {
       }),
     );
     body.querySelectorAll<HTMLButtonElement>("[data-dep]").forEach((b) => b.addEventListener("click", () => this.action(b.dataset.dep!, b.dataset.action as "refresh" | "publish" | "discard")));
+  }
+
+  /** GitHub pilot: the same preconditions as a deposit (minus the Zenodo account), the same choice of files. */
+  private pilotCard(base: [boolean, string, string?][], exNow: string) {
+    const acct = this.pilotAccount;
+    const archive = this.manifest?.reprocrowd.archive;
+    const pv = this.pilotPreview instanceof Error ? undefined : this.pilotPreview;
+    const checks: [boolean, string, string?][] = [...base, [!!acct?.hasToken, acct?.hasToken ? `GitHub token for ${acct.repo}` : "A GitHub token with write access (Settings)", "github"]];
+    const same = archive && this.pilots.find((p) => p.archive_sha256 === archive.sha256 && [...p.exclude].sort().join() === exNow);
+    const busy = this.w.running.has("pilot");
+    const ready = checks.every(([ok]) => ok) && !!pv && same?.status !== "published" && !busy;
+    const label = busy ? "Submitting…" : same?.status === "partial" ? "Resume the submission" : "Submit this run as a GitHub pilot";
+    return `<section class="card submit-card">
+      <h3>Pilot on GitHub <span class="badge sandbox" title="public, unreviewed; not a certificate">Unreviewed</span></h3>
+      <p class="hint">A public record to discuss before anything goes to Zenodo: one issue per reproduction in <code>${esc(acct?.repo ?? "")}</code>, and for each run a release with the ZIP, report, comparison, evidence, licences and their SHA-256 hashes. A numeric match is not a scientific certificate. The files left out above are left out here too.</p>
+      <ul class="checklist">${checks.map(([ok, l, fix]) => `<li class="${ok ? "ok" : "no"}">${ok ? "✓" : "✗"} ${esc(l)}${!ok && fix ? ` <a href="#" data-settings="${fix}">Settings…</a>` : ""}</li>`).join("")}</ul>
+      ${pv ? `<p class="small">${esc(pv.summary)}. Licences: metadata ${esc(pv.licenses.metadata)}, report and outputs ${esc(pv.licenses.outputs)}, new code ${esc(pv.licenses.code)}; third-party material keeps its own (<code>licenses.json</code>).</p>` : this.pilotPreview instanceof Error ? `<p class="hint">${esc(this.pilotPreview.message)}</p>` : ""}
+      <div class="actions"><button id="rp-pilot" class="primary" ${ready ? "" : "disabled"}>${label}</button></div>
+      ${same?.status === "published" ? `<p class="hint">This ZIP is pilot run v${same.version}. A new run (then report and ZIP) becomes the next version on the same issue.</p>` : ""}
+      ${same?.status === "partial" && same.error ? `<p class="warn-inline small">The last attempt stopped: ${esc(same.error)}. Submitting again resumes it without duplicates.</p>` : ""}
+      ${this.pilots.length ? `<h4>Pilot runs of this package</h4><ul class="deposits">${[...this.pilots].reverse().map((p) => `<li class="deposit ${p.status}">
+        <div><span class="badge st-${p.status === "published" ? "published" : "draft"}">${p.status === "published" ? `v${p.version}` : "Incomplete"}</span> ${esc(when(p.published_at ?? p.created_at))} · <code>${esc(p.run_key)}</code>${p.synthetic ? ` <span class="badge sandbox">Synthetic</span>` : ""}</div>
+        <div class="actions">${p.issue_url ? `<a href="#" data-open="${esc(p.issue_url)}">Issue</a>` : ""}${p.release_url ? ` · <a href="#" data-open="${esc(p.release_url)}">Files</a>` : ""}${p.comment_url ? ` · <a href="#" data-open="${esc(p.comment_url)}">Run comment</a>` : ""}</div></li>`).join("")}</ul>` : ""}
+    </section>`;
+  }
+
+  private async submitPilot() {
+    const acct = this.pilotAccount!;
+    const ok = await confirmDialog(
+      "Submit a GitHub pilot",
+      `<p>The issue for this reproduction in <b>${esc(acct.repo)}</b> is created or updated, and this run's files are published there as a release. <b>Both are public.</b></p>
+       <p class="hint">Published releases are kept unchanged; later runs are added as new versions. The record says “pilot, unreviewed”.</p>`,
+      "Submit",
+    );
+    if (!ok) return;
+    this.w.running.add("pilot");
+    this.w.setStatus("⏳ Submitting to GitHub…");
+    this.w.draw();
+    try {
+      const p = await host.pilotSubmit({ note: this.note.trim(), exclude: this.excludeList() });
+      this.w.setStatus(`Pilot run v${p.version} on GitHub`);
+      modal("dlg-confirm", `<form method="dialog"><h3>Pilot run v${p.version}</h3><p>The files are published and the issue is updated.</p>
+        <menu><button value="close">Close</button><button value="view" class="primary">Open the issue</button></menu></form>`).addEventListener("close", function (this: HTMLDialogElement) {
+        if (this.returnValue === "view" && p.issue_url) host.openUrl(p.issue_url);
+      });
+    } catch (e) {
+      this.w.setStatus("Not submitted", "error");
+      showError("Submitting to GitHub", e);
+    } finally {
+      this.w.running.delete("pilot");
+      await this.w.render();
+    }
   }
 
   private depositRow(d: ZenodoDeposit) {

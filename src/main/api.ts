@@ -11,7 +11,7 @@ import * as backend from "./backend";
 import { detectLlmModels, LlmModel } from "./models";
 import { openInTerminal, spawnDetached, splitCommand, which } from "./processes";
 import { get, post, request, ResponseType, ServiceError } from "./service";
-import { loadSettings, saveSettings, secretStorageKind, serverOf, setSecret, getSecret, userData, zenodoKey, ZenodoServer } from "./settings";
+import { githubKey, loadSettings, saveSettings, secretStorageKind, serverOf, setSecret, getSecret, userData, zenodoKey, ZenodoServer } from "./settings";
 import * as updater from "./updater";
 
 /** Read-only backend endpoints any window may call. */
@@ -373,7 +373,7 @@ export function makeApi(wc: WebContents) {
       const s = loadSettings();
       return {
         ...s,
-        tokens: { zenodo: !!(await getSecret(zenodoKey("zenodo"))), sandbox: !!(await getSecret(zenodoKey("sandbox"))) },
+        tokens: { zenodo: !!(await getSecret(zenodoKey("zenodo"))), sandbox: !!(await getSecret(zenodoKey("sandbox"))), github: !!(await getSecret(githubKey)) },
         secretStorage: await secretStorageKind(),
         backend: backend.status(),
         backendConfig: backend.readUserConfig(),
@@ -405,6 +405,12 @@ export function makeApi(wc: WebContents) {
       const t = token?.trim() || (await zenodoToken(sandbox));
       if (!t) throw new ServiceError("No token stored for this server.", { status: 400, code: "zenodo_token_missing" });
       return post("/v1/zenodo:verify-token", { zenodo_token: t, sandbox }, 20_000);
+    },
+    setGithubToken: async (token: string | null) => setSecret(githubKey, token?.trim() || null),
+    checkGithubToken: async (repo?: string, token?: string) => {
+      const t = token?.trim() || (await getSecret(githubKey));
+      if (!t) throw new ServiceError("No GitHub token stored.", { status: 400, code: "github_token_missing" });
+      return post("/v1/github-pilots:check", { github_token: t, repo: repo?.trim() || loadSettings().github.repo }, 20_000);
     },
     saveBackendConfig: async (text: string) => {
       backend.writeUserConfig(text);
@@ -525,6 +531,17 @@ export function makeApi(wc: WebContents) {
       const token = await zenodoToken(d.sandbox);
       if (!token) throw new ServiceError(`No Zenodo token for ${d.sandbox ? "the sandbox" : "zenodo.org"}; add one in Settings.`, { status: 400, code: "zenodo_token_missing" });
       return post(`${base()}/deposits/${dep}:${action}`, { zenodo_token: token }, 600_000);
+    },
+
+    // ---------- GitHub pilots, for the window's package (the token is added here) ----------
+    pilotAccount: async () => ({ repo: loadSettings().github.repo, hasToken: !!(await getSecret(githubKey)) }),
+    pilotPreview: async (opts: { note: string; exclude?: string[] }) =>
+      post("/v1/packages/" + enc(pkgId(wc)) + "/pilots:preview", { note: opts.note, exclude: opts.exclude, repo: loadSettings().github.repo }, 60_000),
+    pilotSubmit: async (opts: { note: string; exclude?: string[] }) => {
+      const token = await getSecret(githubKey);
+      if (!token) throw new ServiceError("No GitHub token; add one in Settings.", { status: 400, code: "github_token_missing" });
+      const r = await request("POST", `${base()}/pilots`, { json: { github_token: token, repo: loadSettings().github.repo, note: opts.note, exclude: opts.exclude }, timeout: LONG });
+      return r.data;
     },
   };
 }

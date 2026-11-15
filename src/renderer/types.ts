@@ -203,3 +203,27 @@ export interface ZenodoDeposit {
   published_at: string | null;
   checked_at: string | null;
 }
+
+export interface GithubPilot {
+  id: string;
+  repo: string;
+  reproduction_id: string;
+  run_key: string;
+  version: number | null;
+  status: "partial" | "published";
+  tag: string;
+  issue_number: number | null;
+  issue_url: string | null;
+  release_id: number | null;
+  release_url: string | null;
+  comment_url: string | null;
+  archive_sha256: string;
+  exclude: ("paper" | "inputs")[];
+  excluded: string[];
+  assets: { name: string; bytes: number; sha256: string; url: string | null }[];
+  synthetic: boolean;
+  note: string;
+  error: string | null;
+  created_at: string;
+  published_at: string | null;
+}

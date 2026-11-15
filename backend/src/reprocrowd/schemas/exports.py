@@ -70,3 +70,23 @@ class InputsList(Model):
     """inputs.json: the input files (also in datapackage.json), in the package database's format."""
 
     inputs: list[InputEntry]
+
+
+class LicenseEntry(Model):
+    path: str = Field(description="archive-relative path")
+    kind: str = Field(description="resource kind (fulltext, input, script, output, report, …)")
+    rights: Literal["ours", "third-party"] = Field(description="ours: authored for this reproduction; third-party: the article's or the source's")
+    license: str | None = Field(default=None, description="SPDX id of the licence we grant; null for third-party material (see source_license)")
+    source_license: str | None = Field(default=None, description="third-party: the licence reported by the source (e.g. OpenAlex for the article); null = unknown")
+    source: str | None = Field(default=None, description="third-party: where it came from (DOI, URL or repository id)")
+    note: str = ""
+
+
+class LicenseMap(Model):
+    """licenses.json (written with the archive): which licence applies to which file. Our licence covers only our own
+    contribution; third-party articles, data and code keep their original terms."""
+
+    policy: Literal["reprocrowd-licensing/1"] = "reprocrowd-licensing/1"
+    rules: dict[str, str] = Field(description="the policy in words, by category")
+    paper_license: str | None = Field(default=None, description="the article's licence as reported by OpenAlex; null = unknown")
+    files: list[LicenseEntry]

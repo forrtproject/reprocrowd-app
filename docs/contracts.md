@@ -38,6 +38,10 @@ An output's `step` is a declaration. A matching plan link is labelled `declared_
 
 Report generation registers `evidence/execution.json` and `evidence/run.log` so both are included in the ZIP. Logs over 5 MiB retain their tail and record truncation; the recorded SHA-256 is for the full log. Source passage permalinks in `report.html` and machine-readable target `refs` resolve to extraction/item IDs. The report and evidence name the same latest run.
 
+## GitHub pilots and output licences
+
+A package with a current report and ZIP can be submitted as a **GitHub pilot**: a public, unreviewed record in `[github] pilots_repo` (default [forrtproject/reprocrowd-pilots](https://github.com/forrtproject/reprocrowd-pilots)). Each reproduction (`reproduction_id`, not the DOI) gets one issue, and each run gets one pre-release and one comment. The run key is derived from the archive hash and the left-out groups, so a retry creates nothing twice. Pilots consume the recorded comparison and refuse `report_stale` exactly as Zenodo does. `PUT …/archive` now also writes `licenses.json` (policy `reprocrowd-licensing/1`): CC0 metadata, CC BY 4.0 outputs, `[licensing] code` for new code, and third-party material not relicensed. Archives therefore gain one file and its schema copy. See [the pilot spec](specs/github-pilots.md).
+
 ## Repeatable checks from the project root
 
 Install checkout dependencies once with `npm ci` and `uv sync --project backend --locked`. These checks use a fake extraction command, a fake coding agent and mocked scholarly services, with no model costs or external publication:

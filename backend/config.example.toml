@@ -39,6 +39,17 @@ community = ""             # e.g. "reprocrowd": deposits are submitted to this c
 license = "cc-by-4.0"
 creators = []              # used when a request names none, e.g. [{name = "Doe, Jane", orcid = "0000-0002-1825-0097"}]
 
+# Licence of newly authored analysis code in archives (licenses.json). Metadata is always CC0-1.0; reports,
+# figures and outputs CC-BY-4.0; third-party articles, data and code keep their own licences.
+[licensing]
+code = "CC-BY-4.0"         # or "MIT"
+
+# GitHub pilot submissions (an issue per reproduction, a pre-release with the files per run). Needs write access.
+[github]
+api_url = "https://api.github.com"
+pilots_repo = "forrtproject/reprocrowd-pilots"
+token = ""                 # fallback for local CLI use; rc reads $REPROCROWD_GITHUB_TOKEN or `gh auth token` first
+
 # Runs of the master script (the template's command, in the user's environment).
 [run]
 timeout_s = 7200

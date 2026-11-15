@@ -83,6 +83,14 @@ Apple silicon Macs runs ARM64 Linux, which works like any other Linux.
   extractions, original figures) is included by default only when OpenAlex
   reports an open (CC/public-domain) license; the input files are included by
   default. Left-out files are listed with their hashes in the ZIP.
+- **Pilot on GitHub** (same step): a lighter, public, **unreviewed** record before
+  Zenodo, in [forrtproject/reprocrowd-pilots](https://github.com/forrtproject/reprocrowd-pilots)
+  by default. Each reproduction gets one issue. Each run gets a pre-release with the ZIP, report,
+  comparison, evidence, `licenses.json` and `pilot.json`, verified by SHA-256, plus a comment on
+  the issue. Submitting the same ZIP again creates nothing new, and an interrupted
+  submission resumes. A new run becomes v2 on the same issue. It needs write access
+  to the repository and a GitHub token (Settings → GitHub pilots). A numeric match is
+  not a scientific certificate. See [the pilot spec](docs/specs/github-pilots.md).
 - **⚙ Settings**: your name / ORCID / affiliation for records; Zenodo server
   (**sandbox by default**, for testing) and a personal access token for each
   server (scopes `deposit:write`, `deposit:actions`; kept encrypted with the
@@ -163,4 +171,7 @@ git subtree push --prefix=backend ../reprocrowd-cli app-sync # offer this repo's
 
 ## License
 
-MIT, see [LICENSE](LICENSE).
+The app's source code is MIT, see [LICENSE](LICENSE). What a reproduction produces is licensed separately and
+recorded per file in its archive's `licenses.json`. Metadata is CC0-1.0. Reports, figures and outputs are CC-BY-4.0.
+New analysis code follows `[licensing] code`. Third-party articles, data and code keep their own licences.
+See [the pilot spec](docs/specs/github-pilots.md#licences).
