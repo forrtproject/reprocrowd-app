@@ -167,7 +167,9 @@ argv = ["{exe}", "{path(HERE / 'fake_agent.py')}", "python-ok", "--tools", "{{to
                         raise RuntimeError(f"profile {agent!r} cannot run editing-only; pass --allow-exec to let the agent run code")
                     codegen["allow_exec"] = True
                 else:
-                    assert not any("Bash" in a for a in no_exec.json()["argv"]), "no-analysis argv still allows Bash"
+                    argv = no_exec.json()["argv"]  # Bash may appear only as denied (--disallowedTools Bash), never as allowed
+                    allowed = argv[argv.index("--allowedTools") + 1] if "--allowedTools" in argv else ""
+                    assert "Bash" not in allowed, "no-analysis argv still allows Bash"
             agent_preview = request("agent-preview", "POST", p + "/jobs:preview", codegen)
             def job(stage, body, deadline_s=30):
                 start = time.monotonic()
