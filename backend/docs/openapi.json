@@ -13549,11 +13549,10 @@
             "title": "Contents"
           },
           "licenses": {
-            "additionalProperties": {
-              "type": "string"
-            },
+            "additionalProperties": true,
             "type": "object",
-            "title": "Licenses"
+            "title": "Licenses",
+            "description": "as recorded in the archive's licenses.json"
           },
           "existing": {
             "anyOf": [

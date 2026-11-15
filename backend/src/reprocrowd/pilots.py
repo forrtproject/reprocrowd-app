@@ -171,6 +171,7 @@ class Plan:
     note: str
     files: list[Asset] = field(default_factory=list)
     excluded: list[str] = field(default_factory=list)
+    licences: dict[str, Any] = field(default_factory=dict)  # from the archived licenses.json, not the current setting
 
     @property
     def tag(self) -> str:
@@ -208,6 +209,7 @@ def _build_files(plan: Plan, tmp: Path, keep: bool = True) -> None:
                 out.write_bytes(z.read(inner))
                 files.append(out)
     plan.files = [Asset(f.name, f, sha256_file(f), f.stat().st_size) for f in files]
+    plan.licences = _archived_licences(next((f for f in files if f.name == licensing.FILE), None))
     big = [a.name for a in plan.files if a.bytes > MAX_ASSET]
     if big:
         raise invalid("pilot_asset_too_large", f"GitHub release assets must be under 2 GiB; too large: {', '.join(big)}. "
@@ -236,6 +238,18 @@ def _evidence_line(plan: Plan) -> str:
     if ev["results_match_run"] is False:
         notes.append("the results file differs from the one the run wrote")
     return f"> [!IMPORTANT]\n> Execution evidence discloses {'; '.join(notes)} (see `execution.json`).\n" if notes else ""
+
+
+def _archived_licences(path: Path | None) -> dict[str, Any]:
+    """The licences as recorded in the archive when it was made, so the public record never contradicts it."""
+    if path is None:
+        return {"policy": None, "metadata": licensing.METADATA, "outputs": licensing.OUTPUTS,
+                "code": "not recorded (the archive predates licenses.json; recreate it)", "third_party": "original licences retained"}
+    lic = json.loads(path.read_text(encoding="utf-8"))
+    code = sorted({f.get("license") or "?" for f in lic.get("files", []) if f.get("kind") in ("script", "code")})
+    return {"policy": lic.get("policy"), "metadata": licensing.METADATA, "outputs": licensing.OUTPUTS,
+            "code": code[0] if len(code) == 1 else ("none in this package" if not code else "per file, see licenses.json"),
+            "third_party": "original licences retained; see licenses.json"}
 
 
 def _summary(plan: Plan, version: int | None) -> dict[str, Any]:
@@ -271,7 +285,7 @@ def _pilot_json(plan: Plan, version: int) -> bytes:
         "evidence": _evidence(plan),
         "archive": {"sha256": m.reprocrowd.archive.sha256, "exclude": plan.exclude, "excluded": plan.excluded},
         "assets": {a.name: f"sha256:{a.sha256}" for a in plan.files},
-        "licenses": licensing.summary() | {"this_file": licensing.METADATA},
+        "licenses": plan.licences | {"this_file": licensing.METADATA},
     }
     return (json.dumps(record, indent=2, ensure_ascii=False) + "\n").encode()
 
@@ -299,7 +313,7 @@ def _assets_table(assets: list[PilotAsset] | list[Asset]) -> str:
 
 
 def _licence_lines(plan: Plan) -> str:
-    lic = licensing.summary()
+    lic = plan.licences
     excluded = f" Left out of the ZIP: {'; '.join(GROUPS[g] for g in plan.exclude)} (listed with hashes in `excluded-files.json`)." if plan.exclude else ""
     return (f"Metadata and `pilot.json`: {lic['metadata']}. Report, comparison, evidence and outputs: {lic['outputs']}. "
             f"New analysis code: {lic['code']}. The article's material and the input data and code keep their original "
@@ -350,7 +364,7 @@ def _issue_body(plan: Plan, runs: list[dict[str, Any]], repo_url: str) -> str:
     for r in sorted(runs, key=lambda r: -r["version"])[:100]:
         lines.append(f"| v{r['version']} | {r['date']} | {r['match']}/{r['numeric']} | {r['within']} | [{r['tag']}]({r['url']}) |")
     lines += ["", "Each run is a separate pre-release; earlier runs are kept and never changed. A comment below records each run.", "",
-              "### Licences", "", _licence_lines(plan), "",
+              "### Licences", "", "Each run's `licenses.json` lists the licence of every file. For the run submitted last:", "", _licence_lines(plan), "",
               f"_Updated by ReproCrowd {__version__}. Releases: {repo_url}/releases?q={plan.reproduction_id}_"]
     return _clip("\n".join(lines) + "\n")
 
@@ -369,7 +383,7 @@ def preview(pkg: Package, repo: str | None, exclude: list[str] | None, note: str
             "issue_title": _issue_title(plan), "labels": _labels(plan), "summary": _summary_line(_summary(plan, None)),
             "assets": [{"name": a.name, "bytes": a.bytes, "sha256": a.sha256} for a in plan.files] + [{"name": "pilot.json", "bytes": None, "sha256": None}],
             "exclude": plan.exclude, "excluded": plan.excluded, "contents": contents(pkg, plan.p.work),
-            "licenses": licensing.summary(), "existing": existing.model_dump(mode="json") if existing else None}
+            "licenses": plan.licences, "existing": existing.model_dump(mode="json") if existing else None}
 
 
 def _labels(plan: Plan) -> list[str]:

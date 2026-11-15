@@ -363,3 +363,22 @@ def test_evidence_disclosures_reach_the_record(client, pkg, gh):
     pilot = json.loads(gh.blobs[(rec["tag"], "pilot.json")])
     assert "notes.py" in pilot["evidence"]["added_since_run"]
     assert "files added since the run: `notes.py`" in gh.comments[1][0]["body"]
+
+
+def test_records_state_the_archived_licences_not_the_current_setting(client, pkg, gh):
+    from reprocrowd.config import settings
+    P = f"/v1/packages/{pkg}"
+    ready_published(client, pkg)  # archived with the default code licence (CC-BY-4.0)
+    cfg = Path(os.environ["REPROCROWD_CONFIG"])
+    cfg.write_text(cfg.read_text() + '\n[licensing]\ncode = "MIT"\n')
+    settings.cache_clear()
+    assert client.post(P + "/pilots:preview", json={}).json()["licenses"]["code"] == "CC-BY-4.0"
+    rec = client.post(P + "/pilots", json=body()).json()
+    pilot = json.loads(gh.blobs[(rec["tag"], "pilot.json")])
+    archived = {f["path"]: f for f in json.loads(gh.blobs[(rec["tag"], "licenses.json")])["files"]}
+    assert pilot["licenses"]["code"] == archived["analysis.py"]["license"] == "CC-BY-4.0"
+    assert "New analysis code: CC-BY-4.0" in gh.comments[1][0]["body"]
+    # a new archive under the new setting records MIT, and the next run says so
+    assert client.put(P + "/archive").status_code == 200
+    rec2 = client.post(P + "/pilots", json=body()).json()
+    assert json.loads(gh.blobs[(rec2["tag"], "pilot.json")])["licenses"]["code"] == "MIT"

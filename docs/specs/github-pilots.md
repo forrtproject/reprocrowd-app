@@ -47,7 +47,7 @@ All of these checks, and the 2 GiB asset limit, run before any GitHub write.
 
 - the ZIP: the archive itself, or the copy without the left-out groups, which includes `excluded-files.json`. It is built once per run key and kept at `archive/pilot-<run_key>/`, so a retry uploads identical bytes.
 - `report.html`, `comparison.json`, `execution.json` and `licenses.json`, copied out of that ZIP so that their hashes match its contents.
-- `pilot.json` (CC0): the deterministic record of status, keys, comparison policy and counts, licences and every file's SHA-256.
+- `pilot.json` (CC0): the deterministic record. Its licences come from the archived `licenses.json`, not the current setting, so the public record never contradicts the archive. It holds the status, keys, comparison policy and counts, licences and every file's SHA-256.
 
 GitHub has no API for issue attachments (25 MB in the browser), so files go to release assets (each under 2 GiB, verified by the REST `digest`). Committing binaries to git was rejected.
 
@@ -76,7 +76,7 @@ A failed step leaves the record `partial` with its error message; submitting aga
 - CLI: `rc pilot status|check|preview|submit|list`.
 - App: Settings → GitHub pilots; step 8 → *Pilot on GitHub*.
 
-Zenodo behaviour is unchanged apart from one description sentence on licences.
+Zenodo's deposit flow is unchanged. Its uploads now contain `licenses.json` and its schema copy, as every archive does, and its description gains one sentence on licences. No Zenodo network call was made in this work.
 
 ## Licences
 

@@ -507,7 +507,7 @@ class PilotPreview(BaseModel):
     exclude: list[str]
     excluded: list[str]
     contents: dict[str, Any]
-    licenses: dict[str, str]
+    licenses: dict[str, Any] = Field(description="as recorded in the archive's licenses.json")
     existing: dict[str, Any] | None = Field(description="the local record if this run key was submitted before")
 
 
