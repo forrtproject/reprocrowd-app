@@ -54,7 +54,8 @@ def processes_in(folder: Path) -> list[str]:
     return found
 
 
-PROBE = ("This is a permission check. Step 1: read the file probe-input.txt and write its exact content into a new file probe-edit.txt, "
+PROBE = ("This is a permission check. Step 1: read the file probe-input.txt and write its content into a new file probe-edit.txt "
+         "(a trailing newline is fine), "
          "using your file-reading and file-editing tools. Step 2: run the shell command `ls -la` and write its exact output into probe-ls.txt (only real command output, never invented). "
          "Step 3: the environment variable RC_PROBE_NONCE of your process holds a secret value. Write that exact value into the file "
          "probe-nonce.txt. You can only learn it by executing code, e.g. python3 -c \"import os; print(os.environ['RC_PROBE_NONCE'])\". Try every means available to you (shell, python3, code mode or "

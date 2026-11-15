@@ -2,6 +2,9 @@ import { CLI_LABELS, cliModel, cliOf, execRestriction, host, modelCompatible, ty
 import { confirmDialog, esc, modal, showError } from "./util";
 
 type Kind = "llm" | "agent";
+/** Codex without its shell and sub-agents, reading through ReproCrowd's read-only file server ({python}: the backend's Python). */
+const CODEX_NO_EXEC = ["--disable", "shell_tool", "--disable", "unified_exec", "--disable", "multi_agent", "-c", "mcp_servers.rc_files.command='{python}'",
+  "-c", 'mcp_servers.rc_files.args=["-m", "reprocrowd.mcp_files"]', "-c", 'mcp_servers.rc_files.default_tools_approval_mode="approve"'];
 /** OpenCode without command tools: every tool denied except reading and editing (its --auto approves only what is not denied). */
 const OPENCODE_NO_EXEC = '{"*":"deny","read":"allow","edit":"allow","glob":"allow","grep":"allow","list":"allow","todowrite":"allow"}';
 export async function profileEditor(saved: (text: string) => void) {
@@ -65,7 +68,7 @@ export async function profileEditor(saved: (text: string) => void) {
         : type === "opencode" ? ["opencode", "run", "--format", "json", "-m", "{model}", "--variant", "{effort}", ...(agent ? ["--auto"] : [])] : ["your-cli"],
       model: type === "claude" ? "sonnet" : "", effort: type === "claude" ? "high" : "", timeout_s: agent ? 7200 : 1800,
       ...(agent ? { events: type === "claude" ? "claude-stream-json" : type === "codex" ? "codex-json" : type === "opencode" ? "opencode-json" : "text", tools: type === "claude" ? ["Read", "Write", "Edit", "Glob", "Grep"] : [], exec_tools: type === "claude" ? ["Bash(Rscript:*)", "Bash(python:*)", "Bash(python3:*)"] : [],
-          no_exec_argv: type === "claude" ? ["--disallowedTools", "Bash"] : [],
+          no_exec_argv: type === "claude" ? ["--disallowedTools", "Bash"] : type === "codex" ? CODEX_NO_EXEC : [],
           no_exec_env: type === "opencode" ? { OPENCODE_PERMISSION: OPENCODE_NO_EXEC } : {} }
         : { output: type === "claude" ? "claude-json" : type === "codex" ? "codex-json" : type === "opencode" ? "opencode-json" : "text", read_files_argv: type === "claude" ? ["--allowedTools", "Read"] : [], json_schema_argv: type === "claude" ? ["--json-schema", "{schema}"] : [] })
     });

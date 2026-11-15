@@ -64,6 +64,12 @@ def expand_argv(argv: list[str], values: dict[str, str]) -> list[str]:
 # The prompt is read from stdin (no prompt argument), so mode flags can be appended.
 CODEX_ARGV = ["codex", "exec", "--json", "--skip-git-repo-check", "--ephemeral", "--ignore-user-config", "--disable", "apps", "--disable", "plugins",
               "-m", "{model}", "-c", "model_reasoning_effort={effort}"]
+# Editing-only Codex: no shell, no sub-agents; reading through reprocrowd.mcp_files (read-only, confined to the package,
+# its tools approved for this server only); edits with apply_patch. {python} is the backend's own interpreter.
+# Checked with codex-cli 0.167.0: it read and edited, could not run ls or read an environment nonce.
+CODEX_NO_EXEC = ["--disable", "shell_tool", "--disable", "unified_exec", "--disable", "multi_agent",
+                 "-c", "mcp_servers.rc_files.command='{python}'", "-c", 'mcp_servers.rc_files.args=["-m", "reprocrowd.mcp_files"]',
+                 "-c", 'mcp_servers.rc_files.default_tools_approval_mode="approve"']
 # Editing-only OpenCode: every tool denied except reading and editing. --auto approves only what is not denied.
 OPENCODE_NO_EXEC = {"OPENCODE_PERMISSION": '{"*":"deny","read":"allow","edit":"allow","glob":"allow","grep":"allow","list":"allow","todowrite":"allow"}'}
 
@@ -93,10 +99,9 @@ def _default_agents() -> dict[str, AgentProfile]:
         ),
         # Codex CLI (https://developers.openai.com/codex): exec --json emits JSONL events (events.py's codex-json parser).
         # workspace-write: Codex's sandbox confines writes to the package. --ignore-user-config skips ~/.codex/config.toml
-        # (MCP servers, default model) but keeps the login. No no-analysis mode: Codex reads files through its shell, so
-        # with --disable shell_tool/unified_exec it can still write (apply_patch) but cannot read the script it must
-        # implement (codex-cli 0.167.0). An editing-only request is therefore refused for this profile.
-        "codex": AgentProfile(argv=CODEX_ARGV + ["-s", "workspace-write"], events="codex-json", tools=[], exec_tools=[]),
+        # (MCP servers, default model) but keeps the login. No-analysis mode (CODEX_NO_EXEC) removes its shell and
+        # sub-agent tools; Codex reads files only through its shell, so it gets the read-only file server instead.
+        "codex": AgentProfile(argv=CODEX_ARGV + ["-s", "workspace-write"], events="codex-json", tools=[], exec_tools=[], no_exec_argv=CODEX_NO_EXEC),
     }
 
 

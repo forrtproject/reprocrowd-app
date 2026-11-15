@@ -154,13 +154,16 @@ def test_shipped_argv_expansion_unchanged():
 
 
 def test_cli_settings_restriction(client, pkg, monkeypatch):
-    """OpenCode runs editing-only through declared CLI settings; Codex (no read tool without its shell) and a profile without settings are refused."""
+    """Codex and OpenCode run editing-only through declared CLI settings; a profile without settings is refused."""
     for name in ("codex", "opencode", "claude"):
         monkeypatch.setitem(settings().agent_profiles, name, _default_agents()[name])
     monkeypatch.setitem(settings().agent_profiles, "bare", _default_agents()["opencode"].model_copy(update={"no_exec_env": {}}))
     ready_package(client, pkg)
     p = f"/v1/packages/{pkg}"
-    problem(client.post(p + "/jobs:preview", json={"type": "codegen", "profile": "codex", "allow_exec": False}), 409, "exec_restriction_unsupported")
+    codex = client.post(p + "/jobs:preview", json={"type": "codegen", "profile": "codex", "allow_exec": False}).json()
+    assert codex["exec_restriction"] == "cli_settings" and ["--disable", "shell_tool"] == codex["argv"][-12:-10]
+    import sys as _sys
+    assert f"mcp_servers.rc_files.command='{_sys.executable}'" in codex["argv"]  # {python} is the backend's interpreter
     allowed = client.post(p + "/jobs:preview", json={"type": "codegen", "profile": "codex", "allow_exec": True}).json()
     assert ["--disable", "apps"] == allowed["argv"][6:8] and allowed["env"] == {}  # connectors off in every mode
     oc = client.post(p + "/jobs:preview", json={"type": "codegen", "profile": "opencode", "allow_exec": False}).json()
@@ -173,7 +176,7 @@ def test_cli_settings_restriction(client, pkg, monkeypatch):
     problem(client.post(p + "/jobs:preview", json={"type": "codegen", "profile": "bare", "allow_exec": False}), 409, "exec_restriction_unsupported")
     problem(client.post(p + "/jobs", json={"type": "codegen", "profile": "bare", "allow_exec": False}), 409, "exec_restriction_unsupported")
     views = {v["name"]: v for v in client.get("/v1/agent-profiles").json()}
-    assert views["opencode"]["exec_restriction"] == "cli_settings" and views["codex"]["exec_restriction"] == views["bare"]["exec_restriction"] == "unsupported"
+    assert views["opencode"]["exec_restriction"] == views["codex"]["exec_restriction"] == "cli_settings" and views["bare"]["exec_restriction"] == "unsupported"
 
 
 def test_config_is_read_only_over_http(client):

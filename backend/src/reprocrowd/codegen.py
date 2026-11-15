@@ -6,6 +6,7 @@ markers are counted.
 """
 from __future__ import annotations
 
+import sys
 from typing import NamedTuple
 
 from . import files, gitrepo, jobs
@@ -45,10 +46,11 @@ def plan(pkg: Package, *, profile: str | None, allow_exec: bool, instructions: s
     tools = prof.tools + (prof.exec_tools if allow_exec else [])
     restriction = exec_restriction(prof, tools)
     if not allow_exec and restriction == "unsupported":
-        raise conflict("exec_restriction_unsupported", f"Profile {name!r} has neither a tool allowlist ({{tools}} with editing and execution tools) nor no-analysis settings (no_exec_argv/no_exec_env); it cannot honor no-analysis mode. Choose a profile that supports it (Claude Code; OpenCode after re-applying its preset in Settings) or explicitly allow execution.")
+        raise conflict("exec_restriction_unsupported", f"Profile {name!r} has neither a tool allowlist ({{tools}} with editing and execution tools) nor no-analysis settings (no_exec_argv/no_exec_env); it cannot honor no-analysis mode. Re-apply its preset in Settings (Claude Code, Codex and OpenCode presets support it) or explicitly allow execution.")
     argv = expand_argv(prof.argv, {"model": model or prof.model, "effort": prof.effort, "tools": ",".join(tools)})
     restricted = not allow_exec and restriction == "cli_settings"
-    argv += prof.no_exec_argv if restricted else []
+    # {python}: the backend's interpreter, for helper servers such as reprocrowd.mcp_files (Codex's read-only file tools).
+    argv += expand_argv(prof.no_exec_argv, {"python": sys.executable, "model": model or prof.model, "effort": prof.effort}) if restricted else []
     return Plan(name, prof, tpl, tools, argv, agent_prompt(pkg, tpl, instructions, allow_exec=allow_exec), dict(prof.no_exec_env) if restricted else {})
 
 
