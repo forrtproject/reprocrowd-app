@@ -76,6 +76,9 @@ for (const name of ['other', 'fixture']) {
   const expected = parse(commented); expected.llm.profiles[name] = profile;
   assert.deepEqual(JSON.parse(JSON.stringify(parse(edited))), JSON.parse(JSON.stringify(expected)));
 }
+// Whitespace inside a table header is valid TOML and still edits that section in place.
+const spaced = replaceProfile('# keep\n[ llm . profiles . other ]\nargv = ["other"]\noutput = "text"\n', 'llm', 'other', profile);
+assert(spaced.includes('# keep') && !spaced.includes('[llm.profiles.other]'));
 // A profile written as an inline table cannot be spliced; the whole file is rewritten, still correctly.
 const inline = '# lost\n[llm.profiles]\nother = { argv = ["other"], output = "text" }\n';
 assert.deepEqual({ ...parse(replaceProfile(inline, 'llm', 'other', profile)).llm.profiles.other }, profile);

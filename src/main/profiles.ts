@@ -50,7 +50,8 @@ const isComment = (line: string) => /^\s*(#.*)?$/.test(line);
 function spliceProfile(text: string, header: string, body: string): string | null {
   const eol = text.includes("\r\n") ? "\r\n" : "\n";
   const lines = text.split(/\r?\n/);
-  const start = lines.findIndex((line) => line.replace(/#.*$/, "").trim() === header);
+  // TOML allows whitespace inside a header: [ llm . profiles . name ]
+  const start = lines.findIndex((line) => line.replace(/#.*$/, "").replace(/\s+/g, "") === header);
   const content = body.trimEnd().split("\n");
   if (start < 0) {
     const kept = text.replace(/\s*$/, "");

@@ -264,7 +264,7 @@ class Curation:
                 except ValueError:
                     typed = None  # validation reports the unparsable value
                 if typed is not None:
-                    changes["comparator"] = None  # the operator typed with the value replaces the stored one
+                    changes["comparator"] = typed  # the operator typed with the value replaces the stored one
         with self.pkg.locked():
             f = self.load()
             item, run, entry = self._locate(f, item_id)

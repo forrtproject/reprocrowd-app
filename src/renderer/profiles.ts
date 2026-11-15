@@ -28,7 +28,7 @@ export async function profileEditor(saved: (text: string) => void) {
       <label>Read-files arguments (extraction)<textarea name="read" rows="2"></textarea></label>
       <label>JSON Schema arguments (extraction; use {schema})<textarea name="schema" rows="2"></textarea></label>
     </details>
-    <p class="hint">Saving restarts the backend. The form rewrites only this profile's section and keeps other settings and comments. If the profile is not written as its own [section], the whole file is rewritten without comments. The original file is backed up once as backend.toml.bak. The advanced raw editor remains available.</p>
+    <p class="hint">Saving restarts the backend. The form rewrites only this profile's section and keeps other settings and comments outside it; comments between this profile's keys are dropped. If the profile is not written as its own [section], the whole file is rewritten without comments. The original file is backed up once as backend.toml.bak. The advanced raw editor remains available.</p>
     <p class="profile-status" aria-live="polite"></p>
     <menu><button value="cancel" formnovalidate>Cancel</button><button value="save" class="primary">Save profile</button></menu>
   </form>`);
