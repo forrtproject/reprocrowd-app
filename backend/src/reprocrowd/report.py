@@ -6,7 +6,6 @@ from a package that passes validation, and its hash is recorded in the manifest 
 """
 from __future__ import annotations
 
-import math
 import zipfile
 from pathlib import Path
 from typing import Any
@@ -147,32 +146,10 @@ def recorded_comparison(pkg: Package) -> Comparison:
         if (published.get("stale") != live_evidence.stale or
                 published.get("added_since_run", []) != live_evidence.added_since_run):
             raise conflict("report_stale", "scripts or inputs changed since the report; regenerate the report and archive")
-    if saved.basis:
-        if (saved.basis.results_sha256 != evidence.digest(pkg, RESULTS) or
-                saved.basis.results_schema_sha256 != evidence.digest(pkg, "results_schema.json")):
-            raise conflict("report_stale", "results or targets changed; regenerate the report and archive")
-    else:
-        try:
-            live = comparison(pkg, saved.settings)
-        except Exception:
-            raise conflict("report_stale", "the older report can no longer be checked; regenerate it")
-        if not _same_legacy([r.model_dump() for r in live.rows], [r.model_dump() for r in saved.rows]) or live.summary != saved.summary:
-            raise conflict("report_stale", "the older comparison differs; regenerate the report")
-        # It recorded no policy; it was just shown to agree under the current one.
-        saved.policy, saved.rounding_mode = live.policy, live.rounding_mode
+    if saved.basis is None:
+        raise conflict("report_stale", "this report predates recorded comparisons; regenerate the report and archive")
+    if (saved.basis.results_sha256 != evidence.digest(pkg, RESULTS) or
+            saved.basis.results_schema_sha256 != evidence.digest(pkg, "results_schema.json")):
+        raise conflict("report_stale", "results or targets changed; regenerate the report and archive")
     return saved
 
-
-# Fields added to comparison rows/cells after the first comparison.json format.
-_LEGACY_NEW_FIELDS = {"refs", "precision", "quantum", "printed", "comparator"}
-
-
-def _same_legacy(a: Any, b: Any) -> bool:
-    """Equal public comparison content; deviations (display-only %) may differ in the last float bits."""
-    if isinstance(a, dict) and isinstance(b, dict):
-        return all(_same_legacy(a.get(k), b.get(k)) for k in (a.keys() | b.keys()) - _LEGACY_NEW_FIELDS)
-    if isinstance(a, list) and isinstance(b, list):
-        return len(a) == len(b) and all(_same_legacy(x, y) for x, y in zip(a, b))
-    if isinstance(a, float) and isinstance(b, float):
-        return math.isclose(a, b, rel_tol=1e-9)
-    return a == b
