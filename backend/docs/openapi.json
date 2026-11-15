@@ -11886,7 +11886,7 @@
           "output": {
             "type": "string",
             "title": "Output",
-            "description": "raw stdout of the call"
+            "description": "stdout of the call. In run records kept with the package (targets.json, actions.json) event-stream CLIs keep only answer and turn-status events; the raw stdout is in llm-calls/<id>/stdout.txt"
           },
           "output_format": {
             "type": "string",

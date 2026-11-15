@@ -8,6 +8,8 @@ import live
 
 
 def test_refuses_api_billing(monkeypatch):
+    for var in ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "CODEX_API_KEY"):
+        monkeypatch.delenv(var, raising=False)
     monkeypatch.setenv("OPENAI_API_KEY", "fixture")
     with pytest.raises(SystemExit, match="OPENAI_API_KEY"):
         live.refuse_api_billing(["codex", "exec"])
@@ -21,6 +23,8 @@ def test_peak_windows():
     assert live.peak(datetime(2026, 11, 16, 7, tzinfo=timezone.utc))      # Monday 07 UTC
     assert not live.peak(datetime(2026, 11, 16, 5, tzinfo=timezone.utc))  # Monday 05 UTC
     assert not live.peak(datetime(2026, 11, 15, 7, tzinfo=timezone.utc))  # Sunday
+    assert live.peak_between(datetime(2026, 11, 16, 0, 30, tzinfo=timezone.utc), datetime(2026, 11, 16, 4, 30, tzinfo=timezone.utc))
+    assert not live.peak_between(datetime(2026, 11, 16, 4, 10, tzinfo=timezone.utc), datetime(2026, 11, 16, 5, 50, tzinfo=timezone.utc))
 
 
 def test_ledger_cap_and_counting(tmp_path):

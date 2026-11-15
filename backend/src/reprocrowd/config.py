@@ -52,7 +52,8 @@ def expand_argv(argv: list[str], values: dict[str, str]) -> list[str]:
         for k, v in values.items():
             value = value.replace("{" + k + "}", v)
         if (value == "" and arg != "") or any(not v and "{" + k + "}" in arg for k, v in values.items()):
-            if out and out[-1].startswith("-"):
+            # A dropped value takes its flag with it (`-c effort={effort}`); a dropped `--model={model}` is its own flag.
+            if out and out[-1].startswith("-") and not arg.startswith("-"):
                 out.pop()
             continue
         out.append(value)
@@ -63,9 +64,6 @@ def expand_argv(argv: list[str], values: dict[str, str]) -> list[str]:
 # The prompt is read from stdin (no prompt argument), so mode flags can be appended.
 CODEX_ARGV = ["codex", "exec", "--json", "--skip-git-repo-check", "--ephemeral", "--ignore-user-config", "--disable", "apps", "--disable", "plugins",
               "-m", "{model}", "-c", "model_reasoning_effort={effort}"]
-# Editing-only Codex: without its shell and sub-agent tools it edits with apply_patch but cannot run code (checked
-# with codex-cli 0.167.0: an environment nonce stayed unreadable; with the tools, the agent read it).
-CODEX_NO_EXEC = ["--disable", "shell_tool", "--disable", "unified_exec", "--disable", "multi_agent"]
 # Editing-only OpenCode: every tool denied except reading and editing. --auto approves only what is not denied.
 OPENCODE_NO_EXEC = {"OPENCODE_PERMISSION": '{"*":"deny","read":"allow","edit":"allow","glob":"allow","grep":"allow","list":"allow","todowrite":"allow"}'}
 
@@ -92,8 +90,10 @@ def _default_agents() -> dict[str, AgentProfile]:
         ),
         # Codex CLI (https://developers.openai.com/codex): exec --json emits JSONL events (events.py's codex-json parser).
         # workspace-write: Codex's sandbox confines writes to the package. --ignore-user-config skips ~/.codex/config.toml
-        # (MCP servers, default model) but keeps the login. No-analysis mode removes its command tools (CODEX_NO_EXEC).
-        "codex": AgentProfile(argv=CODEX_ARGV + ["-s", "workspace-write"], events="codex-json", tools=[], exec_tools=[], no_exec_argv=CODEX_NO_EXEC),
+        # (MCP servers, default model) but keeps the login. No no-analysis mode: Codex reads files through its shell, so
+        # with --disable shell_tool/unified_exec it can still write (apply_patch) but cannot read the script it must
+        # implement (codex-cli 0.167.0). An editing-only request is therefore refused for this profile.
+        "codex": AgentProfile(argv=CODEX_ARGV + ["-s", "workspace-write"], events="codex-json", tools=[], exec_tools=[]),
     }
 
 

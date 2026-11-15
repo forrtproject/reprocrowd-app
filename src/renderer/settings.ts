@@ -2,7 +2,7 @@
 // the app's backend (status, output, its configuration: LLM and agent profiles, OpenAlex), and updates.
 import { profileEditor } from "./profiles";
 import { Config, host, UpdateStatus } from "./api";
-import { esc, modal, showError } from "./util";
+import { confirmDialog, esc, modal, showError } from "./util";
 
 const ZENODO = { zenodo: "https://zenodo.org", sandbox: "https://sandbox.zenodo.org" } as const;
 const tokenPage = (server: keyof typeof ZENODO) => `${ZENODO[server]}/account/settings/applications/tokens/new/`;
@@ -116,12 +116,17 @@ export async function settingsDialog(onSaved: (changed: boolean) => void, focus?
     if (dir) q<HTMLInputElement>("[name=root]").value = dir;
   });
 
-  q("#be-profiles").addEventListener("click", () => profileEditor((text) => {
-    cfg.backendConfig = text;
-    q<HTMLTextAreaElement>("[name=becfg]").value = text;
-    void showBackend();
-    onSaved(true);
-  }));
+  q("#be-profiles").addEventListener("click", async () => {
+    // The profile editor saves from the file on disk; unsaved edits in the raw editor would be overwritten.
+    if (q<HTMLTextAreaElement>("[name=becfg]").value !== cfg.backendConfig
+      && !(await confirmDialog("Discard unsaved configuration edits?", "<p>The raw backend configuration has unsaved changes. Saving a profile replaces them with the file on disk.</p>", "Discard and continue"))) return;
+    profileEditor((text) => {
+      cfg.backendConfig = text;
+      q<HTMLTextAreaElement>("[name=becfg]").value = text;
+      void showBackend();
+      onSaved(true);
+    });
+  });
 
   // ---------- backend ----------
   const showBackend = async () => {

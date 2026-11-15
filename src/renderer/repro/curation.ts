@@ -471,7 +471,7 @@ export class CurationStep implements Step {
         <label>LLM profile <select name="profile">${this.profiles.map((p) => `<option value="${esc(p.name)}" ${p.name === defaultProfile ? "selected" : ""}>${esc(p.name)}: ${esc(p.model || "default model")}${p.effort ? `, effort ${esc(p.effort)}` : ""}</option>`).join("")}</select></label>
         <label class="model-row" hidden>Model <select name="model"><option value="">(the CLI's default)</option></select></label>
         <p class="hint model-notice"></p>
-        <div class="claude-login" hidden><p class="hint"><span class="cli-name">Claude Code</span> is installed but not signed in.</p><button type="button" id="claude-login">Log in…</button></div>
+        <div class="claude-login" hidden><p class="hint"><span class="cli-name">Claude Code</span> is installed but not signed in.</p><button type="button" id="claude-login">Log in…</button><p class="hint login-msg"></p></div>
         <p class="hint">Command (configured in the backend): <code class="argv"></code></p><p class="hint availability"></p>
         <div class="form-row"><button type="button" class="show-prompt">Show prompt</button></div>
         <label>Extra instructions <textarea name="instructions" rows="4" placeholder="optional, e.g. only the main analyses"></textarea></label>
@@ -510,7 +510,7 @@ export class CurationStep implements Step {
       if (st.llmModel && [...modelSel.options].some((x) => x.value === st.llmModel)) modelSel.value = st.llmModel;
       else if (st.llmModel) {
         st.llmModel = "";
-        form.querySelector<HTMLElement>(".model-notice")!.textContent = "Saved model cleared: no compatible CLI profile. Choose a model for this profile.";
+        form.querySelector<HTMLElement>(".model-notice")!.textContent = "Saved model cleared: it is turned off on the start page or not offered for this profile's CLI. Choose a model for this profile.";
       }
       showArgv();
     };
@@ -526,7 +526,7 @@ export class CurationStep implements Step {
     });
     claudeLogin.querySelector("button")!.addEventListener("click", async () => {
       try {
-        claudeLogin.querySelector(".hint")!.textContent = await host.cliLogin(cliOf(this.profiles.find((p) => p.name === profileSel.value)?.argv));
+        claudeLogin.querySelector(".login-msg")!.textContent = `${await host.cliLogin(cliOf(this.profiles.find((p) => p.name === profileSel.value)?.argv))} Then reopen this dialog.`;
       } catch (e) {
         showError("Logging in", e);
       }

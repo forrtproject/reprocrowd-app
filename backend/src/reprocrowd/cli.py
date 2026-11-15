@@ -577,7 +577,8 @@ def agents():
 
 agent_commands = typer.Typer(help="Inspect coding-agent calls without executing them.", no_args_is_help=True)
 app.add_typer(agent_commands, name="agent")
-llm_commands = typer.Typer(help="Inspect extraction calls without executing them.", no_args_is_help=True)
+llm_commands = typer.Typer(help="Inspect target/action extraction calls without executing them (default prompt, whole extraction; "
+                                "scoped or custom-prompt runs differ).", no_args_is_help=True)
 app.add_typer(llm_commands, name="llm")
 
 

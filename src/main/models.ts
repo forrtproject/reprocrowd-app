@@ -28,11 +28,13 @@ function run(cmd: string): Promise<string> {
   });
 }
 
-/** Exit status of a status command: true = 0, false = nonzero, undefined = it couldn't run or timed out. */
-function succeeds(cmd: string): Promise<boolean | undefined> {
+/** Whether Codex is signed in, from `codex login status` ("Logged in using …" / "Not logged in"); undefined if it can't tell. */
+function codexLoggedIn(): Promise<boolean | undefined> {
   return new Promise((resolve) => {
-    exec(cmd, { timeout: 20_000, env: { ...process.env, PATH: searchPath() } }, (err) =>
-      resolve(!err ? true : typeof err.code === "number" ? false : undefined));
+    exec("codex login status", { timeout: 20_000, env: { ...process.env, PATH: searchPath() } }, (_err, stdout, stderr) => {
+      const text = `${stdout ?? ""}\n${stderr ?? ""}`;
+      resolve(/not logged in/i.test(text) ? false : /logged in/i.test(text) ? true : undefined);
+    });
   });
 }
 
@@ -103,7 +105,7 @@ async function detect(): Promise<ModelSet> {
   const [outs, claude, codexIn, codexModels] = await Promise.all([
     Promise.all(lists.map(async (c) => ({ cli: c.cli, out: await run(c.command) }))),
     which("claude") ? claudeLoggedIn() : Promise.resolve(undefined),
-    hasCodex ? succeeds("codex login status") : Promise.resolve(undefined),
+    hasCodex ? codexLoggedIn() : Promise.resolve(undefined),
     hasCodex ? run("codex debug models") : Promise.resolve(""),
   ]);
   const found: LlmModel[] = [];
@@ -118,7 +120,7 @@ async function detect(): Promise<ModelSet> {
   // Claude Code: its tier aliases once signed in. The `claude/` (and Codex's `codex/`) prefix makes each CLI its own
   // family; the renderer strips it before handing the model to the CLI (cliModel).
   if (claude) for (const [alias, name] of CLAUDE_MODELS) found.push({ cli: "claude", provider: "claude", id: `claude/${alias}`, name });
-  if (codexIn) found.push(...parseCodexModels(codexModels));
+  if (codexIn !== false) found.push(...parseCodexModels(codexModels)); // unknown login state: still list the catalog
   found.sort((a, b) => a.provider.localeCompare(b.provider) || a.name.localeCompare(b.name));
   const needsLogin: Cli[] = [...(claude === false ? ["claude" as const] : []), ...(codexIn === false ? ["codex" as const] : [])];
   const value: ModelSet = { available: found, claudeNeedsLogin: claude === false, needsLogin };

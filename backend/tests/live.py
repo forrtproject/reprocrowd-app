@@ -63,6 +63,17 @@ def peak(at: datetime) -> bool:
     return at.weekday() < 5 and (1 <= at.hour < 4 or 6 <= at.hour < 10)
 
 
+def peak_between(start: datetime, end: datetime) -> bool:
+    """Whether any moment from start to end falls in a peak window (checked at the ends and every hour between)."""
+    from datetime import timedelta
+    at = start
+    while at < end:
+        if peak(at):
+            return True
+        at += timedelta(hours=1)
+    return peak(start) or peak(end)
+
+
 def reported_cost(text: str) -> float:
     """Sum of OpenCode's per-step ``cost`` in an event stream (USD at the provider's list price)."""
     total = 0.0
@@ -124,7 +135,7 @@ class Ledger:
 
     def record(self, who: str, what: str, started: datetime, reported: float, usage: dict, folder: str, unreported_jobs: int = 0) -> dict:
         ended = datetime.now(timezone.utc)
-        touched = peak(started) or peak(ended)
+        touched = peak_between(started, ended)
         allowance = unreported_jobs * KILLED_JOB_ALLOWANCE_USD
         entry = {"at": ended.isoformat(timespec="seconds"), "who": who, "what": what, "reported_usd": round(reported, 6),
                  "counted_usd": round(reported * (2 if touched else 1) + allowance, 6), "peak": touched, "tokens": usage, "run_folder": folder,

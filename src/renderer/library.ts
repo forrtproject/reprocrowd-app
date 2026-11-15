@@ -43,7 +43,7 @@ export async function start() {
     <section class="container llm-models"><div id="llm-models"></div></section>
   </main>`;
 
-  $("#settings-btn").addEventListener("click", () => settingsDialog(() => render()));
+  $("#settings-btn").addEventListener("click", () => settingsDialog(() => { void render(); void renderLlmModels(); }));
   $("#about-link").addEventListener("click", (e) => {
     e.preventDefault();
     host.openUrl("https://forrt.org/reprocrowd/");
@@ -174,7 +174,8 @@ async function renderLlmModels(refresh = false) {
     el.innerHTML = "";
     return;
   }
-  const profiles = await Promise.all([host.service<{argv: string[]}[]>("/v1/llm-profiles"), host.service<{argv: string[]}[]>("/v1/agent-profiles")]).then((groups) => groups.flat()).catch(() => []);
+  // null when the profiles can't be read: then no "no compatible profile" label, rather than a false one.
+  const profiles = await Promise.all([host.service<{argv: string[]}[]>("/v1/llm-profiles"), host.service<{argv: string[]}[]>("/v1/agent-profiles")]).then((groups) => groups.flat()).catch(() => null);
   const off = new Set(m.disabled);
   const byFamily = new Map<string, LlmModel[]>();
   for (const x of m.available) {
@@ -187,7 +188,7 @@ async function renderLlmModels(refresh = false) {
     .map(([family, models]) => `<div class="llm-model-family" data-family="${esc(family)}">
       <label class="llm-family"><input type="checkbox" data-family-toggle="${esc(family)}" /> <b>${esc(family)}</b> <span class="muted small">${models.length} model${models.length === 1 ? "" : "s"}</span></label>
       <div class="llm-model-list">${models
-        .map((x) => `<label class="inline llm-model"><input type="checkbox" data-model="${esc(x.id)}" ${isOn(x) ? "checked" : ""} /> <code>${esc(x.name)}</code> <span class="muted small">${esc(x.cli)}${profiles.some((p) => modelCompatible(x, p.argv)) ? "" : " · no compatible profile"}</span></label>`)
+        .map((x) => `<label class="inline llm-model"><input type="checkbox" data-model="${esc(x.id)}" ${isOn(x) ? "checked" : ""} /> <code>${esc(x.name)}</code> <span class="muted small">${esc(x.cli)}${!profiles || profiles.some((p) => modelCompatible(x, p.argv)) ? "" : " · no compatible profile"}</span></label>`)
         .join("")}</div>
     </div>`)
     .join("");

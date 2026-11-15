@@ -24,8 +24,8 @@ def run_conformance(profile_overrides: dict | None = None, protocols: tuple[str,
     from reprocrowd.config import settings, AgentProfile, LlmProfile
     from reprocrowd.api.app import app
     overrides = profile_overrides or {}
-    if any(set(value) - {"timeout_s", "model", "effort"} for value in overrides.values()):
-        raise ValueError("Conformance overrides cannot select commands or protocols")
+    if any(set(value) - {"timeout_s", "model", "effort"} for value in overrides.values()) or set(overrides) - set(PROTOCOLS):
+        raise ValueError(f"Conformance overrides take protocols {PROTOCOLS} and only timeout_s/model/effort; they cannot select commands")
     results = []
     with tempfile.TemporaryDirectory(prefix="scratch-reprocrowd-conformance-") as tmp:
         root = Path(tmp)

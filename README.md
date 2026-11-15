@@ -36,7 +36,8 @@ what the paper's analysis uses (R, Python, …).
 ### Choosing an AI tool
 
 1. Start the app. The start page lists the models each installed CLI offers, and says
-   when a CLI is installed but not signed in (with a button that opens its login).
+   when Claude Code or Codex is installed but not signed in (with a button that opens
+   its login). OpenCode shows only the providers you have signed in to.
 2. Open **⚙ Settings → Backend → Coding and extraction profiles…**. Pick the
    operation (code generation or extraction), choose a preset (**Claude Code**,
    **Codex CLI**, **OpenCode** or another plain-text CLI) and save. The form says
@@ -46,9 +47,10 @@ what the paper's analysis uses (R, Python, …).
    edit.
 3. In a reproduction, choose the profile and model in step 2/3 ("Generate with LLM")
    and in step 5 (coding agent). **Show prompt** shows the exact command and prompt
-   without running it. Unticking "let it run the analysis" lets the agent edit files
-   but not run code: Claude Code through its tool list, Codex and OpenCode through
-   settings that remove their command tools (none of these is an OS sandbox).
+   without running it. Unticking "let it run the analysis" lets the agent read and
+   edit files but not run code: Claude Code through its tool list, OpenCode through a
+   permission setting that denies its command tools (neither is an OS sandbox).
+   Codex reads files through its shell, so it needs "let it run the analysis".
 
 ### Linux notes
 
