@@ -77,7 +77,7 @@ export async function profileEditor(saved: (text: string) => void) {
     const argv = [value("command").trim(), ...lines("args")];
     const cli = cliOf(argv), label = CLI_LABELS[cli] ?? cli;
     const mode = execRestriction({ argv, model: "", effort: "", timeout_s: 1, tools: lines("tools"), exec_tools: lines("exec"), no_exec_argv: lines("noexec"), no_exec_env: env() });
-    const restriction = kind() !== "agent" ? "" : mode === "tool_allowlist" ? "No-analysis mode: partial. The tool allowlist denies other commands, but the CLI may still run commands it treats as read-only (ls, cat). Re-apply the preset to deny command tools."
+    const restriction = kind() !== "agent" ? "" : mode === "tool_allowlist" ? "No-analysis mode: partial. The tool allowlist denies other commands, but the CLI may still run commands it treats as read-only (ls, cat). Add no-analysis arguments that deny command tools (Claude Code: --disallowedTools Bash)."
       : mode === "cli_settings" ? "No-analysis mode: the no-analysis settings remove the CLI's command tools (not an OS sandbox). The presets were checked live; the smoke test checks a changed profile."
       : "No-analysis mode: not supported. Runs with this profile need “let it run the analysis”; the agent can then run commands in the package folder.";
     form.querySelector(".capability")!.textContent = restriction;

@@ -77,6 +77,8 @@ def restriction_probe(client, p: str, name: str, extra_out: list[str]) -> dict:
             subprocess.run(["git", "init", "-q"], cwd=tmp)
             token = secrets.token_hex(6)
             (Path(tmp) / "probe-input.txt").write_text(token)
+            marker = f".probe-{secrets.token_hex(4)}"
+            (Path(tmp) / marker).write_text("")
             try:
                 proc = subprocess.run(resolve_argv(pv["argv"]), input=PROBE, cwd=tmp, capture_output=True, text=True, timeout=600,
                                       env=job_env({**pv.get("env", {}), "RC_PROBE_NONCE": nonce, "PWD": tmp}))
@@ -86,9 +88,10 @@ def restriction_probe(client, p: str, name: str, extra_out: list[str]) -> dict:
             extra_out.append(proc.stdout)
             leaked = (Path(tmp) / "probe-nonce.txt").is_file() and nonce in (Path(tmp) / "probe-nonce.txt").read_text(errors="replace")
             edit_file = Path(tmp) / "probe-edit.txt"
-            ls_file = Path(tmp) / "probe-ls.txt"  # ls output names the probe files; a model cannot know it without running ls
-            # ls -la output has permission strings, which file tools (Glob/list) do not produce.
-            ran_ls = ls_file.is_file() and "probe-input.txt" in ls_file.read_text(errors="replace") and "rw-" in ls_file.read_text(errors="replace")
+            # ls -la lists a dotfile whose random name is not in the prompt. A listing faked from file tools could only
+            # make the editing-only run fail this check (stricter), never pass it.
+            ls_file = Path(tmp) / "probe-ls.txt"
+            ran_ls = ls_file.is_file() and marker in ls_file.read_text(errors="replace")
             runs[label] = {"exit_code": proc.returncode, "edited": edit_file.is_file() and token in edit_file.read_text(errors="replace"), "nonce_read": leaked, "ran_ls": ran_ls,
                            "argv": pv["argv"], "env": pv.get("env", {}), "stdout_tail": proc.stdout[-1500:].replace(nonce, "<nonce>"),
                            "stderr_tail": proc.stderr[-800:].replace(nonce, "<nonce>")}

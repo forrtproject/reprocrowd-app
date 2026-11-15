@@ -86,9 +86,30 @@ default_profile = "claude"
 [agent.profiles.claude]
 argv = ["claude", "-p", "--output-format", "stream-json", "--verbose", "--permission-mode", "acceptEdits",
         "--model", "{model}", "--effort", "{effort}", "--allowedTools", "{tools}"]
+# Added when the analysis must not run: --allowedTools only pre-approves tools (Claude Code still runs read-only
+# commands such as ls), so Bash is denied outright.
+no_exec_argv = ["--disallowedTools", "Bash"]
 tools = ["Read", "Write", "Edit", "Glob", "Grep"]
 exec_tools = ["Bash(Rscript:*)", "Bash(R:*)", "Bash(python:*)", "Bash(python3:*)", "Bash(snakemake:*)", "Bash(pip:*)", "Bash(ls:*)"]
 model = "sonnet"
 effort = "high"
 timeout_s = 7200
 events = "claude-stream-json"
+
+# OpenCode as a coding agent. --auto approves its tool calls; when the analysis must not run, no_exec_env denies
+# every tool except reading and editing (--auto approves only what is not denied).
+[agent.profiles.opencode]
+argv = ["opencode", "run", "--format", "json", "-m", "{model}", "--variant", "{effort}", "--auto"]
+no_exec_env = { OPENCODE_PERMISSION = '{"*":"deny","read":"allow","edit":"allow","glob":"allow","grep":"allow","list":"allow","todowrite":"allow"}' }
+tools = []
+exec_tools = []
+events = "opencode-json"
+
+# Codex CLI as a coding agent (workspace-write sandbox). It has no editing-only mode: without its shell it cannot read
+# files, so "don't run the analysis" is refused for it.
+[agent.profiles.codex]
+argv = ["codex", "exec", "--json", "--skip-git-repo-check", "--ephemeral", "--ignore-user-config", "--disable", "apps",
+        "--disable", "plugins", "-m", "{model}", "-c", "model_reasoning_effort={effort}", "-s", "workspace-write"]
+tools = []
+exec_tools = []
+events = "codex-json"
