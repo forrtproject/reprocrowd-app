@@ -9,7 +9,7 @@ class TargetEvidence(Model):
     target: str
     refs: list[Ref]
     step: str | None = None
-    step_evidence: Literal["declared_matches_plan", "declared_conflicts_plan", "planned_only", "none"]
+    step_evidence: Literal["declared_matches_plan", "declared_conflicts_plan", "declared_unchecked", "planned_only", "none"]
     level: Literal["process"] = "process"
 
 

@@ -13872,6 +13872,7 @@
             "enum": [
               "declared_matches_plan",
               "declared_conflicts_plan",
+              "declared_unchecked",
               "planned_only",
               "none"
             ],

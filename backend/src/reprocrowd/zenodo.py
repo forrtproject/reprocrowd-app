@@ -244,8 +244,8 @@ def metadata(p: Prepared, creators: list[ZenodoCreator], note: str, excluded: li
     parts = [
         f"<p>A computational reproduction of {cite} <a href=\"https://doi.org/{escape(doi)}\">https://doi.org/{escape(doi)}</a>, "
         "based on its published data and the procedures described in the text.</p>",
-        f"<p><b>Result:</b> {summary.get('match', 0)} of {total} results match "
-        f"({'numbers at the printed precision' if p.cmp.settings.rounding == 'reported' else f'numbers rounded to {p.cmp.settings.rounding} decimals'}; text exactly); "
+        f"<p><b>Result:</b> {summary.get('match', 0)} of {total} match "
+        f"({'numbers at printed precision' if p.cmp.settings.rounding == 'reported' else f'numbers rounded to {p.cmp.settings.rounding} decimals'}; text exactly); "
         f"{summary.get('within', 0)} more within {p.cmp.settings.threshold} % (exploratory). "
         f"Policy {p.cmp.policy}, rounding {p.cmp.rounding_mode}. "
         f"({', '.join(f'{escape(k)}: {v}' for k, v in summary.items())}).</p>" if total else "",

@@ -367,8 +367,12 @@ def test_evidence_survives_bad_inputs_and_rejects_edited_logs(client, pkg):
     # Malformed output and a broken plan stay reportable instead of failing with 500.
     (root / "outputs/results.json").write_text('{"results": [{"id": ["T001"], "step": ["A01"]}, {"id": "T001", "step": {"x": 1}, "value": 2.31}]}')
     (root / "analysis_plan.json").write_text("not json")
-    assert client.get(p + "/evidence").status_code == 200
-    assert client.get(p + "/comparison").status_code == 200
+    ev = client.get(p + "/evidence")
+    assert ev.status_code == 200 and ev.json()["targets"][0]["step_evidence"] == "none"
+    (root / "outputs/results.json").write_text('{"results": [{"id": "T001", "value": 2.31, "step": "A01"}]}')
+    assert client.get(p + "/evidence").json()["targets"][0]["step_evidence"] == "declared_unchecked"
+    cmp = client.get(p + "/comparison")
+    assert cmp.status_code == 200 and any("analysis_plan.json is missing or invalid" in w for w in cmp.json()["output_warnings"])
 
 
 def test_numeric_expected_edit_replaces_printed_precision(client, pkg):
