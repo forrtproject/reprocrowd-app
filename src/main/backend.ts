@@ -165,11 +165,11 @@ timeout_s = 7200
 events = "opencode-json"
 
 # Codex as a headless coding agent, in the workspace-write sandbox (writes confined to the package folder by Codex).
-# When the analysis must not run, no_exec_argv removes its shell and sub-agent tools: it can still edit files.
+# It has no editing-only mode the app can use: it reads files through its shell, so without the shell it cannot read
+# the script it must implement. "Don't run the analysis" is refused for this profile.
 [agent.profiles.codex]
 argv = ["codex", "exec", "--json", "--skip-git-repo-check", "--ephemeral", "--ignore-user-config", "--disable", "apps",
         "--disable", "plugins", "-m", "{model}", "-c", "model_reasoning_effort={effort}", "-s", "workspace-write"]
-no_exec_argv = ["--disable", "shell_tool", "--disable", "unified_exec", "--disable", "multi_agent"]
 tools = []
 exec_tools = []
 model = ""

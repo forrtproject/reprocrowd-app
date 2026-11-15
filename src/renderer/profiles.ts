@@ -61,7 +61,7 @@ export async function profileEditor(saved: (text: string) => void) {
         : type === "opencode" ? ["opencode", "run", "--format", "json", "-m", "{model}", "--variant", "{effort}", ...(agent ? ["--auto"] : [])] : ["your-cli"],
       model: type === "claude" ? "sonnet" : "", effort: type === "claude" ? "high" : "", timeout_s: agent ? 7200 : 1800,
       ...(agent ? { events: type === "claude" ? "claude-stream-json" : type === "codex" ? "codex-json" : type === "opencode" ? "opencode-json" : "text", tools: type === "claude" ? ["Read", "Write", "Edit", "Glob", "Grep"] : [], exec_tools: type === "claude" ? ["Bash(Rscript:*)", "Bash(python:*)", "Bash(python3:*)"] : [],
-          no_exec_argv: type === "codex" ? ["--disable", "shell_tool", "--disable", "unified_exec", "--disable", "multi_agent"] : [],
+          no_exec_argv: [],
           no_exec_env: type === "opencode" ? { OPENCODE_PERMISSION: OPENCODE_NO_EXEC } : {} }
         : { output: type === "claude" ? "claude-json" : type === "codex" ? "codex-json" : type === "opencode" ? "opencode-json" : "text", read_files_argv: type === "claude" ? ["--allowedTools", "Read"] : [], json_schema_argv: type === "claude" ? ["--json-schema", "{schema}"] : [] })
     });

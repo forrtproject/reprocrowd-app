@@ -148,18 +148,15 @@ def test_shipped_argv_expansion_unchanged():
 
 
 def test_cli_settings_restriction(client, pkg, monkeypatch):
-    """Codex and OpenCode run editing-only through declared CLI settings; a profile without them is still refused."""
+    """OpenCode runs editing-only through declared CLI settings; Codex (no read tool without its shell) and a profile without settings are refused."""
     for name in ("codex", "opencode"):
         monkeypatch.setitem(settings().agent_profiles, name, _default_agents()[name])
     monkeypatch.setitem(settings().agent_profiles, "bare", _default_agents()["opencode"].model_copy(update={"no_exec_env": {}}))
     ready_package(client, pkg)
     p = f"/v1/packages/{pkg}"
-    codex = client.post(p + "/jobs:preview", json={"type": "codegen", "profile": "codex", "allow_exec": False}).json()
-    assert codex["exec_restriction"] == "cli_settings" and codex["env"] == {}
-    assert codex["argv"][-6:] == ["--disable", "shell_tool", "--disable", "unified_exec", "--disable", "multi_agent"]
-    assert ["--disable", "apps"] == codex["argv"][6:8]  # connectors off in every mode
+    problem(client.post(p + "/jobs:preview", json={"type": "codegen", "profile": "codex", "allow_exec": False}), 409, "exec_restriction_unsupported")
     allowed = client.post(p + "/jobs:preview", json={"type": "codegen", "profile": "codex", "allow_exec": True}).json()
-    assert "shell_tool" not in allowed["argv"] and allowed["env"] == {}
+    assert ["--disable", "apps"] == allowed["argv"][6:8] and allowed["env"] == {}  # connectors off in every mode
     oc = client.post(p + "/jobs:preview", json={"type": "codegen", "profile": "opencode", "allow_exec": False}).json()
     perm = json.loads(oc["env"]["OPENCODE_PERMISSION"])
     assert perm["*"] == "deny" and perm["edit"] == "allow" and "bash" not in perm
@@ -167,7 +164,7 @@ def test_cli_settings_restriction(client, pkg, monkeypatch):
     problem(client.post(p + "/jobs:preview", json={"type": "codegen", "profile": "bare", "allow_exec": False}), 409, "exec_restriction_unsupported")
     problem(client.post(p + "/jobs", json={"type": "codegen", "profile": "bare", "allow_exec": False}), 409, "exec_restriction_unsupported")
     views = {v["name"]: v for v in client.get("/v1/agent-profiles").json()}
-    assert views["codex"]["exec_restriction"] == "cli_settings" and views["bare"]["exec_restriction"] == "unsupported"
+    assert views["opencode"]["exec_restriction"] == "cli_settings" and views["codex"]["exec_restriction"] == views["bare"]["exec_restriction"] == "unsupported"
 
 
 def test_config_is_read_only_over_http(client):
