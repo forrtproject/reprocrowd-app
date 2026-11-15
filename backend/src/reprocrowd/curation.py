@@ -14,6 +14,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, ValidationError
 
 from . import llm, providers
+from .numbers import parse_printed
 from .errors import ApiError, conflict, invalid, not_found, pydantic_errors
 from .extractions import Scope, check_scope, listing
 from .extractions import get as get_extraction
@@ -257,6 +258,13 @@ class Curation:
             # An edited printed token replaces the previous derived precision.
             changes.setdefault("printed", None)
             changes.setdefault("decimals", None)
+            if "comparator" not in changes:
+                try:
+                    typed = parse_printed(changes["expected"]).comparator
+                except ValueError:
+                    typed = None  # validation reports the unparsable value
+                if typed is not None:
+                    changes["comparator"] = None  # the operator typed with the value replaces the stored one
         with self.pkg.locked():
             f = self.load()
             item, run, entry = self._locate(f, item_id)

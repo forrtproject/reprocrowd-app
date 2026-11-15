@@ -1,4 +1,5 @@
 // Pure validation/serialization for the trusted local profile editor. No IPC or process access here.
+import { isDeepStrictEqual } from "node:util";
 import { parse, stringify } from "smol-toml";
 
 export type ProfileKind = "llm" | "agent";
@@ -33,7 +34,35 @@ export function replaceProfile(text: string, kind: ProfileKind, name: string, pr
   data[kind] ??= {};
   data[kind].profiles ??= {};
   data[kind].profiles[name] = profile;
+  // Edit only this profile's [kind.profiles.name] table so comments elsewhere survive. Keep the
+  // splice only if it parses to exactly the intended configuration; otherwise rewrite the whole file.
+  const spliced = spliceProfile(text, `[${kind}.profiles.${name}]`, stringify(profile));
+  try {
+    if (spliced !== null && isDeepStrictEqual(parse(spliced), parse(stringify(data)))) return spliced;
+  } catch { /* fall back */ }
   return stringify(data);
+}
+
+const TABLE = /^\s*\[/;
+const isComment = (line: string) => /^\s*(#.*)?$/.test(line);
+
+/** Replace the body of one table, keeping the comments just after its header and before the next table. */
+function spliceProfile(text: string, header: string, body: string): string | null {
+  const eol = text.includes("\r\n") ? "\r\n" : "\n";
+  const lines = text.split(/\r?\n/);
+  const start = lines.findIndex((line) => line.replace(/#.*$/, "").trim() === header);
+  const content = body.trimEnd().split("\n");
+  if (start < 0) {
+    const kept = text.replace(/\s*$/, "");
+    return `${kept}${kept ? eol + eol : ""}${header}${eol}${content.join(eol)}${eol}`;
+  }
+  let end = lines.findIndex((line, i) => i > start && TABLE.test(line));
+  if (end < 0) end = lines.length;
+  let first = start + 1;
+  while (first < end && isComment(lines[first]) && lines[first].trim()) first++;
+  let last = end;
+  while (last > first && isComment(lines[last - 1])) last--;
+  return [...lines.slice(0, first), ...content, ...lines.slice(last)].join(eol);
 }
 
 export function configuredProfiles(text: string): Record<ProfileKind, Record<string, Profile>> {
