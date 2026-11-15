@@ -348,3 +348,18 @@ def test_cli_submits_through_the_same_service(client, pkg, gh, monkeypatch):
     assert rec["status"] == "published" and TOKEN not in sub.output
     again = runner.invoke(cli.app, ["pilot", "submit", pkg, "--synthetic", "--note", "from rc"])
     assert json.loads(again.stdout)["id"] == rec["id"] and gh.counts() == {"issues": 1, "comments": 1, "releases": 1, "assets": 6}
+
+
+def test_evidence_disclosures_reach_the_record(client, pkg, gh):
+    """A file added after the run (and the report regenerated) is published, but disclosed, not hidden."""
+    P = f"/v1/packages/{pkg}"
+    root = Path(client.get(P).json()["path"])
+    ready_published(client, pkg)
+    (root / "notes.py").write_text("# added after the run\n")
+    client.post(P + ":sync")
+    assert client.put(P + "/report", json={}).status_code in (200, 201) and client.put(P + "/archive").status_code == 200
+    rec = client.post(P + "/pilots", json=body()).json()
+    assert rec["status"] == "published", rec
+    pilot = json.loads(gh.blobs[(rec["tag"], "pilot.json")])
+    assert "notes.py" in pilot["evidence"]["added_since_run"]
+    assert "files added since the run: `notes.py`" in gh.comments[1][0]["body"]

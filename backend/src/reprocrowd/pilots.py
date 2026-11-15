@@ -214,6 +214,30 @@ def _build_files(plan: Plan, tmp: Path, keep: bool = True) -> None:
                                                "Leave out the inputs (exclude: inputs) or deposit on Zenodo instead")
 
 
+def _evidence(plan: Plan) -> dict[str, Any]:
+    """What the recorded execution evidence discloses (files changed or added after the run, results identity)."""
+    try:
+        ev = plan.pkg.read_json("evidence/execution.json")
+    except (OSError, ValueError):
+        return {"recorded": False}
+    return {"recorded": True, "stale": ev.get("stale"), "added_since_run": ev.get("added_since_run") or [],
+            "results_match_run": ev.get("results_match_run")}
+
+
+def _evidence_line(plan: Plan) -> str:
+    ev = _evidence(plan)
+    if not ev["recorded"]:
+        return "> [!NOTE]\n> No execution evidence was recorded for this run.\n"
+    notes = []
+    if ev["stale"]:
+        notes.append(f"files changed since the recorded run: {', '.join(f'`{x}`' for x in ev['stale'][:20])}")
+    if ev["added_since_run"]:
+        notes.append(f"files added since the run: {', '.join(f'`{x}`' for x in ev['added_since_run'][:20])}")
+    if ev["results_match_run"] is False:
+        notes.append("the results file differs from the one the run wrote")
+    return f"> [!IMPORTANT]\n> Execution evidence discloses {'; '.join(notes)} (see `execution.json`).\n" if notes else ""
+
+
 def _summary(plan: Plan, version: int | None) -> dict[str, Any]:
     cmp = plan.p.cmp
     numeric = sum(r.type != "figure" for r in cmp.rows)
@@ -244,6 +268,7 @@ def _pilot_json(plan: Plan, version: int) -> bytes:
         "track": m.reprocrowd.track,
         "comparison": {"policy": cmp.policy, "rounding_mode": cmp.rounding_mode, "settings": cmp.settings.model_dump(mode="json"),
                        "summary": cmp.summary, "numeric_targets": _summary(plan, version)["numeric"]},
+        "evidence": _evidence(plan),
         "archive": {"sha256": m.reprocrowd.archive.sha256, "exclude": plan.exclude, "excluded": plan.excluded},
         "assets": {a.name: f"sha256:{a.sha256}" for a in plan.files},
         "licenses": licensing.summary() | {"this_file": licensing.METADATA},
@@ -297,7 +322,7 @@ def _banner(plan: Plan) -> str:
 def _release_body(plan: Plan, version: int, assets: list[Asset]) -> str:
     s = _summary(plan, version)
     return _clip(f"{_banner(plan)}\n**Run v{version}** of reproduction `{plan.reproduction_id}` (run key `{plan.run_key}`) of "
-                 f"https://doi.org/{plan.p.doi}\n\n{_summary_line(s)}. Policy `{s['policy']}`.\n\n{_assets_table(assets)}\n\n"
+                 f"https://doi.org/{plan.p.doi}\n\n{_summary_line(s)}. Policy `{s['policy']}`.\n\n{_evidence_line(plan)}\n{_assets_table(assets)}\n\n"
                  f"{_licence_lines(plan)}\n\n<!-- reprocrowd-summary: {json.dumps(s, sort_keys=True)} -->\n")
 
 
@@ -305,7 +330,7 @@ def _comment_body(plan: Plan, rec: GithubPilot) -> str:
     s = _summary(plan, rec.version)
     note = f"\n**Submitter's note:** {_cell(plan.note)[:2000]}\n" if plan.note else ""
     return _clip(f"{run_mark(plan.reproduction_id, plan.run_key)}\n### Run v{rec.version} · `{plan.run_key}`\n\n"
-                 f"{_summary_line(s)}. Policy `{s['policy']}`, rounding `{plan.p.cmp.rounding_mode}`.\n{note}\n"
+                 f"{_summary_line(s)}. Policy `{s['policy']}`, rounding `{plan.p.cmp.rounding_mode}`.\n\n{_evidence_line(plan)}{note}\n"
                  f"Files: [release {rec.tag}]({rec.release_url}) (pre-release; earlier runs stay in their own releases).\n\n"
                  f"{_assets_table(rec.assets)}\n\n<details><summary>Comparison ({len(plan.p.cmp.rows)} targets)</summary>\n\n"
                  f"{_comparison_table(plan)}\n\n</details>\n\n{_licence_lines(plan)}\n\n_Status: pilot, unreviewed. Reviewers: "

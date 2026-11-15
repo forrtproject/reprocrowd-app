@@ -51,6 +51,8 @@ All of these checks, and the 2 GiB asset limit, run before any GitHub write.
 
 GitHub has no API for issue attachments (25 MB in the browser), so files go to release assets (each under 2 GiB, verified by the REST `digest`). Committing binaries to git was rejected.
 
+**Evidence disclosures.** The recorded `evidence/execution.json` is shown, not hidden. Files changed or added after the run, and a results file that differs from the run's, appear as a notice in the run's comment and release notes, and under `evidence` in `pilot.json`. Whether publication should *refuse* such packages instead (after a regenerated report) is an open #12 policy question; see the foundation PR [#85](https://github.com/forrtproject/reprocrowd-app/pull/85).
+
 **Bodies** are clipped to GitHub's 65,536-character limit. The comparison table shows at most 60 rows and points to `comparison.json` for the rest.
 
 **Errors:**
@@ -118,6 +120,7 @@ What CC BY 4.0 has going for it: one licence for everything we author, and the a
   - a published release with different files (refused, not changed);
   - no write access;
   - `licenses.json` covering every archived file;
+  - evidence disclosures (a file added after the run) in the comment and `pilot.json`;
   - the CLI path;
   - the token never written to disk.
 - `backend/tests/pilot_demo.py` is the opt-in live demo, using the synthetic scenario fixture only.
