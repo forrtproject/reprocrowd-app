@@ -8647,7 +8647,7 @@
             }
           },
           "403": {
-            "description": "`github_token_invalid`: GitHub didn't accept the token; `github_forbidden`: GitHub refused the request; submitting needs write access to the pilots repository",
+            "description": "`github_token_invalid`: GitHub didn't accept the token; `github_forbidden`: GitHub refused the request; submitting needs a public pilots repository and a login that can fork it",
             "content": {
               "application/problem+json": {},
               "application/json": {
@@ -8850,7 +8850,7 @@
                 }
               }
             },
-            "description": "`pilot_asset_too_large`: A file is too large for a GitHub release asset (2 GiB); `github_rejected`: GitHub rejected the request"
+            "description": "`pilot_asset_too_large`: A pilot run's files must total under 200 MB; `github_rejected`: GitHub rejected the request"
           },
           "409": {
             "content": {
@@ -8883,7 +8883,7 @@
                 }
               }
             },
-            "description": "`github_token_invalid`: GitHub didn't accept the token; `github_forbidden`: GitHub refused the request; submitting needs write access to the pilots repository"
+            "description": "`github_token_invalid`: GitHub didn't accept the token; `github_forbidden`: GitHub refused the request; submitting needs a public pilots repository and a login that can fork it"
           },
           "429": {
             "content": {
@@ -8976,7 +8976,7 @@
                 }
               }
             },
-            "description": "`pilot_asset_too_large`: A file is too large for a GitHub release asset (2 GiB)"
+            "description": "`pilot_asset_too_large`: A pilot run's files must total under 200 MB"
           },
           "409": {
             "content": {

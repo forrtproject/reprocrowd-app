@@ -44,7 +44,9 @@ creators = []              # used when a request names none, e.g. [{name = "Doe,
 [licensing]
 code = "MIT"               # or "CC-BY-4.0"
 
-# GitHub pilot submissions (an issue per reproduction, a pre-release with the files per run). Needs write access.
+# GitHub pilot submissions (an issue per reproduction, a pre-release with the files per run). Any GitHub account can submit:
+# the files go to its fork, and the pilots repository's Action (.github/workflows/pilot-copy.yml there) copies them.
+# A repository of your own needs that workflow too (fork forrtproject/reprocrowd-pilots), or runs stay `submitted`.
 [github]
 api_url = "https://api.github.com"
 pilots_repo = "forrtproject/reprocrowd-pilots"

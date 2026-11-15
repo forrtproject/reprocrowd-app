@@ -91,7 +91,7 @@ class FakeGitHub:
         auth = request.headers.get("authorization", "")
         who = self.tokens.get(auth.removeprefix("Bearer ")) if auth else None
         path, method = urlparse(str(request.url)).path, request.method
-        if who is None and not (method == "GET" and re.fullmatch(r"/repos/[^/]+/[^/]+/releases/tags/.+", path)):
+        if who is None and not (method == "GET" and re.fullmatch(r"/repos/[^/]+/[^/]+/(releases/tags/.+|issues/\d+/comments)", path)):
             return httpx.Response(401, json={"message": "Bad credentials"})
         upload = path.endswith("/assets") and method == "POST"
         body = json.loads(request.content) if request.content and method in ("POST", "PATCH") and not upload else None
@@ -147,6 +147,8 @@ class FakeGitHub:
                 return httpx.Response(404, json={"message": "Not Found"})
             if method == "PATCH":
                 assert who == issue["user"]["login"] or self._can_write(who, repo)
+                if (f := self._maybe_fail("issue_body")):
+                    return f
                 issue.update(body)
             return httpx.Response(200, json=issue)
         if m := re.fullmatch(r"/issues/(\d+)/labels", rest):
@@ -441,7 +443,8 @@ def _tamper(gh, tag, name, data):
     a["digest"], a["size"] = "sha256:" + hashlib.sha256(data).hexdigest(), len(data)
 
 
-@pytest.mark.parametrize("case", ["other_commenter", "files_of_another_account", "changed_file", "too_large", "claimed_by_earlier_issue"])
+@pytest.mark.parametrize("case", ["other_commenter", "files_of_another_account", "changed_file", "too_large", "claimed_by_earlier_issue",
+                                  "unexpected_pilot_json"])
 def test_the_action_refuses_and_copies_nothing(client, pkg, gh, monkeypatch, case):
     from reprocrowd import pilot_copy
     P = f"/v1/packages/{pkg}"
@@ -457,17 +460,47 @@ def test_the_action_refuses_and_copies_nothing(client, pkg, gh, monkeypatch, cas
         _tamper(gh, rec["tag"], "report.html", b"<p>changed</p>")
     elif case == "too_large":
         monkeypatch.setattr(pilot_copy, "MAX_RUN", 100)
-    elif case == "claimed_by_earlier_issue":
-        gh.issues.insert(0, {"number": 0, "title": "first", "body": f"<!-- reprocrowd-pilot:{rec['reproduction_id']} -->", "labels": [],
-                             "user": {"login": "bob"}, "html_url": "x"})
-        gh.comments[0] = []
+    elif case == "claimed_by_earlier_issue":  # a run of this reproduction ID was already copied for another issue
+        gh.releases[REPO].append({"id": 1, "tag_name": f"{rec['reproduction_id']}-{'0' * 12}", "name": f"{rec['reproduction_id']} v1 (pilot, unreviewed)",
+                                  "body": "<!-- reprocrowd-pilot-issue:9 -->", "draft": False, "prerelease": True, "published_at": "2026-11-15T12:00:00Z", "assets": []})
+    elif case == "unexpected_pilot_json":  # pilot.json is the submitter's: its text must not reach the release notes unchecked
+        pilot = json.loads(gh.blob(FORK, rec["tag"], "pilot.json"))
+        pilot["paper"]["doi"] = "10.1/x <a href=https://evil.example>"
+        _tamper(gh, rec["tag"], "pilot.json", json.dumps(pilot).encode())
     replies = gh.run_action()
     assert len(replies) == 1 and "was **not copied**" in replies[0], replies
-    assert gh.releases[REPO] == [] and gh.issues[-1]["labels"] == []
+    assert not [r for r in gh.releases[REPO] if r["tag_name"] == rec["tag"]] and gh.issues[-1]["labels"] == []
     if case == "too_large":
         assert gh.downloads == []  # refused before downloading anything
     assert gh.run_action() == []  # the same refusal is not repeated
-    assert client.get(P + "/pilots").json()[0]["status"] == "submitted"
+    listed = client.get(P + "/pilots").json()[0]
+    assert listed["status"] == "submitted" and listed["error"].startswith("the pilots repository refused this run: ")
+    assert listed["error"].split(": ", 1)[1] in replies[0]
+
+
+def test_release_notes_use_the_repository_s_own_statement(client, pkg, gh):
+    P = f"/v1/packages/{pkg}"
+    ready_published(client, pkg)
+    rec = client.post(P + "/pilots", json=body()).json()
+    pilot = json.loads(gh.blob(FORK, rec["tag"], "pilot.json"))
+    pilot["statement"] = "Certified correct by FORRT."
+    _tamper(gh, rec["tag"], "pilot.json", json.dumps(pilot).encode())
+    assert "Run **v1** is copied" in gh.run_action()[0]
+    notes = gh.releases[REPO][0]["body"]
+    assert "Certified" not in notes and "Pilot record — unreviewed" in notes and "<!-- reprocrowd-pilot-issue:1 -->" in notes
+
+
+def test_a_copy_that_failed_after_publishing_is_finished_on_the_next_run(client, pkg, gh):
+    P = f"/v1/packages/{pkg}"
+    ready_published(client, pkg)
+    client.post(P + "/pilots", json=body(synthetic=True))
+    gh.fail["issue_body"] = 1  # the runs table can't be written
+    with pytest.raises(RuntimeError):
+        gh.run_action()
+    assert not gh.releases[REPO][0]["draft"] and "### Latest run" not in gh.issues[0]["body"]
+    assert "Run **v1** is copied" in gh.run_action()[0]
+    assert "### Latest run: v1" in gh.issues[0]["body"] and {l["name"] for l in gh.issues[0]["labels"]} >= {"reprocrowd-pilot", "synthetic"}
+    assert len(gh.releases[REPO]) == 1
 
 
 def test_private_repository_is_refused_before_writing(client, pkg, gh):

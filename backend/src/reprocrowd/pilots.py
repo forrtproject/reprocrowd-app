@@ -48,7 +48,7 @@ from .config import settings
 from .database import Prepared
 from .errors import ApiError, conflict, invalid
 from .package import Package, sha256_file
-from .pilot_copy import MAX_RUN, RUNS_END, RUNS_START, files_mark, issue_mark, release_mark, run_mark, summary_line
+from .pilot_copy import DISCLAIMER, MAX_RUN, RUNS_END, RUNS_START, files_mark, issue_mark, refused_mark, release_mark, run_mark, summary_line
 from .report import ARCHIVE_DIR, archive_path
 from .schemas.common import now
 from .schemas.manifest import GithubPilot, PilotAsset
@@ -57,10 +57,6 @@ from .zenodo import GROUPS, _check_published_paper, _group, _publication_zip, co
 BODY_LIMIT = 65_000  # GitHub's issue/comment body limit is 65,536 characters
 ROW_LIMIT = 60
 FORK_WAIT = 30  # × 2 s: GitHub creates forks asynchronously
-DISCLAIMER = ("**Pilot record — unreviewed.** Made with ReproCrowd by recreating the analysis from the article's text and "
-              "published data. Agreement under the recorded comparison settings shows that this code produced the "
-              "reported numbers from these inputs. It is not peer review, a certificate of the study's validity, or an endorsement. The authors' "
-              "code was left out of the agent's context; that is not verified blinding.")
 SYNTHETIC = ("**SYNTHETIC test fixture — not a research result.** The paper, data and DOI are invented for testing "
              "the publication workflow.")
 EXTRACT = {"report.html": "report.html", "comparison.json": "comparison.json", "evidence/execution.json": "execution.json",
@@ -514,15 +510,19 @@ def _comment(gh: GitHub, plan: Plan, rec: GithubPilot, pkg: Package) -> None:
 
 
 def refresh(pkg: Package, recs: list[GithubPilot] | None = None) -> list[GithubPilot]:
-    """Mark submitted runs ``published`` once the pilots repository's Action has copied them (a public read, no token)."""
+    """Mark submitted runs ``published`` once the pilots repository's Action has copied them, or record its refusal
+    (public reads, no token)."""
     recs = pkg.load().reprocrowd.pilots if recs is None else recs
     api = settings().github_api_url.rstrip("/")
+    headers = {"Accept": "application/vnd.github+json", "User-Agent": f"ReproCrowd/{__version__}"}
     for rec in recs:
         if rec.status != "submitted":
             continue
         try:
-            r = httpx.get(f"{api}/repos/{rec.repo}/releases/tags/{rec.tag}", timeout=10,
-                          headers={"Accept": "application/vnd.github+json", "User-Agent": f"ReproCrowd/{__version__}"})
+            r = httpx.get(f"{api}/repos/{rec.repo}/releases/tags/{rec.tag}", timeout=10, headers=headers)
+            if r.status_code != 200 and rec.issue_number and (reason := _refusal(api, rec, headers)) and reason != rec.error:
+                rec.error = reason
+                _save(pkg, rec)
         except httpx.HTTPError:
             continue
         if r.status_code != 200 or r.json().get("draft"):
@@ -530,8 +530,25 @@ def refresh(pkg: Package, recs: list[GithubPilot] | None = None) -> list[GithubP
         rel = r.json()
         urls = {a["name"]: a.get("browser_download_url") for a in rel.get("assets") or []}
         version = next((int(w[1:]) for w in (rel.get("name") or "").split() if w[:1] == "v" and w[1:].isdigit()), None)
-        rec.status, rec.version, rec.release_url = "published", version, rel.get("html_url")
+        rec.status, rec.version, rec.release_url, rec.error = "published", version, rel.get("html_url"), None
         rec.published_at = _time(rel.get("published_at"))
         rec.assets = [a.model_copy(update={"url": urls.get(a.name, a.url)}) for a in rec.assets]
         _save(pkg, rec)
     return recs
+
+
+def _refusal(api: str, rec: GithubPilot, headers: dict[str, str]) -> str | None:
+    """The Action's reply refusing this run, if any."""
+    url: str | None = f"{api}/repos/{rec.repo}/issues/{rec.issue_number}/comments?per_page=100"
+    for _ in range(10):
+        if url is None:
+            return None
+        r = httpx.get(url, timeout=10, headers=headers)
+        if r.status_code != 200:
+            return None
+        for c in r.json():
+            body = c.get("body") or ""
+            if refused_mark(rec.tag) in body:
+                return "the pilots repository refused this run: " + body.split("**not copied**: ", 1)[-1].strip()
+        url = r.links.get("next", {}).get("url")
+    return None

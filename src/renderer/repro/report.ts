@@ -218,10 +218,11 @@ export class ReportStep implements Step {
       ${this.pilotsError ? `<p class="warn-inline small">Couldn't read this package's pilot records: ${esc(this.pilotsError.message)}</p>` : ""}
       <div class="actions"><button id="rp-pilot" class="primary" ${ready ? "" : "disabled"}>${label}</button></div>
       ${same?.status === "published" ? `<p class="hint">This ZIP is pilot run v${same.version}. A new run (then report and ZIP) becomes the next version on the same issue.</p>` : ""}
-      ${same?.status === "submitted" ? `<p class="hint">This ZIP is submitted. The pilots repository checks it, copies the files into its own release and numbers the run, usually within minutes; the issue shows its reply.</p>` : ""}
+      ${same?.status === "submitted" && same.error ? `<p class="warn-inline small">${esc(same.error)}. The run stays as it is; fix the cause, then create the ZIP again to submit a new run.</p>` : ""}
+      ${same?.status === "submitted" && !same.error ? `<p class="hint">This ZIP is submitted. The pilots repository checks it, copies the files into its own release and numbers the run, usually within minutes; the issue shows its reply.</p>` : ""}
       ${same?.status === "partial" && same.error ? `<p class="warn-inline small">The last attempt stopped: ${esc(same.error)}. Submitting again resumes it without duplicates.</p>` : ""}
       ${this.pilots.length ? `<h4>Pilot runs of this package</h4><ul class="deposits">${[...this.pilots].reverse().map((p) => `<li class="deposit ${p.status}">
-        <div><span class="badge st-${p.status === "published" ? "published" : "draft"}">${p.status === "published" ? `v${p.version}` : p.status === "submitted" ? "Waiting for the copy" : "Incomplete"}</span> ${esc(when(p.published_at ?? p.created_at))} · <code>${esc(p.run_key)}</code>${p.synthetic ? ` <span class="badge sandbox">Synthetic</span>` : ""}</div>
+        <div><span class="badge st-${p.status === "published" ? "published" : "draft"}">${p.status === "published" ? `v${p.version}` : p.status === "submitted" ? (p.error ? "Refused" : "Waiting for the copy") : "Incomplete"}</span> ${esc(when(p.published_at ?? p.created_at))} · <code>${esc(p.run_key)}</code>${p.synthetic ? ` <span class="badge sandbox">Synthetic</span>` : ""}</div>
         <div class="actions">${p.issue_url ? `<a href="#" data-open="${esc(p.issue_url)}">Issue</a>` : ""}${p.release_url ?? p.files_url ? ` · <a href="#" data-open="${esc((p.release_url ?? p.files_url)!)}">Files</a>` : ""}${p.comment_url ? ` · <a href="#" data-open="${esc(p.comment_url)}">Run comment</a>` : ""}</div></li>`).join("")}</ul>` : ""}
     </section>`;
   }
