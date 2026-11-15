@@ -69,7 +69,7 @@ function ghToken(): Promise<{ token?: string; gh: GhLogin }> {
   );
 }
 
-const NO_GITHUB_TOKEN = "No GitHub login: install the GitHub CLI (https://cli.github.com) and run “gh auth login”.";
+const NO_GITHUB_TOKEN = "No GitHub login: run “gh auth login” in a terminal (Settings → GitHub pilots → Log in with gh). If gh isn’t installed, get it from https://cli.github.com first.";
 
 function creators() {
   const c = loadSettings().zenodo.creator;
