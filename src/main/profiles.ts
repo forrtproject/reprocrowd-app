@@ -15,7 +15,7 @@ export function replaceProfile(text: string, kind: ProfileKind, name: string, pr
   if (typeof profile.model !== "string" || typeof profile.effort !== "string" || !Number.isFinite(profile.timeout_s) || profile.timeout_s <= 0) throw new Error("Model/effort must be text and timeout must be positive.");
   const allowed = new Set(["argv", "model", "effort", "timeout_s", ...(kind === "llm" ? ["output", "read_files_argv", "json_schema_argv"] : ["events", "tools", "exec_tools"])]);
   if (Object.keys(profile).some((key) => !allowed.has(key))) throw new Error("Unrecognized profile field.");
-  const protocols = kind === "llm" ? ["text", "claude-json", "opencode-json"] : ["text", "claude-stream-json", "opencode-json"];
+  const protocols = kind === "llm" ? ["text", "claude-json", "opencode-json", "codex-json"] : ["text", "claude-stream-json", "opencode-json", "codex-json"];
   if (!protocols.includes(kind === "llm" ? profile.output ?? "" : profile.events ?? "")) throw new Error("Choose a supported output protocol.");
   for (const key of ["tools", "exec_tools", "read_files_argv", "json_schema_argv"] as const) {
     if (profile[key] !== undefined && !strings(profile[key])) throw new Error(`${key} must be a list of text arguments.`);

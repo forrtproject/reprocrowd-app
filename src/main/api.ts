@@ -391,15 +391,8 @@ export function makeApi(wc: WebContents) {
     setLlmModels: async (disabled: string[]) => {
       saveSettings({ llmDisabled: disabled });
     },
-    claudeLogin: async () => {
-      const exe = which("claude");
-      if (!exe) throw new Error("Claude Code isn't installed, or not on the PATH.");
-      // The login is an OAuth flow in the browser that may ask for a code back, so it runs in a visible terminal.
-      if (!openInTerminal([exe, "auth", "login"], os.homedir())) {
-        throw new Error("No terminal app was found to run the login in. Run “claude auth login” in a terminal, then refresh the model list.");
-      }
-      return "Claude Code's login opened in a terminal window. Finish it there, then refresh the model list.";
-    },
+    claudeLogin: async () => cliLogin("claude"),
+    cliLogin: async (cli: string) => cliLogin(cli),
     setZenodoToken: async (server: ZenodoServer, token: string | null) => setSecret(zenodoKey(server), token?.trim() || null),
     verifyZenodoToken: async (sandbox: boolean, token?: string) => {
       const t = token?.trim() || (await zenodoToken(sandbox));
@@ -407,6 +400,8 @@ export function makeApi(wc: WebContents) {
       return post("/v1/zenodo:verify-token", { zenodo_token: t, sandbox }, 20_000);
     },
     profileConfig: async () => backend.profileConfig(),
+    /** Whether a profile's command is installed; no model call. */
+    commandFound: async (command: string) => !!which(String(command ?? "").trim()),
     saveProfile: (kind: Parameters<typeof backend.saveProfile>[0], name: string, profile: Parameters<typeof backend.saveProfile>[2]) => backend.saveProfile(kind, name, profile),
     runningJobs: async () => get<any[]>("/v1/jobs"),
     saveBackendConfig: async (text: string) => {
@@ -533,3 +528,21 @@ export function makeApi(wc: WebContents) {
 }
 
 export type Api = ReturnType<typeof makeApi>;
+
+
+/** A CLI's own login, in a visible terminal: these are browser OAuth flows that may ask for a code back. */
+const LOGINS: Record<string, { label: string; args: string[] }> = {
+  claude: { label: "Claude Code", args: ["auth", "login"] },
+  codex: { label: "Codex", args: ["login"] },
+};
+function cliLogin(cli: string): string {
+  const login = LOGINS[cli];
+  if (!login) throw new Error(`No login is known for ${cli}.`);
+  const exe = which(cli);
+  if (!exe) throw new Error(`${login.label} isn't installed, or not on the PATH.`);
+  if (!openInTerminal([exe, ...login.args], os.homedir())) {
+    throw new Error(`No terminal app was found to run the login in. Run “${cli} ${login.args.join(" ")}” in a terminal, then refresh the model list.`);
+  }
+  return `${login.label}'s login opened in a terminal window. Finish it there, then refresh the model list.`;
+}
+

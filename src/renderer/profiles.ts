@@ -1,4 +1,4 @@
-import { host, type ConfiguredProfile } from "./api";
+import { CLI_LABELS, cliModel, cliOf, host, modelCompatible, type ConfiguredProfile, type LlmModels } from "./api";
 import { confirmDialog, esc, modal, showError } from "./util";
 
 type Kind = "llm" | "agent";
@@ -10,11 +10,13 @@ export async function profileEditor(saved: (text: string) => void) {
     <p class="hint">A profile runs a CLI you installed and signed into. No model call runs while editing or saving. Commands use your account; do not put passwords or API keys in arguments.</p>
     <label>Operation <select name="kind"><option value="agent">Code generation</option><option value="llm">Extract targets / analysis steps</option></select></label>
     <label>Existing profile <select name="existing"></select></label>
-    <div class="grid2"><label>Preset <select name="preset"><option value="claude">Claude Code</option><option value="opencode">OpenCode</option><option value="text">Other CLI (plain text)</option></select></label><label>Name <input name="name" required pattern="[A-Za-z0-9_-]+" /></label></div>
+    <div class="grid2"><label>Preset <select name="preset"><option value="claude">Claude Code</option><option value="codex">Codex CLI</option><option value="opencode">OpenCode</option><option value="text">Other CLI (plain text)</option></select></label><label>Name <input name="name" required pattern="[A-Za-z0-9_-]+" /></label></div>
     <label>Command <input name="command" required placeholder="claude" /></label>
+    <p class="hint command-status" aria-live="polite"></p>
     <label>Arguments (one per line; spaces stay inside that argument)<textarea name="args" class="mono" rows="6"></textarea></label>
-    <div class="grid3"><label>Model <input name="model" /></label><label>Effort <input name="effort" /></label><label>Timeout (seconds) <input name="timeout" type="number" min="1" required /></label></div>
+    <div class="grid3"><label>Model <input name="model" list="profile-models" placeholder="(the CLI's default)" /><datalist id="profile-models"></datalist></label><label>Effort <input name="effort" /></label><label>Timeout (seconds) <input name="timeout" type="number" min="1" required /></label></div>
     <label>Output protocol <select name="protocol"></select></label>
+    <p class="hint capability"></p>
     <details><summary>Tool and structured-output arguments</summary>
       <p class="hint">For tool-list profiles, use {tools} in the arguments. A CLI allowlist is not an OS sandbox. An unsupported no-analysis request is refused before launch.</p>
       <label>Editing tools (one per line)<textarea name="tools" rows="2"></textarea></label>
@@ -33,7 +35,7 @@ export async function profileEditor(saved: (text: string) => void) {
   const lines = (name: string) => value(name).split(/\r?\n/).filter((s) => s.trim());
   const set = (name: string, v: string | number | string[] | undefined) => { el(name).value = Array.isArray(v) ? v.join("\n") : String(v ?? ""); };
   const protocols = () => {
-    const list = kind() === "agent" ? ["claude-stream-json", "opencode-json", "text"] : ["claude-json", "opencode-json", "text"];
+    const list = kind() === "agent" ? ["claude-stream-json", "codex-json", "opencode-json", "text"] : ["claude-json", "codex-json", "opencode-json", "text"];
     el("protocol").innerHTML = list.map((s) => `<option>${s}</option>`).join("");
   };
   const load = (name: string, p: ConfiguredProfile) => {
@@ -44,25 +46,48 @@ export async function profileEditor(saved: (text: string) => void) {
   };
   const preset = () => {
     const type = value("preset"), agent = kind() === "agent";
+    const codex = ["codex", "exec", "--json", "--skip-git-repo-check", "--ephemeral", "--ignore-user-config", "-m", "{model}", "-c", "model_reasoning_effort={effort}", "-s", agent ? "workspace-write" : "read-only", "-"];
     load(type, {
       argv: type === "claude" ? agent
         ? ["claude", "-p", "--output-format", "stream-json", "--verbose", "--permission-mode", "acceptEdits", "--model", "{model}", "--effort", "{effort}", "--allowedTools", "{tools}"]
         : ["claude", "-p", "--output-format", "json", "--model", "{model}", "--effort", "{effort}"]
+        : type === "codex" ? codex
         : type === "opencode" ? ["opencode", "run", "--format", "json", "-m", "{model}", "--variant", "{effort}", ...(agent ? ["--auto"] : [])] : ["your-cli"],
       model: type === "claude" ? "sonnet" : "", effort: type === "claude" ? "high" : "", timeout_s: agent ? 7200 : 1800,
-      ...(agent ? { events: type === "claude" ? "claude-stream-json" : type === "opencode" ? "opencode-json" : "text", tools: type === "claude" ? ["Read", "Write", "Edit", "Glob", "Grep"] : [], exec_tools: type === "claude" ? ["Bash(Rscript:*)", "Bash(python:*)", "Bash(python3:*)"] : [] }
-        : { output: type === "claude" ? "claude-json" : type === "opencode" ? "opencode-json" : "text", read_files_argv: type === "claude" ? ["--allowedTools", "Read"] : [], json_schema_argv: type === "claude" ? ["--json-schema", "{schema}"] : [] })
+      ...(agent ? { events: type === "claude" ? "claude-stream-json" : type === "codex" ? "codex-json" : type === "opencode" ? "opencode-json" : "text", tools: type === "claude" ? ["Read", "Write", "Edit", "Glob", "Grep"] : [], exec_tools: type === "claude" ? ["Bash(Rscript:*)", "Bash(python:*)", "Bash(python3:*)"] : [] }
+        : { output: type === "claude" ? "claude-json" : type === "codex" ? "codex-json" : type === "opencode" ? "opencode-json" : "text", read_files_argv: type === "claude" ? ["--allowedTools", "Read"] : [], json_schema_argv: type === "claude" ? ["--json-schema", "{schema}"] : [] })
     });
+    status();
   };
+  // What the current fields promise, derived like the backend does (providers.exec_restriction): no model call.
+  let models: LlmModels | undefined;
+  const status = async () => {
+    const argv = [value("command").trim(), ...lines("args")];
+    const cli = cliOf(argv), label = CLI_LABELS[cli] ?? cli;
+    const restriction = kind() !== "agent" ? "" : argv.some((a) => a.includes("{tools}")) && lines("tools").length && lines("exec").length
+      ? "No-analysis mode: enforced by the CLI's tool allowlist (not an OS sandbox)."
+      : "No-analysis mode: not supported. Runs with this profile need “let it run the analysis”; the agent can then run commands in the package folder.";
+    form.querySelector(".capability")!.textContent = restriction;
+    const compatible = (models?.available ?? []).filter((m) => modelCompatible(m, argv));
+    form.querySelector("#profile-models")!.innerHTML = compatible.map((m) => `<option value="${esc(cliModel(m.id))}">${esc(m.name)}</option>`).join("");
+    const line = form.querySelector(".command-status")!;
+    if (!argv[0]) { line.textContent = ""; return; }
+    const found = await host.commandFound(argv[0]).catch(() => false);
+    line.textContent = !found ? `“${argv[0]}” was not found on this computer. Install ${label} and sign in once in a terminal; nothing is run while you edit.`
+      : models?.needsLogin?.includes(cli as never) ? `${label} is installed but not signed in. Sign in (e.g. “${cli} login”) before running a profile.`
+      : `${label} found${compatible.length ? `; ${compatible.length} model${compatible.length === 1 ? "" : "s"} offered for it` : ""}. Being found does not certify its login, model access or output.`;
+  };
+  host.llmModels().then((m) => { models = m; status(); }, () => {});
   const refresh = () => {
     protocols();
     el("existing").innerHTML = `<option value="">Add a profile…</option>` + Object.keys(profiles[kind()]).map((s) => `<option value="${esc(s)}">${esc(s)}</option>`).join("");
     const first = Object.keys(profiles[kind()])[0];
-    if (first) { set("existing", first); load(first, profiles[kind()][first]); }
+    if (first) { set("existing", first); load(first, profiles[kind()][first]); status(); }
     else preset();
   };
   el("kind").addEventListener("change", refresh); el("preset").addEventListener("change", preset);
-  el("existing").addEventListener("change", () => { const p = profiles[kind()][value("existing")]; if (p) load(value("existing"), p); else preset(); });
+  for (const name of ["command", "args", "tools", "exec"]) el(name).addEventListener("change", status);
+  el("existing").addEventListener("change", () => { const p = profiles[kind()][value("existing")]; if (p) { load(value("existing"), p); status(); } else preset(); });
   form.addEventListener("submit", async (e) => {
     if ((e.submitter as HTMLButtonElement)?.value !== "save") return;
     e.preventDefault();

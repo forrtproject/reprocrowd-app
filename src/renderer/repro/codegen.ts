@@ -1,7 +1,7 @@
 // Step 6: code generation. Either in the user's own editor (the package folder plus AGENT_PROMPT.md), or by the
 // backend's headless coding agent as a job: its messages and tool calls stream in while it works, the package's
 // files are listed (most recently changed first) with the TODO(LLM) markers left.
-import { cliModel, host, pkg, modelCompatible } from "../api";
+import { CLI_LABELS, cliModel, cliOf, host, pkg, modelCompatible } from "../api";
 import type { LlmModel, LlmModels } from "../api";
 import type { AgentProfile, FileEntry, PromptPreview, ScriptState } from "../types";
 import { esc, modal, showPrompt, sizeText, when } from "../util";
@@ -64,7 +64,8 @@ export class CodegenStep implements Step {
               <label>Model <select id="rp-model" ${running ? "disabled" : ""}><option value="">(the CLI's default)</option></select></label>
               <label class="inline" title="${esc(profile?.exec_tools.join(", ") ?? "")}"><input type="checkbox" id="rp-exec" ${st.allowExec ? "checked" : ""} ${running || unsupported ? "disabled" : ""} /> let it run the analysis (R, Python, Snakemake)</label>
             </div>
-            <p class="hint">${unsupported ? "This profile cannot enforce editing-only mode." : "Restricted by the CLI tool allowlist, not an OS sandbox."}${profile?.available === false ? " The executable was not found; install it or update the command in Settings." : ""}</p>
+            <p class="hint">${unsupported ? "This profile cannot enforce editing-only mode: with execution allowed, the agent can edit files and run commands in the package folder." : "Restricted by the CLI tool allowlist, not an OS sandbox."}${profile?.available === false ? " The executable was not found; install it or update the command in Settings." : ""}</p>
+            ${this.models?.needsLogin?.includes(cliOf(profile?.argv) as LlmModel["cli"]) ? `<p class="hint warn-inline">${esc(CLI_LABELS[cliOf(profile?.argv)] ?? cliOf(profile?.argv))} is installed but not signed in. <button id="rp-login" type="button">Log in…</button></p>` : ""}
             ${unsupported && !st.allowExec ? `<button id="rp-allow-exec" type="button">Allow execution for this profile</button>` : ""}
             <div class="form-row"><button id="rp-prompt" ${ready ? "" : "disabled"}>Show prompt</button></div>
             <label>Extra instructions <textarea id="rp-instr" rows="2" ${running ? "disabled" : ""} placeholder="optional">${esc(st.agentInstructions)}</textarea></label>
@@ -117,6 +118,7 @@ export class CodegenStep implements Step {
       st.agentModel = modelSel.value;
       this.w.app.save();
     });
+    body.querySelector("#rp-login")?.addEventListener("click", () => host.cliLogin(cliOf(this.profiles.find((p) => p.name === prof.value)?.argv)).then((m) => this.w.setStatus(m), (e) => this.w.setStatus((e as Error).message, "error")));
     body.querySelector("#rp-allow-exec")?.addEventListener("click", () => { st.allowExec = true; this.w.app.save(); this.w.render(); });
     body.querySelector<HTMLInputElement>("#rp-exec")!.addEventListener("change", (e) => {
       st.allowExec = (e.target as HTMLInputElement).checked;

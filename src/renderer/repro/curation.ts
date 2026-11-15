@@ -2,7 +2,7 @@
 // backend: items added by hand, plus LLM runs whose entries keep the LLM's version and store the user's changes on
 // top (restorable). Two views: Reader, the paper with each item as a card next to the passage it comes from (marking
 // sentences there leads to new items), and Table, manual items first, then one group per LLM run.
-import { ApiError, cliModel, modelCompatible, host, LlmModel, LlmModels, pkg } from "../api";
+import { ApiError, CLI_LABELS, cliModel, cliOf, modelCompatible, host, LlmModel, LlmModels, pkg } from "../api";
 import { refText } from "../doc";
 import { COMPARATORS, type Action, type CurationFile, type Document, type Item, type LlmEntry, type LlmProfile, type LlmRun, type PromptPreview, type Resource, type Target } from "../types";
 import { choose, confirmDialog, esc, list, modal, seconds, showError, showPrompt, trunc, when } from "../util";
@@ -471,7 +471,7 @@ export class CurationStep implements Step {
         <label>LLM profile <select name="profile">${this.profiles.map((p) => `<option value="${esc(p.name)}" ${p.name === defaultProfile ? "selected" : ""}>${esc(p.name)}: ${esc(p.model || "default model")}${p.effort ? `, effort ${esc(p.effort)}` : ""}</option>`).join("")}</select></label>
         <label class="model-row" hidden>Model <select name="model"><option value="">(the CLI's default)</option></select></label>
         <p class="hint model-notice"></p>
-        <div class="claude-login" hidden><p class="hint">Claude Code is installed but not signed in.</p><button type="button" id="claude-login">Log in to Claude Code</button></div>
+        <div class="claude-login" hidden><p class="hint"><span class="cli-name">Claude Code</span> is installed but not signed in.</p><button type="button" id="claude-login">Log in…</button></div>
         <p class="hint">Command (configured in the backend): <code class="argv"></code></p><p class="hint availability"></p>
         <div class="form-row"><button type="button" class="show-prompt">Show prompt</button></div>
         <label>Extra instructions <textarea name="instructions" rows="4" placeholder="optional, e.g. only the main analyses"></textarea></label>
@@ -492,7 +492,9 @@ export class CurationStep implements Step {
     const fillModels = () => {
       const m = models;
       if (!m) return;
-      claudeLogin.hidden = !m.claudeNeedsLogin;
+      const cli = cliOf(this.profiles.find((p) => p.name === profileSel.value)?.argv);
+      claudeLogin.hidden = !(m.needsLogin ?? (m.claudeNeedsLogin ? ["claude"] : [])).includes(cli as LlmModel["cli"]);
+      claudeLogin.querySelector(".cli-name")!.textContent = CLI_LABELS[cli] ?? cli;
       const byProv = new Map<string, LlmModel[]>();
       for (const x of m.available) if (!m.disabled.includes(x.id) && modelCompatible(x, this.profiles.find((p) => p.name === profileSel.value)?.argv)) {
         const a = byProv.get(x.provider) ?? [];
@@ -522,9 +524,9 @@ export class CurationStep implements Step {
     });
     claudeLogin.querySelector("button")!.addEventListener("click", async () => {
       try {
-        claudeLogin.querySelector(".hint")!.textContent = await host.claudeLogin();
+        claudeLogin.querySelector(".hint")!.textContent = await host.cliLogin(cliOf(this.profiles.find((p) => p.name === profileSel.value)?.argv));
       } catch (e) {
-        showError("Logging in to Claude Code", e);
+        showError("Logging in", e);
       }
     });
     showArgv();

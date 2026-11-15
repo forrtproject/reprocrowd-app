@@ -127,6 +127,17 @@ model = ""
 effort = ""
 timeout_s = 1800
 
+# Codex CLI (https://developers.openai.com/codex), signed in with "codex login". exec --json emits one event per line
+# ("codex-json"). The read-only sandbox lets it read the package files without changing them. --ignore-user-config skips
+# ~/.codex/config.toml (MCP servers, default model) but keeps the login. model = "" uses Codex's default.
+[llm.profiles.codex]
+argv = ["codex", "exec", "--json", "--skip-git-repo-check", "--ephemeral", "--ignore-user-config", "-m", "{model}",
+        "-c", "model_reasoning_effort={effort}", "-s", "read-only", "-"]
+output = "codex-json"
+model = ""
+effort = ""
+timeout_s = 1800
+
 # Coding agents for code generation. {tools}: the allowed tools, plus exec_tools when running the analysis is allowed.
 [agent]
 default_profile = "claude"
@@ -149,6 +160,19 @@ model = ""
 effort = ""
 timeout_s = 7200
 events = "opencode-json"
+
+# Codex as a headless coding agent. It has no tool allowlist: in the workspace-write sandbox it edits files and runs
+# commands, with writes confined to the package folder by Codex's own sandbox. "Don't run the analysis" is therefore
+# refused for this profile.
+[agent.profiles.codex]
+argv = ["codex", "exec", "--json", "--skip-git-repo-check", "--ephemeral", "--ignore-user-config", "-m", "{model}",
+        "-c", "model_reasoning_effort={effort}", "-s", "workspace-write", "-"]
+tools = []
+exec_tools = []
+model = ""
+effort = ""
+timeout_s = 7200
+events = "codex-json"
 `;
 
 export function readUserConfig(): string {

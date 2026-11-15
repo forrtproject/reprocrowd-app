@@ -49,17 +49,22 @@ export interface BackendStatus {
   configFile: string;
   userConfigFile: string;
 }
-export interface LlmModel { cli: "claude" | "opencode" | "t3"; provider: string; id: string; name: string }
+export interface LlmModel { cli: "claude" | "opencode" | "codex" | "t3"; provider: string; id: string; name: string }
 /** Model availability belongs to a CLI, independently of its output parser. Never auto-route. */
-export function modelCompatible(model: LlmModel | undefined, argv: string[] | undefined): boolean {
+/** The CLI a command runs, by the executable's name (no promise about wrappers). */
+export function cliOf(argv: string[] | undefined): string {
   const executable = (argv?.[0] ?? "").replaceAll("\\", "/").split("/").pop()!.replace(/\.(exe|cmd|bat|ps1)$/i, "");
-  return !!model && (executable === "t3code" ? "t3" : executable) === model.cli;
+  return executable === "t3code" ? "t3" : executable;
 }
+export function modelCompatible(model: LlmModel | undefined, argv: string[] | undefined): boolean {
+  return !!model && cliOf(argv) === model.cli;
+}
+export const CLI_LABELS: Record<string, string> = { claude: "Claude Code", codex: "Codex", opencode: "OpenCode" };
 
-export interface LlmModels { available: LlmModel[]; disabled: string[]; claudeNeedsLogin: boolean }
-/** The model as its CLI takes it: Claude Code models are listed as `claude/<alias>` (their own family), but `claude
- * --model` takes the bare alias; OpenCode's ids (`provider/model`) are used as they are. */
-export const cliModel = (id: string) => (id.startsWith("claude/") ? id.slice("claude/".length) : id);
+export interface LlmModels { available: LlmModel[]; disabled: string[]; claudeNeedsLogin: boolean; needsLogin: LlmModel["cli"][] }
+/** The model as its CLI takes it: Claude Code and Codex models are listed as `claude/<alias>` and `codex/<slug>` (each
+ * its own family), but their --model/-m takes the bare name; OpenCode's ids (`provider/model`) are used as they are. */
+export const cliModel = (id: string) => id.replace(/^(claude|codex)\//, "");
 export interface Config {
   packagesRoot: string;
   editorCmd: string;
@@ -154,11 +159,13 @@ export const host = {
     llmModels: (refresh?: boolean) => call<LlmModels>("llmModels", refresh),
     setLlmModels: (disabled: string[]) => call<void>("setLlmModels", disabled),
     claudeLogin: () => call<string>("claudeLogin"),
+    cliLogin: (cli: string) => call<string>("cliLogin", cli),
   setZenodoToken: (server: "zenodo" | "sandbox", token: string | null) => call<void>("setZenodoToken", server, token),
   verifyZenodoToken: (sandbox: boolean, token?: string) => call<{ ok: boolean; url: string; sandbox: boolean }>("verifyZenodoToken", sandbox, token),
   profileConfig: () => call<Record<"llm" | "agent", Record<string, ConfiguredProfile>>>("profileConfig"),
   saveProfile: (kind: "llm" | "agent", name: string, profile: ConfiguredProfile) => call<string>("saveProfile", kind, name, profile),
   runningJobs: () => call<unknown[]>("runningJobs"),
+  commandFound: (command: string) => call<boolean>("commandFound", command),
   saveBackendConfig: (text: string) => call<void>("saveBackendConfig", text),
   backendStatus: () => call<BackendStatus>("backendStatus"),
   backendLog: () => call<string>("backendLog"),

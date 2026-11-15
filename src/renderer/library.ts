@@ -1,6 +1,6 @@
 // The library: your reproductions (packages the app's backend knows), a new one from a DOI, or a package folder
 // opened from disk. Opening one switches the window to its numbered workflow (package.ts).
-import { ApiError, host, isBackendDown, modelCompatible, JATS_ONLY, JatsAvailability, LibraryEntry, LlmModel, LlmModels, UpdateInfo, Work, ZenodoRecord } from "./api";
+import { ApiError, CLI_LABELS, host, isBackendDown, modelCompatible, JATS_ONLY, JatsAvailability, LibraryEntry, LlmModel, LlmModels, UpdateInfo, Work, ZenodoRecord } from "./api";
 import { backendProblem } from "./backend";
 import { brandHtml } from "./brand";
 import { withProgress } from "./progress";
@@ -166,7 +166,7 @@ async function renderLlmModels(refresh = false) {
   const el = $("#llm-models");
   // Detecting asks each installed agent CLI (OpenCode, T3 Code, Claude Code), which can take a few seconds.
   el.innerHTML = `<h2 class="section-title">LLM models</h2>
-    <div class="card llm-models-card"><p class="waiting muted"><span class="spinner" aria-hidden="true"></span> Looking for the models your coding agents offer (OpenCode, T3 Code, Claude Code)…</p></div>`;
+    <div class="card llm-models-card"><p class="waiting muted"><span class="spinner" aria-hidden="true"></span> Looking for the models your coding agents offer (Claude Code, Codex, OpenCode, T3 Code)…</p></div>`;
   let m: LlmModels;
   try {
     m = await host.llmModels(refresh);
@@ -193,17 +193,17 @@ async function renderLlmModels(refresh = false) {
     .join("");
   el.innerHTML = `<h2 class="section-title">LLM models <button class="ghost icon-btn" id="llm-recheck" title="Refresh the model list" aria-label="Refresh the model list"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg></button></h2>
     <div class="card llm-models-card">${familyHtml || '<p class="muted">No models found. Add one to your agent\u2019s config, then refresh.</p>'}
-      ${m.claudeNeedsLogin ? `<div class="claude-login"><p class="hint">Claude Code is installed but not signed in.</p><button id="claude-login" class="btn">Log in to Claude Code</button></div>` : ""}</div>`;
+      ${(m.needsLogin ?? (m.claudeNeedsLogin ? ["claude"] : [])).map((cli) => `<div class="claude-login"><p class="hint">${esc(CLI_LABELS[cli] ?? cli)} is installed but not signed in.</p><button class="btn" data-login="${esc(cli)}">Log in to ${esc(CLI_LABELS[cli] ?? cli)}</button></div>`).join("")}</div>`;
   el.querySelector("#llm-recheck")?.addEventListener("click", () => renderLlmModels(true));
-  el.querySelector("#claude-login")?.addEventListener("click", async () => {
+  el.querySelectorAll<HTMLButtonElement>("[data-login]").forEach((button) => button.addEventListener("click", async () => {
     try {
-      const msg = await host.claudeLogin();
-      const hint = el.querySelector(".claude-login .hint");
+      const msg = await host.cliLogin(button.dataset.login!);
+      const hint = button.parentElement?.querySelector(".hint");
       if (hint) hint.textContent = msg;
     } catch (e) {
-      showError("Logging in to Claude Code", e);
+      showError("Logging in", e);
     }
-  });
+  }));
   const syncFamilies = () => {
     el.querySelectorAll<HTMLInputElement>("[data-family-toggle]").forEach((f) => {
       const models = m.available.filter((x) => x.provider === f.dataset.familyToggle);

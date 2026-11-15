@@ -18,6 +18,14 @@ assert(!modelCompatible(t3, ['opencode']));
 assert(!modelCompatible(open, ['claude']));
 assert(!modelCompatible(claude, ['wrapper', 'claude'])); // no promise about an unrecognized wrapper
 assert(modelCompatible(open, ['opencode']) && modelCompatible(open, ['/other/opencode'])); // preserve across compatible profile changes
+const codex = { cli: 'codex', id: 'codex/gpt-x' };
+assert(modelCompatible(codex, ['codex']) && !modelCompatible(codex, ['opencode']) && !modelCompatible(open, ['codex']));
+const { cliModel } = await load('src/renderer/api.ts');
+assert.equal(cliModel('codex/gpt-x'), 'gpt-x'); assert.equal(cliModel('claude/opus'), 'opus'); assert.equal(cliModel('deepseek/deepseek-v4-pro'), 'deepseek/deepseek-v4-pro');
+const { parseCodexModels } = await load('src/main/models.ts');
+assert.deepEqual(parseCodexModels(JSON.stringify({ models: [{ slug: 'gpt-x', display_name: 'GPT X', visibility: 'list' }, { slug: 'hidden', visibility: 'hide' }] })),
+  [{ cli: 'codex', provider: 'codex', id: 'codex/gpt-x', name: 'GPT X' }]);
+assert.deepEqual(parseCodexModels('not json'), []);
 const { replaceProfile, configuredProfiles, applyProfileChange } = await load('src/main/profiles.ts');
 const original = '# comment\n[openalex]\nmailto = "test@example.org"\n[llm]\ndefault_profile = "other"\n[llm.profiles.other]\nargv = ["other"]\noutput = "text"\n[agent.profiles.existing]\nargv = ["existing"]\nevents = "text"\n';
 const profile = { argv: ['my-cli', '--model', '{model}'], model: '', effort: '', timeout_s: 10, output: 'text' };
@@ -30,6 +38,12 @@ assert.equal(after.llm.default_profile, 'other');
 assert.deepEqual({ ...configuredProfiles(text).llm.fixture }, { read_files_argv: [], json_schema_argv: [], ...profile });
 assert.equal(configuredProfiles(original).agent.existing.timeout_s, 7200);
 assert.equal(configuredProfiles(original).llm.other.model, "");
+const codexProfile = { argv: ['codex', 'exec', '--json', '-'], model: '', effort: '', timeout_s: 10, events: 'codex-json', tools: [], exec_tools: [] };
+assert.equal(parse(replaceProfile(original, 'agent', 'codex', codexProfile)).agent.profiles.codex.events, 'codex-json');
+// backend.ts imports Electron, so its default configuration is read from the source text.
+const DEFAULT_USER_CONFIG = (await import('node:fs')).readFileSync('src/main/backend.ts', 'utf8').match(/DEFAULT_USER_CONFIG = `([^`]*)`/)[1];
+for (const kind of ['llm', 'agent']) assert.equal(configuredProfiles(DEFAULT_USER_CONFIG)[kind].codex.argv[0], 'codex', `default ${kind} codex profile`);
+assert.deepEqual(configuredProfiles(DEFAULT_USER_CONFIG).agent.codex.tools, []); // no allowlist: no-analysis mode is refused
 for (const bad of [{ argv: [] }, { timeout_s: 0 }, { timeout_s: NaN }, { output: 'invented' }, { tools: ['Edit'] }, { api_key: 'fake' }]) {
   assert.throws(() => replaceProfile(original, 'llm', 'fixture', { ...profile, ...bad }));
 }
