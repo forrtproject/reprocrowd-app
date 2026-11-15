@@ -4,7 +4,7 @@
 import { CLI_LABELS, cliModel, cliOf, host, pkg, modelCompatible, RESTRICTION_LABELS } from "../api";
 import type { LlmModel, LlmModels } from "../api";
 import type { AgentProfile, FileEntry, PromptPreview, ScriptState } from "../types";
-import { esc, modal, showPrompt, sizeText, when } from "../util";
+import { esc, modal, showError, showPrompt, sizeText, when } from "../util";
 import { appendEvents, JobFollower, statusBadge } from "./jobs";
 import type { Step, Wizard } from "./wizard";
 
@@ -186,13 +186,18 @@ export class CodegenStep implements Step {
     st.agentModel = model;
     const cli = model ? cliModel(model) : "";
     st.agentInstructions = document.querySelector<HTMLTextAreaElement>("#rp-instr")?.value.trim() ?? "";
-    const tools = profile ? [...profile.tools, ...(st.allowExec ? profile.exec_tools : [])] : [];
+    // The exact command, added environment and restriction come from the backend's preview (the same as Show prompt).
+    const body = { type: "codegen", profile: profile?.name, allow_exec: st.allowExec, instructions: st.agentInstructions, model: cli || undefined };
+    let pv: PromptPreview;
+    try { pv = await pkg.post<PromptPreview>("/jobs:preview", body); } catch (e) { return showError("Preparing the coding agent", e); }
+    const env = Object.entries(pv.env ?? {}).map(([k, v]) => `${k}=${v}`).join(" ");
     const ok = await new Promise<boolean>((resolve) => {
       const dlg = modal("dlg-wide", `<h3>Run the coding agent?</h3>
         <p>The agent works in <code>${esc(this.w.app.summary().path)}</code> and may take minutes to hours. It can read and write files there${st.allowExec ? " and run the analysis" : ""}.</p>
-        <div class="kv"><span>Profile</span><span>${esc(profile?.name ?? "(default)")} · model ${esc(cli || profile?.model || "default")} · effort ${esc(profile?.effort || "default")} · timeout ${profile ? Math.round(profile.timeout_s / 60) : "?"} min</span>
-          <span>Command</span><code>${esc(profile?.argv.join(" ").replace("{model}", cli || profile?.model || "").replace("{tools}", tools.join(",")) ?? "")}</code>
-          <span>Tools</span><span>${esc(tools.join(", "))}</span></div>
+        <div class="kv"><span>Profile</span><span>${esc(pv.profile)} · model ${esc(pv.model || "default")} · effort ${esc(pv.effort || "default")} · timeout ${Math.round(pv.timeout_s / 60)} min</span>
+          <span>Command</span><code>${esc(pv.argv.join(" "))}</code>
+          ${env ? `<span>Environment</span><code>${esc(env)}</code>` : ""}
+          <span>Execution restriction</span><span>${esc(st.allowExec ? "none: the agent may run the analysis" : RESTRICTION_LABELS[pv.exec_restriction] ?? pv.exec_restriction)}</span></div>
         <form method="dialog"><menu><button value="cancel" formnovalidate>Cancel</button><button value="ok" class="primary">Run</button></menu></form>`);
       dlg.addEventListener("close", () => resolve(dlg.returnValue === "ok"));
     });
