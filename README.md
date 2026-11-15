@@ -50,8 +50,8 @@ what the paper's analysis uses (R, Python, …).
    without running it. Unticking "let it run the analysis" lets the agent read and
    edit files but not run code: Claude Code by denying its Bash tool
    (`--disallowedTools Bash`), OpenCode through a permission setting that denies its
-   command tools (neither is an OS sandbox).
-   Codex reads files through its shell, so it needs "let it run the analysis".
+   command tools, and Codex by removing its shell and giving it ReproCrowd's read-only
+   file tools instead (none of these is an OS sandbox).
 
 ### Linux notes
 

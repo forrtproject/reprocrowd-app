@@ -168,11 +168,12 @@ timeout_s = 7200
 events = "opencode-json"
 
 # Codex as a headless coding agent, in the workspace-write sandbox (writes confined to the package folder by Codex).
-# It has no editing-only mode the app can use: it reads files through its shell, so without the shell it cannot read
-# the script it must implement. "Don't run the analysis" is refused for this profile.
+# When the analysis must not run, no_exec_argv removes its shell and sub-agents and gives it ReproCrowd's read-only
+# file server instead ({python} = the backend's Python); it edits with apply_patch.
 [agent.profiles.codex]
 argv = ["codex", "exec", "--json", "--skip-git-repo-check", "--ephemeral", "--ignore-user-config", "--disable", "apps",
         "--disable", "plugins", "-m", "{model}", "-c", "model_reasoning_effort={effort}", "-s", "workspace-write"]
+no_exec_argv = ["--disable", "shell_tool", "--disable", "unified_exec", "--disable", "multi_agent", "-c", "mcp_servers.rc_files.command='{python}'", "-c", 'mcp_servers.rc_files.args=["-m", "reprocrowd.mcp_files"]', "-c", 'mcp_servers.rc_files.default_tools_approval_mode="approve"']
 tools = []
 exec_tools = []
 model = ""
