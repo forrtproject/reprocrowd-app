@@ -54,7 +54,9 @@ def start(pkg: Package) -> Job:
         exists = pkg.path(RESULTS).exists()
         if exists:
             try:
-                errors, warnings, _ = check_output(pkg.read_json(RESULTS), targets, load_plan(pkg))
+                plan = load_plan(pkg)
+                errors, warnings, _ = check_output(pkg.read_json(RESULTS), targets, plan)
+                warnings += [] if plan else [NO_PLAN]
             except ValueError as e:
                 errors = [f"not valid JSON: {e}"]
         after = gitrepo.commit(pkg, f"Run ({jid}, {job.status}, exit {job.exit_code})") if use_git else None
@@ -64,6 +66,9 @@ def start(pkg: Package) -> Job:
     return jobs.start(pkg, jid=jid, type="run", argv=["bash", "-c", tpl.command], stdin="", timeout_s=settings().run_timeout_s,
                       events_format="text", profile=None, request={"template": tpl.id, "command": tpl.command}, finish=finish, merge_stderr=True,
                       env={"PYTHONUNBUFFERED": "1"})  # live, ordered log lines from Python pipelines
+
+
+NO_PLAN = "analysis_plan.json is missing or invalid; output steps were not checked against the plan"
 
 
 def load_plan(pkg: Package) -> AnalysisPlan | None:
@@ -84,6 +89,7 @@ def comparison(pkg: Package, st: CompareSettings) -> Comparison:
         raw = {"error": str(e)}
     result = compare(targets, raw, st)
     result.basis = ComparisonBasis(results_sha256=evidence.digest(pkg, RESULTS), results_schema_sha256=evidence.digest(pkg, "results_schema.json"), created_at=now())
-    _, warnings, _ = check_output(raw, targets, load_plan(pkg))
-    result.output_warnings = warnings
+    plan = load_plan(pkg)
+    _, warnings, _ = check_output(raw, targets, plan)
+    result.output_warnings = warnings + ([] if plan else [NO_PLAN])
     return result

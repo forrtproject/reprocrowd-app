@@ -44,7 +44,9 @@ def get(pkg: Package) -> ExecutionEvidence:
             ev.results_match_run = digest(pkg, RESULTS) == result.results_sha256 if result.results_sha256 else False
             ev.log_sha256 = result.log_sha256
         else:
-            ev.stale_reason = "run in progress" if run.status == "running" else "no snapshot (older run)"
+            ev.stale_reason = ("run in progress" if run.status == "running" else
+                               "no run result recorded (interrupted, or the run's bookkeeping failed)" if result is None else
+                               "no snapshot (older run)")
         # A log edited after the run no longer matches its recorded hash; it is not offered as the run's log.
         ev.log_path = run.stdout if pkg.path(run.stdout).is_file() and (ev.log_sha256 is None or digest(pkg, run.stdout) == ev.log_sha256) else None
     cg = next((j for j in reversed(jobs.list_jobs(pkg)) if j.type == "codegen"), None)
@@ -66,7 +68,12 @@ def get(pkg: Package) -> ExecutionEvidence:
         declared = outputs.get(t.id, {}).get("step")
         declared = declared if isinstance(declared, str) else None
         planned = next((s.id for s in steps.values() if t.id in s.produces and s.kind != "results"), None)
-        state = ("declared_matches_plan" if declared in steps and t.id in steps[declared].produces else "declared_conflicts_plan") if declared else "planned_only" if planned else "none"
+        if declared and plan is None:
+            state = "declared_unchecked"  # no usable plan to check the declaration against
+        elif declared:
+            state = "declared_matches_plan" if declared in steps and t.id in steps[declared].produces else "declared_conflicts_plan"
+        else:
+            state = "planned_only" if planned else "none"
         ev.targets.append(TargetEvidence(target=t.id, refs=t.refs, step=declared or planned, step_evidence=state))
     return ev
 

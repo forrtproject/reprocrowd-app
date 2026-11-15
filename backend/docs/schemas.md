@@ -43,7 +43,7 @@ Points at one sentence, figure or table of an extraction.
 | `target` | string | yes |  |
 | `refs` | list of [Ref](#ref) | yes |  |
 | `step` | string \| null |  |  |
-| `step_evidence` | `"declared_matches_plan"` \| `"declared_conflicts_plan"` \| `"planned_only"` \| `"none"` | yes |  |
+| `step_evidence` | `"declared_matches_plan"` \| `"declared_conflicts_plan"` \| `"declared_unchecked"` \| `"planned_only"` \| `"none"` | yes |  |
 | `level` | `"process"` |  | default `process` |
 
 ## `datapackage`: datapackage.json
