@@ -279,8 +279,8 @@ def _summary_line(s: dict[str, Any]) -> str:
     if not s["numeric"]:
         return "no results to compare automatically (figures need visual comparison)"
     rounding = s.get("rounding", "reported")  # older release notes don't record it
-    how = "numbers at the printed precision" if rounding == "reported" else f"numbers rounded to {rounding} decimals"
-    return (f"{s['match']} of {s['numeric']} results match ({how}; text exactly); {s['within']} more within "
+    how = "numbers at printed precision" if rounding == "reported" else f"numbers rounded to {rounding} decimals"
+    return (f"{s['match']} of {s['numeric']} match ({how}; text exactly); {s['within']} more within "
             f"{s['threshold']:g} % (exploratory)")
 
 
