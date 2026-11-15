@@ -3,10 +3,10 @@ import { confirmDialog, esc, modal, showError } from "./util";
 
 type Kind = "llm" | "agent";
 /** Codex without its shell and sub-agents, reading through ReproCrowd's read-only file server ({python}: the backend's Python). */
-const CODEX_NO_EXEC = ["--disable", "shell_tool", "--disable", "unified_exec", "--disable", "multi_agent", "-c", "mcp_servers.rc_files.command='{python}'",
-  "-c", 'mcp_servers.rc_files.args=["-m", "reprocrowd.mcp_files"]', "-c", 'mcp_servers.rc_files.default_tools_approval_mode="approve"'];
+export const CODEX_NO_EXEC = ["--disable", "shell_tool", "--disable", "unified_exec", "--disable", "multi_agent", "-c", "mcp_servers.rc_files.command='{python}'",
+  "-c", 'mcp_servers.rc_files.args=["-I", "-m", "reprocrowd.mcp_files"]', "-c", 'mcp_servers.rc_files.default_tools_approval_mode="approve"'];
 /** OpenCode without command tools: every tool denied except reading and editing (its --auto approves only what is not denied). */
-const OPENCODE_NO_EXEC = '{"*":"deny","read":"allow","edit":"allow","glob":"allow","grep":"allow","list":"allow","todowrite":"allow"}';
+export const OPENCODE_NO_EXEC = '{"*":"deny","read":"allow","edit":"allow","glob":"allow","grep":"allow","list":"allow","todowrite":"allow"}';
 export async function profileEditor(saved: (text: string) => void) {
   let profiles: Record<Kind, Record<string, ConfiguredProfile>>;
   try { profiles = await host.profileConfig(); } catch (e) { return showError("Opening profiles", e); }
