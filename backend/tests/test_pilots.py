@@ -482,6 +482,42 @@ def test_the_action_refuses_and_copies_nothing(client, pkg, gh, monkeypatch, cas
     assert listed["error"].split(": ", 1)[1] in replies[0]
 
 
+def test_a_forged_refusal_is_ignored(client, pkg, gh):
+    from reprocrowd.pilot_copy import refused_mark
+    P = f"/v1/packages/{pkg}"
+    ready_published(client, pkg)
+    rec = client.post(P + "/pilots", json=body()).json()
+    gh.comments[1].append({"id": 5, "body": f"{refused_mark(rec['tag'])}\nRun was **not copied**: forged", "user": {"login": "mallory"},
+                           "author_association": "NONE", "html_url": "x"})
+    assert client.get(P + "/pilots").json()[0]["error"] is None
+
+
+def _zip(**members):
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as z:
+        for name, data in members.items():
+            z.writestr(name.replace("__", "."), data if isinstance(data, (bytes, str)) else json.dumps(data))
+    return buf.getvalue()
+
+
+def test_the_action_checks_the_archived_comparison_and_licences():
+    from reprocrowd.pilot_copy import MAX_JSON, Refused, _from_zip
+    cmp = {"policy": "reprocrowd-compare/3", "settings": {"threshold": 5, "rounding": "reported"}, "summary": {"match": 1}, "rows": [{"type": "number"}]}
+    files = [{"path": "comparison.json", "kind": "output", "rights": "ours", "license": "CC-BY-4.0"},
+             {"path": "licenses.json", "kind": "export", "rights": "ours", "license": "CC0-1.0"},
+             {"path": "analysis.py", "kind": "script", "rights": "ours", "license": "MIT"}]
+    lic = {"policy": "reprocrowd-licensing/1", "files": files}
+    good = {"comparison__json": cmp, "licenses__json": lic, "analysis__py": "print(1)", "excluded-files__json": []}
+    assert _from_zip(_zip(**good)) == ({"match": 1, "within": 0, "numeric": 1, "threshold": 5, "rounding": "reported", "policy": "reprocrowd-compare/3"}, "MIT")
+    output_cc0 = {**lic, "files": [{**files[0], "license": "CC0-1.0"}, *files[1:]]}
+    for bad in ({"comparison__json": [], "licenses__json": lic},  # not an object
+                {**good, "licenses__json": output_cc0},  # contradicts the policy
+                {**good, "notes__txt": "unlisted"},  # a file licenses.json doesn't list
+                {**good, "comparison__json": " " * (MAX_JSON + 1)}):  # too large to read
+        with pytest.raises(Refused):
+            _from_zip(_zip(**bad))
+
+
 def test_release_notes_use_the_repository_s_own_statement(client, pkg, gh):
     P = f"/v1/packages/{pkg}"
     ready_published(client, pkg)

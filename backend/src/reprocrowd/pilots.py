@@ -37,7 +37,7 @@ import tempfile
 import time
 import zipfile
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterator
 
@@ -57,6 +57,7 @@ from .zenodo import GROUPS, _check_published_paper, _group, _publication_zip, co
 BODY_LIMIT = 65_000  # GitHub's issue/comment body limit is 65,536 characters
 ROW_LIMIT = 60
 FORK_WAIT = 30  # × 2 s: GitHub creates forks asynchronously
+ACTION_LOGIN = "github-actions[bot]"  # the pilots repository's Action comments as this account
 RECHECK_S = 60  # listing records checks a submitted run on GitHub at most this often (unauthenticated reads are rate-limited)
 SYNTHETIC = ("**SYNTHETIC test fixture — not a research result.** The paper, data and DOI are invented for testing "
              "the publication workflow.")
@@ -540,8 +541,9 @@ def refresh(pkg: Package, recs: list[GithubPilot] | None = None) -> list[GithubP
 
 
 def _refusal(api: str, rec: GithubPilot, headers: dict[str, str]) -> str | None:
-    """The Action's reply refusing this run, if any."""
-    url: str | None = f"{api}/repos/{rec.repo}/issues/{rec.issue_number}/comments?per_page=100"
+    """The Action's reply refusing this run, if any: only comments by the Action, made since the run was submitted."""
+    since = rec.created_at.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    url: str | None = f"{api}/repos/{rec.repo}/issues/{rec.issue_number}/comments?per_page=100&since={since}"
     for _ in range(5):
         if url is None:
             return None
@@ -550,7 +552,7 @@ def _refusal(api: str, rec: GithubPilot, headers: dict[str, str]) -> str | None:
             return None
         for c in r.json():
             body = c.get("body") or ""
-            if refused_mark(rec.tag) in body:
+            if refused_mark(rec.tag) in body and (c.get("user") or {}).get("login") == ACTION_LOGIN:
                 return "the pilots repository refused this run: " + body.split("**not copied**: ", 1)[-1].strip()
         url = r.links.get("next", {}).get("url")
     return None

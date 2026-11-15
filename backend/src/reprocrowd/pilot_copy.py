@@ -42,6 +42,7 @@ RUNS_START, RUNS_END = "<!-- reprocrowd-runs -->", "<!-- /reprocrowd-runs -->"
 DOI_RE = re.compile(r"^10\.\d{4,9}/[^\s<>\[\]()`|]+$")
 POLICY_RE = re.compile(r"^reprocrowd-compare/\d+$")
 CODE_LICENCES = {"MIT", "CC-BY-4.0"}
+MAX_JSON = 20 * 1024**2  # comparison.json and licenses.json are read from the ZIP only up to this size
 DISCLAIMER = ("**Pilot record — unreviewed.** Made with ReproCrowd by recreating the analysis from the article's text and "
               "published data. Agreement under the recorded comparison settings shows that this code produced the "
               "reported numbers from these inputs. It is not peer review, a certificate of the study's validity, or an endorsement. The authors' "
@@ -256,19 +257,28 @@ def _from_zip(zipped: bytes) -> tuple[dict[str, Any], str]:
     from pilot.json), checked before they reach the release notes."""
     try:
         with zipfile.ZipFile(io.BytesIO(zipped)) as z:
+            members = set(z.namelist())
+            if any(z.getinfo(n).file_size > MAX_JSON for n in ("comparison.json", "licenses.json")):
+                raise Refused(f"`comparison.json` or `licenses.json` in the ZIP is over {MAX_JSON // 1024**2} MiB")
             cmp, lic = json.loads(z.read("comparison.json")), json.loads(z.read("licenses.json"))
     except (KeyError, ValueError, zipfile.BadZipFile):
         raise Refused("the ZIP lacks a readable `comparison.json` or `licenses.json`")
-    s, st, rows = cmp.get("summary"), cmp.get("settings") or {}, cmp.get("rows")
-    files = lic.get("files") if isinstance(lic, dict) else None
+    if not isinstance(cmp, dict) or not isinstance(lic, dict):
+        raise Refused("`comparison.json` and `licenses.json` must be JSON objects")
+    s, st, rows, files = cmp.get("summary"), cmp.get("settings") or {}, cmp.get("rows"), lic.get("files")
     rounding = st.get("rounding", "reported") if isinstance(st, dict) else None
     ok = (isinstance(s, dict) and all(type(v) is int for v in s.values()) and isinstance(rows, list) and all(isinstance(r, dict) for r in rows)
           and isinstance(st, dict) and type(st.get("threshold", 0)) in (int, float) and (rounding == "reported" or type(rounding) is int)
           and (cmp.get("policy") is None or bool(POLICY_RE.match(str(cmp["policy"]))))
           and lic.get("policy") == "reprocrowd-licensing/1" and isinstance(files, list) and all(isinstance(f, dict) for f in files))
-    code = sorted({str(f.get("license")) for f in files or [] if f.get("kind") in ("script", "code")}) if ok else []
-    if not ok or not set(code) <= CODE_LICENCES:
+    if not ok:
         raise Refused("the archived `comparison.json` or `licenses.json` has values this repository doesn't accept")
+    code = sorted({str(f.get("license")) for f in files if f.get("kind") in ("script", "code")})
+    wrong = [str(f.get("path")) for f in files if f.get("license") != _policy_licence(f, code)]
+    unlisted = members - {str(f.get("path")) for f in files} - {"excluded-files.json"}
+    if not set(code) <= CODE_LICENCES or wrong or unlisted:
+        raise Refused("`licenses.json` doesn't follow policy `reprocrowd-licensing/1` or doesn't list every file "
+                      f"({', '.join(f'`{p}`' for p in sorted(wrong + list(unlisted))[:5]) or 'code licence'})")
     summary = {"match": s.get("match", 0), "within": s.get("within", 0), "numeric": sum(r.get("type") != "figure" for r in rows),
                "threshold": st.get("threshold", 0), "rounding": rounding, "policy": cmp.get("policy")}
     return summary, code[0] if len(code) == 1 else ("none in this package" if not code else "per file, see `licenses.json`")
@@ -277,6 +287,15 @@ def _from_zip(zipped: bytes) -> tuple[dict[str, Any], str]:
 def _version(release: dict[str, Any]) -> int | None:
     m = re.search(r"\bv(\d+)\b", release.get("name") or "")
     return int(m.group(1)) if m else None
+
+
+def _policy_licence(f: dict[str, Any], code: list[str]) -> str | None:
+    """The licence policy reprocrowd-licensing/1 gives this entry (any listed code licence for code)."""
+    if f.get("rights") != "ours":
+        return None
+    if f.get("kind") in ("script", "code"):
+        return f.get("license") if f.get("license") in code else None
+    return "CC-BY-4.0" if f.get("kind") in ("output", "report") else "CC0-1.0"
 
 
 def _release_body(pilot: dict[str, Any], s: dict[str, Any], code: str, author: str, issue: int, files: list[tuple[str, int, str]]) -> str:
