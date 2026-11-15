@@ -201,4 +201,16 @@ export interface ConfiguredProfile {
   argv: string[]; model: string; effort: string; timeout_s: number;
   output?: string; events?: string; tools?: string[]; exec_tools?: string[];
   read_files_argv?: string[]; json_schema_argv?: string[];
+  no_exec_argv?: string[]; no_exec_env?: Record<string, string>;
 }
+
+/** How an agent profile honours "don't run the analysis", derived like the backend (providers.exec_restriction). */
+export function execRestriction(p: ConfiguredProfile): "tool_allowlist" | "cli_settings" | "unsupported" {
+  if (p.argv.some((a) => a.includes("{tools}")) && (p.tools ?? []).length && (p.exec_tools ?? []).length) return "tool_allowlist";
+  return (p.no_exec_argv ?? []).length || Object.keys(p.no_exec_env ?? {}).length ? "cli_settings" : "unsupported";
+}
+export const RESTRICTION_LABELS: Record<string, string> = {
+  tool_allowlist: "CLI tool allowlist without command tools (not an OS sandbox)",
+  cli_settings: "CLI settings that remove its command tools (not an OS sandbox)",
+  unsupported: "none: this profile cannot run editing-only",
+};

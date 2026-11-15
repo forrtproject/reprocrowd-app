@@ -46,8 +46,9 @@ what the paper's analysis uses (R, Python, …).
    edit.
 3. In a reproduction, choose the profile and model in step 2/3 ("Generate with LLM")
    and in step 5 (coding agent). **Show prompt** shows the exact command and prompt
-   without running it. Claude Code can run with editing only; Codex and OpenCode
-   need "let it run the analysis", and the app refuses the other choice for them.
+   without running it. Unticking "let it run the analysis" lets the agent edit files
+   but not run code: Claude Code through its tool list, Codex and OpenCode through
+   settings that remove their command tools (none of these is an OS sandbox).
 
 ### Linux notes
 

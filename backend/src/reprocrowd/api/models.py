@@ -49,6 +49,8 @@ class PromptPreview(BaseModel):
     model: str
     effort: str
     output_schema: str | None = Field(default=None, description="JSON Schema the CLI is told to constrain its output to, if the profile supports that")
+    env: dict[str, str] = Field(default_factory=dict, description="environment variables added for this run (e.g. a no-analysis permission setting); "
+                                                                 "never credentials")
 
 
 class RunningJob(BaseModel):
@@ -329,6 +331,8 @@ class AgentProfileView(BaseModel):
     argv: list[str] = Field(description="read-only: configured in the service; {tools} is filled from tools (+ exec_tools)")
     tools: list[str]
     exec_tools: list[str]
+    no_exec_argv: list[str] = Field(default_factory=list, description="appended when the analysis must not run (allow_exec=false)")
+    no_exec_env: dict[str, str] = Field(default_factory=dict, description="environment added when the analysis must not run")
     model: str
     effort: str
     timeout_s: int

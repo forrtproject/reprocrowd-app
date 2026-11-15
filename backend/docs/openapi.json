@@ -9411,6 +9411,22 @@
             "type": "array",
             "title": "Exec Tools"
           },
+          "no_exec_argv": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "No Exec Argv",
+            "description": "appended when the analysis must not run (allow_exec=false)"
+          },
+          "no_exec_env": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "No Exec Env",
+            "description": "environment added when the analysis must not run"
+          },
           "model": {
             "type": "string",
             "title": "Model"
@@ -12707,6 +12723,14 @@
             ],
             "title": "Output Schema",
             "description": "JSON Schema the CLI is told to constrain its output to, if the profile supports that"
+          },
+          "env": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Env",
+            "description": "environment variables added for this run (e.g. a no-analysis permission setting); never credentials"
           }
         },
         "type": "object",

@@ -43,7 +43,16 @@ assert.equal(parse(replaceProfile(original, 'agent', 'codex', codexProfile)).age
 // backend.ts imports Electron, so its default configuration is read from the source text.
 const DEFAULT_USER_CONFIG = (await import('node:fs')).readFileSync('src/main/backend.ts', 'utf8').match(/DEFAULT_USER_CONFIG = `([^`]*)`/)[1];
 for (const kind of ['llm', 'agent']) assert.equal(configuredProfiles(DEFAULT_USER_CONFIG)[kind].codex.argv[0], 'codex', `default ${kind} codex profile`);
-assert.deepEqual(configuredProfiles(DEFAULT_USER_CONFIG).agent.codex.tools, []); // no allowlist: no-analysis mode is refused
+const { execRestriction } = await load('src/renderer/api.ts');
+const shipped = configuredProfiles(DEFAULT_USER_CONFIG).agent;
+assert.deepEqual(Object.fromEntries(Object.entries(shipped).map(([n, p]) => [n, execRestriction(p)])),
+  { claude: 'tool_allowlist', opencode: 'cli_settings', codex: 'cli_settings' });
+assert.equal(execRestriction({ argv: ['opencode', 'run'], model: '', effort: '', timeout_s: 1, tools: [], exec_tools: [], no_exec_argv: [], no_exec_env: {} }), 'unsupported');
+const noExec = { ...codexProfile, no_exec_argv: ['--disable', 'shell_tool'], no_exec_env: { OPENCODE_PERMISSION: '{}' } };
+assert.deepEqual({ ...parse(replaceProfile(original, 'agent', 'codex', noExec)).agent.profiles.codex.no_exec_env }, { OPENCODE_PERMISSION: '{}' });
+assert.throws(() => replaceProfile(original, 'agent', 'codex', { ...noExec, no_exec_env: { OPENAI_API_KEY: 'x' } }), /credential/);
+assert.throws(() => replaceProfile(original, 'agent', 'codex', { ...noExec, no_exec_env: { 'BAD NAME': 'x' } }));
+assert.throws(() => replaceProfile(original, 'llm', 'fixture', { ...profile, no_exec_argv: ['x'] })); // agent-only field
 for (const bad of [{ argv: [] }, { timeout_s: 0 }, { timeout_s: NaN }, { output: 'invented' }, { tools: ['Edit'] }, { api_key: 'fake' }]) {
   assert.throws(() => replaceProfile(original, 'llm', 'fixture', { ...profile, ...bad }));
 }

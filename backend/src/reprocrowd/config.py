@@ -37,6 +37,10 @@ class AgentProfile(BaseModel):
     effort: str = ""
     timeout_s: int = Field(default=7200, gt=0)
     events: Literal["claude-stream-json", "opencode-json", "codex-json", "text"] = Field(default="claude-stream-json", description="how to read the agent's stdout as events")
+    no_exec_argv: list[str] = Field(default_factory=list, description="appended when the caller forbids running the analysis (allow_exec=false): "
+                                                                    "CLI flags that remove its command-running tools (Codex: --disable shell_tool …)")
+    no_exec_env: dict[str, str] = Field(default_factory=dict, description="environment added when allow_exec=false, e.g. OpenCode's "
+                                                                         "OPENCODE_PERMISSION denying every tool but reading and editing")
 
 
 def expand_argv(argv: list[str], values: dict[str, str]) -> list[str]:
@@ -55,8 +59,15 @@ def expand_argv(argv: list[str], values: dict[str, str]) -> list[str]:
     return out
 
 
-CODEX_ARGV = ["codex", "exec", "--json", "--skip-git-repo-check", "--ephemeral", "--ignore-user-config",
+# --disable apps/plugins: no ChatGPT connectors (e.g. GitHub or site-deploy actions) for an agent the app runs.
+# The prompt is read from stdin (no prompt argument), so mode flags can be appended.
+CODEX_ARGV = ["codex", "exec", "--json", "--skip-git-repo-check", "--ephemeral", "--ignore-user-config", "--disable", "apps", "--disable", "plugins",
               "-m", "{model}", "-c", "model_reasoning_effort={effort}"]
+# Editing-only Codex: without its shell and sub-agent tools it edits with apply_patch but cannot run code (checked
+# with codex-cli 0.167.0: an environment nonce stayed unreadable; with the tools, the agent read it).
+CODEX_NO_EXEC = ["--disable", "shell_tool", "--disable", "unified_exec", "--disable", "multi_agent"]
+# Editing-only OpenCode: every tool denied except reading and editing. --auto approves only what is not denied.
+OPENCODE_NO_EXEC = {"OPENCODE_PERMISSION": '{"*":"deny","read":"allow","edit":"allow","glob":"allow","grep":"allow","list":"allow","todowrite":"allow"}'}
 
 
 def _default_agents() -> dict[str, AgentProfile]:
@@ -77,12 +88,12 @@ def _default_agents() -> dict[str, AgentProfile]:
             effort="",
             tools=[],
             exec_tools=[],
+            no_exec_env=OPENCODE_NO_EXEC,
         ),
         # Codex CLI (https://developers.openai.com/codex): exec --json emits JSONL events (events.py's codex-json parser).
-        # Codex has no tool allowlist: in workspace-write it edits files and runs commands, with writes confined to the
-        # package by Codex's own sandbox. No-analysis mode is therefore refused (no {tools}); see providers.exec_restriction.
-        # --ignore-user-config skips ~/.codex/config.toml (MCP servers, default model) but keeps the login.
-        "codex": AgentProfile(argv=CODEX_ARGV + ["-s", "workspace-write", "-"], events="codex-json", tools=[], exec_tools=[]),
+        # workspace-write: Codex's sandbox confines writes to the package. --ignore-user-config skips ~/.codex/config.toml
+        # (MCP servers, default model) but keeps the login. No-analysis mode removes its command tools (CODEX_NO_EXEC).
+        "codex": AgentProfile(argv=CODEX_ARGV + ["-s", "workspace-write"], events="codex-json", tools=[], exec_tools=[], no_exec_argv=CODEX_NO_EXEC),
     }
 
 
@@ -105,7 +116,7 @@ def _default_profiles() -> dict[str, LlmProfile]:
             effort="",
         ),
         # Codex CLI, read-only sandbox: it can read the package files it is pointed to but not change them.
-        "codex": LlmProfile(argv=CODEX_ARGV + ["-s", "read-only", "-"], output="codex-json"),
+        "codex": LlmProfile(argv=CODEX_ARGV + ["-s", "read-only"], output="codex-json"),
     }
 
 

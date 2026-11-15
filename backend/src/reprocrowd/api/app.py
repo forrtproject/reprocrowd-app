@@ -700,7 +700,7 @@ JOB_ERRORS = errors("not_found")
 def agent_profiles():
     cfg = settings()
     return [M.AgentProfileView(name=n, default=n == cfg.agent_default_profile, argv=p.argv, tools=p.tools, exec_tools=p.exec_tools,
-                               model=p.model, effort=p.effort, timeout_s=p.timeout_s, events=p.events, available=providers.available(p.argv), exec_restriction=providers.exec_restriction(p)) for n, p in cfg.agent_profiles.items()]
+                               no_exec_argv=p.no_exec_argv, no_exec_env=p.no_exec_env, model=p.model, effort=p.effort, timeout_s=p.timeout_s, events=p.events, available=providers.available(p.argv), exec_restriction=providers.exec_restriction(p)) for n, p in cfg.agent_profiles.items()]
 
 
 @api.post("/packages/{pkg}/jobs", tags=["jobs"], status_code=202, response_model=Job, summary="Start a job",
@@ -739,7 +739,8 @@ def running_jobs(page: Paged):
           responses=errors("script_missing", "unknown_profile", "exec_restriction_unsupported"))
 def preview_codegen(pkg: Pkg, body: M.CodegenJobCreate):
     p = codegen.plan(pkg, profile=body.profile, allow_exec=body.allow_exec, instructions=body.instructions, model=body.model)
-    return M.PromptPreview(prompt=p.prompt, argv=p.argv, profile=p.name, model=body.model or p.profile.model, effort=p.profile.effort, **providers.preview(p.profile, p.argv))
+    return M.PromptPreview(prompt=p.prompt, argv=p.argv, profile=p.name, model=body.model or p.profile.model, effort=p.profile.effort, env=p.env,
+                           **providers.preview(p.profile, p.argv))
 
 
 @api.get("/packages/{pkg}/jobs", tags=["jobs"], response_model=list[Job], summary="List jobs (oldest first)")

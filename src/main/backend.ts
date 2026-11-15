@@ -129,10 +129,11 @@ timeout_s = 1800
 
 # Codex CLI (https://developers.openai.com/codex), signed in with "codex login". exec --json emits one event per line
 # ("codex-json"). The read-only sandbox lets it read the package files without changing them. --ignore-user-config skips
-# ~/.codex/config.toml (MCP servers, default model) but keeps the login. model = "" uses Codex's default.
+# ~/.codex/config.toml (MCP servers, default model) but keeps the login; --disable apps/plugins keeps ChatGPT
+# connectors (e.g. GitHub actions) away from the agent. model = "" uses Codex's default. The prompt goes to stdin.
 [llm.profiles.codex]
-argv = ["codex", "exec", "--json", "--skip-git-repo-check", "--ephemeral", "--ignore-user-config", "-m", "{model}",
-        "-c", "model_reasoning_effort={effort}", "-s", "read-only", "-"]
+argv = ["codex", "exec", "--json", "--skip-git-repo-check", "--ephemeral", "--ignore-user-config", "--disable", "apps",
+        "--disable", "plugins", "-m", "{model}", "-c", "model_reasoning_effort={effort}", "-s", "read-only"]
 output = "codex-json"
 model = ""
 effort = ""
@@ -153,20 +154,22 @@ timeout_s = 7200
 events = "claude-stream-json"
 
 # OpenCode as a headless coding agent: --auto approves the tool calls it makes (Read/Write/Edit/Glob/Grep/Bash).
-# model = "" uses the CLI's default; pick one of your models on the starting page.
+# When the analysis must not run, no_exec_env denies every tool but reading and editing (--auto approves only what
+# is not denied). model = "" uses the CLI's default; pick one of your models on the starting page.
 [agent.profiles.opencode]
 argv = ["opencode", "run", "--format", "json", "-m", "{model}", "--variant", "{effort}", "--auto"]
+no_exec_env = { OPENCODE_PERMISSION = '{"*":"deny","read":"allow","edit":"allow","glob":"allow","grep":"allow","list":"allow","todowrite":"allow"}' }
 model = ""
 effort = ""
 timeout_s = 7200
 events = "opencode-json"
 
-# Codex as a headless coding agent. It has no tool allowlist: in the workspace-write sandbox it edits files and runs
-# commands, with writes confined to the package folder by Codex's own sandbox. "Don't run the analysis" is therefore
-# refused for this profile.
+# Codex as a headless coding agent, in the workspace-write sandbox (writes confined to the package folder by Codex).
+# When the analysis must not run, no_exec_argv removes its shell and sub-agent tools: it can still edit files.
 [agent.profiles.codex]
-argv = ["codex", "exec", "--json", "--skip-git-repo-check", "--ephemeral", "--ignore-user-config", "-m", "{model}",
-        "-c", "model_reasoning_effort={effort}", "-s", "workspace-write", "-"]
+argv = ["codex", "exec", "--json", "--skip-git-repo-check", "--ephemeral", "--ignore-user-config", "--disable", "apps",
+        "--disable", "plugins", "-m", "{model}", "-c", "model_reasoning_effort={effort}", "-s", "workspace-write"]
+no_exec_argv = ["--disable", "shell_tool", "--disable", "unified_exec", "--disable", "multi_agent"]
 tools = []
 exec_tools = []
 model = ""
@@ -245,7 +248,8 @@ function writeConfig(port: number, token: string) {
   const agent = (user.agent ?? {}) as Record<string, any>;
   const agentProfiles = { ...((agent.profiles ?? {}) as Record<string, any>) };
   // Same for the headless coding agent: keep an OpenCode profile so the agent can use the user's OpenCode models.
-  if (!agentProfiles.opencode) agentProfiles.opencode = { argv: ["opencode", "run", "--format", "json", "-m", "{model}", "--variant", "{effort}", "--auto"], model: "", effort: "", timeout_s: 7200, events: "opencode-json" };
+  if (!agentProfiles.opencode) agentProfiles.opencode = { argv: ["opencode", "run", "--format", "json", "-m", "{model}", "--variant", "{effort}", "--auto"], model: "", effort: "", timeout_s: 7200, events: "opencode-json",
+    no_exec_env: { OPENCODE_PERMISSION: '{"*":"deny","read":"allow","edit":"allow","glob":"allow","grep":"allow","list":"allow","todowrite":"allow"}' } };
   const cfg = {
     ...user,
     llm: { ...llm, profiles },

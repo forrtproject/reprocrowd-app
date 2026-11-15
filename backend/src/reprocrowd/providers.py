@@ -19,8 +19,14 @@ PROTOCOLS = {"llm": ("text", "claude-json", "opencode-json", "codex-json"),
 
 
 def exec_restriction(profile: AgentProfile, tools: list[str] | None = None) -> str:
+    """How a profile honours allow_exec=false. tool_allowlist: derived from argv ({tools} with editing tools, execution
+    tools added only when allowed). cli_settings: the profile declares flags/environment that remove the CLI's
+    command tools; declared, so the live smoke check tests it (an environment nonce must stay unreadable).
+    Neither: unsupported, and no-analysis requests are refused before launch. None of these is an OS sandbox."""
     supports = any("{tools}" in arg for arg in profile.argv) and bool(profile.exec_tools) and bool(profile.tools) and bool(profile.tools if tools is None else tools)
-    return "tool_allowlist" if supports else "unsupported"
+    if supports:
+        return "tool_allowlist"
+    return "cli_settings" if profile.no_exec_argv or profile.no_exec_env else "unsupported"
 
 
 def available(argv: list[str]) -> bool:

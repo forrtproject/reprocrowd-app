@@ -1,7 +1,9 @@
-import { CLI_LABELS, cliModel, cliOf, host, modelCompatible, type ConfiguredProfile, type LlmModels } from "./api";
+import { CLI_LABELS, cliModel, cliOf, execRestriction, host, modelCompatible, type ConfiguredProfile, type LlmModels } from "./api";
 import { confirmDialog, esc, modal, showError } from "./util";
 
 type Kind = "llm" | "agent";
+/** OpenCode without command tools: every tool denied except reading and editing (its --auto approves only what is not denied). */
+const OPENCODE_NO_EXEC = '{"*":"deny","read":"allow","edit":"allow","glob":"allow","grep":"allow","list":"allow","todowrite":"allow"}';
 export async function profileEditor(saved: (text: string) => void) {
   let profiles: Record<Kind, Record<string, ConfiguredProfile>>;
   try { profiles = await host.profileConfig(); } catch (e) { return showError("Opening profiles", e); }
@@ -17,10 +19,12 @@ export async function profileEditor(saved: (text: string) => void) {
     <div class="grid3"><label>Model <input name="model" list="profile-models" placeholder="(the CLI's default)" /><datalist id="profile-models"></datalist></label><label>Effort <input name="effort" /></label><label>Timeout (seconds) <input name="timeout" type="number" min="1" required /></label></div>
     <label>Output protocol <select name="protocol"></select></label>
     <p class="hint capability"></p>
-    <details><summary>Tool and structured-output arguments</summary>
-      <p class="hint">For tool-list profiles, use {tools} in the arguments. A CLI allowlist is not an OS sandbox. An unsupported no-analysis request is refused before launch.</p>
+    <details><summary>Tool, no-analysis and structured-output arguments</summary>
+      <p class="hint">"Don't run the analysis" needs either a tool list ({tools} in the arguments, editing and execution tools below) or no-analysis settings that remove the CLI's command tools. Neither is an OS sandbox. Without them, such a request is refused before launch.</p>
       <label>Editing tools (one per line)<textarea name="tools" rows="2"></textarea></label>
       <label>Execution tools (one per line)<textarea name="exec" rows="2"></textarea></label>
+      <label>No-analysis arguments (code generation; added when the analysis must not run; one per line)<textarea name="noexec" class="mono" rows="2"></textarea></label>
+      <label>No-analysis environment (NAME=value per line; never credentials)<textarea name="noenv" class="mono" rows="2"></textarea></label>
       <label>Read-files arguments (extraction)<textarea name="read" rows="2"></textarea></label>
       <label>JSON Schema arguments (extraction; use {schema})<textarea name="schema" rows="2"></textarea></label>
     </details>
@@ -33,6 +37,7 @@ export async function profileEditor(saved: (text: string) => void) {
   const value = (name: string) => el(name).value;
   const kind = () => value("kind") as Kind;
   const lines = (name: string) => value(name).split(/\r?\n/).filter((s) => s.trim());
+  const env = () => Object.fromEntries(lines("noenv").map((l) => { const i = l.indexOf("="); return i > 0 ? [l.slice(0, i).trim(), l.slice(i + 1)] : [l.trim(), ""]; }));
   const set = (name: string, v: string | number | string[] | undefined) => { el(name).value = Array.isArray(v) ? v.join("\n") : String(v ?? ""); };
   const protocols = () => {
     const list = kind() === "agent" ? ["claude-stream-json", "codex-json", "opencode-json", "text"] : ["claude-json", "codex-json", "opencode-json", "text"];
@@ -43,10 +48,11 @@ export async function profileEditor(saved: (text: string) => void) {
     set("model", p.model); set("effort", p.effort); set("timeout", p.timeout_s);
     set("protocol", kind() === "agent" ? p.events : p.output);
     set("tools", p.tools); set("exec", p.exec_tools); set("read", p.read_files_argv); set("schema", p.json_schema_argv);
+    set("noexec", p.no_exec_argv); set("noenv", Object.entries(p.no_exec_env ?? {}).map(([k, v]) => `${k}=${v}`));
   };
   const preset = () => {
     const type = value("preset"), agent = kind() === "agent";
-    const codex = ["codex", "exec", "--json", "--skip-git-repo-check", "--ephemeral", "--ignore-user-config", "-m", "{model}", "-c", "model_reasoning_effort={effort}", "-s", agent ? "workspace-write" : "read-only", "-"];
+    const codex = ["codex", "exec", "--json", "--skip-git-repo-check", "--ephemeral", "--ignore-user-config", "--disable", "apps", "--disable", "plugins", "-m", "{model}", "-c", "model_reasoning_effort={effort}", "-s", agent ? "workspace-write" : "read-only"];
     load(type, {
       argv: type === "claude" ? agent
         ? ["claude", "-p", "--output-format", "stream-json", "--verbose", "--permission-mode", "acceptEdits", "--model", "{model}", "--effort", "{effort}", "--allowedTools", "{tools}"]
@@ -54,7 +60,9 @@ export async function profileEditor(saved: (text: string) => void) {
         : type === "codex" ? codex
         : type === "opencode" ? ["opencode", "run", "--format", "json", "-m", "{model}", "--variant", "{effort}", ...(agent ? ["--auto"] : [])] : ["your-cli"],
       model: type === "claude" ? "sonnet" : "", effort: type === "claude" ? "high" : "", timeout_s: agent ? 7200 : 1800,
-      ...(agent ? { events: type === "claude" ? "claude-stream-json" : type === "codex" ? "codex-json" : type === "opencode" ? "opencode-json" : "text", tools: type === "claude" ? ["Read", "Write", "Edit", "Glob", "Grep"] : [], exec_tools: type === "claude" ? ["Bash(Rscript:*)", "Bash(python:*)", "Bash(python3:*)"] : [] }
+      ...(agent ? { events: type === "claude" ? "claude-stream-json" : type === "codex" ? "codex-json" : type === "opencode" ? "opencode-json" : "text", tools: type === "claude" ? ["Read", "Write", "Edit", "Glob", "Grep"] : [], exec_tools: type === "claude" ? ["Bash(Rscript:*)", "Bash(python:*)", "Bash(python3:*)"] : [],
+          no_exec_argv: type === "codex" ? ["--disable", "shell_tool", "--disable", "unified_exec", "--disable", "multi_agent"] : [],
+          no_exec_env: type === "opencode" ? { OPENCODE_PERMISSION: OPENCODE_NO_EXEC } : {} }
         : { output: type === "claude" ? "claude-json" : type === "codex" ? "codex-json" : type === "opencode" ? "opencode-json" : "text", read_files_argv: type === "claude" ? ["--allowedTools", "Read"] : [], json_schema_argv: type === "claude" ? ["--json-schema", "{schema}"] : [] })
     });
     status();
@@ -64,8 +72,9 @@ export async function profileEditor(saved: (text: string) => void) {
   const status = async () => {
     const argv = [value("command").trim(), ...lines("args")];
     const cli = cliOf(argv), label = CLI_LABELS[cli] ?? cli;
-    const restriction = kind() !== "agent" ? "" : argv.some((a) => a.includes("{tools}")) && lines("tools").length && lines("exec").length
-      ? "No-analysis mode: enforced by the CLI's tool allowlist (not an OS sandbox)."
+    const mode = execRestriction({ argv, model: "", effort: "", timeout_s: 1, tools: lines("tools"), exec_tools: lines("exec"), no_exec_argv: lines("noexec"), no_exec_env: env() });
+    const restriction = kind() !== "agent" ? "" : mode === "tool_allowlist" ? "No-analysis mode: enforced by the CLI's tool allowlist (not an OS sandbox)."
+      : mode === "cli_settings" ? "No-analysis mode: the no-analysis settings remove the CLI's command tools (not an OS sandbox). The presets were checked live; the smoke test checks a changed profile."
       : "No-analysis mode: not supported. Runs with this profile need “let it run the analysis”; the agent can then run commands in the package folder.";
     form.querySelector(".capability")!.textContent = restriction;
     const compatible = (models?.available ?? []).filter((m) => modelCompatible(m, argv));
@@ -86,7 +95,7 @@ export async function profileEditor(saved: (text: string) => void) {
     else preset();
   };
   el("kind").addEventListener("change", refresh); el("preset").addEventListener("change", preset);
-  for (const name of ["command", "args", "tools", "exec"]) el(name).addEventListener("change", status);
+  for (const name of ["command", "args", "tools", "exec", "noexec", "noenv"]) el(name).addEventListener("change", status);
   el("existing").addEventListener("change", () => { const p = profiles[kind()][value("existing")]; if (p) { load(value("existing"), p); status(); } else preset(); });
   form.addEventListener("submit", async (e) => {
     if ((e.submitter as HTMLButtonElement)?.value !== "save") return;
@@ -96,7 +105,7 @@ export async function profileEditor(saved: (text: string) => void) {
     try {
       if ((await host.runningJobs()).length && !(await confirmDialog("Restart the backend?", "<p>Running jobs will stop and be recorded as interrupted.</p>", "Stop jobs and save"))) return;
       const p: ConfiguredProfile = { argv: [value("command"), ...lines("args")], model: value("model"), effort: value("effort"), timeout_s: Number(value("timeout")),
-        ...(kind() === "agent" ? { events: value("protocol"), tools: lines("tools"), exec_tools: lines("exec") } : { output: value("protocol"), read_files_argv: lines("read"), json_schema_argv: lines("schema") }) };
+        ...(kind() === "agent" ? { events: value("protocol"), tools: lines("tools"), exec_tools: lines("exec"), no_exec_argv: lines("noexec"), no_exec_env: env() } : { output: value("protocol"), read_files_argv: lines("read"), json_schema_argv: lines("schema") }) };
       const text = await host.saveProfile(kind(), value("name"), p);
       saved(text); dlg.close();
     } catch (err) { dlg.querySelector(".profile-status")!.textContent = (err as Error).message; }

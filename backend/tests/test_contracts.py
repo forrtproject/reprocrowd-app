@@ -1,5 +1,6 @@
 """Contract regressions shared by reports, command-line clients and benchmarks."""
 import json
+from pathlib import Path
 import zipfile
 
 import respx
@@ -143,18 +144,30 @@ def test_shipped_argv_expansion_unchanged():
     assert expand_argv(["claude", "--model", "{model}", "--effort", "{effort}"], {"model": "", "effort": ""}) == ["claude"]
     codex = _default_agents()["codex"].argv
     assert "-c" not in expand_argv(codex, {"model": "", "effort": "", "tools": ""}) and "-m" not in expand_argv(codex, {"model": "", "effort": ""})
-    assert expand_argv(codex, {"model": "gpt", "effort": "low"})[-7:] == ["-m", "gpt", "-c", "model_reasoning_effort=low", "-s", "workspace-write", "-"]
+    assert expand_argv(codex, {"model": "gpt", "effort": "low"})[-6:] == ["-m", "gpt", "-c", "model_reasoning_effort=low", "-s", "workspace-write"]
 
 
-def test_codex_profiles_refuse_no_analysis(client, pkg, monkeypatch):
-    monkeypatch.setitem(settings().agent_profiles, "codex", _default_agents()["codex"])
+def test_cli_settings_restriction(client, pkg, monkeypatch):
+    """Codex and OpenCode run editing-only through declared CLI settings; a profile without them is still refused."""
+    for name in ("codex", "opencode"):
+        monkeypatch.setitem(settings().agent_profiles, name, _default_agents()[name])
+    monkeypatch.setitem(settings().agent_profiles, "bare", _default_agents()["opencode"].model_copy(update={"no_exec_env": {}}))
     ready_package(client, pkg)
     p = f"/v1/packages/{pkg}"
-    problem(client.post(p + "/jobs:preview", json={"type": "codegen", "profile": "codex", "allow_exec": False}), 409, "exec_restriction_unsupported")
-    problem(client.post(p + "/jobs", json={"type": "codegen", "profile": "codex", "allow_exec": False}), 409, "exec_restriction_unsupported")
-    preview = client.post(p + "/jobs:preview", json={"type": "codegen", "profile": "codex", "allow_exec": True, "model": "gpt-x"}).json()
-    assert preview["output_protocol"] == "codex-json" and preview["exec_restriction"] == "unsupported"
-    assert preview["argv"][-3:] == ["-s", "workspace-write", "-"] and "gpt-x" in preview["argv"]
+    codex = client.post(p + "/jobs:preview", json={"type": "codegen", "profile": "codex", "allow_exec": False}).json()
+    assert codex["exec_restriction"] == "cli_settings" and codex["env"] == {}
+    assert codex["argv"][-6:] == ["--disable", "shell_tool", "--disable", "unified_exec", "--disable", "multi_agent"]
+    assert ["--disable", "apps"] == codex["argv"][6:8]  # connectors off in every mode
+    allowed = client.post(p + "/jobs:preview", json={"type": "codegen", "profile": "codex", "allow_exec": True}).json()
+    assert "shell_tool" not in allowed["argv"] and allowed["env"] == {}
+    oc = client.post(p + "/jobs:preview", json={"type": "codegen", "profile": "opencode", "allow_exec": False}).json()
+    perm = json.loads(oc["env"]["OPENCODE_PERMISSION"])
+    assert perm["*"] == "deny" and perm["edit"] == "allow" and "bash" not in perm
+    assert client.post(p + "/jobs:preview", json={"type": "codegen", "profile": "opencode", "allow_exec": True}).json()["env"] == {}
+    problem(client.post(p + "/jobs:preview", json={"type": "codegen", "profile": "bare", "allow_exec": False}), 409, "exec_restriction_unsupported")
+    problem(client.post(p + "/jobs", json={"type": "codegen", "profile": "bare", "allow_exec": False}), 409, "exec_restriction_unsupported")
+    views = {v["name"]: v for v in client.get("/v1/agent-profiles").json()}
+    assert views["codex"]["exec_restriction"] == "cli_settings" and views["bare"]["exec_restriction"] == "unsupported"
 
 
 def test_config_is_read_only_over_http(client):
@@ -305,3 +318,30 @@ def test_run_records_drop_tool_outputs():
     oc = "\n".join([tool, '{"type":"text","part":{"text":"{}"}}', '{"type":"error","error":{"message":"boom"}}'])
     assert "PRIVATE" not in recorded_output(oc, "opencode-json") and terminal_error(recorded_output(oc, "opencode-json"), "opencode-json") == "boom"
     assert recorded_output("plain answer", "text") == "plain answer"
+
+
+def test_no_exec_env_reaches_the_agent(client, pkg, monkeypatch):
+    import sys
+    script = "import os, pathlib, sys; sys.stdin.read(); pathlib.Path('env-probe.txt').write_text(os.environ.get('RC_NO_EXEC', 'missing') + ' ' + ' '.join(sys.argv[1:])); pathlib.Path('pwd.txt').write_text(os.environ['PWD'])"
+    monkeypatch.setitem(settings().agent_profiles, "probe", AgentProfile(argv=[sys.executable, "-c", script], events="text", tools=[], exec_tools=[],
+                                                                          no_exec_argv=["--no-shell"], no_exec_env={"RC_NO_EXEC": "1"}))
+    root = ready_package(client, pkg)
+    job = wait(client, pkg, client.post(f"/v1/packages/{pkg}/jobs", json={"type": "codegen", "profile": "probe", "allow_exec": False}).json()["id"])
+    assert job["status"] == "succeeded" and job["request"]["env"] == {"RC_NO_EXEC": "1"} and job["request"]["exec_restriction"] == "cli_settings"
+    assert (root / "env-probe.txt").read_text() == "1 --no-shell"
+    assert Path((root / "pwd.txt").read_text()).resolve() == root.resolve()  # OpenCode resolves relative paths from $PWD
+    job = wait(client, pkg, client.post(f"/v1/packages/{pkg}/jobs", json={"type": "codegen", "profile": "probe", "allow_exec": True}).json()["id"])
+    assert (root / "env-probe.txt").read_text() == "missing "
+
+
+def test_app_default_config_matches_backend_defaults():
+    """New installs get backend.toml from src/main/backend.ts; its shipped agent/LLM profiles must equal the backend's."""
+    import re, tomllib
+    from pathlib import Path
+    ts = (Path(__file__).parents[2] / "src/main/backend.ts").read_text()
+    app_cfg = tomllib.loads(re.search(r"DEFAULT_USER_CONFIG = `([^`]*)`", ts).group(1))
+    for name, prof in _default_agents().items():
+        got = AgentProfile.model_validate(app_cfg["agent"]["profiles"][name])
+        assert (got.argv, got.no_exec_argv, got.no_exec_env, got.events) == (prof.argv, prof.no_exec_argv, prof.no_exec_env, prof.events), name
+    for name in ("claude", "opencode", "codex"):
+        assert LlmProfile.model_validate(app_cfg["llm"]["profiles"][name]).argv == _default_profiles()[name].argv, name

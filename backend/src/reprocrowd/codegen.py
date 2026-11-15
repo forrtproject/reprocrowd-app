@@ -33,6 +33,7 @@ class Plan(NamedTuple):
     tools: list[str]
     argv: list[str]
     prompt: str
+    env: dict[str, str]
 
 
 def plan(pkg: Package, *, profile: str | None, allow_exec: bool, instructions: str, model: str | None = None) -> Plan:
@@ -44,13 +45,15 @@ def plan(pkg: Package, *, profile: str | None, allow_exec: bool, instructions: s
     tools = prof.tools + (prof.exec_tools if allow_exec else [])
     restriction = exec_restriction(prof, tools)
     if not allow_exec and restriction == "unsupported":
-        raise conflict("exec_restriction_unsupported", f"Profile {name!r} has no non-empty tool allowlist and execution-tools substitution; it cannot honor no-analysis mode. Choose a compatible profile or explicitly allow execution.")
+        raise conflict("exec_restriction_unsupported", f"Profile {name!r} has neither a tool allowlist ({{tools}} with editing and execution tools) nor no-analysis settings (no_exec_argv/no_exec_env); it cannot honor no-analysis mode. Choose a compatible profile, re-apply its preset in Settings, or explicitly allow execution.")
     argv = expand_argv(prof.argv, {"model": model or prof.model, "effort": prof.effort, "tools": ",".join(tools)})
-    return Plan(name, prof, tpl, tools, argv, agent_prompt(pkg, tpl, instructions, allow_exec=allow_exec))
+    restricted = not allow_exec and restriction == "cli_settings"
+    argv += prof.no_exec_argv if restricted else []
+    return Plan(name, prof, tpl, tools, argv, agent_prompt(pkg, tpl, instructions, allow_exec=allow_exec), dict(prof.no_exec_env) if restricted else {})
 
 
 def start(pkg: Package, *, profile: str | None, allow_exec: bool, instructions: str, model: str | None = None) -> Job:
-    name, prof, tpl, tools, argv, prompt = plan(pkg, profile=profile, allow_exec=allow_exec, instructions=instructions, model=model)
+    name, prof, tpl, tools, argv, prompt, env = plan(pkg, profile=profile, allow_exec=allow_exec, instructions=instructions, model=model)
     jobs.ensure_idle(pkg)
     jid = jobs.new_id()
 
@@ -74,7 +77,7 @@ def start(pkg: Package, *, profile: str | None, allow_exec: bool, instructions: 
         return CodegenResult(commit_before=before, commit_after=after, changed_files=changed, todo=todo_status(pkg, tpl), git_note=git_note)
 
     request = {"profile": name, "model": model or prof.model, "effort": prof.effort, "allow_exec": allow_exec, "instructions": instructions,
-               "template": tpl.id, "tools": tools, "exec_restriction": exec_restriction(prof, tools),
+               "template": tpl.id, "tools": tools, "exec_restriction": exec_restriction(prof, tools), "env": env,
                "code_context": "excluded_from_prompt", "code_files_on_disk": [r.path for r in pkg.load().by_kind("input") if r.reprocrowd.role == "code" and pkg.path(r.path).exists()]}
     return jobs.start(pkg, jid=jid, type="codegen", argv=argv, stdin=prompt, timeout_s=prof.timeout_s, events_format=prof.events,
-                      profile=name, request=request, finish=finish)
+                      profile=name, request=request, finish=finish, env=env)
