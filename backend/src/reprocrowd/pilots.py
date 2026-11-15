@@ -70,6 +70,20 @@ def run_mark(rid: str, key: str) -> str:
     return f"<!-- reprocrowd-pilot-run:{rid}:{key} -->"
 
 
+def release_mark(tag: str) -> str:
+    """In every release body: GitHub replaces a draft's tag with an ``untagged-…`` placeholder when the draft is
+    edited without tag_name, so releases are also matched by this marker, not only by their tag."""
+    return f"<!-- reprocrowd-pilot-release:{tag} -->"
+
+
+def _is_run(r: dict[str, Any], tag: str) -> bool:
+    return r.get("tag_name") == tag or release_mark(tag) in (r.get("body") or "")
+
+
+def _of_reproduction(r: dict[str, Any], rid: str) -> bool:
+    return (r.get("tag_name") or "").startswith(f"{rid}-") or f"<!-- reprocrowd-pilot-release:{rid}-" in (r.get("body") or "")
+
+
 # ---------- GitHub REST ----------
 
 
@@ -169,6 +183,7 @@ class Plan:
     reproduction_id: str | None
     synthetic: bool
     note: str
+    branch: str = "main"
     files: list[Asset] = field(default_factory=list)
     excluded: list[str] = field(default_factory=list)
     licences: dict[str, Any] = field(default_factory=dict)  # from the archived licenses.json, not the current setting
@@ -337,7 +352,7 @@ def _release_body(plan: Plan, version: int, assets: list[Asset]) -> str:
     s = _summary(plan, version)
     return _clip(f"{_banner(plan)}\n**Run v{version}** of reproduction `{plan.reproduction_id}` (run key `{plan.run_key}`) of "
                  f"https://doi.org/{plan.p.doi}\n\n{_summary_line(s)}. Policy `{s['policy']}`.\n\n{_evidence_line(plan)}\n{_assets_table(assets)}\n\n"
-                 f"{_licence_lines(plan)}\n\n<!-- reprocrowd-summary: {json.dumps(s, sort_keys=True)} -->\n")
+                 f"{_licence_lines(plan)}\n\n{release_mark(plan.tag)}\n<!-- reprocrowd-summary: {json.dumps(s, sort_keys=True)} -->\n")
 
 
 def _comment_body(plan: Plan, rec: GithubPilot) -> str:
@@ -402,6 +417,7 @@ def submit(pkg: Package, *, token: str | None, repo: str | None, exclude: list[s
     with tempfile.TemporaryDirectory() as tmp:
         _build_files(plan, Path(tmp))  # size checks before anything is written on GitHub
         info = gh.json("GET", f"/repos/{plan.repo}")
+        plan.branch = info.get("default_branch") or "main"
         if not (info.get("permissions") or {}).get("push"):
             raise ApiError(403, "github_forbidden", f"this GitHub account can't write to {plan.repo}; pilot submissions create issues and "
                                                     "releases, which needs write access (ask the maintainers, or configure your own repository)")
@@ -452,14 +468,13 @@ def _versions(release: dict[str, Any]) -> int | None:
 
 
 def _release(gh: GitHub, plan: Plan, rec: GithubPilot, pkg: Package, tmp: Path) -> None:
-    prefix = f"{plan.reproduction_id}-"
-    mine = [r for r in gh.paged(f"/repos/{plan.repo}/releases") if (r.get("tag_name") or "").startswith(prefix)]
-    rel = next((r for r in mine if r.get("tag_name") == plan.tag), None)
+    mine = [r for r in gh.paged(f"/repos/{plan.repo}/releases") if _of_reproduction(r, plan.reproduction_id)]
+    rel = next((r for r in mine if _is_run(r, plan.tag)), None)
     if rel is None:
         version = 1 + max((_versions(r) or 0 for r in mine), default=0)
         rel = gh.json("POST", f"/repos/{plan.repo}/releases", json={
-            "tag_name": plan.tag, "name": f"{plan.reproduction_id} v{version} (pilot, unreviewed)",
-            "body": "Upload in progress.", "draft": True, "prerelease": True, "make_latest": "false"})
+            "tag_name": plan.tag, "target_commitish": plan.branch, "name": f"{plan.reproduction_id} v{version} (pilot, unreviewed)",
+            "body": f"Upload in progress.\n\n{release_mark(plan.tag)}\n", "draft": True, "prerelease": True, "make_latest": "false"})
     version = _versions(rel) or rec.version
     if version is None:
         raise conflict("pilot_release_mismatch", f"release {plan.tag} exists but its name has no version; fix it on GitHub")
@@ -480,9 +495,12 @@ def _release(gh: GitHub, plan: Plan, rec: GithubPilot, pkg: Package, tmp: Path) 
             with a.path.open("rb") as f:
                 gh.request("POST", upload, params={"name": a.name}, content=f, timeout=3600,
                            headers={"Content-Type": a.content_type, "Content-Length": str(a.bytes)})
-        gh.request("PATCH", f"/repos/{plan.repo}/releases/{rel['id']}", json={"body": _release_body(plan, version, files)})
+        keep = {"tag_name": plan.tag, "target_commitish": plan.branch}  # else GitHub drops the tag
+        gh.request("PATCH", f"/repos/{plan.repo}/releases/{rel['id']}", json=keep | {"body": _release_body(plan, version, files)})
         _verify(gh.json("GET", f"/repos/{plan.repo}/releases/{rel['id']}"), files, plan.tag)
-        rel = gh.json("PATCH", f"/repos/{plan.repo}/releases/{rel['id']}", json={"draft": False})
+        rel = gh.json("PATCH", f"/repos/{plan.repo}/releases/{rel['id']}", json=keep | {"draft": False})
+        if rel.get("tag_name") != plan.tag:
+            raise ApiError(502, "github_error", f"GitHub published the release under the tag {rel.get('tag_name')!r} instead of {plan.tag!r}")
     rel = gh.json("GET", f"/repos/{plan.repo}/releases/{rel['id']}")
     urls = _verify(rel, files, plan.tag)
     rec.release_url = rel["html_url"]
@@ -524,7 +542,7 @@ def _runs(gh: GitHub, plan: Plan) -> list[dict[str, Any]]:
     """The published runs of this reproduction, from GitHub (so runs submitted elsewhere count too)."""
     out = []
     for r in gh.paged(f"/repos/{plan.repo}/releases"):
-        if r.get("draft") or not (r.get("tag_name") or "").startswith(f"{plan.reproduction_id}-"):
+        if r.get("draft") or not _of_reproduction(r, plan.reproduction_id):
             continue
         m = SUMMARY_RE.search(r.get("body") or "")
         s = json.loads(m.group(1)) if m else {}

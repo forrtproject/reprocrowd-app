@@ -110,7 +110,7 @@ class FakeGitHub:
         if path == f"/repos/{REPO}/releases" and method == "GET":
             return self._page(request, [self._release_view(r) for r in reversed(self.releases)])
         if path == f"/repos/{REPO}/releases" and method == "POST":
-            assert body["draft"] is True and body["prerelease"] is True
+            assert body["draft"] is True and body["prerelease"] is True and body["target_commitish"] == "main"
             if any(r["tag_name"] == body["tag_name"] for r in self.releases):
                 return httpx.Response(422, json={"message": "Validation Failed", "errors": [{"code": "already_exists"}]})
             r = {"id": self._id(), "tag_name": body["tag_name"], "name": body["name"], "body": body["body"], "draft": True,
@@ -126,6 +126,8 @@ class FakeGitHub:
                     return f
                 if not r["draft"] and set(body) - {"body", "name"}:
                     return httpx.Response(422, json={"message": "immutable release"})
+                if r["draft"] and "tag_name" not in body:  # as GitHub does: editing a draft without tag_name drops its tag
+                    r["tag_name"] = f"untagged-{self._id():020x}"
                 r.update(body)
                 if body.get("draft") is False:
                     r["published_at"] = "2026-11-15T12:00:00Z"
