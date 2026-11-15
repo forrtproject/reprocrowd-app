@@ -106,7 +106,8 @@ def run(pkg: Package, task: str, prompt: str, *, profile_name: str | None, templ
         return call
 
     try:
-        proc = subprocess.Popen(resolve_argv(argv), cwd=pkg.root, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        # PWD follows cwd: some CLIs (OpenCode) resolve relative paths from $PWD, which would otherwise be the service's folder.
+        proc = subprocess.Popen(resolve_argv(argv), cwd=pkg.root, env={**os.environ, "PWD": str(pkg.root)}, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                 text=True, encoding="utf-8", errors="replace", start_new_session=True)
     except OSError as e:
         record("", str(e), None)
