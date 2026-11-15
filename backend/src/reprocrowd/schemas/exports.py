@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import Field
+from pydantic import Field, model_validator
 
 from .common import Identifier, Model
 from .curation import Ref, Target
@@ -81,12 +81,18 @@ class LicenseEntry(Model):
     source: str | None = Field(default=None, description="third-party: where it came from (DOI, URL or repository id)")
     note: str = ""
 
+    @model_validator(mode="after")
+    def _rights_match_license(self):
+        if (self.rights == "third-party") != (self.license is None):
+            raise ValueError(f"{self.path}: third-party files have no licence of ours (license null); our own files need one")
+        return self
+
 
 class LicenseMap(Model):
     """licenses.json (written with the archive): which licence applies to which file. Our licence covers only our own
     contribution; third-party articles, data and code keep their original terms."""
 
-    policy: Literal["reprocrowd-licensing/1"] = "reprocrowd-licensing/1"
+    policy: Literal["reprocrowd-licensing/1"] = Field(description="version of the licence policy")
     rules: dict[str, str] = Field(description="the policy in words, by category")
     paper_license: str | None = Field(default=None, description="the article's licence as reported by OpenAlex; null = unknown")
     files: list[LicenseEntry]

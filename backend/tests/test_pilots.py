@@ -35,6 +35,8 @@ class FakeGitHub:
         self.fail: dict[str, int] = {}  # step name → fail on the nth call (1-based), once
         self.calls: dict[str, int] = {}
         self.next_id = 1000
+        self.labels = {"reprocrowd-pilot", "unreviewed", "synthetic"}
+        self.digests = True  # GitHub reports a SHA-256 digest per asset
 
     def _id(self):
         self.next_id += 1
@@ -72,6 +74,11 @@ class FakeGitHub:
         if path == f"/repos/{REPO}":
             return httpx.Response(200, json={"full_name": REPO, "html_url": f"https://github.test/{REPO}", "private": False,
                                              "default_branch": "main", "permissions": {"push": self.push, "pull": True}})
+        if m := re.fullmatch(rf"/repos/{REPO}/labels(?:/(.+))?", path):
+            if method == "GET":
+                return httpx.Response(200 if m.group(1) in self.labels else 404, json={"name": m.group(1)})
+            self.labels.add(body["name"])
+            return httpx.Response(201, json=body)
         if path == f"/repos/{REPO}/immutable-releases":
             return httpx.Response(200, json={"enabled": True})
         if path == f"/repos/{REPO}/issues" and method == "GET":
@@ -83,6 +90,8 @@ class FakeGitHub:
             if (f := self._maybe_fail("issue")):
                 return f
             n = len(self.issues) + 1
+            if set(body.get("labels", [])) - self.labels:
+                return httpx.Response(422, json={"message": "Validation Failed", "errors": [{"code": "invalid", "field": "labels"}]})
             issue = {"number": n, "id": self._id(), "title": body["title"], "body": body["body"], "html_url": f"https://github.test/{REPO}/issues/{n}",
                      "labels": [{"name": l} for l in body.get("labels", [])], "state": "open"}
             self.issues.append(issue)
@@ -146,7 +155,8 @@ class FakeGitHub:
             if any(a["name"] == name for a in r["assets"]):
                 return httpx.Response(422, json={"message": "Validation Failed", "errors": [{"code": "already_exists", "field": "name"}]})
             data = request.content
-            a = {"id": self._id(), "name": name, "size": len(data), "state": "uploaded", "digest": "sha256:" + hashlib.sha256(data).hexdigest(),
+            a = {"id": self._id(), "name": name, "size": len(data), "state": "uploaded",
+                 "digest": "sha256:" + hashlib.sha256(data).hexdigest() if self.digests else None,
                  "content_type": request.headers["content-type"], "browser_download_url": f"https://github.test/{REPO}/releases/download/untagged/{name}"}
             self.blobs = getattr(self, "blobs", {})
             if (f := self._maybe_fail("upload")):
@@ -200,7 +210,7 @@ def test_preview_sends_nothing(client, pkg, gh):
     assert pv["licenses"]["metadata"] == "CC0-1.0" and pv["licenses"]["outputs"] == "CC-BY-4.0"
     assert gh.writes == [] and gh.calls == {}
     root = Path(client.get(P).json()["path"])
-    assert not list((root / "archive").glob("pilot-*"))  # preview keeps nothing
+    assert len(list((root / "archive").glob(f"pilot-{pv['run_key']}/*.zip"))) == 1  # the ZIP the submission will upload, built once
 
 
 def test_create_update_and_retries_do_not_duplicate(client, pkg, gh):
@@ -384,3 +394,52 @@ def test_records_state_the_archived_licences_not_the_current_setting(client, pkg
     assert client.put(P + "/archive").status_code == 200
     rec2 = client.post(P + "/pilots", json=body()).json()
     assert json.loads(gh.blobs[(rec2["tag"], "pilot.json")])["licenses"]["code"] == "CC-BY-4.0"
+
+
+def test_missing_labels_are_created_in_a_new_repository(client, pkg, gh):
+    P = f"/v1/packages/{pkg}"
+    ready_published(client, pkg)
+    gh.labels = set()
+    assert client.post(P + "/pilots", json=body(synthetic=True)).json()["status"] == "published"
+    assert gh.labels == {"reprocrowd-pilot", "unreviewed", "synthetic"}
+
+
+def test_assets_without_a_digest_are_not_accepted(client, pkg, gh):
+    P = f"/v1/packages/{pkg}"
+    ready_published(client, pkg)
+    gh.digests = False
+    problem(client.post(P + "/pilots", json=body()), 409, "pilot_release_mismatch")
+    assert all(r["draft"] for r in gh.releases)  # never published unverified
+
+
+def test_retry_keeps_the_note_of_the_published_comment(client, pkg, gh):
+    P = f"/v1/packages/{pkg}"
+    ready_published(client, pkg)
+    first = client.post(P + "/pilots", json=body(note="original note")).json()
+    again = client.post(P + "/pilots", json=body(note="a different note")).json()
+    assert first["id"] == again["id"] and again["note"] == "original note" and "original note" in gh.comments[1][0]["body"]
+
+
+def test_archive_without_licences_is_refused(client, pkg, gh):
+    import zipfile as zf
+    from reprocrowd.package import Registry
+    P = f"/v1/packages/{pkg}"
+    ready_published(client, pkg)
+    p = Registry().get(pkg)
+    path = p.path(p.load().reprocrowd.archive.path)
+    with zf.ZipFile(path) as src:
+        items = [(i, src.read(i)) for i in src.infolist() if i.filename != "licenses.json"]
+    with zf.ZipFile(path, "w") as out:
+        for i, data in items:
+            out.writestr(i, data)
+    problem(client.post(P + "/pilots:preview", json={}), 409, "archive_stale")
+    assert gh.writes == []
+
+
+def test_license_entries_must_match_their_rights():
+    from pydantic import ValidationError
+    from reprocrowd.schemas.exports import LicenseEntry
+    with pytest.raises(ValidationError):
+        LicenseEntry(path="inputs/data.csv", kind="input", rights="third-party", license="CC-BY-4.0")
+    with pytest.raises(ValidationError):
+        LicenseEntry(path="analysis.py", kind="script", rights="ours", license=None)

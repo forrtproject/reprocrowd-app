@@ -203,13 +203,11 @@ def _plan(pkg: Package, repo: str | None, exclude: list[str] | None, note: str, 
     return Plan(pkg, p, repo or settings().github_pilots_repo, ex, key, p.m.reprocrowd.reproduction_id, synthetic, note)
 
 
-def _build_files(plan: Plan, tmp: Path, keep: bool = True) -> None:
+def _build_files(plan: Plan, tmp: Path) -> None:
     """The ZIP (kept under archive/ so that a retry uploads the same bytes) and the files copied out of it."""
     pkg, archive = plan.pkg, archive_path(plan.pkg)
     kept = pkg.path(f"{ARCHIVE_DIR}/pilot-{plan.run_key}/{archive.name}")
-    if not keep and not kept.exists():
-        kept = _publication_zip(pkg, archive, set(plan.exclude), tmp)[0]
-    elif not kept.exists():
+    if not kept.exists():
         kept.parent.mkdir(parents=True, exist_ok=True)
         built, _ = _publication_zip(pkg, archive, set(plan.exclude), tmp)
         shutil.copyfile(built, kept.with_suffix(".part"))
@@ -232,10 +230,14 @@ def _build_files(plan: Plan, tmp: Path, keep: bool = True) -> None:
 
 
 def _evidence(plan: Plan) -> dict[str, Any]:
-    """What the recorded execution evidence discloses (files changed or added after the run, results identity)."""
+    """What the archived execution evidence discloses (files changed or added after the run, results identity). Read
+    from the copy in the ZIP, so a retry builds the same pilot.json."""
+    path = next((a.path for a in plan.files if a.name == "execution.json"), None)
     try:
-        ev = plan.pkg.read_json("evidence/execution.json")
+        ev = json.loads(path.read_text(encoding="utf-8")) if path else None
     except (OSError, ValueError):
+        ev = None
+    if not isinstance(ev, dict):
         return {"recorded": False}
     return {"recorded": True, "stale": ev.get("stale"), "added_since_run": ev.get("added_since_run") or [],
             "results_match_run": ev.get("results_match_run")}
@@ -258,8 +260,7 @@ def _evidence_line(plan: Plan) -> str:
 def _archived_licences(path: Path | None) -> dict[str, Any]:
     """The licences as recorded in the archive when it was made, so the public record never contradicts it."""
     if path is None:
-        return {"policy": None, "metadata": licensing.METADATA, "outputs": licensing.OUTPUTS,
-                "code": "not recorded (the archive predates licenses.json; recreate it)", "third_party": "original licences retained"}
+        raise conflict("archive_stale", "the archive was made before licences were recorded (no licenses.json); create it again (PUT …/archive)")
     lic = json.loads(path.read_text(encoding="utf-8"))
     code = sorted({f.get("license") or "?" for f in lic.get("files", []) if f.get("kind") in ("script", "code")})
     return {"policy": lic.get("policy"), "metadata": licensing.METADATA, "outputs": licensing.OUTPUTS,
@@ -392,7 +393,7 @@ def preview(pkg: Package, repo: str | None, exclude: list[str] | None, note: str
     plan = _plan(pkg, repo, exclude, note, synthetic)
     plan.reproduction_id = plan.reproduction_id or "repro-(assigned on first submission)"
     with tempfile.TemporaryDirectory() as tmp:
-        _build_files(plan, Path(tmp), keep=False)
+        _build_files(plan, Path(tmp))  # builds the ZIP once per run key; a later preview or the submission reuses it
     existing = next((x for x in pkg.load().reprocrowd.pilots if x.run_key == plan.run_key and x.repo == plan.repo), None)
     return {"repo": plan.repo, "reproduction_id": plan.reproduction_id, "run_key": plan.run_key, "tag": plan.tag,
             "issue_title": _issue_title(plan), "labels": _labels(plan), "summary": _summary_line(_summary(plan, None)),
@@ -430,15 +431,17 @@ def submit(pkg: Package, *, token: str | None, repo: str | None, exclude: list[s
             rec = GithubPilot(id=f"pil-{secrets.token_hex(4)}", repo=plan.repo, reproduction_id=plan.reproduction_id, run_key=plan.run_key,
                               status="partial", tag=plan.tag, archive_sha256=plan.p.m.reprocrowd.archive.sha256, exclude=plan.exclude,
                               excluded=plan.excluded, synthetic=synthetic, note=note, created_at=now())
-        rec.note, rec.error = note, None
+        if rec.comment_url:  # the run's comment exists and is not rewritten: keep the note it shows
+            plan.note = rec.note
+        rec.note, rec.error = plan.note, None
         try:
             _issue(gh, plan, rec, pkg)
             _release(gh, plan, rec, pkg, Path(tmp))
             _comment(gh, plan, rec, pkg)
             runs = _runs(gh, plan)
             gh.request("PATCH", f"/repos/{plan.repo}/issues/{rec.issue_number}", json={"body": _issue_body(plan, runs, info.get("html_url", ""))})
-        except ApiError as e:
-            rec.error = f"{e.code}: {e.message}"
+        except Exception as e:
+            rec.error = f"{e.code}: {e.message}" if isinstance(e, ApiError) else f"{type(e).__name__}: {e}"
             _save(pkg, rec)
             raise
         rec.status = "published"
@@ -456,10 +459,24 @@ def _issue(gh: GitHub, plan: Plan, rec: GithubPilot, pkg: Package) -> None:
         issue = next((i for i in gh.paged(f"/repos/{plan.repo}/issues", {"labels": LABEL, "state": "all"})
                       if "pull_request" not in i and mark in (i.get("body") or "")), None)
     if issue is None:
+        _ensure_labels(gh, plan)
         body = f"{mark}\n{_banner(plan)}\n_The first run is being uploaded; this description is replaced when it is complete._\n"
         issue = gh.json("POST", f"/repos/{plan.repo}/issues", json={"title": _issue_title(plan), "body": body, "labels": _labels(plan)})
     rec.issue_number, rec.issue_url = issue["number"], issue["html_url"]
     _save(pkg, rec)
+
+
+LABELS = {LABEL: ("1d76db", "A ReproCrowd pilot record (one issue per reproduction)"),
+          "unreviewed": ("fbca04", "Not reviewed: a numeric match is not a scientific certificate"),
+          "synthetic": ("cccccc", "Synthetic test fixture of the publication workflow, not research")}
+
+
+def _ensure_labels(gh: GitHub, plan: Plan) -> None:
+    """A configured repository of one's own may lack the labels; create those that are missing."""
+    for name in _labels(plan):
+        if gh.request("GET", f"/repos/{plan.repo}/labels/{name}", ok=(200, 404)).status_code == 404:
+            color, desc = LABELS[name]
+            gh.request("POST", f"/repos/{plan.repo}/labels", ok=(201, 422), json={"name": name, "color": color, "description": desc})
 
 
 def _versions(release: dict[str, Any]) -> int | None:
@@ -510,8 +527,8 @@ def _release(gh: GitHub, plan: Plan, rec: GithubPilot, pkg: Package, tmp: Path) 
 
 
 def _same(remote: dict[str, Any], a: Asset) -> bool:
-    digest = remote.get("digest")
-    return remote.get("size") == a.bytes and (digest is None or digest == f"sha256:{a.sha256}")
+    """Only GitHub's SHA-256 digest counts as verification; an asset without one is not accepted."""
+    return remote.get("size") == a.bytes and remote.get("digest") == f"sha256:{a.sha256}"
 
 
 def _verify(rel: dict[str, Any], files: list[Asset], tag: str) -> dict[str, str]:

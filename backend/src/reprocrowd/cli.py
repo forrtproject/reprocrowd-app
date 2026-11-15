@@ -689,7 +689,10 @@ def _github_token() -> str | None:
     import subprocess
 
     if shutil.which("gh"):
-        r = subprocess.run(["gh", "auth", "token"], capture_output=True, text=True, timeout=10)
+        try:
+            r = subprocess.run(["gh", "auth", "token", "--hostname", "github.com"], capture_output=True, text=True, timeout=10)
+        except subprocess.TimeoutExpired:
+            return None
         if r.returncode == 0 and r.stdout.strip():
             return r.stdout.strip()
     return None

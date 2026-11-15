@@ -277,6 +277,7 @@
           "type": "string"
         },
         "reproduction_id": {
+          "pattern": "^repro-[0-9a-f]{10}$",
           "title": "Reproduction Id",
           "type": "string"
         },

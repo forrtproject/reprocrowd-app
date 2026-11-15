@@ -18,6 +18,7 @@ from .package import MANIFEST, Package
 from .schemas.exports import LicenseEntry, LicenseMap
 from .schemas.manifest import Resource
 
+POLICY = "reprocrowd-licensing/1"
 METADATA, OUTPUTS = "CC0-1.0", "CC-BY-4.0"
 THIRD_PARTY = {"fulltext", "extraction", "figure", "input"}
 FILE = "licenses.json"
@@ -56,7 +57,7 @@ def _entry(r: Resource, paper: str | None, doi: str | None) -> LicenseEntry:
     kind = r.reprocrowd.kind
     if kind == "input":
         o = r.reprocrowd.origin
-        src = getattr(o, "id", None) or getattr(o, "url", None) or getattr(o, "filename", None) or getattr(o, "path", None)
+        src = getattr(o, "id", None) or getattr(o, "url", None)  # never a local path or file name: this file is public
         return LicenseEntry(path=r.path, kind=kind, rights="third-party", license=None, source=src,
                             note="published by others; the licence at the source applies (not checked by ReproCrowd)")
     if kind in THIRD_PARTY:
@@ -80,9 +81,9 @@ def license_map(pkg: Package) -> LicenseMap:
     files += [_entry(r, paper, doi) for r in m.resources if r.path != FILE]
     files.append(LicenseEntry(path=FILE, kind="export", rights="ours", license=METADATA))
     files.sort(key=lambda f: f.path)
-    return LicenseMap(rules=rules(), paper_license=paper, files=files)
+    return LicenseMap(policy=POLICY, rules=rules(), paper_license=paper, files=files)
 
 
 def summary() -> dict[str, Any]:
-    return {"policy": "reprocrowd-licensing/1", "metadata": METADATA, "outputs": OUTPUTS, "code": code_license(),
+    return {"policy": POLICY, "metadata": METADATA, "outputs": OUTPUTS, "code": code_license(),
             "third_party": "original licences retained; see licenses.json"}

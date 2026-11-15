@@ -89,8 +89,8 @@ Apple silicon Macs runs ARM64 Linux, which works like any other Linux.
   comparison, evidence, `licenses.json` and `pilot.json`, verified by SHA-256, plus a comment on
   the issue. Submitting the same ZIP again creates nothing new, and an interrupted
   submission resumes. A new run becomes v2 on the same issue. It needs write access
-  to the repository. If the GitHub CLI is logged in (`gh auth login`), the app uses that
-  login; otherwise paste a token in Settings → GitHub pilots. A numeric match is
+  to the repository. A token saved in Settings → GitHub pilots is used first; without one,
+  the app uses the GitHub CLI login (`gh auth login`). A numeric match is
   not a scientific certificate. See [the pilot spec](docs/specs/github-pilots.md).
 - **⚙ Settings**: your name / ORCID / affiliation for records; Zenodo server
   (**sandbox by default**, for testing) and a personal access token for each
@@ -173,6 +173,8 @@ git subtree push --prefix=backend ../reprocrowd-cli app-sync # offer this repo's
 ## License
 
 The app's source code is MIT, see [LICENSE](LICENSE). What a reproduction produces is licensed separately and
-recorded per file in its archive's `licenses.json`. Metadata is CC0-1.0. Reports, figures and outputs are CC-BY-4.0.
-New analysis code follows `[licensing] code`. Third-party articles, data and code keep their own licences.
+recorded per file in its archive's `licenses.json`. Metadata is CC0-1.0. Reports, figures and outputs are CC-BY-4.0,
+except quoted passages and original figures from the article, which keep the article's terms; outputs computed from
+third-party data are also subject to that data's terms. New analysis code follows `[licensing] code` (MIT by default).
+Third-party articles, data and code keep their own licences.
 See [the pilot spec](docs/specs/github-pilots.md#licences).

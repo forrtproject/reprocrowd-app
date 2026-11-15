@@ -475,8 +475,8 @@ class PilotOptions(Req):
     synthetic: bool = Field(default=False, description="label the issue and files as a synthetic test fixture")
 
 
-class PilotCreate(PilotOptions):
-    github_token: SecretStr | None = Field(default=None, description="the user's GitHub token; passed on, never stored. Default: [github] token")
+class PilotCreate(PilotOptions, GithubAuth):
+    pass
 
 
 class GithubPilotStatus(BaseModel):

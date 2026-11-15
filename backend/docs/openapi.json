@@ -8591,7 +8591,7 @@
           "pilots"
         ],
         "summary": "Check a GitHub token against the pilots repository",
-        "description": "Reads the repository (one request); reports whether the account can submit. Writes nothing.",
+        "description": "Reads the repository and its release settings; reports whether the account can submit. Writes nothing.",
         "operationId": "github_pilot_check_v1_github_pilots_check_post",
         "requestBody": {
           "content": {
@@ -8789,7 +8789,7 @@
           "pilots"
         ],
         "summary": "Submit this run as a GitHub pilot",
-        "description": "Finds or creates the reproduction's issue, uploads the files to a pre-release for this run (draft, verified by SHA-256, then published), comments on the issue and updates its summary. Idempotent per run key (archive hash and left-out groups): a retry resumes a `partial` record and creates nothing twice. Same preconditions as a Zenodo deposit; a stale report is refused (`report_stale`). A pilot is unreviewed, not a certificate.",
+        "description": "Finds or creates the reproduction's issue, uploads the files to a pre-release for this run (draft, verified by SHA-256, then published), comments on the issue and updates its summary. Idempotent per run key (archive hash and left-out groups): a retry resumes a `partial` record and creates nothing twice, so it always answers 200 with the run's record. Same preconditions as a Zenodo deposit; a stale report is refused (`report_stale`). A pilot is unreviewed, not a certificate.",
         "operationId": "submit_pilot_v1_packages__pkg__pilots_post",
         "security": [
           {
@@ -11873,6 +11873,7 @@
           },
           "reproduction_id": {
             "type": "string",
+            "pattern": "^repro-[0-9a-f]{10}$",
             "title": "Reproduction Id"
           },
           "run_key": {
@@ -13372,6 +13373,20 @@
       },
       "PilotCreate": {
         "properties": {
+          "github_token": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "password",
+                "writeOnly": true
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Github Token",
+            "description": "the user's GitHub token (classic: public_repo; fine-grained: Contents write, Issues write on the repository); passed on, never stored. Default: [github] token"
+          },
           "repo": {
             "anyOf": [
               {
@@ -13416,20 +13431,6 @@
             "title": "Synthetic",
             "description": "label the issue and files as a synthetic test fixture",
             "default": false
-          },
-          "github_token": {
-            "anyOf": [
-              {
-                "type": "string",
-                "format": "password",
-                "writeOnly": true
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Github Token",
-            "description": "the user's GitHub token; passed on, never stored. Default: [github] token"
           }
         },
         "additionalProperties": false,

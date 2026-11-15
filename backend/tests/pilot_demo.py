@@ -87,9 +87,13 @@ def main() -> None:
         again = step("retry v1 (same archive)", "POST", P + "/pilots", body | {"note": "Synthetic demo: first run."})
         assert again["id"] == v1["id"] and log[-1]["github"] == log[-2]["github"]
         job = client.post(P + "/jobs", json={"type": "run"}).json()
-        while not client.get(f"{P}/jobs/{job['id']}").json().get("finished_at"):
+        deadline = time.monotonic() + 120
+        while not (job := client.get(f"{P}/jobs/{job['id']}").json()).get("finished_at"):
+            assert time.monotonic() < deadline, "the rerun did not finish within 120 s"
             time.sleep(.05)
-        step("submit after a new run without a new report", "POST", P + "/pilots", body, expect=409)
+        assert job["status"] == "succeeded", job
+        refused = step("submit after a new run without a new report", "POST", P + "/pilots", body, expect=409)
+        assert refused["code"] == "report_stale", refused
         assert log[-1]["github"] == log[-2]["github"]
         client.put(P + "/report", json={"threshold": 5})
         client.put(P + "/archive")

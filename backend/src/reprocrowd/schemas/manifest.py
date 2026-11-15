@@ -195,7 +195,7 @@ class GithubPilot(Model):
 
     id: str = Field(pattern=r"^pil-[0-9a-f]+$")
     repo: str = Field(description="owner/name")
-    reproduction_id: str
+    reproduction_id: str = Field(pattern=r"^repro-[0-9a-f]{10}$")
     run_key: str = Field(pattern=r"^[0-9a-f]{12}$")
     version: int | None = Field(default=None, ge=1, description="run number within the reproduction, assigned when the release is created")
     status: Literal["partial", "published"] = Field(description="partial: a step failed; submitting again resumes")

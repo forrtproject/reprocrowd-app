@@ -94,7 +94,7 @@ export interface DepositPreview {
   contents: { groups: Record<string, { description: string; resources: string[]; bytes: number }>; paper_license: string | null; default_exclude: string[] };
   exclude: string[];
 }
-export interface PilotAccount { repo: string; hasToken: boolean; source: "settings" | "gh" | "none"; gh: "ok" | "logged-out" | "missing" }
+export interface PilotAccount { repo: string; hasToken: boolean; source: "settings" | "gh" | "none" }
 export interface GithubCheck { repo: string; url: string | null; private: boolean | null; can_submit: boolean; default_branch: string | null; immutable_releases: boolean | null }
 export interface PilotPreview {
   repo: string; reproduction_id: string; run_key: string; tag: string; issue_title: string; labels: string[]; summary: string;

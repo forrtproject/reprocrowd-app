@@ -52,8 +52,8 @@ export async function settingsDialog(onSaved: (changed: boolean) => void, focus?
     <fieldset id="set-github"><legend>GitHub pilots</legend>
       <p class="hint">A pilot is a public, unreviewed record of a reproduction on GitHub: an issue per reproduction and the files of every run. Your GitHub account needs write access to the repository.</p>
       <label>Repository <input name="ghrepo" value="${esc(cfg.github.repo)}" placeholder="owner/name" spellcheck="false" /></label>
-      <p class="gh-login small">${cfg.tokens.github ? `Using the token pasted below.` : cfg.ghLogin === "ok" ? `<span class="ok">✓ Using your GitHub CLI login (<code>gh</code>).</span>` : cfg.ghLogin === "logged-out" ? `<span class="warn-inline">The GitHub CLI (<code>gh</code>) isn't logged in.</span>` : `<span class="warn-inline">The GitHub CLI (<code>gh</code>) isn't installed.</span>`}</p>
-      <div class="actions"><button type="button" id="gh-verify">Check</button>${cfg.ghLogin !== "ok" && !cfg.tokens.github ? `<button type="button" id="gh-login" class="primary">Log in with gh</button>` : ""}</div>
+      <p class="gh-login small"></p>
+      <div class="actions"><button type="button" id="gh-verify">Check</button><button type="button" id="gh-login" class="primary" hidden>Log in with gh</button></div>
       <p class="gh-check small" aria-live="polite"></p>
       ${cfg.ghLogin === "missing" && !cfg.tokens.github ? `<p class="hint">Install the <a href="#" id="gh-install">GitHub CLI</a> and run <code>gh auth login</code> in a terminal (choose GitHub.com, then log in with a web browser). ReproCrowd then uses that login; nothing to paste.</p>` : ""}
       <details ${cfg.tokens.github ? "open" : ""}><summary>Or use a token instead</summary>
@@ -61,7 +61,7 @@ export async function settingsDialog(onSaved: (changed: boolean) => void, focus?
           <label>GitHub token <input name="ghtoken" type="password" autocomplete="off" spellcheck="false" placeholder="${cfg.tokens.github ? "(stored; paste a new one to replace it)" : "paste your token"}" /></label>
           <button type="button" id="gh-remove" ${cfg.tokens.github ? "" : "disabled"}>Remove</button>
         </div>
-        <p class="hint"><a href="#" id="gh-create">Create a fine-grained token</a> for that repository only, with <b>Contents: Read and write</b> and <b>Issues: Read and write</b>. A pasted token takes precedence over the gh login; it is kept in your system's keyring and sent only with a submission.</p>
+        <p class="hint"><a href="#" id="gh-create">Create a fine-grained token</a> for that repository only, with <b>Contents: Read and write</b> and <b>Issues: Read and write</b>. A saved token takes precedence over the gh login. ${cfg.secretStorage === "secure" ? "It is kept encrypted with your system's keyring" : cfg.secretStorage === "weak" ? `<span class="warn-inline">No system keyring was found, so it is only obfuscated on disk</span>` : `<span class="warn-inline">This system offers no secure storage, so a token can't be saved; use the gh login</span>`}, and is sent only to GitHub when you check or submit.</p>
       </details>
     </fieldset>
     <fieldset><legend>Packages</legend>
@@ -126,6 +126,17 @@ export async function settingsDialog(onSaved: (changed: boolean) => void, focus?
     showServer();
   });
   const ghCheck = q<HTMLElement>(".gh-check");
+  const showGhLogin = () => {
+    q<HTMLElement>(".gh-login").innerHTML = cfg.tokens.github
+      ? "Using the saved token."
+      : cfg.ghLogin === "ok"
+        ? `<span class="ok">✓ Using your GitHub CLI login (<code>gh</code>).</span>`
+        : cfg.ghLogin === "logged-out"
+          ? `<span class="warn-inline">The GitHub CLI (<code>gh</code>) isn't logged in.</span>`
+          : `<span class="warn-inline">The GitHub CLI (<code>gh</code>) isn't installed.</span>`;
+    q<HTMLButtonElement>("#gh-login").hidden = cfg.tokens.github || cfg.ghLogin === "ok";
+  };
+  showGhLogin();
   q("#gh-create").addEventListener("click", (e) => {
     e.preventDefault();
     host.openUrl("https://github.com/settings/personal-access-tokens/new");
@@ -153,10 +164,15 @@ export async function settingsDialog(onSaved: (changed: boolean) => void, focus?
     }
   });
   q("#gh-remove").addEventListener("click", async () => {
-    await host.setGithubToken(null).catch((e) => showError("Removing the token", e));
+    try {
+      await host.setGithubToken(null);
+    } catch (e) {
+      return showError("Removing the token", e);
+    }
     cfg.tokens.github = false;
     q<HTMLButtonElement>("#gh-remove").disabled = true;
     q<HTMLInputElement>("[name=ghtoken]").placeholder = "paste your token";
+    showGhLogin();
   });
   q("#root-choose").addEventListener("click", async () => {
     const dir = await host.chooseFolder(q<HTMLInputElement>("[name=root]").value);
@@ -287,10 +303,10 @@ export async function settingsDialog(onSaved: (changed: boolean) => void, focus?
     try {
       const token = q<HTMLInputElement>("[name=ztoken]").value.trim();
       if (token) await host.setZenodoToken(server(), token);
-      const ghToken = q<HTMLInputElement>("[name=ghtoken]").value.trim();
-      if (ghToken) await host.setGithubToken(ghToken);
       const repo = q<HTMLInputElement>("[name=ghrepo]").value.trim();
       if (repo && !/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repo)) throw new Error(`“${repo}” isn't a GitHub repository (owner/name).`);
+      const ghToken = q<HTMLInputElement>("[name=ghtoken]").value.trim();
+      if (ghToken) await host.setGithubToken(ghToken);
       if (q<HTMLTextAreaElement>("[name=becfg]").value !== cfg.backendConfig) await host.saveBackendConfig(q<HTMLTextAreaElement>("[name=becfg]").value);
       await host.setConfig({
         packagesRoot: q<HTMLInputElement>("[name=root]").value.trim(),

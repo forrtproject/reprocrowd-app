@@ -254,9 +254,9 @@ def metadata(p: Prepared, creators: list[ZenodoCreator], note: str, excluded: li
         "<p>The ZIP is a Frictionless data package (<code>datapackage.json</code>) made with ReproCrowd: the targets taken "
         "from the paper, the analysis plan, the master script and its outputs, the comparison, and <code>report.html</code> "
         "with the provenance of every target.</p>",
-        "<p><b>Licences:</b> the record's licence covers the files authored for this reproduction (metadata CC0-1.0; report, "
-        "outputs CC-BY-4.0; analysis code as listed). The article's material and the input data and code keep their original "
-        "licences. <code>licenses.json</code> lists the licence of every file.</p>",
+        "<p><b>Licences:</b> Zenodo shows one licence per record; it applies to the report and analysis outputs. Each file's "
+        "licence is listed in <code>licenses.json</code> and takes precedence: metadata CC0-1.0, new analysis code as listed "
+        "there (MIT by default), and the article's material and the input data and code keep their original licences.</p>",
         f"<p>Left out of this upload: {escape('; '.join(GROUPS[g] for g in excluded))}. <code>excluded-files.json</code> lists "
         "them with their hashes.</p>" if excluded else "",
     ]

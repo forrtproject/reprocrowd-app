@@ -1044,7 +1044,7 @@ def github_pilot_status():
 
 
 @api.post("/github-pilots:check", tags=["pilots"], response_model=M.GithubCheck, summary="Check a GitHub token against the pilots repository",
-          description="Reads the repository (one request); reports whether the account can submit. Writes nothing.", responses=errors(*GITHUB_ERRORS))
+          description="Reads the repository and its release settings; reports whether the account can submit. Writes nothing.", responses=errors(*GITHUB_ERRORS))
 def github_pilot_check(body: M.GithubAuth = Body(default_factory=M.GithubAuth)):
     return pilots.check(_gh(body), body.repo)
 
@@ -1064,7 +1064,8 @@ def preview_pilot(pkg: Pkg, body: M.PilotOptions = Body(default_factory=M.PilotO
 @api.post("/packages/{pkg}/pilots", tags=["pilots"], response_model=GithubPilot, summary="Submit this run as a GitHub pilot",
           description="Finds or creates the reproduction's issue, uploads the files to a pre-release for this run (draft, verified by "
                       "SHA-256, then published), comments on the issue and updates its summary. Idempotent per run key (archive hash "
-                      "and left-out groups): a retry resumes a `partial` record and creates nothing twice. Same preconditions as a "
+                      "and left-out groups): a retry resumes a `partial` record and creates nothing twice, so it always answers 200 with "
+                      "the run's record. Same preconditions as a "
                       "Zenodo deposit; a stale report is refused (`report_stale`). A pilot is unreviewed, not a certificate.",
           responses=errors(*PILOT_PRECONDITIONS, *GITHUB_ERRORS, "pilot_release_mismatch"))
 def submit_pilot(pkg: Pkg, body: M.PilotCreate = Body(default_factory=M.PilotCreate)):

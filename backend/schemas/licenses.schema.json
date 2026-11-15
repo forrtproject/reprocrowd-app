@@ -84,7 +84,7 @@
   "properties": {
     "policy": {
       "const": "reprocrowd-licensing/1",
-      "default": "reprocrowd-licensing/1",
+      "description": "version of the licence policy",
       "title": "Policy",
       "type": "string"
     },
@@ -118,6 +118,7 @@
     }
   },
   "required": [
+    "policy",
     "rules",
     "files"
   ],

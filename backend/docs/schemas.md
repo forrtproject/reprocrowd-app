@@ -130,7 +130,7 @@ reproduction's issue. Keyed by run_key (archive hash + left-out groups); a retry
 |---|---|---|---|
 | `id` | string | yes | pattern `^pil-[0-9a-f]+$` |
 | `repo` | string | yes | owner/name |
-| `reproduction_id` | string | yes |  |
+| `reproduction_id` | string | yes | pattern `^repro-[0-9a-f]{10}$` |
 | `run_key` | string | yes | pattern `^[0-9a-f]{12}$` |
 | `version` | integer \| null |  | run number within the reproduction, assigned when the release is created |
 | `status` | `"partial"` \| `"published"` | yes | partial: a step failed; submitting again resumes |
@@ -720,7 +720,7 @@ contribution; third-party articles, data and code keep their original terms.
 
 | Field | Type | Req. | Description |
 |---|---|---|---|
-| `policy` | `"reprocrowd-licensing/1"` |  | default `reprocrowd-licensing/1` |
+| `policy` | `"reprocrowd-licensing/1"` | yes | version of the licence policy |
 | `rules` | map of string | yes | the policy in words, by category |
 | `paper_license` | string \| null |  | the article's licence as reported by OpenAlex; null = unknown |
 | `files` | list of [LicenseEntry](#licenseentry) | yes |  |

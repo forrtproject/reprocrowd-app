@@ -62,7 +62,7 @@ function ghToken(): Promise<{ token?: string; gh: GhLogin }> {
   const gh = which("gh");
   if (!gh) return Promise.resolve({ gh: "missing" });
   return new Promise((resolve) =>
-    execFile(gh, ["auth", "token"], { timeout: 10_000, env: { ...process.env, PATH: searchPath() } }, (err, stdout) => {
+    execFile(gh, ["auth", "token", "--hostname", "github.com"], { timeout: 10_000, env: { ...process.env, PATH: searchPath() } }, (err, stdout) => {
       const token = stdout?.trim();
       resolve(!err && token ? { token, gh: "ok" } : { gh: "logged-out" });
     }),
@@ -70,11 +70,11 @@ function ghToken(): Promise<{ token?: string; gh: GhLogin }> {
 }
 
 /** The token for pilot submissions: one pasted in Settings, else the GitHub CLI's login. */
-async function githubToken(): Promise<{ token?: string; source: "settings" | "gh" | "none"; gh: GhLogin }> {
+async function githubToken(): Promise<{ token?: string; source: "settings" | "gh" | "none" }> {
   const stored = await getSecret(githubKey);
+  if (stored) return { token: stored, source: "settings" };
   const cli = await ghToken();
-  if (stored) return { token: stored, source: "settings", gh: cli.gh };
-  return cli.token ? { token: cli.token, source: "gh", gh: cli.gh } : { source: "none", gh: cli.gh };
+  return cli.token ? { token: cli.token, source: "gh" } : { source: "none" };
 }
 
 const NO_GITHUB_TOKEN = "No GitHub login: run “gh auth login” (GitHub CLI, https://cli.github.com), or paste a token in Settings → GitHub pilots.";
@@ -570,7 +570,7 @@ export function makeApi(wc: WebContents) {
     // ---------- GitHub pilots, for the window's package (the token is added here) ----------
     pilotAccount: async () => {
       const t = await githubToken();
-      return { repo: loadSettings().github.repo, hasToken: !!t.token, source: t.source, gh: t.gh };
+      return { repo: loadSettings().github.repo, hasToken: !!t.token, source: t.source };
     },
     pilotPreview: async (opts: { note: string; exclude?: string[] }) =>
       post("/v1/packages/" + enc(pkgId(wc)) + "/pilots:preview", { note: opts.note, exclude: opts.exclude, repo: loadSettings().github.repo }, 60_000),
