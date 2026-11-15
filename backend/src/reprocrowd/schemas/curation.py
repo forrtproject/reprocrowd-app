@@ -64,7 +64,8 @@ class TargetFields(Referenced):
     """A reported result the reproduction must recompute (target without id)."""
 
     type: TargetType
-    printed: str | None = Field(default=None, description="exact numeric token, without unit or comparator; preserves printed precision")
+    printed: str | None = Field(default=None, pattern=r"^[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?$",
+                                description="exact numeric token, without unit or comparator; preserves printed precision")
 
     @model_validator(mode="before")
     @classmethod

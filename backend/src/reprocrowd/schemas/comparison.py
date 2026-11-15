@@ -41,8 +41,8 @@ class Cell(Model):
 
 class CompareRow(Model):
     refs: list[Ref] = Field(default_factory=list)
-    precision: Literal["printed", "explicit", "inferred"] | None = None
-    quantum: int | None = None
+    precision: Literal["printed", "explicit", "inferred"] | None = Field(default=None, description='where the rounding place came from: "printed" token, an "explicit" legacy decimals field, or "inferred" from an older numeric value')
+    quantum: int | None = Field(default=None, description="decimal exponent of the last printed digit (-2 for 0.17, 2 for 1.2e3)")
     target: str
     type: Literal["number", "categorical", "table", "figure"]
     description: str
@@ -66,8 +66,8 @@ class ComparisonBasis(Model):
 class Comparison(Model):
     """GET …/comparison, and comparison.json written with the report."""
 
-    policy: Policy = "reprocrowd-compare/3"
-    rounding_mode: RoundingMode = "either_direction_at_ties"
+    policy: Policy | None = Field(default=None, description="null: an older comparison.json that recorded no policy")
+    rounding_mode: RoundingMode | None = None
     basis: ComparisonBasis | None = None
     settings: CompareSettings
     summary: dict[str, int] = Field(description="number of targets per status")

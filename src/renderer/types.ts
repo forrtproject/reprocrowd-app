@@ -170,7 +170,9 @@ export interface CompareRow {
   refs: Ref[];
 }
 export interface CompareSettings { rounding: "reported" | number; threshold: number }
-export interface Comparison { policy: string; rounding_mode: string; settings: CompareSettings; summary: Record<string, number>; rows: CompareRow[]; output_errors: string[]; output_warnings: string[] }
+export interface ComparisonBasis { results_sha256: string; results_schema_sha256: string; created_at: string; policy: ComparePolicy }
+export type ComparePolicy = "reprocrowd-compare/3" | "reprocrowd-compare/2";
+export interface Comparison { policy: ComparePolicy | null; rounding_mode: "either_direction_at_ties" | "half_even_exact_binary" | null; basis?: ComparisonBasis | null; settings: CompareSettings; summary: Record<string, number>; rows: CompareRow[]; output_errors: string[]; output_warnings: string[] }
 
 export interface FileEntry { path: string; size: number; modified: number; resource: string | null; kind: string | null }
 export interface Issue { stage: string; resource?: string | null; message: string }

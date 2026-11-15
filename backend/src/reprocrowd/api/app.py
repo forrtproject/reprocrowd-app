@@ -594,7 +594,7 @@ def curation_routes(kind: str, fields: type, view: type, patch_model: type) -> N
 
     @api.post(base, tags=[kind], status_code=201, response_model=curation.CURATIONS[kind].item, summary=f"Add a {noun} by hand",
               description="Needs `refs` into an extraction, or `unreferenced: true` with a `note`.",
-              responses=errors("schema_invalid", "invalid_reference"))
+              responses=errors("schema_invalid", "target_contradiction", "invalid_reference"))
     def add_item(pkg: Pkg, body: fields, response: Response):  # type: ignore[valid-type]
         item = curation.Curation(pkg, kind).add(body.model_dump(exclude_unset=True))
         created(response, f"/v1/packages/{pkg.id}/{kind}/{item.id}")
@@ -646,7 +646,7 @@ def curation_routes(kind: str, fields: type, view: type, patch_model: type) -> N
     @api.patch(base + "/{item_id}", tags=[kind], response_model=view, summary=f"Edit or disable a {noun} (JSON merge patch)",
                description="Manual items are changed in place. LLM entries keep the LLM's version; the change is stored as an "
                            "edit on top of it (restore with `DELETE …/edit`). `disabled` applies to LLM entries only.",
-               responses=errors("not_found", "schema_invalid", "invalid_reference", "manual_item"))
+               responses=errors("not_found", "schema_invalid", "target_contradiction", "invalid_reference", "manual_item"))
     def patch_item(pkg: Pkg, item_id: str, body: patch_model):  # type: ignore[valid-type]
         i, o = curation.Curation(pkg, kind).patch(item_id, body.model_dump(exclude_unset=True))
         return {"item": i, "origin": o}
