@@ -170,43 +170,23 @@ def test_cli_sends_printed_numbers_unchanged(client, pkg, monkeypatch):
     assert (item["printed"], item["decimals"]) == ("0.170", 3)
 
 
-@respx.mock
-def test_legacy_comparison_tolerates_float_formatting(client, pkg):
-    from reprocrowd.package import Registry
-    def save(data):  # as an older app version wrote it, with the manifest hash kept current
-        (root / "comparison.json").write_text(json.dumps(data))
-        package = Registry().get(pkg)
-        with package.edit() as manifest:
-            package.refresh(manifest, "comparison")
-    mock_openalex()
+def test_report_without_recorded_basis_must_be_regenerated(client, pkg):
     root = package_with_targets(client, pkg)
     p = f"/v1/packages/{pkg}"
-    (root / "analysis.py").write_text(SCRIPT.replace("2.3149", "2.4"))
+    (root / "analysis.py").write_text(SCRIPT)
     run(client, pkg)
-    assert client.put(p + "/report", json={"threshold": 10}).status_code == 201
+    assert client.put(p + "/report", json={}).status_code == 201
     saved = json.loads((root / "comparison.json").read_text())
-    assert any(row["status"] == "within" for row in saved["rows"])
-    # An older comparison.json: no basis/policy/new row metadata, and float deviations
-    # computed by the previous formula, which differ only in the last bits.
-    for key in ("basis", "policy", "rounding_mode"):
+    for key in ("basis", "policy", "rounding_mode"):  # as written before comparisons were recorded
         saved.pop(key)
-    def legacy(value):
-        if isinstance(value, dict):
-            return {k: (v * (1 + 1e-13) if k == "deviation" and isinstance(v, float) else legacy(v))
-                    for k, v in value.items() if k not in {"refs", "precision", "quantum", "printed", "comparator"}}
-        return [legacy(v) for v in value] if isinstance(value, list) else value
-    saved["rows"] = legacy(saved["rows"])
-    save(saved)
-    archived = client.put(p + "/archive")
-    assert archived.status_code == 201, archived.text
-    # An older comparison that agrees on recomputation is reported under the current policy, not a default.
-    from reprocrowd.report import recorded_comparison
-    assert recorded_comparison(Registry().get(pkg)).policy == "reprocrowd-compare/3"
-    assert json.loads((root / "comparison.json").read_text()).get("policy") is None
-    within = next(row for row in saved["rows"] if row["status"] == "within")
-    within["status"] = "match"
-    save(saved)
+    (root / "comparison.json").write_text(json.dumps(saved))
+    from reprocrowd.package import Registry
+    package = Registry().get(pkg)
+    with package.edit() as manifest:
+        package.refresh(manifest, "comparison")
     problem(client.put(p + "/archive"), 409, "report_stale")
+    assert client.put(p + "/report", json={}).status_code == 200
+    assert client.put(p + "/archive").status_code == 201
 
 
 def test_archive_refuses_evidence_that_no_longer_describes_scripts(client, pkg):

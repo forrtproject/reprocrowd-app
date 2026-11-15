@@ -1,6 +1,6 @@
 # Recreation, comparison and execution-evidence contracts
 
-This is the implemented contract for the desktop app, its FastAPI service and `rc` client. The independent `forrtproject/reprocrowd` benchmark can consume these endpoints and files; it does not define the app's extraction scope or research scoring. The [comparison/evidence specification](specs/comparison-evidence.md) was agreed with Opus 5.5 through the bounded amendments in [the review](specs/opus-review.md). Provider profiles and their checks are a separate change (#15).
+This is the implemented contract for the desktop app, its FastAPI service and `rc` client. The independent `forrtproject/reprocrowd` benchmark can consume these endpoints and files; it does not define the app's extraction scope or research scoring. Provider profiles and their checks are a separate change (#15).
 
 ## Workflow tracks
 
@@ -26,7 +26,7 @@ Policy `reprocrowd-compare/3`, mode `either_direction_at_ties`:
 - Reports and deposit descriptions count exact matches and within-tolerance results separately. Their denominator excludes figures, which need visual comparison. `ReportResult.reproduced` remains match + within for compatibility; `matched` and `within` are also returned.
 - Generated analyses must write unrounded values. R instructions require `jsonlite::write_json(..., auto_unbox = TRUE, digits = NA)`; the default four digits would destroy precision before comparison. The prompt is guidance, not proof that a live agent complied.
 
-`GET /v1/packages/{id}/comparison` computes a live comparison. `PUT …/report` writes **comparison.json** with the settings, policy and hashes of `outputs/results.json` and `results_schema.json`. Archive, Zenodo and database submission consume this recorded comparison. Changed results/targets, a newer recorded run, or scripts/inputs whose changed/added status no longer matches the recorded `evidence/execution.json` return 409 `report_stale`; regenerate report then archive. A legacy comparison without hashes or policy is checked by recomputing its recorded settings and, if it agrees, is reported under the current policy; a disagreement in statuses, counts or row text requires regeneration, while display-only deviation percentages may differ in the last floating-point digits. All clients use the same service; a benchmark does not need to reproduce these rules independently.
+`GET /v1/packages/{id}/comparison` computes a live comparison. `PUT …/report` writes **comparison.json** with the settings, policy and hashes of `outputs/results.json` and `results_schema.json`. Archive, Zenodo and database submission consume this recorded comparison. Changed results/targets, a newer recorded run, or scripts/inputs whose changed/added status no longer matches the recorded `evidence/execution.json` return 409 `report_stale`; regenerate report then archive. A report made before comparisons were recorded with hashes also returns `report_stale`: regenerate it. All clients use the same service; a benchmark does not need to reproduce these rules independently.
 
 ## Execution evidence
 
@@ -52,7 +52,7 @@ uv run --project backend reprocrowd-schemas check backend
 
 `test:scenario` orchestrates the real API from a synthetic paper and CSV through parsing, fake extraction, a reviewed edit, fake-agent implementation, a stdlib-only calculation, comparison/evidence/report/archive and a deposit preview. All scholarly HTTP is intercepted; no deposit or upload runs. Each `test-output/paper-scenario/scenario-<timestamp>/` retains its package/report/archive, `result.json`, stable `projection.json` and `diff.txt`. The projection compares stage outcomes, stable file hashes, settings/policy, comparison rows/counts, target evidence, validity and preview metadata. It excludes times, absolute paths, job/call IDs, commits and rendered report bytes. Two successive runs must agree; intentional contract changes yield a readable diff rather than overwriting a baseline.
 
-CI runs these same checks and retains the offline artifacts. For a real configured package, `uv run --project backend rc evidence phacking --json` shows its execution evidence (the ID follows the backend quick-start package).
+CI runs the build, schema check and backend tests; the backend tests include `test_scenario.py`, which runs the scenario twice in a temporary folder and requires equal projections. Run `test:scenario` by hand to keep a readable package, report and diff. For a real configured package, `uv run --project backend rc evidence phacking --json` shows its execution evidence (the ID follows the backend quick-start package).
 
 ## Issue scope and remaining decisions
 
