@@ -26,7 +26,7 @@ def test_report_and_archive(client, pkg, tmp_path):
     html = client.get(P + "/report")
     assert html.headers["content-type"].startswith("text/html")
     text = html.text
-    assert "3/4</b> match at recorded precision" in text and "✓ match" in text and "<svg" in text and "local file" in text
+    assert "3/4</b> match (numbers at printed precision; text exactly)" in text and "✓ match" in text and "<svg" in text and "local file" in text
     assert "<script>alert" not in text and "&lt;script&gt;alert(1)&lt;/script&gt;" in text  # paper/LLM text is escaped
 
     r = client.put(P + "/archive")

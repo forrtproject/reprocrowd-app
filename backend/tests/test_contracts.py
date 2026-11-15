@@ -232,6 +232,8 @@ def test_cli_previews_and_evidence_use_shared_api(client, pkg, monkeypatch):
     evidence = runner.invoke(cli.app, ["evidence", pkg, "--json"])
     assert evidence.exit_code == 0, evidence.output
     assert json.loads(evidence.stdout) == client.get(f"/v1/packages/{pkg}/evidence").json()
+    human = runner.invoke(cli.app, ["evidence", pkg])
+    assert human.exit_code == 0 and "changed since run: unknown (no run)" in human.stdout and "{" not in human.stdout, human.output
     assert client.get(f"/v1/packages/{pkg}/jobs").json() == []
 
 
@@ -282,6 +284,10 @@ def test_legacy_comparison_tolerates_float_formatting(client, pkg):
     save(saved)
     archived = client.put(p + "/archive")
     assert archived.status_code == 201, archived.text
+    # An older comparison that agrees on recomputation is reported under the current policy, not a default.
+    from reprocrowd.report import recorded_comparison
+    assert recorded_comparison(Registry().get(pkg)).policy == "reprocrowd-compare/3"
+    assert json.loads((root / "comparison.json").read_text()).get("policy") is None
     within = next(row for row in saved["rows"] if row["status"] == "within")
     within["status"] = "match"
     save(saved)
@@ -346,3 +352,29 @@ def test_app_default_config_matches_backend_defaults():
         assert (got.argv, got.no_exec_argv, got.no_exec_env, got.events) == (prof.argv, prof.no_exec_argv, prof.no_exec_env, prof.events), name
     for name in ("claude", "opencode", "codex"):
         assert LlmProfile.model_validate(app_cfg["llm"]["profiles"][name]).argv == _default_profiles()[name].argv, name
+
+
+def test_evidence_survives_bad_inputs_and_rejects_edited_logs(client, pkg):
+    root = package_with_targets(client, pkg)
+    p = f"/v1/packages/{pkg}"
+    (root / "analysis.py").write_text(SCRIPT)
+    job = run(client, pkg)
+    assert client.get(p + "/evidence").json()["log_path"] == job["stdout"]
+    # A log changed after the run is no longer offered as that run's log.
+    with open(root / job["stdout"], "a") as log:
+        log.write("edited later\n")
+    assert client.get(p + "/evidence").json()["log_path"] is None
+    # Malformed output and a broken plan stay reportable instead of failing with 500.
+    (root / "outputs/results.json").write_text('{"results": [{"id": ["T001"], "step": ["A01"]}, {"id": "T001", "step": {"x": 1}, "value": 2.31}]}')
+    (root / "analysis_plan.json").write_text("not json")
+    assert client.get(p + "/evidence").status_code == 200
+    assert client.get(p + "/comparison").status_code == 200
+
+
+def test_numeric_expected_edit_replaces_printed_precision(client, pkg):
+    url = f"/v1/packages/{pkg}/targets"
+    base = dict(type="number", description="value", unreferenced=True, note="test")
+    assert client.post(url, json=base | {"expected": "0.170"}).status_code == 201
+    r = client.patch(url + "/T001", json={"expected": 0.18})
+    assert r.status_code == 200, r.text
+    assert (r.json()["item"]["printed"], r.json()["item"]["decimals"]) == (None, None)

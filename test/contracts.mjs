@@ -67,6 +67,8 @@ assert.equal(restarts, 2);
 writes = [];
 assert.equal(await applyProfileChange(original, text, { backup: () => {}, write: (x) => writes.push(x), restart: async () => {} }), text);
 assert.deepEqual(writes, [text]);
+await assert.rejects(applyProfileChange(original, text, { backup: () => {}, write: () => {}, restart: async () => { throw new Error('fixture down'); } }),
+  /did not start with it either: fixture down/); // a failed rollback restart is reported, not hidden
 // Comments survive a profile edit; only the edited profile's section changes.
 const commented = '# top comment\n[openalex]\nmailto = "test@example.org" # inline note\n\n[llm.profiles.other]\n# about other\nargv = ["other"]\noutput = "text"\n\n# agents below\n[agent.profiles.existing]\nargv = ["existing"]\nevents = "text"\n';
 for (const name of ['other', 'fixture']) {

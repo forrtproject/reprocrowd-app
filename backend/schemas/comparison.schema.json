@@ -109,6 +109,7 @@
             }
           ],
           "default": null,
+          "description": "where the rounding place came from: \"printed\" token, an \"explicit\" legacy decimals field, or \"inferred\" from an older numeric value",
           "title": "Precision"
         },
         "quantum": {
@@ -121,6 +122,7 @@
             }
           ],
           "default": null,
+          "description": "decimal exponent of the last printed digit (-2 for 0.17, 2 for 1.2e3)",
           "title": "Quantum"
         },
         "target": {
@@ -331,22 +333,37 @@
   "description": "GET …/comparison, and comparison.json written with the report.",
   "properties": {
     "policy": {
-      "default": "reprocrowd-compare/3",
-      "enum": [
-        "reprocrowd-compare/3",
-        "reprocrowd-compare/2"
+      "anyOf": [
+        {
+          "enum": [
+            "reprocrowd-compare/3",
+            "reprocrowd-compare/2"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
       ],
-      "title": "Policy",
-      "type": "string"
+      "default": null,
+      "description": "null: an older comparison.json that recorded no policy",
+      "title": "Policy"
     },
     "rounding_mode": {
-      "default": "either_direction_at_ties",
-      "enum": [
-        "either_direction_at_ties",
-        "half_even_exact_binary"
+      "anyOf": [
+        {
+          "enum": [
+            "either_direction_at_ties",
+            "half_even_exact_binary"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
       ],
-      "title": "Rounding Mode",
-      "type": "string"
+      "default": null,
+      "title": "Rounding Mode"
     },
     "basis": {
       "anyOf": [

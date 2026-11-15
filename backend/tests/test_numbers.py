@@ -58,6 +58,10 @@ def test_api_normalization_and_contradictions(client, pkg):
         r = client.post(url, json=base | bad)
         assert r.status_code == 422 and r.json()["code"] == "target_contradiction", r.text
     assert client.post(url, json=base | {"expected": "1,5"}).status_code == 422
+    for bad in ("0,512", "12,34", "1,2345"):  # decimal commas or malformed grouping never become integers
+        assert client.post(url, json=base | {"expected": bad}).status_code == 422, bad
+    r = client.post(url, json=base | {"expected": "12,345.60"})
+    assert (r.json()["expected"], r.json()["printed"]) == (12345.6, "12345.60")
     r = client.patch(url + "/T001", json={"expected": ".170"})
     assert r.status_code == 200, r.text
     assert r.json()["item"]["printed"] == ".170" and r.json()["item"]["decimals"] == 3

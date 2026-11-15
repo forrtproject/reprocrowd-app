@@ -67,7 +67,7 @@ export async function showPrompt(title: string, preview: () => Promise<PromptPre
       <span>Command</span><code>${esc(p.argv.join(" "))}</code>
       <span>Availability</span><span>${p.available ? "Executable found" : "Executable not found"} · ${esc(p.output_protocol)} · timeout ${p.timeout_s}s</span>
       ${p.env && Object.keys(p.env).length ? `<span>Environment</span><code>${esc(Object.entries(p.env).map(([k, v]) => `${k}=${v}`).join(" "))}</code>` : ""}
-      <span>Execution restriction</span><span>${esc(RESTRICTION_LABELS[p.exec_restriction] ?? p.exec_restriction)}</span>
+      ${RESTRICTION_LABELS[p.exec_restriction] ? `<span>Execution restriction</span><span>${esc(RESTRICTION_LABELS[p.exec_restriction])}</span>` : ""}
     </div>
     <h4>Prompt</h4><textarea class="mono big" readonly>${esc(p.prompt)}</textarea>
     <form method="dialog"><menu><button class="primary">Close</button></menu></form>`);

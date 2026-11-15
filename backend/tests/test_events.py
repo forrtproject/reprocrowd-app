@@ -41,6 +41,10 @@ def test_codex_events():
     change = '{"type":"item.completed","item":{"type":"file_change","changes":[{"path":"/x/analysis.py","kind":"update"}]}}'
     assert list(parse_codex(started)) == [("tool_use", "shell python3 analysis.py", "shell", None)]
     assert list(parse_codex(done)) == [("tool_result", "boom", None, True)]
+    ok = '{"type":"item.completed","item":{"type":"command_execution","command":"ls","aggregated_output":"a.txt","exit_code":0}}'
+    assert list(parse_codex(ok)) == [("tool_result", "a.txt", None, False)]
+    assert list(parse_codex('{"type":"error","message":"Reconnecting... 1/5"}')) == [("log", "Reconnecting... 1/5", None, None)]
+    assert list(parse_codex('{"type":"item.completed","item":{"type":"agent_message","text":null}}')) == []
     assert list(parse_codex(change)) == [("tool_use", "edit update analysis.py", "edit", None)]
     assert list(parse_codex('{"type":"item.completed","item":{"type":"reasoning","text":"hm"}}')) == []
     assert list(parse_codex('{"type":"turn.failed","error":{"message":"no access"}}')) == [("result", "no access", None, True)]

@@ -536,7 +536,7 @@ const LOGINS: Record<string, { label: string; args: string[] }> = {
   codex: { label: "Codex", args: ["login"] },
 };
 function cliLogin(cli: string): string {
-  const login = LOGINS[cli];
+  const login = Object.hasOwn(LOGINS, cli) ? LOGINS[cli] : undefined;
   if (!login) throw new Error(`No login is known for ${cli}.`);
   const exe = which(cli);
   if (!exe) throw new Error(`${login.label} isn't installed, or not on the PATH.`);

@@ -4,7 +4,7 @@ Offline (default; fake extraction and fake agent, no model calls):
     cd backend && uv run python tests/scenario.py
 Live, with the CLI's own sign-in (explicit; uses the subscription or, for OpenCode API providers, metered credit):
     cd backend && uv run python tests/scenario.py --live --llm claude --agent claude
-    cd backend && uv run python tests/scenario.py --live --llm codex --agent codex --model gpt-6.1-terra --effort low
+    cd backend && uv run python tests/scenario.py --live --llm codex --agent codex --model gpt-6.1-terra --effort low --allow-exec
     cd backend && uv run python tests/scenario.py --live --llm opencode --agent opencode --model deepseek/deepseek-v4-pro \\
         --spend-ledger ~/private/ledger.json --max-usd 0.30
 Profiles come from the shipped defaults, or from a backend.toml saved through Settings (--profiles PATH).
@@ -69,7 +69,7 @@ def mutation_check(root: Path, command: str) -> dict:
 
 
 def run_scenario(output: Path, *, llm: str = "fixture", agent: str = "fixture", profiles_from: Path | None = None,
-                 model: str = "", effort: str = "", ledger: live.Ledger | None = None, job_timeout: int = 900) -> dict:
+                 model: str = "", effort: str = "", ledger: live.Ledger | None = None, job_timeout: int = 900, allow_exec: bool = False) -> dict:
     is_live = llm != "fixture" or agent != "fixture"
     if is_live:
         output = output / f"live-{llm}-{agent}"
@@ -94,33 +94,35 @@ default_profile = "fixture"
 argv = ["{exe}", "{path(HERE / 'fake_agent.py')}", "python-ok", "--tools", "{{tools}}"]
 ''')
     old_config = os.environ.get("REPROCROWD_CONFIG")
-    os.environ["REPROCROWD_CONFIG"] = str(config.resolve())
-    from reprocrowd.config import settings
-    settings.cache_clear()
-    from reprocrowd.api.app import app
     stages = []
     result = {"schema_version": "2" if is_live else "1", "kind": "live-provider-scenario" if is_live else "offline-contract-scenario",
               "live_model": is_live, "folder": str(folder.resolve()), "stages": stages}
-    providers = {}
-    for role, name in (("llm", llm), ("agent", agent)):
-        if name == "fixture":
-            continue
-        lp, ap = live.profiles(name, profiles_from)
-        p = (lp if role == "llm" else ap).model_copy(update={k: v for k, v in (("model", model), ("effort", effort)) if v})
-        live.refuse_api_billing(p.argv)
-        getattr(settings(), f"{role}_profiles")[name] = p
-        providers[role] = {"profile": name, "source": str(profiles_from) if profiles_from else "shipped defaults", "cli": live.cli_of(p.argv),
-                           "version": live.version(p.argv), "protocol": p.events if role == "agent" else p.output, "model": p.model or "(CLI default)",
-                           "effort": p.effort or "(CLI default)"}
-        os.environ.update(live.run_env(p.argv))
-    metered = any(v["cli"] in live.METERED for v in providers.values())
-    if metered:
-        ledger.check(f"live scenario {llm}/{agent}")
-    result["providers"] = providers
+    providers: dict = {}
+    killed: list[str] = []
+    metered = False
+    from reprocrowd.config import settings
     started_at = datetime.now(timezone.utc)
     started = time.monotonic()
-    killed: list[str] = []
     try:
+        os.environ["REPROCROWD_CONFIG"] = str(config.resolve())
+        settings.cache_clear()
+        from reprocrowd.api.app import app
+        # Live provider setup inside try, so a refusal (API-key billing, spend cap) still restores the environment.
+        for role, name in (("llm", llm), ("agent", agent)):
+            if name == "fixture":
+                continue
+            lp, ap = live.profiles(name, profiles_from)
+            prof = (lp if role == "llm" else ap).model_copy(update={k: v for k, v in (("model", model), ("effort", effort)) if v})
+            live.refuse_api_billing(prof.argv)
+            getattr(settings(), f"{role}_profiles")[name] = prof
+            providers[role] = {"profile": name, "source": str(profiles_from) if profiles_from else "shipped defaults", "cli": live.cli_of(prof.argv),
+                               "version": live.version(prof.argv), "protocol": prof.events if role == "agent" else prof.output, "model": prof.model or "(CLI default)",
+                               "effort": prof.effort or "(CLI default)"}
+            os.environ.update(live.run_env(prof.argv))
+        if any(v["cli"] in live.METERED for v in providers.values()):
+            ledger.check(f"live scenario {llm}/{agent}")
+            metered = True
+        result["providers"] = providers
         with respx.mock(assert_all_called=False) as network, TestClient(app) as client:
             work = {"id": "https://openalex.org/W1", "title": "Offline contract fixture (not a research result)",
                     "publication_year": 2026, "ids": {"doi": f"https://doi.org/{DOI}", "pmcid": "https://www.ncbi.nlm.nih.gov/pmc/articles/4359000"},
@@ -161,6 +163,8 @@ argv = ["{exe}", "{path(HERE / 'fake_agent.py')}", "python-ok", "--tools", "{{to
                 assert no_exec.status_code in (200, 409), no_exec.text
                 if no_exec.status_code == 409:
                     assert no_exec.json()["code"] == "exec_restriction_unsupported"
+                    if not allow_exec:
+                        raise RuntimeError(f"profile {agent!r} cannot run editing-only; pass --allow-exec to let the agent run code")
                     codegen["allow_exec"] = True
                 else:
                     assert not any("Bash" in a for a in no_exec.json()["argv"]), "no-analysis argv still allows Bash"
@@ -259,7 +263,7 @@ argv = ["{exe}", "{path(HERE / 'fake_agent.py')}", "python-ok", "--tools", "{{to
         before = json.loads(previous[-1].read_text())["projection"]
         result["previous"] = str(previous[-1].resolve())
         result["same_as_previous"] = before == result["projection"]
-        diff = "".join(difflib.unified_diff(json.dumps(before, indent=2, sort_keys=True).splitlines(True), (stable+"\n").splitlines(True), fromfile=str(previous[-1]), tofile="current")) if before != result["projection"] else "Stable projection unchanged.\n"
+        diff = "".join(difflib.unified_diff((json.dumps(before, indent=2, sort_keys=True) + "\n").splitlines(True), (stable+"\n").splitlines(True), fromfile=str(previous[-1]), tofile="current")) if before != result["projection"] else "Stable projection unchanged.\n"
         if is_live and before != result["projection"]:
             diff = "Live runs may legitimately differ (model output); this diff is informational.\n" + diff
     (folder / "projection.json").write_text(stable + "\n")
@@ -289,9 +293,10 @@ if __name__ == "__main__":
     parser.add_argument("--spend-ledger", type=Path, help="private JSON spend ledger (required for metered OpenCode runs)")
     parser.add_argument("--max-usd", type=float, default=0.30, help="per-run cap for metered runs; the codegen job is cancelled when reached")
     parser.add_argument("--job-timeout", type=int, default=900, help="seconds to wait for a live codegen job")
+    parser.add_argument("--allow-exec", action="store_true", help="let a coding agent without an editing-only mode (e.g. Codex) run code")
     args = parser.parse_args()
     if (args.llm != "fixture" or args.agent != "fixture") and not args.live:
         parser.error("real CLI profiles need --live (they make model calls)")
     result = run_scenario(args.output, llm=args.llm, agent=args.agent, profiles_from=args.profiles, model=args.model, effort=args.effort,
-                          ledger=live.Ledger(args.spend_ledger.expanduser() if args.spend_ledger else None, args.max_usd), job_timeout=args.job_timeout)
+                          ledger=live.Ledger(args.spend_ledger.expanduser() if args.spend_ledger else None, args.max_usd), job_timeout=args.job_timeout, allow_exec=args.allow_exec)
     print(json.dumps({k: result.get(k) for k in ("folder", "report", "archive", "assertions", "usage", "spend")} | {"same_as_previous": result.get("same_as_previous")}, indent=2))

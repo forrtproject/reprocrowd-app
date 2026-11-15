@@ -22,7 +22,7 @@ Report generated {{ generated_at }} by ReproCrowd.</p>
 
 <h2>Summary</h2>
 <div class="summary">
-<div><b>{{ cmp.summary.get("match", 0) }}/{{ numeric }}</b> match at recorded precision; <b>{{ cmp.summary.get("within", 0) }}</b> more within {{ settings.threshold }} % (exploratory)</div>
+<div><b>{{ cmp.summary.get("match", 0) }}/{{ numeric }}</b> match ({{ "numbers at printed precision" if settings.rounding == "reported" else "numbers rounded to " ~ settings.rounding ~ " decimals" }}; text exactly); <b>{{ cmp.summary.get("within", 0) }}</b> more within {{ settings.threshold }} % (exploratory)</div>
 {% for k, v in cmp.summary.items() %}<div class="st-{{ k }}">{{ labels[k] }}: <b>{{ v }}</b></div>{% endfor %}
 </div>
 <p>Policy {{ cmp.policy }}, rounding mode {{ cmp.rounding_mode }}. Comparison: rounding {{ "as reported in the paper" if settings.rounding == "reported" else settings.rounding ~ " decimals" }}; deviations above {{ settings.threshold }} % are flagged.

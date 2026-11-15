@@ -95,7 +95,8 @@ export async function applyProfileChange(previous: string, next: string, io: {
     return next;
   } catch (e) {
     io.write(previous);
-    await io.restart().catch(() => {});
-    throw new Error(`The profile was not saved: ${(e as Error).message}. The previous configuration was restored.`);
+    const again = await io.restart().then(() => undefined, (err: unknown) => err as Error);
+    throw new Error(`The profile was not saved: ${(e as Error).message}. The previous configuration was restored`
+      + (again ? `, but the backend did not start with it either: ${again.message}` : " and the backend restarted with it."));
   }
 }

@@ -490,9 +490,10 @@ def evidence_cmd(pkg: str, json_: bool = typer.Option(False, "--json", help="mac
     if json_:
         out(data)
     else:
+        changed = "unknown (" + (data["stale_reason"] or "no run") + ")" if data["stale"] is None else ", ".join(data["stale"]) or "none"
         typer.echo(f"Track: {data['track'] or 'unspecified (older package)'}")
-        typer.echo(f"Run: {(data['run'] or {}).get('status', 'none')}; changed: {data['stale']}; results match run: {data['results_match_run']}")
-        out(data)
+        typer.echo(f"Run: {(data['run'] or {}).get('status', 'none')}; changed since run: {changed}; results match run: {data['results_match_run']}")
+        typer.echo(f"Added since run: {', '.join(data['added_since_run']) or 'none'}; targets: {len(data['targets'])} (process-level evidence)")
 
 
 @app.command("compare")

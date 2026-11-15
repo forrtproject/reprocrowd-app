@@ -37,8 +37,11 @@ def parse_printed(raw: Any, comparator: str | None = None) -> Printed:
         raise PydanticCustomError("target_contradiction", "printed and explicit comparators differ")
     if op:
         text = text[op.end():]
-    # Only thousands separators; a decimal comma must never silently become an integer.
-    text = re.sub(r"(?<=\d),(?=\d{3}(?:\D|$))", "", text)
+    # Only well-formed thousands grouping; a decimal comma ("0,512", "1,5") must never become an integer.
+    if "," in text:
+        if not re.fullmatch(r"[-+]?[1-9]\d{0,2}(?:,\d{3})+(?:\.\d*)?(?:[eE][-+]?\d+)?", text):
+            raise ValueError(f"not a printed number (decimal comma or malformed thousands grouping): {raw!r}")
+        text = text.replace(",", "")
     if not re.fullmatch(r"[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?", text):
         raise ValueError(f"not a printed number: {raw!r}")
     try:

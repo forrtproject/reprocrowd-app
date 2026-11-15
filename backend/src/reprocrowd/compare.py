@@ -164,4 +164,5 @@ def compare(targets: list[Target], raw_output: Any, st: CompareSettings) -> Comp
     summary: dict[str, int] = {}
     for r in rows:
         summary[r.status] = summary.get(r.status, 0) + 1
-    return Comparison(settings=st, summary=summary, rows=rows, output_errors=errors, output_warnings=warnings)
+    return Comparison(policy="reprocrowd-compare/3", rounding_mode="either_direction_at_ties", settings=st, summary=summary, rows=rows,
+                      output_errors=errors, output_warnings=warnings)

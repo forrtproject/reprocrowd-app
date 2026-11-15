@@ -379,8 +379,8 @@ class ReportRequest(Req):
 
 
 class ReportResult(BaseModel):
-    matched: int = 0
-    within: int = 0
+    matched: int = Field(description="targets with status match (same as summary.match)")
+    within: int = Field(description="targets within the exploratory tolerance (same as summary.within)")
     path: str
     comparison: str
     summary: dict[str, int]

@@ -15,7 +15,9 @@ def main(protocol):
     if case in ("timeout", "cancel"):
         if case == "cancel":
             child = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)"])
-            Path(sys.argv[2]).write_text(str(child.pid))
+            tmp = Path(sys.argv[2] + ".tmp")  # written, then renamed: the runner never reads a half-written pid
+            tmp.write_text(str(child.pid))
+            os.replace(tmp, sys.argv[2])
             def reap(signum, frame):
                 child.wait(timeout=3)
                 raise SystemExit(128 + signum)
