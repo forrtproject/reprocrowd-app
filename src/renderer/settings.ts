@@ -50,14 +50,19 @@ export async function settingsDialog(onSaved: (changed: boolean) => void, focus?
       <p class="hint">Deposits are submitted to this Zenodo community, whose curators accept them.</p>
     </fieldset>
     <fieldset id="set-github"><legend>GitHub pilots</legend>
-      <p class="hint">A pilot is a public, unreviewed record of a reproduction on GitHub: an issue per reproduction and the files of every run. It needs write access to the repository.</p>
+      <p class="hint">A pilot is a public, unreviewed record of a reproduction on GitHub: an issue per reproduction and the files of every run. Your GitHub account needs write access to the repository.</p>
       <label>Repository <input name="ghrepo" value="${esc(cfg.github.repo)}" placeholder="owner/name" spellcheck="false" /></label>
-      <div class="token-row">
-        <label>GitHub token <input name="ghtoken" type="password" autocomplete="off" spellcheck="false" placeholder="${cfg.tokens.github ? "(stored; paste a new one to replace it)" : "paste your token"}" /></label>
-        <button type="button" id="gh-verify">Check</button><button type="button" id="gh-remove" ${cfg.tokens.github ? "" : "disabled"}>Remove</button>
-      </div>
-      <p class="hint"><a href="#" id="gh-create">Create a fine-grained token</a> for that repository only, with <b>Contents: Read and write</b> and <b>Issues: Read and write</b>, and paste it here. It is kept in your system's keyring and sent only with a submission.</p>
+      <p class="gh-login small">${cfg.tokens.github ? `Using the token pasted below.` : cfg.ghLogin === "ok" ? `<span class="ok">✓ Using your GitHub CLI login (<code>gh</code>).</span>` : cfg.ghLogin === "logged-out" ? `<span class="warn-inline">The GitHub CLI (<code>gh</code>) isn't logged in.</span>` : `<span class="warn-inline">The GitHub CLI (<code>gh</code>) isn't installed.</span>`}</p>
+      <div class="actions"><button type="button" id="gh-verify">Check</button>${cfg.ghLogin !== "ok" && !cfg.tokens.github ? `<button type="button" id="gh-login" class="primary">Log in with gh</button>` : ""}</div>
       <p class="gh-check small" aria-live="polite"></p>
+      ${cfg.ghLogin === "missing" && !cfg.tokens.github ? `<p class="hint">Install the <a href="#" id="gh-install">GitHub CLI</a> and run <code>gh auth login</code> in a terminal (choose GitHub.com, then log in with a web browser). ReproCrowd then uses that login; nothing to paste.</p>` : ""}
+      <details ${cfg.tokens.github ? "open" : ""}><summary>Or use a token instead</summary>
+        <div class="token-row">
+          <label>GitHub token <input name="ghtoken" type="password" autocomplete="off" spellcheck="false" placeholder="${cfg.tokens.github ? "(stored; paste a new one to replace it)" : "paste your token"}" /></label>
+          <button type="button" id="gh-remove" ${cfg.tokens.github ? "" : "disabled"}>Remove</button>
+        </div>
+        <p class="hint"><a href="#" id="gh-create">Create a fine-grained token</a> for that repository only, with <b>Contents: Read and write</b> and <b>Issues: Read and write</b>. A pasted token takes precedence over the gh login; it is kept in your system's keyring and sent only with a submission.</p>
+      </details>
     </fieldset>
     <fieldset><legend>Packages</legend>
       <label>Folder for new reproductions <span class="row"><input name="root" value="${esc(cfg.packagesRoot)}" spellcheck="false" /><button type="button" id="root-choose">Choose…</button></span></label>
@@ -132,6 +137,17 @@ export async function settingsDialog(onSaved: (changed: boolean) => void, focus?
       ghCheck.innerHTML = r.can_submit
         ? `<span class="ok">✓ This account can submit pilots to ${esc(r.repo)}.</span>`
         : `<span class="warn-inline">The token works, but this account can't write to ${esc(r.repo)}; ask its maintainers for access or use your own repository.</span>`;
+    } catch (e) {
+      ghCheck.innerHTML = `<span class="warn-inline">${esc((e as Error).message)}</span>`;
+    }
+  });
+  dlg.querySelector("#gh-install")?.addEventListener("click", (e) => {
+    e.preventDefault();
+    host.openUrl("https://cli.github.com");
+  });
+  dlg.querySelector("#gh-login")?.addEventListener("click", async () => {
+    try {
+      ghCheck.innerHTML = `<span class="muted">${esc(await host.githubLogin())}</span>`;
     } catch (e) {
       ghCheck.innerHTML = `<span class="warn-inline">${esc((e as Error).message)}</span>`;
     }

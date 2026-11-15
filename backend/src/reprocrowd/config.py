@@ -122,7 +122,7 @@ class Settings(BaseModel):
     zenodo_community: str = Field(default="", description="Zenodo community the deposits are submitted to; empty = none")
     zenodo_creators: list[dict[str, str]] = Field(default_factory=list, description="creators when a request names none: [{name, orcid?, affiliation?}]")
     zenodo_license: str = Field(default="cc-by-4.0", description="license id of the deposits")
-    license_code: Literal["CC-BY-4.0", "MIT"] = Field(default="CC-BY-4.0", description="SPDX licence of newly authored analysis code "
+    license_code: Literal["MIT", "CC-BY-4.0"] = Field(default="MIT", description="SPDX licence of newly authored analysis code "
                                                       "(scripts, code) in archives; metadata is CC0-1.0, reports and outputs CC-BY-4.0")
     github_api_url: str = Field(default="https://api.github.com", description="GitHub REST API for pilot submissions")
     github_pilots_repo: str = Field(default="forrtproject/reprocrowd-pilots", pattern=r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$",

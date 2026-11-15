@@ -204,7 +204,7 @@ export class ReportStep implements Step {
     const acct = this.pilotAccount;
     const archive = this.manifest?.reprocrowd.archive;
     const pv = this.pilotPreview instanceof Error ? undefined : this.pilotPreview;
-    const checks: [boolean, string, string?][] = [...base, [!!acct?.hasToken, acct?.hasToken ? `GitHub token for ${acct.repo}` : "A GitHub token with write access (Settings)", "github"]];
+    const checks: [boolean, string, string?][] = [...base, [!!acct?.hasToken, acct?.hasToken ? `GitHub ${acct.source === "gh" ? "CLI login" : "token"} (submits to ${acct.repo})` : "A GitHub login: run “gh auth login”, or paste a token (Settings)", "github"]];
     const same = archive && this.pilots.find((p) => p.archive_sha256 === archive.sha256 && [...p.exclude].sort().join() === exNow);
     const busy = this.w.running.has("pilot");
     const ready = checks.every(([ok]) => ok) && !!pv && same?.status !== "published" && !busy;

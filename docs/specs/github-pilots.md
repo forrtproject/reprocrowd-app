@@ -21,7 +21,7 @@ Independent reproductions of one paper therefore get separate issues. Copying a 
 ## Destination and flow
 
 - **Destination:** `[github] pilots_repo` (default `forrtproject/reprocrowd-pilots`) and `api_url`. A request may name another repository.
-- **Token:** sent with each request and never stored by the service. The desktop app keeps it in the system keyring. `rc` reads `$REPROCROWD_GITHUB_TOKEN`, then `gh auth token`.
+- **Token:** sent with each request and never stored by the service. Both the app and `rc` use the GitHub CLI login (`gh auth token`) when it exists, so a user who has run `gh auth login` needs no further setup. The app prefers a token pasted in Settings (kept in the system keyring); `rc` prefers `$REPROCROWD_GITHUB_TOKEN`. Settings shows which login is used and offers **Log in with gh**, which opens `gh auth login --web` in a terminal.
 - **Write access** to the repository is required, because creating releases and setting labels needs it. A fine-grained token needs *Contents: Read and write* and *Issues: Read and write*.
 
 **Preconditions** are those of a Zenodo deposit:
@@ -86,7 +86,7 @@ Policy `reprocrowd-licensing/1`, written as `licenses.json` into every archive, 
 |---|---|---|
 | Metadata | `datapackage.json`, OpenAlex record, targets/actions, plan, schemas, `inputs.json`, `licenses.json`, `pilot.json` | CC0-1.0 |
 | Outputs | report, comparison, execution evidence, run log, results, reproduced figures | CC-BY-4.0 |
-| New analysis code | master script and other code written for the reproduction | `[licensing] code`: `CC-BY-4.0` (current default) or `MIT` |
+| New analysis code | master script and other code written for the reproduction | MIT (`[licensing] code`; `CC-BY-4.0` is the alternative) |
 | Third-party | the article's full texts, extractions and original figures; input data and code | not relicensed (`license: null`); the article's licence from OpenAlex and the input's source are recorded |
 
 **Exceptions** are recorded per file:
@@ -97,9 +97,9 @@ Policy `reprocrowd-licensing/1`, written as `licenses.json` into every archive, 
 
 The app's own source stays MIT.
 
-### New analysis code: CC BY 4.0 or MIT (open decision)
+### New analysis code: why MIT rather than CC BY 4.0
 
-The project's tentative preference is CC BY 4.0, for simplicity; `[licensing] code` makes the choice one setting. The case for MIT for analysis code:
+Decided 15 November 2026. CC BY 4.0 for everything we author would have been simpler to state, but MIT suits code better:
 
 - **The licence stewards advise against it.** Creative Commons [recommends against its licences for software](https://creativecommons.org/faq/#can-i-apply-a-creative-commons-license-to-software). CC licences say nothing about source-code distribution, are not compatible with the major software licences, and leave patents aside. The FSF lists CC BY 4.0 as a free licence compatible with the GPL, but [says CC licences should not be used for software](https://www.gnu.org/licenses/license-list.html).
 - **Reuse venues exclude it.** CC BY 4.0 is not [OSI-approved](https://opensource.org/licenses). [JOSS](https://joss.readthedocs.io/en/latest/submitting.html) requires an OSI-approved licence, and [rOpenSci](https://devguide.ropensci.org/pkg_building.html) requires a CRAN- or OSI-accepted one. Someone who folds a recreated analysis into a package or a software paper would have to ask for relicensing.

@@ -4,12 +4,13 @@
 // Package requests are restricted to that package and a few read-only backend endpoints. The Zenodo token is added
 // here, never handed to the renderer.
 import { app, BrowserWindow, dialog, shell, WebContents } from "electron";
+import { execFile } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import * as backend from "./backend";
 import { detectLlmModels, LlmModel } from "./models";
-import { openInTerminal, spawnDetached, splitCommand, which } from "./processes";
+import { openInTerminal, searchPath, spawnDetached, splitCommand, which } from "./processes";
 import { get, post, request, ResponseType, ServiceError } from "./service";
 import { githubKey, loadSettings, saveSettings, secretStorageKind, serverOf, setSecret, getSecret, userData, zenodoKey, ZenodoServer } from "./settings";
 import * as updater from "./updater";
@@ -53,6 +54,30 @@ export function normalizeDoi(raw: string): string {
 function zenodoToken(sandbox: boolean) {
   return getSecret(zenodoKey(serverOf(sandbox)));
 }
+
+export type GhLogin = "ok" | "logged-out" | "missing";
+
+/** The GitHub CLI's login (`gh auth token`), if gh is installed and logged in. Never shown to the renderer. */
+function ghToken(): Promise<{ token?: string; gh: GhLogin }> {
+  const gh = which("gh");
+  if (!gh) return Promise.resolve({ gh: "missing" });
+  return new Promise((resolve) =>
+    execFile(gh, ["auth", "token"], { timeout: 10_000, env: { ...process.env, PATH: searchPath() } }, (err, stdout) => {
+      const token = stdout?.trim();
+      resolve(!err && token ? { token, gh: "ok" } : { gh: "logged-out" });
+    }),
+  );
+}
+
+/** The token for pilot submissions: one pasted in Settings, else the GitHub CLI's login. */
+async function githubToken(): Promise<{ token?: string; source: "settings" | "gh" | "none"; gh: GhLogin }> {
+  const stored = await getSecret(githubKey);
+  const cli = await ghToken();
+  if (stored) return { token: stored, source: "settings", gh: cli.gh };
+  return cli.token ? { token: cli.token, source: "gh", gh: cli.gh } : { source: "none", gh: cli.gh };
+}
+
+const NO_GITHUB_TOKEN = "No GitHub login: run “gh auth login” (GitHub CLI, https://cli.github.com), or paste a token in Settings → GitHub pilots.";
 
 function creators() {
   const c = loadSettings().zenodo.creator;
@@ -374,6 +399,7 @@ export function makeApi(wc: WebContents) {
       return {
         ...s,
         tokens: { zenodo: !!(await getSecret(zenodoKey("zenodo"))), sandbox: !!(await getSecret(zenodoKey("sandbox"))), github: !!(await getSecret(githubKey)) },
+        ghLogin: (await ghToken()).gh,
         secretStorage: await secretStorageKind(),
         backend: backend.status(),
         backendConfig: backend.readUserConfig(),
@@ -408,9 +434,17 @@ export function makeApi(wc: WebContents) {
     },
     setGithubToken: async (token: string | null) => setSecret(githubKey, token?.trim() || null),
     checkGithubToken: async (repo?: string, token?: string) => {
-      const t = token?.trim() || (await getSecret(githubKey));
-      if (!t) throw new ServiceError("No GitHub token stored.", { status: 400, code: "github_token_missing" });
+      const t = token?.trim() || (await githubToken()).token;
+      if (!t) throw new ServiceError(NO_GITHUB_TOKEN, { status: 400, code: "github_token_missing" });
       return post("/v1/github-pilots:check", { github_token: t, repo: repo?.trim() || loadSettings().github.repo }, 20_000);
+    },
+    githubLogin: async () => {
+      const gh = which("gh");
+      if (!gh) throw new Error("The GitHub CLI (gh) isn't installed. Install it from https://cli.github.com, then click “Log in with gh” again, or paste a token instead.");
+      if (!openInTerminal([gh, "auth", "login", "--hostname", "github.com", "--web"], os.homedir())) {
+        throw new Error("No terminal app was found. Run “gh auth login” in a terminal, then click Check.");
+      }
+      return "GitHub's login opened in a terminal window. Finish it there (it opens your browser), then click Check.";
     },
     saveBackendConfig: async (text: string) => {
       backend.writeUserConfig(text);
@@ -534,12 +568,15 @@ export function makeApi(wc: WebContents) {
     },
 
     // ---------- GitHub pilots, for the window's package (the token is added here) ----------
-    pilotAccount: async () => ({ repo: loadSettings().github.repo, hasToken: !!(await getSecret(githubKey)) }),
+    pilotAccount: async () => {
+      const t = await githubToken();
+      return { repo: loadSettings().github.repo, hasToken: !!t.token, source: t.source, gh: t.gh };
+    },
     pilotPreview: async (opts: { note: string; exclude?: string[] }) =>
       post("/v1/packages/" + enc(pkgId(wc)) + "/pilots:preview", { note: opts.note, exclude: opts.exclude, repo: loadSettings().github.repo }, 60_000),
     pilotSubmit: async (opts: { note: string; exclude?: string[] }) => {
-      const token = await getSecret(githubKey);
-      if (!token) throw new ServiceError("No GitHub token; add one in Settings.", { status: 400, code: "github_token_missing" });
+      const { token } = await githubToken();
+      if (!token) throw new ServiceError(NO_GITHUB_TOKEN, { status: 400, code: "github_token_missing" });
       const r = await request("POST", `${base()}/pilots`, { json: { github_token: token, repo: loadSettings().github.repo, note: opts.note, exclude: opts.exclude }, timeout: LONG });
       return r.data;
     },

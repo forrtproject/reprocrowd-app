@@ -320,7 +320,7 @@ def test_licenses_json_covers_every_archived_file(client, pkg, gh):
     by_path = {f["path"]: f for f in lic["files"]}
     assert names == set(by_path)
     assert by_path["datapackage.json"]["license"] == "CC0-1.0" and by_path["targets.json"]["license"] == "CC0-1.0"
-    assert by_path["analysis.py"]["license"] == "CC-BY-4.0" and by_path["report.html"]["license"] == "CC-BY-4.0"
+    assert by_path["analysis.py"]["license"] == "MIT" and by_path["report.html"]["license"] == "CC-BY-4.0"
     assert "quote" in by_path["report.html"]["note"]
     third = [f for f in lic["files"] if f["rights"] == "third-party"]
     assert third and all(f["license"] is None for f in third) and {f["kind"] for f in third} >= {"fulltext", "extraction"}
@@ -368,17 +368,17 @@ def test_evidence_disclosures_reach_the_record(client, pkg, gh):
 def test_records_state_the_archived_licences_not_the_current_setting(client, pkg, gh):
     from reprocrowd.config import settings
     P = f"/v1/packages/{pkg}"
-    ready_published(client, pkg)  # archived with the default code licence (CC-BY-4.0)
+    ready_published(client, pkg)  # archived with the default code licence (MIT)
     cfg = Path(os.environ["REPROCROWD_CONFIG"])
-    cfg.write_text(cfg.read_text() + '\n[licensing]\ncode = "MIT"\n')
+    cfg.write_text(cfg.read_text() + '\n[licensing]\ncode = "CC-BY-4.0"\n')
     settings.cache_clear()
-    assert client.post(P + "/pilots:preview", json={}).json()["licenses"]["code"] == "CC-BY-4.0"
+    assert client.post(P + "/pilots:preview", json={}).json()["licenses"]["code"] == "MIT"
     rec = client.post(P + "/pilots", json=body()).json()
     pilot = json.loads(gh.blobs[(rec["tag"], "pilot.json")])
     archived = {f["path"]: f for f in json.loads(gh.blobs[(rec["tag"], "licenses.json")])["files"]}
-    assert pilot["licenses"]["code"] == archived["analysis.py"]["license"] == "CC-BY-4.0"
-    assert "New analysis code: CC-BY-4.0" in gh.comments[1][0]["body"]
-    # a new archive under the new setting records MIT, and the next run says so
+    assert pilot["licenses"]["code"] == archived["analysis.py"]["license"] == "MIT"
+    assert "New analysis code: MIT" in gh.comments[1][0]["body"]
+    # a new archive under the new setting records CC-BY-4.0, and the next run says so
     assert client.put(P + "/archive").status_code == 200
     rec2 = client.post(P + "/pilots", json=body()).json()
-    assert json.loads(gh.blobs[(rec2["tag"], "pilot.json")])["licenses"]["code"] == "MIT"
+    assert json.loads(gh.blobs[(rec2["tag"], "pilot.json")])["licenses"]["code"] == "CC-BY-4.0"

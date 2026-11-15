@@ -3,7 +3,7 @@
 Policy ``reprocrowd-licensing/1``:
   metadata  (datapackage.json, OpenAlex record, targets/actions, plan, schemas, exports)  CC0-1.0
   outputs   (report, comparison, execution evidence, run log, results, reproduced figures) CC-BY-4.0
-  code      (master script and other new analysis code)                       [licensing] code (CC-BY-4.0 or MIT)
+  code      (master script and other new analysis code)                       [licensing] code (default MIT; or CC-BY-4.0)
   third-party (the article's full texts, extractions and original figures; input data and code): not relicensed.
 Quoted passages of the article inside our files (targets, plan, report) remain under the article's terms. Our
 licences cover only our own contribution: outputs computed from third-party data are also subject to that data's terms.

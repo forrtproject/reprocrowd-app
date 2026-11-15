@@ -42,7 +42,7 @@ creators = []              # used when a request names none, e.g. [{name = "Doe,
 # Licence of newly authored analysis code in archives (licenses.json). Metadata is always CC0-1.0; reports,
 # figures and outputs CC-BY-4.0; third-party articles, data and code keep their own licences.
 [licensing]
-code = "CC-BY-4.0"         # or "MIT"
+code = "MIT"               # or "CC-BY-4.0"
 
 # GitHub pilot submissions (an issue per reproduction, a pre-release with the files per run). Needs write access.
 [github]
