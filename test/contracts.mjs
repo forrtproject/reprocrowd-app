@@ -48,6 +48,9 @@ const shipped = configuredProfiles(DEFAULT_USER_CONFIG).agent;
 assert.deepEqual(Object.fromEntries(Object.entries(shipped).map(([n, p]) => [n, execRestriction(p)])),
   { claude: 'cli_settings', opencode: 'cli_settings', codex: 'cli_settings' });
 assert.equal(execRestriction({ ...shipped.claude, no_exec_argv: [] }), 'tool_allowlist'); // an older Claude profile: allowlist only
+const presets = await load('src/renderer/profiles.ts'); // the Settings presets agree with the shipped defaults
+assert.deepEqual([...shipped.codex.no_exec_argv], presets.CODEX_NO_EXEC);
+assert.equal(shipped.opencode.no_exec_env.OPENCODE_PERMISSION, presets.OPENCODE_NO_EXEC);
 assert.equal(execRestriction({ argv: ['opencode', 'run'], model: '', effort: '', timeout_s: 1, tools: [], exec_tools: [], no_exec_argv: [], no_exec_env: {} }), 'unsupported');
 const noExec = { ...codexProfile, no_exec_argv: ['--disable', 'shell_tool'], no_exec_env: { OPENCODE_PERMISSION: '{}' } };
 assert.deepEqual({ ...parse(replaceProfile(original, 'agent', 'codex', noExec)).agent.profiles.codex.no_exec_env }, { OPENCODE_PERMISSION: '{}' });

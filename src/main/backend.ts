@@ -173,7 +173,7 @@ events = "opencode-json"
 [agent.profiles.codex]
 argv = ["codex", "exec", "--json", "--skip-git-repo-check", "--ephemeral", "--ignore-user-config", "--disable", "apps",
         "--disable", "plugins", "-m", "{model}", "-c", "model_reasoning_effort={effort}", "-s", "workspace-write"]
-no_exec_argv = ["--disable", "shell_tool", "--disable", "unified_exec", "--disable", "multi_agent", "-c", "mcp_servers.rc_files.command='{python}'", "-c", 'mcp_servers.rc_files.args=["-m", "reprocrowd.mcp_files"]', "-c", 'mcp_servers.rc_files.default_tools_approval_mode="approve"']
+no_exec_argv = ["--disable", "shell_tool", "--disable", "unified_exec", "--disable", "multi_agent", "-c", "mcp_servers.rc_files.command='{python}'", "-c", 'mcp_servers.rc_files.args=["-I", "-m", "reprocrowd.mcp_files"]', "-c", 'mcp_servers.rc_files.default_tools_approval_mode="approve"']
 tools = []
 exec_tools = []
 model = ""

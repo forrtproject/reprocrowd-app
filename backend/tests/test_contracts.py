@@ -11,7 +11,7 @@ from test_jobs import wait, ready_package
 from test_run import SCRIPT, package_with_targets
 from test_zenodo import ME
 from reprocrowd.config import settings, AgentProfile, LlmProfile
-from reprocrowd.config import expand_argv, _default_agents, _default_profiles
+from reprocrowd.config import expand_argv, load_settings, _default_agents, _default_profiles
 from reprocrowd.providers import answer, exec_restriction, terminal_error
 
 
@@ -340,6 +340,10 @@ def test_app_default_config_matches_backend_defaults():
         assert (got.argv, got.no_exec_argv, got.no_exec_env, got.events) == (prof.argv, prof.no_exec_argv, prof.no_exec_env, prof.events), name
     for name in ("claude", "opencode", "codex"):
         assert LlmProfile.model_validate(app_cfg["llm"]["profiles"][name]).argv == _default_profiles()[name].argv, name
+    example = load_settings(Path(__file__).parents[1] / "config.example.toml")  # the documented example agrees too
+    for name, prof in _default_agents().items():
+        got = example.agent_profiles[name]
+        assert (got.argv, got.no_exec_argv, got.no_exec_env) == (prof.argv, prof.no_exec_argv, prof.no_exec_env), name
 
 
 def test_evidence_survives_bad_inputs_and_rejects_edited_logs(client, pkg):

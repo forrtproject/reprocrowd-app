@@ -68,7 +68,7 @@ CODEX_ARGV = ["codex", "exec", "--json", "--skip-git-repo-check", "--ephemeral",
 # its tools approved for this server only); edits with apply_patch. {python} is the backend's own interpreter.
 # Checked with codex-cli 0.167.0: it read and edited, could not run ls or read an environment nonce.
 CODEX_NO_EXEC = ["--disable", "shell_tool", "--disable", "unified_exec", "--disable", "multi_agent",
-                 "-c", "mcp_servers.rc_files.command='{python}'", "-c", 'mcp_servers.rc_files.args=["-m", "reprocrowd.mcp_files"]',
+                 "-c", "mcp_servers.rc_files.command='{python}'", "-c", 'mcp_servers.rc_files.args=["-I", "-m", "reprocrowd.mcp_files"]',
                  "-c", 'mcp_servers.rc_files.default_tools_approval_mode="approve"']
 # Editing-only OpenCode: every tool denied except reading and editing. --auto approves only what is not denied.
 OPENCODE_NO_EXEC = {"OPENCODE_PERMISSION": '{"*":"deny","read":"allow","edit":"allow","glob":"allow","grep":"allow","list":"allow","todowrite":"allow"}'}
