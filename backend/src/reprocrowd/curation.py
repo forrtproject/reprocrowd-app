@@ -253,8 +253,8 @@ class Curation:
         if unknown:
             raise invalid("schema_invalid", f"cannot change {', '.join(sorted(unknown))}", {"editable": sorted(editable | {'disabled'})})
         changes = {k: v for k, v in patch.items() if k != "disabled"}
-        if self.spec.kind == "targets" and isinstance(changes.get("expected"), str):
-            # An edited printed token replaces the previous derived precision.
+        if self.spec.kind == "targets" and "expected" in changes:
+            # An edited value replaces the previous printed token and derived precision.
             changes.setdefault("printed", None)
             changes.setdefault("decimals", None)
         with self.pkg.locked():

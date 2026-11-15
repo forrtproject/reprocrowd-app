@@ -3,7 +3,6 @@ from . import jobs
 from .package import Package, sha256_file, atomic_write
 from .schemas.common import now
 from .schemas.evidence import ExecutionEvidence, TargetEvidence
-from .schemas.exports import AnalysisPlan
 from .schemas.manifest import OtherMeta
 
 LOG_LIMIT = 5 * 1024 * 1024
@@ -28,7 +27,7 @@ def latest_run(pkg: Package):
 
 
 def get(pkg: Package) -> ExecutionEvidence:
-    from .run import frozen_targets, RESULTS
+    from .run import frozen_targets, load_plan, RESULTS
     m = pkg.load()
     run = latest_run(pkg)
     ev = ExecutionEvidence(track=m.reprocrowd.track, stale_reason="no run")
@@ -45,8 +44,9 @@ def get(pkg: Package) -> ExecutionEvidence:
             ev.results_match_run = digest(pkg, RESULTS) == result.results_sha256 if result.results_sha256 else False
             ev.log_sha256 = result.log_sha256
         else:
-            ev.stale_reason = "no snapshot (older run)"
-        ev.log_path = run.stdout if pkg.path(run.stdout).is_file() else None
+            ev.stale_reason = "run in progress" if run.status == "running" else "no snapshot (older run)"
+        # A log edited after the run no longer matches its recorded hash; it is not offered as the run's log.
+        ev.log_path = run.stdout if pkg.path(run.stdout).is_file() and (ev.log_sha256 is None or digest(pkg, run.stdout) == ev.log_sha256) else None
     cg = next((j for j in reversed(jobs.list_jobs(pkg)) if j.type == "codegen"), None)
     if cg:
         ev.codegen = {"profile": cg.profile, "model": cg.request.get("model"), "allow_exec": cg.request.get("allow_exec"),
@@ -54,16 +54,18 @@ def get(pkg: Package) -> ExecutionEvidence:
                       "code_files_on_disk": cg.request.get("code_files_on_disk", [])}
     if not pkg.path("results_schema.json").exists():
         return ev
-    plan = AnalysisPlan.model_validate(pkg.read_json("analysis_plan.json"))
-    steps = {s.id: s for s in plan.steps}
+    plan = load_plan(pkg)
+    steps = {s.id: s for s in plan.steps} if plan else {}
     try:
         raw = pkg.read_json(RESULTS) if pkg.path(RESULTS).exists() else {}
     except ValueError:
         raw = {}
-    outputs = {r.get("id"): r for r in raw.get("results", []) if isinstance(r, dict)} if isinstance(raw, dict) else {}
+    results = raw.get("results") if isinstance(raw, dict) else None
+    outputs = {r["id"]: r for r in results if isinstance(r, dict) and isinstance(r.get("id"), str)} if isinstance(results, list) else {}
     for t in frozen_targets(pkg):
         declared = outputs.get(t.id, {}).get("step")
-        planned = next((s.id for s in plan.steps if t.id in s.produces and s.kind != "results"), None)
+        declared = declared if isinstance(declared, str) else None
+        planned = next((s.id for s in steps.values() if t.id in s.produces and s.kind != "results"), None)
         state = ("declared_matches_plan" if declared in steps and t.id in steps[declared].produces else "declared_conflicts_plan") if declared else "planned_only" if planned else "none"
         ev.targets.append(TargetEvidence(target=t.id, refs=t.refs, step=declared or planned, step_evidence=state))
     return ev

@@ -5,8 +5,9 @@ The service holds no database credentials. Submitting uploads the archive with b
 up in OpenAlex by DOI at that moment (never from local fields); the database answers with a ``finish_url``
 where the user signs in and confirms. ``status`` polls whether that happened.
 
-Preconditions: a DOI, a run of the master script that succeeded, and an archive that is up to date (its
-datapackage.json lists the same resources as the package now).
+Preconditions: a DOI, a run of the master script that succeeded, a current report (its recorded comparison and
+evidence still match the results, targets, scripts and inputs: ``report.recorded_comparison``), and an archive that
+is up to date (its datapackage.json lists the same resources as the package now).
 
 A caller may pass the user's own database token (obtained by the client from the database's sign-in); it is
 forwarded with the upload, which the database then publishes at once, and never stored.
@@ -75,7 +76,7 @@ def _check_archive(pkg: Package) -> None:
 
 
 class Prepared:
-    """What every submission needs, checked: a DOI, a last run that succeeded, an up-to-date archive and the work's
+    """What every submission needs, checked: a DOI, a last run that succeeded, a current report, an up-to-date archive and the work's
     OpenAlex record (bibliographic metadata comes only from there, looked up now)."""
 
     def __init__(self, pkg: Package):

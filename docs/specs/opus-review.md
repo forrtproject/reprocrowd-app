@@ -1,5 +1,7 @@
 # Opus review of the comparison/evidence and provider specs
 
+> Superseded in part (15 November 2026): Decisions to review 1, the `Decimal(float)` guidance under Likely integration pitfalls and the 2.675 acceptance test describe policy `reprocrowd-compare/2`. Lukas chose `reprocrowd-compare/3` instead: reproduced numbers are read as written and an exact tie matches either neighbour. See `docs/contracts.md`. This file is the record of the agreed review and is otherwise unchanged.
+
 Reviewed 14 November 2026 against branch `issue15-82-contracts` at commit `7aa9555`. The review covers `docs/specs/comparison-evidence.md` and `docs/specs/provider-interface.md`, checked against the backend, CLI, renderer and Electron main source. Unless a claim says otherwise, it was confirmed by reading the code or by running it in `/tmp/scratch-reprocrowd-review-20261113-venv`.
 
 ## Verdict

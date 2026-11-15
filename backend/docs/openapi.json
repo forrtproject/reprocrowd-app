@@ -3248,7 +3248,7 @@
                 }
               }
             },
-            "description": "`schema_invalid`: The item doesn't satisfy its schema; `invalid_reference`: References (text, inputs, targets, actions) don't resolve"
+            "description": "`schema_invalid`: The item doesn't satisfy its schema; `target_contradiction`: Printed number, value, comparator or precision contradict each other; `invalid_reference`: References (text, inputs, targets, actions) don't resolve"
           }
         }
       }
@@ -3967,7 +3967,7 @@
                 }
               }
             },
-            "description": "`schema_invalid`: The item doesn't satisfy its schema; `invalid_reference`: References (text, inputs, targets, actions) don't resolve"
+            "description": "`schema_invalid`: The item doesn't satisfy its schema; `target_contradiction`: Printed number, value, comparator or precision contradict each other; `invalid_reference`: References (text, inputs, targets, actions) don't resolve"
           },
           "404": {
             "content": {
@@ -4364,7 +4364,7 @@
                 }
               }
             },
-            "description": "`schema_invalid`: The item doesn't satisfy its schema; `invalid_reference`: References (text, inputs, targets, actions) don't resolve"
+            "description": "`schema_invalid`: The item doesn't satisfy its schema; `target_contradiction`: Printed number, value, comparator or precision contradict each other; `invalid_reference`: References (text, inputs, targets, actions) don't resolve"
           }
         }
       }
@@ -5083,7 +5083,7 @@
                 }
               }
             },
-            "description": "`schema_invalid`: The item doesn't satisfy its schema; `invalid_reference`: References (text, inputs, targets, actions) don't resolve"
+            "description": "`schema_invalid`: The item doesn't satisfy its schema; `target_contradiction`: Printed number, value, comparator or precision contradict each other; `invalid_reference`: References (text, inputs, targets, actions) don't resolve"
           },
           "404": {
             "content": {
@@ -9825,7 +9825,8 @@
                 "type": "null"
               }
             ],
-            "title": "Precision"
+            "title": "Precision",
+            "description": "where the rounding place came from: \"printed\" token, an \"explicit\" legacy decimals field, or \"inferred\" from an older numeric value"
           },
           "quantum": {
             "anyOf": [
@@ -9836,7 +9837,8 @@
                 "type": "null"
               }
             ],
-            "title": "Quantum"
+            "title": "Quantum",
+            "description": "decimal exponent of the last printed digit (-2 for 0.17, 2 for 1.2e3)"
           },
           "target": {
             "type": "string",
@@ -9984,22 +9986,35 @@
       "Comparison": {
         "properties": {
           "policy": {
-            "type": "string",
-            "enum": [
-              "reprocrowd-compare/3",
-              "reprocrowd-compare/2"
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "reprocrowd-compare/3",
+                  "reprocrowd-compare/2"
+                ]
+              },
+              {
+                "type": "null"
+              }
             ],
             "title": "Policy",
-            "default": "reprocrowd-compare/3"
+            "description": "null: an older comparison.json that recorded no policy"
           },
           "rounding_mode": {
-            "type": "string",
-            "enum": [
-              "either_direction_at_ties",
-              "half_even_exact_binary"
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "either_direction_at_ties",
+                  "half_even_exact_binary"
+                ]
+              },
+              {
+                "type": "null"
+              }
             ],
-            "title": "Rounding Mode",
-            "default": "either_direction_at_ties"
+            "title": "Rounding Mode"
           },
           "basis": {
             "anyOf": [
@@ -12755,12 +12770,12 @@
           "matched": {
             "type": "integer",
             "title": "Matched",
-            "default": 0
+            "description": "targets with status match (same as summary.match)"
           },
           "within": {
             "type": "integer",
             "title": "Within",
-            "default": 0
+            "description": "targets within the exploratory tolerance (same as summary.within)"
           },
           "path": {
             "type": "string",
@@ -12785,6 +12800,8 @@
         },
         "type": "object",
         "required": [
+          "matched",
+          "within",
           "path",
           "comparison",
           "summary",
@@ -12997,7 +13014,8 @@
                 "type": "null"
               }
             ],
-            "title": "Commit Before"
+            "title": "Commit Before",
+            "description": "git commit of the package just before the run"
           },
           "snapshot": {
             "anyOf": [
@@ -13011,7 +13029,8 @@
                 "type": "null"
               }
             ],
-            "title": "Snapshot"
+            "title": "Snapshot",
+            "description": "package path -> \"sha256:<hex>\" of the targets, plan, scripts/code and used inputs at launch; null for older runs"
           },
           "results_sha256": {
             "anyOf": [
@@ -13022,7 +13041,8 @@
                 "type": "null"
               }
             ],
-            "title": "Results Sha256"
+            "title": "Results Sha256",
+            "description": "\"sha256:<hex>\" of outputs/results.json at finish; null if none was written"
           },
           "log_sha256": {
             "anyOf": [
@@ -13033,7 +13053,8 @@
                 "type": "null"
               }
             ],
-            "title": "Log Sha256"
+            "title": "Log Sha256",
+            "description": "\"sha256:<hex>\" of the complete run log at finish"
           },
           "type": {
             "type": "string",
@@ -13648,7 +13669,8 @@
           "printed": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "pattern": "^[-+]?(?:\\d+\\.?\\d*|\\.\\d+)(?:[eE][-+]?\\d+)?$"
               },
               {
                 "type": "null"
@@ -13844,7 +13866,8 @@
           "printed": {
             "anyOf": [
               {
-                "type": "string"
+                "type": "string",
+                "pattern": "^[-+]?(?:\\d+\\.?\\d*|\\.\\d+)(?:[eE][-+]?\\d+)?$"
               },
               {
                 "type": "null"

@@ -53,10 +53,10 @@ class CodegenResult(Model):
 
 
 class RunResult(Model):
-    commit_before: str | None = None
-    snapshot: dict[str, str] | None = None
-    results_sha256: str | None = None
-    log_sha256: str | None = None
+    commit_before: str | None = Field(default=None, description="git commit of the package just before the run")
+    snapshot: dict[str, str] | None = Field(default=None, description='package path -> "sha256:<hex>" of the targets, plan, scripts/code and used inputs at launch; null for older runs')
+    results_sha256: str | None = Field(default=None, description='"sha256:<hex>" of outputs/results.json at finish; null if none was written')
+    log_sha256: str | None = Field(default=None, description='"sha256:<hex>" of the complete run log at finish')
     type: Literal["run"] = "run"
     command: str
     log: str = Field(description="package-relative path of the run log")

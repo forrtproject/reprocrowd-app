@@ -158,6 +158,8 @@ def recorded_comparison(pkg: Package) -> Comparison:
             raise conflict("report_stale", "the older report can no longer be checked; regenerate it")
         if not _same_legacy([r.model_dump() for r in live.rows], [r.model_dump() for r in saved.rows]) or live.summary != saved.summary:
             raise conflict("report_stale", "the older comparison differs; regenerate the report")
+        # It recorded no policy; it was just shown to agree under the current one.
+        saved.policy, saved.rounding_mode = live.policy, live.rounding_mode
     return saved
 
 

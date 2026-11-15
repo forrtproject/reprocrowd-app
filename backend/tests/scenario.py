@@ -48,15 +48,15 @@ default_profile = "fixture"
 argv = ["{exe}", "{path(HERE / 'fake_agent.py')}", "python-ok", "--tools", "{{tools}}"]
 ''')
     old_config = os.environ.get("REPROCROWD_CONFIG")
-    os.environ["REPROCROWD_CONFIG"] = str(config.resolve())
-    from reprocrowd.config import settings
-    settings.cache_clear()
-    from reprocrowd.api.app import app
     stages = []
     result = {"schema_version": "1", "kind": "offline-contract-scenario", "live_model": False,
               "folder": str(folder.resolve()), "stages": stages}
     started = time.monotonic()
+    from reprocrowd.config import settings
     try:
+        os.environ["REPROCROWD_CONFIG"] = str(config.resolve())
+        settings.cache_clear()
+        from reprocrowd.api.app import app
         with respx.mock(assert_all_called=False) as network, TestClient(app) as client:
             work = {"id": "https://openalex.org/W1", "title": "Offline contract fixture (not a research result)",
                     "publication_year": 2026, "ids": {"doi": f"https://doi.org/{DOI}", "pmcid": "https://www.ncbi.nlm.nih.gov/pmc/articles/4359000"},
@@ -142,7 +142,7 @@ argv = ["{exe}", "{path(HERE / 'fake_agent.py')}", "python-ok", "--tools", "{{to
         before = json.loads(previous[-1].read_text())["projection"]
         result["previous"] = str(previous[-1].resolve())
         result["same_as_previous"] = before == result["projection"]
-        diff = "".join(difflib.unified_diff(json.dumps(before, indent=2, sort_keys=True).splitlines(True), (stable+"\n").splitlines(True), fromfile=str(previous[-1]), tofile="current")) if before != result["projection"] else "Stable projection unchanged.\n"
+        diff = "".join(difflib.unified_diff((json.dumps(before, indent=2, sort_keys=True) + "\n").splitlines(True), (stable+"\n").splitlines(True), fromfile=str(previous[-1]), tofile="current")) if before != result["projection"] else "Stable projection unchanged.\n"
     (folder / "projection.json").write_text(stable + "\n")
     (folder / "diff.txt").write_text(diff)
     (folder / "result.json").write_text(json.dumps(result, indent=2) + "\n")

@@ -128,11 +128,10 @@ export class RunStep implements Step {
 }
 
 export function compareHtml(cmp: Comparison, originals: FigureOriginal[] = []): string {
-  const summary = `<p class="small">Exact matches and exploratory within-tolerance results are separate; tolerance ${cmp.settings.threshold}%. Policy ${esc(cmp.policy)}, rounding ${esc(cmp.rounding_mode)}.</p><p class="summary">${Object.entries(cmp.summary).map(([k, v]) => `<span class="st st-${k}">${STATUS_LABEL[k as Status] ?? k}: ${v}</span>`).join(" ")}</p>`;
+  const summary = `<p class="small">Exact matches and exploratory within-tolerance results are separate; tolerance ${cmp.settings.threshold}%. Policy ${esc(cmp.policy ?? "not recorded")}, rounding ${esc(cmp.rounding_mode ?? "not recorded")}.</p><p class="summary">${Object.entries(cmp.summary).map(([k, v]) => `<span class="st st-${k}">${STATUS_LABEL[k as Status] ?? k}: ${v}</span>`).join(" ")}</p>`;
   const problems = cmp.output_errors.length ? `<div class="warn"><ul>${cmp.output_errors.map((e) => `<li>${esc(e)}</li>`).join("")}</ul></div>` : "";
   const rows = cmp.rows.map((r) => rowHtml(r, originals.find((o) => o.target === r.target))).join("");
-  const warnings = cmp.output_warnings.length ? `<details><summary>${cmp.output_warnings.length} coverage / precision warning(s)</summary><ul>${cmp.output_warnings.map((e) => `<li>${esc(e)}</li>`).join("")}</ul></details>` : "";
-  return problems + warnings + summary + `<table class="tbl-list tbl-compare"><colgroup><col class="c-id" /><col /><col class="c-reported" /><col class="c-reproduced" /><col class="c-dev" /><col class="c-status" /></colgroup><thead><tr><th>ID</th><th>Result</th><th>Reported</th><th>Reproduced</th><th>Dev.</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table>`;
+  return problems + summary + `<table class="tbl-list tbl-compare"><colgroup><col class="c-id" /><col /><col class="c-reported" /><col class="c-reproduced" /><col class="c-dev" /><col class="c-status" /></colgroup><thead><tr><th>ID</th><th>Result</th><th>Reported</th><th>Reproduced</th><th>Dev.</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table>`;
 }
 
 function rowHtml(r: CompareRow, original?: FigureOriginal): string {

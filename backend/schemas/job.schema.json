@@ -81,6 +81,7 @@
             }
           ],
           "default": null,
+          "description": "git commit of the package just before the run",
           "title": "Commit Before"
         },
         "snapshot": {
@@ -96,6 +97,7 @@
             }
           ],
           "default": null,
+          "description": "package path -> \"sha256:<hex>\" of the targets, plan, scripts/code and used inputs at launch; null for older runs",
           "title": "Snapshot"
         },
         "results_sha256": {
@@ -108,6 +110,7 @@
             }
           ],
           "default": null,
+          "description": "\"sha256:<hex>\" of outputs/results.json at finish; null if none was written",
           "title": "Results Sha256"
         },
         "log_sha256": {
@@ -120,6 +123,7 @@
             }
           ],
           "default": null,
+          "description": "\"sha256:<hex>\" of the complete run log at finish",
           "title": "Log Sha256"
         },
         "type": {

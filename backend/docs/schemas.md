@@ -733,10 +733,10 @@ jobs/<id>.json
 
 | Field | Type | Req. | Description |
 |---|---|---|---|
-| `commit_before` | string \| null |  |  |
-| `snapshot` | map of string \| null |  |  |
-| `results_sha256` | string \| null |  |  |
-| `log_sha256` | string \| null |  |  |
+| `commit_before` | string \| null |  | git commit of the package just before the run |
+| `snapshot` | map of string \| null |  | package path -> "sha256:<hex>" of the targets, plan, scripts/code and used inputs at launch; null for older runs |
+| `results_sha256` | string \| null |  | "sha256:<hex>" of outputs/results.json at finish; null if none was written |
+| `log_sha256` | string \| null |  | "sha256:<hex>" of the complete run log at finish |
 | `type` | `"run"` |  | default `run` |
 | `command` | string | yes |  |
 | `log` | string | yes | package-relative path of the run log |
@@ -780,8 +780,8 @@ GET …/comparison, and comparison.json written with the report.
 
 | Field | Type | Req. | Description |
 |---|---|---|---|
-| `policy` | `"reprocrowd-compare/3"` \| `"reprocrowd-compare/2"` |  | default `reprocrowd-compare/3` |
-| `rounding_mode` | `"either_direction_at_ties"` \| `"half_even_exact_binary"` |  | default `either_direction_at_ties` |
+| `policy` | `"reprocrowd-compare/3"` \| `"reprocrowd-compare/2"` \| null |  | null: an older comparison.json that recorded no policy |
+| `rounding_mode` | `"either_direction_at_ties"` \| `"half_even_exact_binary"` \| null |  |  |
 | `basis` | [ComparisonBasis](#comparisonbasis) \| null |  |  |
 | `settings` | [CompareSettings](#comparesettings) | yes |  |
 | `summary` | map of integer | yes | number of targets per status |
@@ -806,8 +806,8 @@ GET …/comparison, and comparison.json written with the report.
 | Field | Type | Req. | Description |
 |---|---|---|---|
 | `refs` | list of [Ref](#ref) |  |  |
-| `precision` | `"printed"` \| `"explicit"` \| `"inferred"` \| null |  |  |
-| `quantum` | integer \| null |  |  |
+| `precision` | `"printed"` \| `"explicit"` \| `"inferred"` \| null |  | where the rounding place came from: "printed" token, an "explicit" legacy decimals field, or "inferred" from an older numeric value |
+| `quantum` | integer \| null |  | decimal exponent of the last printed digit (-2 for 0.17, 2 for 1.2e3) |
 | `target` | string | yes |  |
 | `type` | `"number"` \| `"categorical"` \| `"table"` \| `"figure"` | yes |  |
 | `description` | string | yes |  |
