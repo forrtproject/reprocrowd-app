@@ -443,3 +443,18 @@ def test_license_entries_must_match_their_rights():
         LicenseEntry(path="inputs/data.csv", kind="input", rights="third-party", license="CC-BY-4.0")
     with pytest.raises(ValidationError):
         LicenseEntry(path="analysis.py", kind="script", rights="ours", license=None)
+
+
+def test_exported_licence_schema_states_the_same_rule():
+    import jsonschema
+    from reprocrowd.schemas import json_schema
+    schema = json_schema("licenses")
+    good = {"policy": "reprocrowd-licensing/1", "rules": {}, "files": [
+        {"path": "inputs/data.csv", "kind": "input", "rights": "third-party", "license": None},
+        {"path": "analysis.py", "kind": "script", "rights": "ours", "license": "MIT"}]}
+    jsonschema.validate(good, schema)
+    for bad in ({"path": "inputs/data.csv", "kind": "input", "rights": "third-party", "license": "CC-BY-4.0"},
+                {"path": "analysis.py", "kind": "script", "rights": "ours", "license": None},
+                {"path": "analysis.py", "kind": "script", "rights": "ours"}):
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate(good | {"files": [bad]}, schema)

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import Field, model_validator
+from pydantic import ConfigDict, Field, model_validator
 
 from .common import Identifier, Model
 from .curation import Ref, Target
@@ -73,6 +73,12 @@ class InputsList(Model):
 
 
 class LicenseEntry(Model):
+    # The JSON Schema states the same rule as _rights_match_license, for schema-only consumers.
+    model_config = ConfigDict(extra="forbid", json_schema_extra={"allOf": [
+        {"if": {"properties": {"rights": {"const": "third-party"}}}, "then": {"properties": {"license": {"type": "null"}}}},
+        {"if": {"properties": {"rights": {"const": "ours"}}}, "then": {"properties": {"license": {"type": "string"}}, "required": ["license"]}},
+    ]})
+
     path: str = Field(description="archive-relative path")
     kind: str = Field(description="resource kind (fulltext, input, script, output, report, …)")
     rights: Literal["ours", "third-party"] = Field(description="ours: authored for this reproduction; third-party: the article's or the source's")

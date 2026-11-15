@@ -143,6 +143,8 @@ export async function settingsDialog(onSaved: (changed: boolean) => void, focus?
   });
   q("#gh-verify").addEventListener("click", async () => {
     ghCheck.innerHTML = `<span class="muted">Checking with GitHub…</span>`;
+    // A login finished in the terminal since the dialog opened: show the current gh state.
+    if (!cfg.tokens.github) await host.getConfig().then((c) => { cfg.ghLogin = c.ghLogin; showGhLogin(); }).catch(() => {});
     try {
       const r = await host.checkGithubToken(q<HTMLInputElement>("[name=ghrepo]").value, q<HTMLInputElement>("[name=ghtoken]").value || undefined);
       ghCheck.innerHTML = r.can_submit

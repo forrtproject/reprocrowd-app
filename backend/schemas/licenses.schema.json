@@ -5,6 +5,43 @@
   "$defs": {
     "LicenseEntry": {
       "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "rights": {
+                "const": "third-party"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "license": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "rights": {
+                "const": "ours"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "license": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "license"
+            ]
+          }
+        }
+      ],
       "properties": {
         "path": {
           "description": "archive-relative path",

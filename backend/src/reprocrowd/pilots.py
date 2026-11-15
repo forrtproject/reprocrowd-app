@@ -52,8 +52,8 @@ BODY_LIMIT = 65_000  # GitHub's issue/comment body limit is 65,536 characters
 ROW_LIMIT = 60
 SUMMARY_RE = re.compile(r"<!-- reprocrowd-summary: (\{.*?\}) -->")
 DISCLAIMER = ("**Pilot record — unreviewed.** Made with ReproCrowd by recreating the analysis from the article's text and "
-              "published data. Agreement at the printed precision shows that this code produced the printed numbers from "
-              "these inputs. It is not peer review, a certificate of the study's validity, or an endorsement. The authors' "
+              "published data. Agreement under the recorded comparison settings shows that this code produced the "
+              "reported numbers from these inputs. It is not peer review, a certificate of the study's validity, or an endorsement. The authors' "
               "code was left out of the agent's context; that is not verified blinding.")
 SYNTHETIC = ("**SYNTHETIC test fixture — not a research result.** The paper, data and DOI are invented for testing "
              "the publication workflow.")
