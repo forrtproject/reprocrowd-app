@@ -9,6 +9,7 @@ from __future__ import annotations
 from typing import NamedTuple
 
 from . import files, gitrepo, jobs
+from .providers import exec_restriction, error_in_line
 from .config import AgentProfile, expand_argv, settings
 from .errors import ApiError, conflict
 from .package import Package
@@ -41,8 +42,11 @@ def plan(pkg: Package, *, profile: str | None, allow_exec: bool, instructions: s
     if tpl is None:
         raise conflict("script_missing", "create the master script first (PUT …/script)")
     tools = prof.tools + (prof.exec_tools if allow_exec else [])
+    restriction = exec_restriction(prof, tools)
+    if not allow_exec and restriction == "unsupported":
+        raise conflict("exec_restriction_unsupported", f"Profile {name!r} has no non-empty tool allowlist and execution-tools substitution; it cannot honor no-analysis mode. Choose a compatible profile or explicitly allow execution.")
     argv = expand_argv(prof.argv, {"model": model or prof.model, "effort": prof.effort, "tools": ",".join(tools)})
-    return Plan(name, prof, tpl, tools, argv, agent_prompt(pkg, tpl, instructions))
+    return Plan(name, prof, tpl, tools, argv, agent_prompt(pkg, tpl, instructions, allow_exec=allow_exec))
 
 
 def start(pkg: Package, *, profile: str | None, allow_exec: bool, instructions: str, model: str | None = None) -> Job:
@@ -58,6 +62,11 @@ def start(pkg: Package, *, profile: str | None, allow_exec: bool, instructions: 
         git_note = "git not found: changes are not committed"
 
     def finish(job: Job) -> CodegenResult:
+        if job.status == "succeeded":
+            with pkg.path(job.stdout).open(encoding="utf-8", errors="replace") as log:
+                failure = next((msg for line in log if (msg := error_in_line(line, prof.events))), None)
+            if failure:
+                job.status, job.error = "failed", f"the agent reported an error: {failure}"
         files.sync(pkg)
         after, changed = None, []
         if git_note is None:
@@ -66,7 +75,7 @@ def start(pkg: Package, *, profile: str | None, allow_exec: bool, instructions: 
         return CodegenResult(commit_before=before, commit_after=after, changed_files=changed, todo=todo_status(pkg, tpl), git_note=git_note)
 
     request = {"profile": name, "model": model or prof.model, "effort": prof.effort, "allow_exec": allow_exec, "instructions": instructions,
-               "template": tpl.id, "tools": tools,
+               "template": tpl.id, "tools": tools, "exec_restriction": exec_restriction(prof, tools),
                "code_context": "excluded_from_prompt", "code_files_on_disk": [r.path for r in pkg.load().by_kind("input") if r.reprocrowd.role == "code" and pkg.path(r.path).exists()]}
     return jobs.start(pkg, jid=jid, type="codegen", argv=argv, stdin=prompt, timeout_s=prof.timeout_s, events_format=prof.events,
                       profile=name, request=request, finish=finish)

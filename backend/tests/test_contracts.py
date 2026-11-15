@@ -9,7 +9,8 @@ from test_api import mock_openalex, problem
 from test_jobs import wait, ready_package
 from test_run import SCRIPT, package_with_targets
 from test_zenodo import ME
-from reprocrowd.config import settings
+from reprocrowd.config import settings, AgentProfile, LlmProfile
+from reprocrowd.providers import error_in_line, exec_restriction
 
 
 def run(client, pkg):
@@ -32,7 +33,7 @@ def test_track(client, pkg, tmp_path):
     assert client.get(f"/v1/packages/{pkg}").json()["track"] is None
 
 
-def test_code_context(client, pkg, tmp_path):
+def test_code_context_and_noexec(client, pkg, tmp_path):
     root = ready_package(client, pkg)
     p = f"/v1/packages/{pkg}"
     code = tmp_path / "authors.py"
@@ -45,8 +46,20 @@ def test_code_context(client, pkg, tmp_path):
     preview = client.post(p + "/jobs:preview", json=body).json()
     assert "authors.py" not in preview["prompt"] and "reuse their logic" not in preview["prompt"]
     assert "authors.py" not in (root / "analysis_plan.json").read_text()
+    assert "run the pipeline once" not in preview["prompt"]
+    assert "Do not run the analysis" in preview["prompt"]
+    assert preview["exec_restriction"] == "tool_allowlist" and preview["available"]
     job = wait(client, pkg, client.post(p + "/jobs", json=body).json()["id"])
     assert job["request"]["code_files_on_disk"] == ["inputs/authors.py"]
+    settings().agent_profiles["unrestricted"] = AgentProfile(argv=["missing-agent", "--auto"], events="opencode-json")
+    body["profile"] = "unrestricted"
+    count = len(client.get(p + "/jobs").json())
+    problem(client.post(p + "/jobs:preview", json=body), 409, "exec_restriction_unsupported")
+    problem(client.post(p + "/jobs", json=body), 409, "exec_restriction_unsupported")
+    assert len(client.get(p + "/jobs").json()) == count
+    body["allow_exec"] = True
+    preview = client.post(p + "/jobs:preview", json=body).json()
+    assert preview["available"] is False and preview["exec_restriction"] == "unsupported"
 
 
 @respx.mock
@@ -101,6 +114,21 @@ def test_conflicting_step_is_warning(client, pkg):
     assert ev["targets"][0]["step_evidence"] == "declared_conflicts_plan"
 
 
+def test_terminal_errors_are_not_tool_errors():
+    assert exec_restriction(AgentProfile(argv=["cli", "{tools}"], tools=[]), ["Bash"]) == "unsupported"
+    assert error_in_line('{"type":"error","error":{"message":"offline"}}', "opencode-json") == "offline"
+    assert error_in_line('{"type":"result","is_error":true,"result":"refused"}', "claude-stream-json") == "refused"
+    assert error_in_line('{"type":"tool_result","is_error":true}', "claude-stream-json") is None
+    assert error_in_line('[]', "opencode-json") is None
+
+
+def test_config_is_read_only_over_http(client):
+    spec = client.get("/openapi.json").json()
+    for path, methods in spec["paths"].items():
+        if "profiles" in path or "config" in path:
+            assert set(methods) <= {"get"}, path
+
+
 def test_identical_rerun_requires_fresh_report(client, pkg):
     root = package_with_targets(client, pkg)
     (root / "analysis.py").write_text(SCRIPT)
@@ -136,7 +164,7 @@ def test_missing_run_log_is_not_an_archive_link(client, pkg):
     assert client.put(p + "/archive").status_code == 201
 
 
-def test_cli_evidence_uses_shared_api(client, pkg, monkeypatch):
+def test_cli_previews_and_evidence_use_shared_api(client, pkg, monkeypatch):
     from typer.testing import CliRunner
     from reprocrowd import cli
     ready_package(client, pkg)
@@ -144,6 +172,14 @@ def test_cli_evidence_uses_shared_api(client, pkg, monkeypatch):
         return client.request(method, url, json=kwargs.get("json"), params=kwargs.get("params"), headers=kwargs.get("headers"))
     monkeypatch.setattr(cli.httpx, "request", through_test_api)
     runner = CliRunner()
+    agent = runner.invoke(cli.app, ["agent", "preview", pkg, "--no-exec"])
+    assert agent.exit_code == 0, agent.output
+    data = json.loads(agent.stdout)
+    assert data["exec_restriction"] == "tool_allowlist" and "Do not run the analysis" in data["prompt"]
+    llm = runner.invoke(cli.app, ["llm", "preview", pkg, "ex-paper-tei"])
+    assert llm.exit_code == 0, llm.output
+    data = json.loads(llm.stdout)
+    assert data["available"] and data["output_protocol"] == "text" and data["timeout_s"] == 30
     evidence = runner.invoke(cli.app, ["evidence", pkg, "--json"])
     assert evidence.exit_code == 0, evidence.output
     assert json.loads(evidence.stdout) == client.get(f"/v1/packages/{pkg}/evidence").json()

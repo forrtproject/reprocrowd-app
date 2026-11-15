@@ -1,6 +1,6 @@
 // The library: your reproductions (packages the app's backend knows), a new one from a DOI, or a package folder
 // opened from disk. Opening one switches the window to its numbered workflow (package.ts).
-import { ApiError, host, isBackendDown, JATS_ONLY, JatsAvailability, LibraryEntry, LlmModel, LlmModels, UpdateInfo, Work, ZenodoRecord } from "./api";
+import { ApiError, host, isBackendDown, modelCompatible, JATS_ONLY, JatsAvailability, LibraryEntry, LlmModel, LlmModels, UpdateInfo, Work, ZenodoRecord } from "./api";
 import { backendProblem } from "./backend";
 import { brandHtml } from "./brand";
 import { withProgress } from "./progress";
@@ -174,6 +174,7 @@ async function renderLlmModels(refresh = false) {
     el.innerHTML = "";
     return;
   }
+  const profiles = await Promise.all([host.service<{argv: string[]}[]>("/v1/llm-profiles"), host.service<{argv: string[]}[]>("/v1/agent-profiles")]).then((groups) => groups.flat()).catch(() => []);
   const off = new Set(m.disabled);
   const byFamily = new Map<string, LlmModel[]>();
   for (const x of m.available) {
@@ -186,7 +187,7 @@ async function renderLlmModels(refresh = false) {
     .map(([family, models]) => `<div class="llm-model-family" data-family="${esc(family)}">
       <label class="llm-family"><input type="checkbox" data-family-toggle="${esc(family)}" /> <b>${esc(family)}</b> <span class="muted small">${models.length} model${models.length === 1 ? "" : "s"}</span></label>
       <div class="llm-model-list">${models
-        .map((x) => `<label class="inline llm-model"><input type="checkbox" data-model="${esc(x.id)}" ${isOn(x) ? "checked" : ""} /> <code>${esc(x.name)}</code></label>`)
+        .map((x) => `<label class="inline llm-model"><input type="checkbox" data-model="${esc(x.id)}" ${isOn(x) ? "checked" : ""} /> <code>${esc(x.name)}</code> <span class="muted small">${esc(x.cli)}${profiles.some((p) => modelCompatible(x, p.argv)) ? "" : " · no compatible profile"}</span></label>`)
         .join("")}</div>
     </div>`)
     .join("");

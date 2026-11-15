@@ -91,10 +91,13 @@ Apple silicon Macs runs ARM64 Linux, which works like any other Linux.
   coding-agent profiles, GROBID/Docling, OpenAlex key) as TOML.
 
 LLM calls and the coding agent run the commands configured in the backend
-configuration, by default Claude Code (`claude`) on your PATH. Runs of the
+configuration, by default Claude Code (`claude`) on your PATH. Settings → Backend →
+**Coding and extraction profiles…** adds or edits a profile without writing TOML.
+Profiles expose their output protocol and execution restrictions; model selection never
+switches the configured command. Runs of the
 master script use your R / Python.
 
-See [the implemented workflow, comparison and evidence contracts](docs/contracts.md)
+See [the implemented workflow, comparison/evidence and provider contracts](docs/contracts.md)
 for printed precision, recreation versus original-code tracks, setup and offline rerun checks.
 
 ## How it fits together

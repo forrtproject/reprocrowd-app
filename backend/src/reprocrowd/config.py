@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field
 
 
 class LlmProfile(BaseModel):
-    argv: list[str] = Field(description="command line; {model} and {effort} are substituted, the prompt goes to stdin")
+    argv: list[str] = Field(min_length=1, description="command line; {model} and {effort} are substituted, the prompt goes to stdin")
     read_files_argv: list[str] = Field(default_factory=list, description="appended when the LLM must read package files (cwd = package root)")
     json_schema_argv: list[str] = Field(default_factory=list, description="appended with {schema} = the task's output JSON Schema, for CLIs "
                                                                           "that constrain output to a schema (claude: --json-schema)")
@@ -21,20 +21,20 @@ class LlmProfile(BaseModel):
                                                                                 "event stream (the answer is the text of the text events)")
     model: str = ""
     effort: str = ""
-    timeout_s: int = 1800
+    timeout_s: int = Field(default=1800, gt=0)
 
 
 class AgentProfile(BaseModel):
     """A headless coding agent for code generation. It runs in the package folder as a job."""
 
-    argv: list[str] = Field(description="command line; {model}, {effort} and {tools} (comma-separated allowed tools) are substituted, the prompt goes to stdin")
+    argv: list[str] = Field(min_length=1, description="command line; {model}, {effort} and {tools} (comma-separated allowed tools) are substituted, the prompt goes to stdin")
     tools: list[str] = Field(default_factory=lambda: ["Read", "Write", "Edit", "Glob", "Grep"], description="always allowed")
     exec_tools: list[str] = Field(
         default_factory=lambda: ["Bash(Rscript:*)", "Bash(R:*)", "Bash(python:*)", "Bash(python3:*)", "Bash(snakemake:*)", "Bash(pip:*)", "Bash(ls:*)"],
         description="added when the caller allows the agent to run the analysis (allow_exec)")
     model: str = ""
     effort: str = ""
-    timeout_s: int = 7200
+    timeout_s: int = Field(default=7200, gt=0)
     events: Literal["claude-stream-json", "opencode-json", "text"] = Field(default="claude-stream-json", description="how to read the agent's stdout as events")
 
 

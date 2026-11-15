@@ -37,6 +37,9 @@ def parse_claude(line: str) -> Iterable[Raw]:
     except ValueError:
         yield ("log", line, None, None)
         return
+    if not isinstance(ev, dict):
+        yield ("log", line, None, None)
+        return
     t = ev.get("type")
     if t == "system" and ev.get("subtype") == "init":
         yield ("start", f"session started (model {ev.get('model') or 'default'})", None, None)
@@ -64,6 +67,9 @@ def parse_opencode(line: str) -> Iterable[Raw]:
     try:
         ev = json.loads(line)
     except ValueError:
+        yield ("log", line, None, None)
+        return
+    if not isinstance(ev, dict):
         yield ("log", line, None, None)
         return
     t = ev.get("type")

@@ -20,6 +20,7 @@ from importlib import resources
 from string import Template
 from typing import Any
 
+from .providers import error_in_line
 from .config import LlmProfile, expand_argv, settings
 from .errors import ApiError
 from .package import Package, atomic_write, dump_json
@@ -131,6 +132,10 @@ def run(pkg: Package, task: str, prompt: str, *, profile_name: str | None, templ
         if env is None or env.get("is_error") or env.get("subtype") not in (None, "success"):
             raise ApiError(502, "llm_call_failed", "the LLM CLI reported an error",
                            {"call": call_id, "result": str((env or {}).get("result") or out[-2000:])[:2000], "subtype": (env or {}).get("subtype")})
+    if p.output == "opencode-json":
+        failure = next((msg for line in out.splitlines() if (msg := error_in_line(line, p.output))), None)
+        if failure:
+            raise ApiError(502, "llm_call_failed", f"the LLM CLI reported an error: {failure}", {"call": call_id})
     return call
 
 

@@ -575,6 +575,28 @@ def agents():
     out(call("GET", "/agent-profiles"))
 
 
+agent_commands = typer.Typer(help="Inspect coding-agent calls without executing them.", no_args_is_help=True)
+app.add_typer(agent_commands, name="agent")
+llm_commands = typer.Typer(help="Inspect extraction calls without executing them.", no_args_is_help=True)
+app.add_typer(llm_commands, name="llm")
+
+
+@agent_commands.command("preview")
+def agent_preview(pkg: str, profile: Optional[str] = None, model: Optional[str] = None,
+                  exec_: bool = typer.Option(True, "--exec/--no-exec"), instructions: str = ""):
+    out(call("POST", f"/packages/{pkg}/jobs:preview", {"type": "codegen", "profile": profile, "model": model,
+             "allow_exec": exec_, "instructions": instructions}))
+
+
+@llm_commands.command("preview")
+def llm_preview(pkg: str, extraction: str, kind: str = typer.Option("targets", help="targets or actions"),
+                profile: Optional[str] = None, model: Optional[str] = None, instructions: str = ""):
+    if kind not in ("targets", "actions"):
+        raise typer.BadParameter("kind must be targets or actions")
+    out(call("POST", f"/packages/{pkg}/{kind}/runs:preview", {"extraction": extraction, "profile": profile,
+             "model": model, "instructions": instructions}))
+
+
 zen = typer.Typer(help="Deposits on Zenodo. The token comes from $REPROCROWD_ZENODO_TOKEN, else the service's [zenodo] token.",
                   no_args_is_help=True)
 app.add_typer(zen, name="zenodo")

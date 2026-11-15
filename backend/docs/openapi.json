@@ -5593,7 +5593,7 @@
                 }
               }
             },
-            "description": "`script_missing`: Create the master script first; `job_running`: Another job is running in this package"
+            "description": "`script_missing`: Create the master script first; `job_running`: Another job is running in this package; `exec_restriction_unsupported`: This profile cannot restrict analysis execution"
           },
           "400": {
             "content": {
@@ -5882,7 +5882,7 @@
                 }
               }
             },
-            "description": "`script_missing`: Create the master script first"
+            "description": "`script_missing`: Create the master script first; `exec_restriction_unsupported`: This profile cannot restrict analysis execution"
           },
           "400": {
             "content": {
@@ -9371,6 +9371,16 @@
       },
       "AgentProfileView": {
         "properties": {
+          "available": {
+            "type": "boolean",
+            "title": "Available",
+            "default": false
+          },
+          "exec_restriction": {
+            "type": "string",
+            "title": "Exec Restriction",
+            "default": "unsupported"
+          },
           "name": {
             "type": "string",
             "title": "Name"
@@ -11989,6 +11999,11 @@
       },
       "LlmProfileView": {
         "properties": {
+          "available": {
+            "type": "boolean",
+            "title": "Available",
+            "default": false
+          },
           "name": {
             "type": "string",
             "title": "Name"
@@ -12628,6 +12643,31 @@
       },
       "PromptPreview": {
         "properties": {
+          "available": {
+            "type": "boolean",
+            "title": "Available",
+            "default": false
+          },
+          "output_protocol": {
+            "type": "string",
+            "title": "Output Protocol",
+            "default": "text"
+          },
+          "exec_restriction": {
+            "type": "string",
+            "title": "Exec Restriction",
+            "default": "not_applicable"
+          },
+          "timeout_s": {
+            "type": "integer",
+            "title": "Timeout S",
+            "default": 1800
+          },
+          "structured_output": {
+            "type": "boolean",
+            "title": "Structured Output",
+            "default": false
+          },
           "prompt": {
             "type": "string",
             "title": "Prompt",

@@ -49,7 +49,13 @@ export interface BackendStatus {
   configFile: string;
   userConfigFile: string;
 }
-export interface LlmModel { provider: string; id: string; name: string }
+export interface LlmModel { cli: "claude" | "opencode" | "t3"; provider: string; id: string; name: string }
+/** Model availability belongs to a CLI, independently of its output parser. Never auto-route. */
+export function modelCompatible(model: LlmModel | undefined, argv: string[] | undefined): boolean {
+  const executable = (argv?.[0] ?? "").replaceAll("\\", "/").split("/").pop()!.replace(/\.(exe|cmd|bat|ps1)$/i, "");
+  return !!model && (executable === "t3code" ? "t3" : executable) === model.cli;
+}
+
 export interface LlmModels { available: LlmModel[]; disabled: string[]; claudeNeedsLogin: boolean }
 /** The model as its CLI takes it: Claude Code models are listed as `claude/<alias>` (their own family), but `claude
  * --model` takes the bare alias; OpenCode's ids (`provider/model`) are used as they are. */
@@ -150,6 +156,9 @@ export const host = {
     claudeLogin: () => call<string>("claudeLogin"),
   setZenodoToken: (server: "zenodo" | "sandbox", token: string | null) => call<void>("setZenodoToken", server, token),
   verifyZenodoToken: (sandbox: boolean, token?: string) => call<{ ok: boolean; url: string; sandbox: boolean }>("verifyZenodoToken", sandbox, token),
+  profileConfig: () => call<Record<"llm" | "agent", Record<string, ConfiguredProfile>>>("profileConfig"),
+  saveProfile: (kind: "llm" | "agent", name: string, profile: ConfiguredProfile) => call<string>("saveProfile", kind, name, profile),
+  runningJobs: () => call<unknown[]>("runningJobs"),
   saveBackendConfig: (text: string) => call<void>("saveBackendConfig", text),
   backendStatus: () => call<BackendStatus>("backendStatus"),
   backendLog: () => call<string>("backendLog"),
@@ -178,4 +187,11 @@ export function reconstructAbstract(inv: Record<string, number[]> | null | undef
   const words: string[] = [];
   for (const [w, ps] of Object.entries(inv)) for (const p of ps) words[p] = w;
   return words.filter((w) => w !== undefined).join(" ");
+}
+
+
+export interface ConfiguredProfile {
+  argv: string[]; model: string; effort: string; timeout_s: number;
+  output?: string; events?: string; tools?: string[]; exec_tools?: string[];
+  read_files_argv?: string[]; json_schema_argv?: string[];
 }

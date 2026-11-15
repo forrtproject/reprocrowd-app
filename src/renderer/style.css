@@ -253,6 +253,7 @@ dialog menu > .muted, dialog menu > .src-status { flex: 1; }
 dialog pre { max-height: 300px; overflow: auto; white-space: pre-wrap; font-size: 12px; background: var(--surface-1); padding: 6px; }
 .dlg-confirm { width: 500px; }
 .dlg-error { width: min(760px, 94vw); }
+.dlg-profiles { width: min(700px, 94vw); }
 .dlg-settings { width: 640px; }
 .dlg-settings fieldset { border: 1px solid var(--border); border-radius: 10px; padding: 8px 12px 10px; display: flex; flex-direction: column; gap: 6px; }
 .dlg-wide { width: min(1150px, 95vw); }

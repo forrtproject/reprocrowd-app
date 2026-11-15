@@ -10,6 +10,7 @@ CATALOG: dict[str, tuple[int, str]] = {
     "target_contradiction": (422, "Printed number, value, comparator or precision contradict each other"),
     "track_unavailable": (422, "Original-code reproduction is deferred (issue #45); use recreation"),
     "report_stale": (409, "Results or targets changed; regenerate the report and archive"),
+    "exec_restriction_unsupported": (409, "This profile cannot restrict analysis execution"),
     "request_invalid": (422, "The request body or parameters don't match the API schema"),
     "unauthorized": (401, "Missing or wrong bearer token"),
     "precondition_failed": (412, "If-Match doesn't match the package's current ETag"),

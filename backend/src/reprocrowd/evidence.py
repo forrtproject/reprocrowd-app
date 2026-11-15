@@ -50,6 +50,7 @@ def get(pkg: Package) -> ExecutionEvidence:
     cg = next((j for j in reversed(jobs.list_jobs(pkg)) if j.type == "codegen"), None)
     if cg:
         ev.codegen = {"profile": cg.profile, "model": cg.request.get("model"), "allow_exec": cg.request.get("allow_exec"),
+                      "exec_restriction": cg.request.get("exec_restriction", "unknown"),
                       "code_context": cg.request.get("code_context", "unknown"),
                       "code_files_on_disk": cg.request.get("code_files_on_disk", [])}
     if not pkg.path("results_schema.json").exists():

@@ -108,7 +108,7 @@ export interface LlmCall {
   exit_code: number | null;
 }
 /** What a call would send (POST …:preview); nothing was run. */
-export interface PromptPreview { prompt: string; argv: string[]; profile: string; model: string; effort: string; output_schema?: string | null }
+export interface PromptPreview { available: boolean; output_protocol: string; exec_restriction: string; timeout_s: number; structured_output: boolean; prompt: string; argv: string[]; profile: string; model: string; effort: string; output_schema?: string | null }
 export interface LlmEntry<T> { base: T; edit?: Partial<T> | null; disabled?: boolean }
 export interface LlmRun<T> {
   id: string;
@@ -121,8 +121,8 @@ export interface LlmRun<T> {
 export interface CurationFile<T> { schema_version: string; kind: "targets" | "actions"; manual: T[]; llm_runs: LlmRun<T>[] }
 
 export interface TemplateView { id: string; label: string; language: string; command: string; master: string }
-export interface LlmProfile { name: string; default: boolean; argv: string[]; model: string; effort: string; timeout_s: number; output: string }
-export interface AgentProfile extends LlmProfile { tools: string[]; exec_tools: string[]; events: string }
+export interface LlmProfile { available: boolean; name: string; default: boolean; argv: string[]; model: string; effort: string; timeout_s: number; output: string }
+export interface AgentProfile extends LlmProfile { exec_restriction: "tool_allowlist" | "unsupported"; tools: string[]; exec_tools: string[]; events: string }
 export interface Converter { name: string; configured: boolean; output: string; detail: string }
 export interface Candidate { id: string; label: string; url: string; format: string; filename: string; openalex_auth: boolean }
 

@@ -406,6 +406,9 @@ export function makeApi(wc: WebContents) {
       if (!t) throw new ServiceError("No token stored for this server.", { status: 400, code: "zenodo_token_missing" });
       return post("/v1/zenodo:verify-token", { zenodo_token: t, sandbox }, 20_000);
     },
+    profileConfig: async () => backend.profileConfig(),
+    saveProfile: (kind: Parameters<typeof backend.saveProfile>[0], name: string, profile: Parameters<typeof backend.saveProfile>[2]) => backend.saveProfile(kind, name, profile),
+    runningJobs: async () => get<any[]>("/v1/jobs"),
     saveBackendConfig: async (text: string) => {
       backend.writeUserConfig(text);
       await backend.restart();

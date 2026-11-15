@@ -15,6 +15,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import net from "node:net";
 import path from "node:path";
+import { applyProfileChange, replaceProfile, configuredProfiles, type ProfileKind, type Profile } from "./profiles";
 import { parse, stringify } from "smol-toml";
 import { searchPath, splitCommand, which } from "./processes";
 import { loadSettings, userData } from "./settings";
@@ -374,4 +375,21 @@ export async function restart() {
   await stop();
   lastFailure = undefined;
   return ensure();
+}
+
+
+export const profileConfig = () => configuredProfiles(readUserConfig());
+
+/** Local administrator operation. Restore the exact previous text on failed restart. */
+export async function saveProfile(kind: ProfileKind, name: string, profile: Profile): Promise<string> {
+  const previous = readUserConfig();
+  const next = replaceProfile(previous, kind, name, profile);
+  return applyProfileChange(previous, next, {
+    backup(text) {
+      const backup = userConfigFile() + ".bak";
+      if (!fs.existsSync(backup)) fs.writeFileSync(backup, text, { mode: 0o600 });
+    },
+    write: writeUserConfig,
+    restart,
+  });
 }

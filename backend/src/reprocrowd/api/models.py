@@ -25,6 +25,7 @@ class Health(BaseModel):
 
 
 class LlmProfileView(BaseModel):
+    available: bool = False
     name: str
     default: bool
     argv: list[str] = Field(description="read-only: configured in the service, never set by callers")
@@ -37,6 +38,11 @@ class LlmProfileView(BaseModel):
 class PromptPreview(BaseModel):
     """What a call would send. Nothing was run or stored."""
 
+    available: bool = False
+    output_protocol: str = "text"
+    exec_restriction: str = "not_applicable"
+    timeout_s: int = 1800
+    structured_output: bool = False
     prompt: str = Field(description="the full prompt, as it would go to the command's stdin")
     argv: list[str] = Field(description="the exact command line")
     profile: str = Field(description="the profile used: the requested one, or the default")
@@ -316,6 +322,8 @@ class ScriptState(BaseModel):
 
 
 class AgentProfileView(BaseModel):
+    available: bool = False
+    exec_restriction: str = "unsupported"
     name: str
     default: bool
     argv: list[str] = Field(description="read-only: configured in the service; {tools} is filled from tools (+ exec_tools)")

@@ -2,7 +2,7 @@
 // backend: items added by hand, plus LLM runs whose entries keep the LLM's version and store the user's changes on
 // top (restorable). Two views: Reader, the paper with each item as a card next to the passage it comes from (marking
 // sentences there leads to new items), and Table, manual items first, then one group per LLM run.
-import { ApiError, cliModel, host, LlmModel, LlmModels, pkg } from "../api";
+import { ApiError, cliModel, modelCompatible, host, LlmModel, LlmModels, pkg } from "../api";
 import { refText } from "../doc";
 import { COMPARATORS, type Action, type CurationFile, type Document, type Item, type LlmEntry, type LlmProfile, type LlmRun, type PromptPreview, type Resource, type Target } from "../types";
 import { choose, confirmDialog, esc, list, modal, seconds, showError, showPrompt, trunc, when } from "../util";
@@ -462,8 +462,7 @@ export class CurationStep implements Step {
   private async generateDialog(marked?: { sections: string[]; items: string[] }) {
     const isT = this.kind === "targets";
     const st = this.state;
-    // The profile used last time, else the backend's default. The model list below is offered whatever the profile;
-    // picking a model switches to the profile that runs it.
+    // The profile used last time, else the default; offer only models listed by its CLI.
     const defaultProfile = (this.profiles.find((p) => p.name === st.llmProfile) ?? this.profiles.find((p) => p.default) ?? this.profiles[0])?.name;
     const dlg = modal("dlg-wide", `<form method="dialog"><h3>Generate ${NOUN[this.kind]}s with an LLM</h3>
       <div class="grid2"><section class="picker"></section>
@@ -471,8 +470,9 @@ export class CurationStep implements Step {
         <p class="hint">${isT ? "The LLM reads the marked part of the text source (nothing marked: the whole document) and returns one target per reported result, with references to the sentences, tables and figures it comes from." : "The LLM turns the marked methods text (nothing marked: the whole document) into ordered analysis steps, linked to the input files of step 2 and the targets of step 3."}</p>
         <label>LLM profile <select name="profile">${this.profiles.map((p) => `<option value="${esc(p.name)}" ${p.name === defaultProfile ? "selected" : ""}>${esc(p.name)}: ${esc(p.model || "default model")}${p.effort ? `, effort ${esc(p.effort)}` : ""}</option>`).join("")}</select></label>
         <label class="model-row" hidden>Model <select name="model"><option value="">(the CLI's default)</option></select></label>
+        <p class="hint model-notice"></p>
         <div class="claude-login" hidden><p class="hint">Claude Code is installed but not signed in.</p><button type="button" id="claude-login">Log in to Claude Code</button></div>
-        <p class="hint">Command (configured in the backend): <code class="argv"></code></p>
+        <p class="hint">Command (configured in the backend): <code class="argv"></code></p><p class="hint availability"></p>
         <div class="form-row"><button type="button" class="show-prompt">Show prompt</button></div>
         <label>Extra instructions <textarea name="instructions" rows="4" placeholder="optional, e.g. only the main analyses"></textarea></label>
         <p class="hint">The backend builds the prompt from its template, the marked text with ids, and the JSON Schema of the answer. The full prompt and the raw answer are kept with the run (Call details).</p>
@@ -483,24 +483,18 @@ export class CurationStep implements Step {
     const modelRow = form.querySelector<HTMLElement>(".model-row")!;
     const modelSel = form.querySelector<HTMLSelectElement>("[name=model]")!;
     const claudeLogin = form.querySelector<HTMLElement>(".claude-login")!;
-    const showArgv = () => (form.querySelector(".argv")!.textContent = this.profiles.find((p) => p.name === profileSel.value)?.argv.join(" ") ?? "");
-    /** The profile that runs a given model: Claude Code models → the Claude profile, everything else (OpenCode, Ollama,
-     * uniGPT…) → the OpenCode profile. None for "the CLI's default". */
-    const profileForModel = (id: string) => {
-      if (!id) return undefined;
-      return (id.startsWith("claude/")
-        ? this.profiles.find((p) => p.output === "claude-json")
-        : this.profiles.find((p) => p.output === "opencode-json"))?.name;
+    const showArgv = () => {
+      const profile = this.profiles.find((p) => p.name === profileSel.value);
+      form.querySelector(".argv")!.textContent = profile?.argv.join(" ") ?? "";
+      form.querySelector(".availability")!.textContent = profile?.available === false ? "Executable not found. Install and sign into the CLI, or update its command in Settings." : "";
     };
-    // Available models, with the ones the user turned off left out, grouped by provider. The list is always taken from
-    // the detected models (never hard-coded), and picking one selects the matching profile.
     let models: LlmModels | undefined;
     const fillModels = () => {
       const m = models;
       if (!m) return;
       claudeLogin.hidden = !m.claudeNeedsLogin;
       const byProv = new Map<string, LlmModel[]>();
-      for (const x of m.available) if (!m.disabled.includes(x.id)) {
+      for (const x of m.available) if (!m.disabled.includes(x.id) && modelCompatible(x, this.profiles.find((p) => p.name === profileSel.value)?.argv)) {
         const a = byProv.get(x.provider) ?? [];
         a.push(x);
         byProv.set(x.provider, a);
@@ -510,17 +504,20 @@ export class CurationStep implements Step {
         .join("")}`;
       modelRow.hidden = false;
       // The model chosen last time, if it's still offered and runs with the selected profile.
-      if (st.llmModel && profileForModel(st.llmModel) === profileSel.value) modelSel.value = st.llmModel;
+      if (st.llmModel && [...modelSel.options].some((x) => x.value === st.llmModel)) modelSel.value = st.llmModel;
+      else if (st.llmModel) {
+        st.llmModel = "";
+        form.querySelector<HTMLElement>(".model-notice")!.textContent = "Saved model cleared: no compatible CLI profile. Choose a model for this profile.";
+      }
       showArgv();
     };
     profileSel.addEventListener("change", () => {
-      // A model another profile runs doesn't go with this one.
-      if (profileForModel(modelSel.value) && profileForModel(modelSel.value) !== profileSel.value) modelSel.value = "";
+      st.llmModel = modelSel.value;
+      fillModels();
       showArgv();
     });
     modelSel.addEventListener("change", () => {
-      const p = profileForModel(modelSel.value);
-      if (p) profileSel.value = p;
+      st.llmModel = modelSel.value;
       showArgv();
     });
     claudeLogin.querySelector("button")!.addEventListener("click", async () => {

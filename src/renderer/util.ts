@@ -65,6 +65,8 @@ export async function showPrompt(title: string, preview: () => Promise<PromptPre
     <div class="kv">
       <span>Profile</span><span>${esc(p.profile)} · model ${esc(p.model || "default")} · effort ${esc(p.effort || "default")}${p.output_schema ? ` · structured output (${esc(p.output_schema)})` : ""}</span>
       <span>Command</span><code>${esc(p.argv.join(" "))}</code>
+      <span>Availability</span><span>${p.available ? "Executable found" : "Executable not found"} · ${esc(p.output_protocol)} · timeout ${p.timeout_s}s</span>
+      <span>Execution restriction</span><span>${p.exec_restriction === "tool_allowlist" ? "CLI tool allowlist (not an OS sandbox)" : esc(p.exec_restriction)}</span>
     </div>
     <h4>Prompt</h4><textarea class="mono big" readonly>${esc(p.prompt)}</textarea>
     <form method="dialog"><menu><button class="primary">Close</button></menu></form>`);

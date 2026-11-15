@@ -1,7 +1,7 @@
 // Step 6: code generation. Either in the user's own editor (the package folder plus AGENT_PROMPT.md), or by the
 // backend's headless coding agent as a job: its messages and tool calls stream in while it works, the package's
 // files are listed (most recently changed first) with the TODO(LLM) markers left.
-import { cliModel, host, pkg } from "../api";
+import { cliModel, host, pkg, modelCompatible } from "../api";
 import type { LlmModel, LlmModels } from "../api";
 import type { AgentProfile, FileEntry, PromptPreview, ScriptState } from "../types";
 import { esc, modal, showPrompt, sizeText, when } from "../util";
@@ -45,6 +45,7 @@ export class CodegenStep implements Step {
     const running = this.job.running;
     const ready = !!s?.template;
     const profile = this.profiles.find((p) => p.name === st.agentProfile) ?? this.profiles.find((p) => p.default) ?? this.profiles[0];
+    const unsupported = profile?.exec_restriction === "unsupported";
     const res = j?.result?.type === "codegen" ? j.result : undefined;
     body.innerHTML = `
     <div class="cols cols-codegen">
@@ -61,12 +62,14 @@ export class CodegenStep implements Step {
             <div class="form-row">
               <label>Profile <select id="rp-profile" ${running ? "disabled" : ""}>${this.profiles.map((p) => `<option value="${esc(p.name)}" ${p === profile ? "selected" : ""}>${esc(p.name)}: ${esc(p.model || "default")}${p.effort ? `, ${esc(p.effort)}` : ""}</option>`).join("")}</select></label>
               <label>Model <select id="rp-model" ${running ? "disabled" : ""}><option value="">(the CLI's default)</option></select></label>
-              <label class="inline" title="${esc(profile?.exec_tools.join(", ") ?? "")}"><input type="checkbox" id="rp-exec" ${st.allowExec ? "checked" : ""} ${running ? "disabled" : ""} /> let it run the analysis (R, Python, Snakemake)</label>
+              <label class="inline" title="${esc(profile?.exec_tools.join(", ") ?? "")}"><input type="checkbox" id="rp-exec" ${st.allowExec ? "checked" : ""} ${running || unsupported ? "disabled" : ""} /> let it run the analysis (R, Python, Snakemake)</label>
             </div>
+            <p class="hint">${unsupported ? "This profile cannot enforce editing-only mode." : "Restricted by the CLI tool allowlist, not an OS sandbox."}${profile?.available === false ? " The executable was not found; install it or update the command in Settings." : ""}</p>
+            ${unsupported && !st.allowExec ? `<button id="rp-allow-exec" type="button">Allow execution for this profile</button>` : ""}
             <div class="form-row"><button id="rp-prompt" ${ready ? "" : "disabled"}>Show prompt</button></div>
             <label>Extra instructions <textarea id="rp-instr" rows="2" ${running ? "disabled" : ""} placeholder="optional">${esc(st.agentInstructions)}</textarea></label>
           </div>
-          <button id="rp-gen" class="primary" ${running || !ready ? "disabled" : ""}>${running ? "Working…" : "Run agent…"}</button>
+          <button id="rp-gen" class="primary" ${running || !ready || (unsupported && !st.allowExec) ? "disabled" : ""}>${running ? "Working…" : "Run agent…"}</button>
           <button id="rp-stop" ${running ? "" : "disabled"}>Stop</button>
         </div>
         <div class="log-head"><h4>Agent activity</h4><span class="muted small">${j ? `${statusBadge(j)} · started ${esc(when(j.created_at))}` : ""}</span></div>
@@ -86,24 +89,16 @@ export class CodegenStep implements Step {
     const modelSel = body.querySelector<HTMLSelectElement>("#rp-model")!;
     prof.addEventListener("change", () => {
       st.agentProfile = prof.value;
-      // A model another profile runs doesn't go with this one.
-      const p = profileForModel(modelSel.value);
-      if (p && p !== prof.value) st.agentModel = modelSel.value = "";
+      fillModels();
       this.w.app.save();
+      this.w.render();
     });
-    /** The agent profile that runs a given model: Claude Code models → the Claude agent, everything else → the OpenCode agent. */
-    const profileForModel = (id: string) => {
-      if (!id) return undefined;
-      return (id.startsWith("claude/")
-        ? this.profiles.find((p) => p.events === "claude-stream-json")
-        : this.profiles.find((p) => p.events === "opencode-json"))?.name;
-    };
-    // The model list always comes from the detected models (never hard-coded); picking one selects the matching profile.
+    // Offer detected models only for the selected command-line tool.
     const fillModels = () => {
       const m = this.models;
       if (!m) return;
       const byProv = new Map<string, LlmModel[]>();
-      for (const x of m.available) if (!m.disabled.includes(x.id)) {
+      for (const x of m.available) if (!m.disabled.includes(x.id) && modelCompatible(x, this.profiles.find((p) => p.name === prof.value)?.argv)) {
         const a = byProv.get(x.provider) ?? [];
         a.push(x);
         byProv.set(x.provider, a);
@@ -111,17 +106,18 @@ export class CodegenStep implements Step {
       modelSel.innerHTML = `<option value="">(the CLI's default)</option>${[...byProv.entries()]
         .map(([p, arr]) => `<optgroup label="${esc(p)}">${arr.map((x) => `<option value="${esc(x.id)}">${esc(x.name)}</option>`).join("")}</optgroup>`)
         .join("")}`;
-      if (st.agentModel && m.available.some((x) => x.id === st.agentModel)) modelSel.value = st.agentModel;
-      const p = profileForModel(modelSel.value);
-      if (p && prof.value !== p) { prof.value = p; st.agentProfile = p; }
+      if (st.agentModel && [...modelSel.options].some((x) => x.value === st.agentModel)) modelSel.value = st.agentModel;
+      else if (st.agentModel) {
+        st.agentModel = "";
+        this.w.setStatus("The saved model was cleared: its CLI is not compatible with this profile.");
+      }
     };
     fillModels();
     modelSel.addEventListener("change", () => {
       st.agentModel = modelSel.value;
-      const p = profileForModel(modelSel.value);
-      if (p) { prof.value = p; st.agentProfile = p; }
       this.w.app.save();
     });
+    body.querySelector("#rp-allow-exec")?.addEventListener("click", () => { st.allowExec = true; this.w.app.save(); this.w.render(); });
     body.querySelector<HTMLInputElement>("#rp-exec")!.addEventListener("change", (e) => {
       st.allowExec = (e.target as HTMLInputElement).checked;
       this.w.app.save();
