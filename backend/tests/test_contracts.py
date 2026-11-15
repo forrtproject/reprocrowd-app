@@ -155,7 +155,7 @@ def test_shipped_argv_expansion_unchanged():
 
 def test_cli_settings_restriction(client, pkg, monkeypatch):
     """OpenCode runs editing-only through declared CLI settings; Codex (no read tool without its shell) and a profile without settings are refused."""
-    for name in ("codex", "opencode"):
+    for name in ("codex", "opencode", "claude"):
         monkeypatch.setitem(settings().agent_profiles, name, _default_agents()[name])
     monkeypatch.setitem(settings().agent_profiles, "bare", _default_agents()["opencode"].model_copy(update={"no_exec_env": {}}))
     ready_package(client, pkg)
@@ -167,6 +167,9 @@ def test_cli_settings_restriction(client, pkg, monkeypatch):
     perm = json.loads(oc["env"]["OPENCODE_PERMISSION"])
     assert perm["*"] == "deny" and perm["edit"] == "allow" and "bash" not in perm
     assert client.post(p + "/jobs:preview", json={"type": "codegen", "profile": "opencode", "allow_exec": True}).json()["env"] == {}
+    claude = client.post(p + "/jobs:preview", json={"type": "codegen", "profile": "claude", "allow_exec": False}).json()
+    assert claude["exec_restriction"] == "cli_settings" and claude["argv"][-2:] == ["--disallowedTools", "Bash"]
+    assert "--disallowedTools" not in client.post(p + "/jobs:preview", json={"type": "codegen", "profile": "claude", "allow_exec": True}).json()["argv"]
     problem(client.post(p + "/jobs:preview", json={"type": "codegen", "profile": "bare", "allow_exec": False}), 409, "exec_restriction_unsupported")
     problem(client.post(p + "/jobs", json={"type": "codegen", "profile": "bare", "allow_exec": False}), 409, "exec_restriction_unsupported")
     views = {v["name"]: v for v in client.get("/v1/agent-profiles").json()}

@@ -146,6 +146,9 @@ default_profile = "claude"
 [agent.profiles.claude]
 argv = ["claude", "-p", "--output-format", "stream-json", "--verbose", "--permission-mode", "acceptEdits",
         "--model", "{model}", "--effort", "{effort}", "--allowedTools", "{tools}"]
+# When the analysis must not run: --allowedTools only pre-approves tools (Claude Code still runs read-only commands
+# such as ls), so Bash is denied outright.
+no_exec_argv = ["--disallowedTools", "Bash"]
 tools = ["Read", "Write", "Edit", "Glob", "Grep"]
 exec_tools = ["Bash(Rscript:*)", "Bash(R:*)", "Bash(python:*)", "Bash(python3:*)", "Bash(snakemake:*)", "Bash(pip:*)", "Bash(ls:*)"]
 model = "sonnet"
