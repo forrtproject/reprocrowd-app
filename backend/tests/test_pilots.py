@@ -7,6 +7,7 @@ import os
 import re
 import zipfile
 from pathlib import Path
+from types import SimpleNamespace
 from urllib.parse import parse_qs, urlparse
 
 import httpx
@@ -43,6 +44,7 @@ class FakeGitHub:
         self.labels = {"reprocrowd-pilot", "unreviewed", "synthetic"}
         self.writes: list[str] = []
         self.downloads: list[str] = []
+        self.tag_reads = 0
         self.fail: dict[str, int] = {}  # step name → fail on the nth call (1-based), once
         self.calls: dict[str, int] = {}
         self.next_id = 1000
@@ -184,6 +186,7 @@ class FakeGitHub:
             rels.append(r)
             return httpx.Response(201, json=self._release_view(repo, r))
         if m := re.fullmatch(r"/releases/tags/(.+)", rest):
+            self.tag_reads += 1
             r = next((r for r in rels if r["tag_name"] == m.group(1) and not r["draft"]), None)
             return httpx.Response(200, json=self._release_view(repo, r)) if r else httpx.Response(404, json={"message": "Not Found"})
         if m := re.fullmatch(r"/releases/(\d+)", rest):
@@ -260,7 +263,8 @@ def gh(client, monkeypatch):
     cfg = Path(os.environ["REPROCROWD_CONFIG"])
     cfg.write_text(cfg.read_text() + f'\n[github]\napi_url = "{API}"\npilots_repo = "{REPO}"\n')
     settings.cache_clear()
-    monkeypatch.setattr(pilots.time, "sleep", lambda s: None)
+    monkeypatch.setattr(pilots, "time", SimpleNamespace(sleep=lambda s: None))  # forks are ready at once here
+    monkeypatch.setattr(pilots, "RECHECK_S", 0)
     fake = FakeGitHub()
     with respx.mock:
         respx.route(host="api.github.test").mock(side_effect=fake.handle)
@@ -484,10 +488,25 @@ def test_release_notes_use_the_repository_s_own_statement(client, pkg, gh):
     rec = client.post(P + "/pilots", json=body()).json()
     pilot = json.loads(gh.blob(FORK, rec["tag"], "pilot.json"))
     pilot["statement"] = "Certified correct by FORRT."
+    pilot["licenses"] = {"metadata": "CC0-1.0", "outputs": "CC0-1.0", "code": ["CC0-1.0"]}  # ignored: licences come from the ZIP
+    pilot["comparison"]["summary"] = {"match": 1000}  # ignored: counts come from the ZIP's comparison.json
     _tamper(gh, rec["tag"], "pilot.json", json.dumps(pilot).encode())
     assert "Run **v1** is copied" in gh.run_action()[0]
     notes = gh.releases[REPO][0]["body"]
     assert "Certified" not in notes and "Pilot record — unreviewed" in notes and "<!-- reprocrowd-pilot-issue:1 -->" in notes
+    assert "new analysis code MIT" in notes and "outputs CC-BY-4.0" in notes and "3 of 3 match" in notes and "1000" not in notes
+
+
+def test_listing_asks_github_at_most_once_a_minute(client, pkg, gh, monkeypatch):
+    from reprocrowd import pilots
+    P = f"/v1/packages/{pkg}"
+    ready_published(client, pkg)
+    client.post(P + "/pilots", json=body())
+    monkeypatch.setattr(pilots, "RECHECK_S", 60)
+    reads = gh.tag_reads
+    for _ in range(3):
+        assert client.get(P + "/pilots").json()[0]["status"] == "submitted"
+    assert gh.tag_reads - reads <= 1
 
 
 def test_a_copy_that_failed_after_publishing_is_finished_on_the_next_run(client, pkg, gh):

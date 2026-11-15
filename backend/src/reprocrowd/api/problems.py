@@ -108,7 +108,7 @@ CATALOG: dict[str, tuple[int, str]] = {
     "github_rate_limited": (429, "GitHub's rate limit was reached; try again later"),
     "github_unreachable": (502, "GitHub could not be reached"),
     "github_error": (502, "GitHub returned an unexpected answer"),
-    "pilot_asset_too_large": (422, "A pilot run's files must total under 200 MB"),
+    "pilot_asset_too_large": (422, "A pilot run's files must total at most 199 MiB (200 MiB with pilot.json)"),
     "pilot_release_mismatch": (409, "The run's release on GitHub holds different files; published releases are never changed"),
     # jobs
     "job_running": (409, "Another job is running in this package"),

@@ -209,6 +209,7 @@ export class ReportStep implements Step {
     const same = archive && this.pilots.find((p) => p.repo === acct?.repo && p.archive_sha256 === archive.sha256 && [...p.exclude].sort().join() === exNow);
     const busy = this.w.running.has("pilot");
     const ready = checks.every(([ok]) => ok) && !!pv && (!same || same.status === "partial") && !this.pilotsError && !busy;
+    const refused = (p?: GithubPilot | false | null) => !!p && p.status === "submitted" && !!p.error?.startsWith("the pilots repository refused");
     const label = busy ? "Submitting…" : same?.status === "partial" ? "Resume the submission" : "Submit this run as a GitHub pilot";
     return `<section class="card submit-card">
       <h3>Pilot on GitHub <span class="badge sandbox" title="public, unreviewed; not a certificate">Unreviewed</span></h3>
@@ -218,11 +219,11 @@ export class ReportStep implements Step {
       ${this.pilotsError ? `<p class="warn-inline small">Couldn't read this package's pilot records: ${esc(this.pilotsError.message)}</p>` : ""}
       <div class="actions"><button id="rp-pilot" class="primary" ${ready ? "" : "disabled"}>${label}</button></div>
       ${same?.status === "published" ? `<p class="hint">This ZIP is pilot run v${same.version}. A new run (then report and ZIP) becomes the next version on the same issue.</p>` : ""}
-      ${same?.status === "submitted" && same.error ? `<p class="warn-inline small">${esc(same.error)}. The run stays as it is; fix the cause, then create the ZIP again to submit a new run.</p>` : ""}
-      ${same?.status === "submitted" && !same.error ? `<p class="hint">This ZIP is submitted. The pilots repository checks it, copies the files into its own release and numbers the run, usually within minutes; the issue shows its reply.</p>` : ""}
+      ${refused(same) ? `<p class="warn-inline small">${esc(same!.error!)}. The run stays as it is; fix the cause, then create the ZIP again to submit a new run.</p>` : ""}
+      ${same?.status === "submitted" && !refused(same) ? `<p class="hint">This ZIP is submitted. The pilots repository checks it, copies the files into its own release and numbers the run, usually within minutes; the issue shows its reply.</p>` : ""}
       ${same?.status === "partial" && same.error ? `<p class="warn-inline small">The last attempt stopped: ${esc(same.error)}. Submitting again resumes it without duplicates.</p>` : ""}
       ${this.pilots.length ? `<h4>Pilot runs of this package</h4><ul class="deposits">${[...this.pilots].reverse().map((p) => `<li class="deposit ${p.status}">
-        <div><span class="badge st-${p.status === "published" ? "published" : "draft"}">${p.status === "published" ? `v${p.version}` : p.status === "submitted" ? (p.error ? "Refused" : "Waiting for the copy") : "Incomplete"}</span> ${esc(when(p.published_at ?? p.created_at))} · <code>${esc(p.run_key)}</code>${p.synthetic ? ` <span class="badge sandbox">Synthetic</span>` : ""}</div>
+        <div><span class="badge st-${p.status === "published" ? "published" : "draft"}">${p.status === "published" ? `v${p.version}` : p.status === "submitted" ? (refused(p) ? "Refused" : "Waiting for the copy") : "Incomplete"}</span> ${esc(when(p.published_at ?? p.created_at))} · <code>${esc(p.run_key)}</code>${p.synthetic ? ` <span class="badge sandbox">Synthetic</span>` : ""}</div>
         <div class="actions">${p.issue_url ? `<a href="#" data-open="${esc(p.issue_url)}">Issue</a>` : ""}${p.release_url ?? p.files_url ? ` · <a href="#" data-open="${esc((p.release_url ?? p.files_url)!)}">Files</a>` : ""}${p.comment_url ? ` · <a href="#" data-open="${esc(p.comment_url)}">Run comment</a>` : ""}</div></li>`).join("")}</ul>` : ""}
     </section>`;
   }
@@ -231,7 +232,7 @@ export class ReportStep implements Step {
     const acct = this.pilotAccount!;
     const ok = await confirmDialog(
       "Submit a GitHub pilot",
-      `<p>The issue for this reproduction in <b>${esc(acct.repo)}</b> gets a comment for this run${this.note.trim() ? ", with your note" : ""}, and the run's files are published as a release in your fork of that repository (created if needed), from which it copies them. <b>All of it is public.</b></p>
+      `<p>The issue for this reproduction in <b>${esc(acct.repo)}</b> gets a comment for this run${this.note.trim() ? ", with your note" : ""}, and the run's files are published as a release in your fork of that repository (created if needed; if you own the repository, a draft there instead), from which it copies them. <b>All of it is public.</b></p>
        <p class="hint">Copied releases are kept unchanged; later runs are added as new versions. The record says “pilot, unreviewed”.</p>`,
       "Submit",
     );

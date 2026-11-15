@@ -432,7 +432,7 @@
             }
           ],
           "default": null,
-          "description": "why the last attempt stopped",
+          "description": "why the last attempt stopped, or why the pilots repository refused the run",
           "title": "Error"
         },
         "created_at": {
@@ -452,6 +452,20 @@
           ],
           "default": null,
           "title": "Published At"
+        },
+        "checked_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "when the pilots repository was last asked about this run",
+          "title": "Checked At"
         }
       },
       "required": [

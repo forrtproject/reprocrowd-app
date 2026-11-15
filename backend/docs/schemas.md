@@ -148,9 +148,10 @@ hash + left-out groups); a retry resumes the same record.
 | `assets` | list of [PilotAsset](#pilotasset) |  |  |
 | `synthetic` | boolean |  | default `False` |
 | `note` | string |  | default `` |
-| `error` | string \| null |  | why the last attempt stopped |
+| `error` | string \| null |  | why the last attempt stopped, or why the pilots repository refused the run |
 | `created_at` | string (date-time) | yes |  |
 | `published_at` | string (date-time) \| null |  |  |
+| `checked_at` | string (date-time) \| null |  | when the pilots repository was last asked about this run |
 
 ### Identifier
 

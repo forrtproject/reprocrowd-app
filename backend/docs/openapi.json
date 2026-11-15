@@ -8850,7 +8850,7 @@
                 }
               }
             },
-            "description": "`pilot_asset_too_large`: A pilot run's files must total under 200 MB; `github_rejected`: GitHub rejected the request"
+            "description": "`pilot_asset_too_large`: A pilot run's files must total at most 199 MiB (200 MiB with pilot.json); `github_rejected`: GitHub rejected the request"
           },
           "409": {
             "content": {
@@ -8976,7 +8976,7 @@
                 }
               }
             },
-            "description": "`pilot_asset_too_large`: A pilot run's files must total under 200 MB"
+            "description": "`pilot_asset_too_large`: A pilot run's files must total at most 199 MiB (200 MiB with pilot.json)"
           },
           "409": {
             "content": {
@@ -12008,7 +12008,7 @@
               }
             ],
             "title": "Error",
-            "description": "why the last attempt stopped"
+            "description": "why the last attempt stopped, or why the pilots repository refused the run"
           },
           "created_at": {
             "type": "string",
@@ -12026,6 +12026,19 @@
               }
             ],
             "title": "Published At"
+          },
+          "checked_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checked At",
+            "description": "when the pilots repository was last asked about this run"
           }
         },
         "additionalProperties": false,

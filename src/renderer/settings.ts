@@ -50,7 +50,7 @@ export async function settingsDialog(onSaved: (changed: boolean) => void, focus?
       <p class="hint">Deposits are submitted to this Zenodo community, whose curators accept them.</p>
     </fieldset>
     <fieldset id="set-github"><legend>GitHub pilots</legend>
-      <p class="hint">A pilot is a public, unreviewed record of a reproduction on GitHub: an issue per reproduction and the files of every run. Any GitHub account can submit: the files go to your fork of the repository, and the repository copies them into its own release.</p>
+      <p class="hint">A pilot is a public, unreviewed record of a reproduction on GitHub: an issue per reproduction and the files of every run. Any GitHub account can submit to a public repository that allows forks: the files go to your fork (or, if you own the repository, a draft release there), and the repository's Action copies them into its own release.</p>
       <label>Repository <input name="ghrepo" value="${esc(cfg.github.repo)}" placeholder="owner/name" spellcheck="false" /></label>
       <p class="gh-login small"></p>
       <div class="actions"><button type="button" id="gh-verify">Check</button><button type="button" id="gh-login" class="primary" hidden>Log in with gh</button></div>

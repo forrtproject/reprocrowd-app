@@ -215,9 +215,10 @@ class GithubPilot(Model):
     assets: list[PilotAsset] = Field(default_factory=list)
     synthetic: bool = False
     note: str = ""
-    error: str | None = Field(default=None, description="why the last attempt stopped")
+    error: str | None = Field(default=None, description="why the last attempt stopped, or why the pilots repository refused the run")
     created_at: datetime
     published_at: datetime | None = None
+    checked_at: datetime | None = Field(default=None, description="when the pilots repository was last asked about this run")
 
 
 class PackageMeta(Model):

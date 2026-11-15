@@ -57,6 +57,7 @@ from .zenodo import GROUPS, _check_published_paper, _group, _publication_zip, co
 BODY_LIMIT = 65_000  # GitHub's issue/comment body limit is 65,536 characters
 ROW_LIMIT = 60
 FORK_WAIT = 30  # × 2 s: GitHub creates forks asynchronously
+RECHECK_S = 60  # listing records checks a submitted run on GitHub at most this often (unauthenticated reads are rate-limited)
 SYNTHETIC = ("**SYNTHETIC test fixture — not a research result.** The paper, data and DOI are invented for testing "
              "the publication workflow.")
 EXTRACT = {"report.html": "report.html", "comparison.json": "comparison.json", "evidence/execution.json": "execution.json",
@@ -202,10 +203,10 @@ def _build_files(plan: Plan, tmp: Path) -> None:
                 files.append(out)
     plan.files = [Asset(f.name, f, sha256_file(f), f.stat().st_size) for f in files]
     plan.licences = _archived_licences(next((f for f in files if f.name == licensing.FILE), None))
-    total = sum(a.bytes for a in plan.files)
-    if total > MAX_RUN - 1024**2:  # leaves room for pilot.json
-        raise invalid("pilot_asset_too_large", f"a pilot run's files must total under {MAX_RUN // 1024**2} MB; these total "
-                                               f"{total / 1024**2:.0f} MB. Leave out the inputs (exclude: inputs) or deposit on Zenodo instead")
+    total, limit = sum(a.bytes for a in plan.files), MAX_RUN - 1024**2  # the Action's limit includes pilot.json: leave 1 MiB for it
+    if total > limit:
+        raise invalid("pilot_asset_too_large", f"a pilot run's files must total at most {limit // 1024**2} MiB; these total "
+                                               f"{total / 1024**2:.0f} MiB. Leave out the inputs (exclude: inputs) or deposit on Zenodo instead")
 
 
 def _evidence(plan: Plan) -> dict[str, Any]:
@@ -396,7 +397,7 @@ def submit(pkg: Package, *, token: str | None, repo: str | None, exclude: list[s
         try:
             files_repo, branch = _files_repo(gh, info, login)
             rec.files_repo = files_repo
-            _issue(gh, plan, rec, pkg, login)
+            _issue(gh, plan, rec, pkg)
             _release(gh, plan, rec, pkg, Path(tmp), files_repo, branch)
             _comment(gh, plan, rec, pkg)
         except Exception as e:
@@ -426,17 +427,16 @@ def _files_repo(gh: GitHub, info: dict[str, Any], login: str) -> tuple[str, str]
     raise ApiError(502, "github_error", f"GitHub is still creating the fork {name}; submit again in a minute")
 
 
-def _issue(gh: GitHub, plan: Plan, rec: GithubPilot, pkg: Package, login: str) -> None:
+def _issue(gh: GitHub, plan: Plan, rec: GithubPilot, pkg: Package) -> None:
     mark = issue_mark(plan.reproduction_id)
     known = rec.issue_number or next((x.issue_number for x in pkg.load().reprocrowd.pilots if x.repo == plan.repo and x.issue_number), None)
     issue = None
     if known:
         r = gh.request("GET", f"/repos/{plan.repo}/issues/{known}", ok=(200, 404, 410))
         issue = r.json() if r.status_code == 200 and mark in (r.json().get("body") or "") else None
-    for query in ({"creator": login}, {"labels": "reprocrowd-pilot"}):  # unlabelled until the Action has copied a run
-        if issue is None:
-            issue = next((i for i in gh.paged(f"/repos/{plan.repo}/issues", query | {"state": "all"})
-                          if "pull_request" not in i and mark in (i.get("body") or "")), None)
+    if issue is None:  # all issues: one is unlabelled until the Action has copied a run, and may be another login's
+        issue = next((i for i in gh.paged(f"/repos/{plan.repo}/issues", {"state": "all"})
+                      if "pull_request" not in i and mark in (i.get("body") or "")), None)
     if issue is None:
         issue = gh.json("POST", f"/repos/{plan.repo}/issues", json={"title": _issue_title(plan), "body": _issue_body(plan)})
     rec.issue_number, rec.issue_url = issue["number"], issue["html_url"]
@@ -516,8 +516,10 @@ def refresh(pkg: Package, recs: list[GithubPilot] | None = None) -> list[GithubP
     api = settings().github_api_url.rstrip("/")
     headers = {"Accept": "application/vnd.github+json", "User-Agent": f"ReproCrowd/{__version__}"}
     for rec in recs:
-        if rec.status != "submitted":
+        if rec.status != "submitted" or (rec.checked_at and (now() - rec.checked_at).total_seconds() < RECHECK_S):
             continue
+        rec.checked_at = now()
+        _save(pkg, rec)
         try:
             r = httpx.get(f"{api}/repos/{rec.repo}/releases/tags/{rec.tag}", timeout=10, headers=headers)
             if r.status_code != 200 and rec.issue_number and (reason := _refusal(api, rec, headers)) and reason != rec.error:
@@ -540,7 +542,7 @@ def refresh(pkg: Package, recs: list[GithubPilot] | None = None) -> list[GithubP
 def _refusal(api: str, rec: GithubPilot, headers: dict[str, str]) -> str | None:
     """The Action's reply refusing this run, if any."""
     url: str | None = f"{api}/repos/{rec.repo}/issues/{rec.issue_number}/comments?per_page=100"
-    for _ in range(10):
+    for _ in range(5):
         if url is None:
             return None
         r = httpx.get(url, timeout=10, headers=headers)

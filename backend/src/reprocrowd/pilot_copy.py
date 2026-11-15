@@ -41,7 +41,7 @@ ISSUE_OF_RE = re.compile(r"<!-- reprocrowd-pilot-issue:(\d+) -->")  # in each co
 RUNS_START, RUNS_END = "<!-- reprocrowd-runs -->", "<!-- /reprocrowd-runs -->"
 DOI_RE = re.compile(r"^10\.\d{4,9}/[^\s<>\[\]()`|]+$")
 POLICY_RE = re.compile(r"^reprocrowd-compare/\d+$")
-LICENCES = {"CC0-1.0", "CC-BY-4.0", "MIT", "none in this package", "per file, see licenses.json"}
+CODE_LICENCES = {"MIT", "CC-BY-4.0"}
 DISCLAIMER = ("**Pilot record — unreviewed.** Made with ReproCrowd by recreating the analysis from the article's text and "
               "published data. Agreement under the recorded comparison settings shows that this code produced the "
               "reported numbers from these inputs. It is not peer review, a certificate of the study's validity, or an endorsement. The authors' "
@@ -181,8 +181,10 @@ def _copy(api: Api, repo: str, issue: dict[str, Any], comment: dict[str, Any], r
     _validate(pilot)
     data = {a["name"]: _download(api, src_repo, a) for a in assets}
     _check_assets(source, pilot, data)
+    summary, code = _from_zip(next(b for n, b in data.items() if n.endswith(".zip")))
     version = 1 + max((_version(r) or 0 for r in ours if not r.get("draft")), default=0)
-    body = _release_body(pilot, version, author, issue["number"], [(n, len(b), hashlib.sha256(b).hexdigest()) for n, b in data.items()])
+    body = _release_body(pilot, summary | {"version": version, "run_key": key}, code, author, issue["number"],
+                         [(n, len(b), hashlib.sha256(b).hexdigest()) for n, b in data.items()])
     branch = api.json("GET", f"/repos/{repo}").get("default_branch") or "main"
     keep = {"tag_name": tag, "target_commitish": branch}  # GitHub drops a draft's tag when it is edited without tag_name
     if here:
@@ -239,22 +241,37 @@ def _check_assets(release: dict[str, Any], pilot: dict[str, Any], data: dict[str
             names = set(zipfile.ZipFile(io.BytesIO(data[zips[0]])).namelist())
         except zipfile.BadZipFile:
             raise Refused("the ZIP can't be read")
-        if not {"datapackage.json", "licenses.json"} <= names:
-            raise Refused("the ZIP lacks `datapackage.json` or `licenses.json`")
+        if not {"datapackage.json", "licenses.json", "comparison.json"} <= names:
+            raise Refused("the ZIP lacks `datapackage.json`, `licenses.json` or `comparison.json`")
 
 
 def _validate(pilot: dict[str, Any]) -> None:
-    """pilot.json is the submitter's: only checked values reach this repository's release notes."""
-    c = pilot.get("comparison") or {}
-    s, st, lic = c.get("summary") or {}, c.get("settings") or {}, pilot.get("licenses") or {}
-    rounding = st.get("rounding", "reported")
-    ok = (bool(DOI_RE.match(str((pilot.get("paper") or {}).get("doi") or "")))
-          and all(type(s.get(k, 0)) is int for k in ("match", "within")) and type(c.get("numeric_targets", 0)) is int
-          and type(st.get("threshold", 0)) in (int, float) and (rounding == "reported" or type(rounding) is int)
-          and (c.get("policy") is None or bool(POLICY_RE.match(str(c["policy"]))))
-          and all(lic.get(k) in LICENCES for k in ("metadata", "outputs", "code")) and type(pilot.get("synthetic", False)) is bool)
-    if not ok:
-        raise Refused("`pilot.json` has values this repository doesn't accept (DOI, comparison counts, policy or licences)")
+    """pilot.json is the submitter's: of its values, only the DOI and the synthetic flag reach the release notes."""
+    if not DOI_RE.match(str((pilot.get("paper") or {}).get("doi") or "")) or type(pilot.get("synthetic", False)) is not bool:
+        raise Refused("`pilot.json` has a DOI or synthetic flag this repository doesn't accept")
+
+
+def _from_zip(zipped: bytes) -> tuple[dict[str, Any], str]:
+    """The comparison summary and the new code's licence, from the archived comparison.json and licenses.json (never
+    from pilot.json), checked before they reach the release notes."""
+    try:
+        with zipfile.ZipFile(io.BytesIO(zipped)) as z:
+            cmp, lic = json.loads(z.read("comparison.json")), json.loads(z.read("licenses.json"))
+    except (KeyError, ValueError, zipfile.BadZipFile):
+        raise Refused("the ZIP lacks a readable `comparison.json` or `licenses.json`")
+    s, st, rows = cmp.get("summary"), cmp.get("settings") or {}, cmp.get("rows")
+    files = lic.get("files") if isinstance(lic, dict) else None
+    rounding = st.get("rounding", "reported") if isinstance(st, dict) else None
+    ok = (isinstance(s, dict) and all(type(v) is int for v in s.values()) and isinstance(rows, list) and all(isinstance(r, dict) for r in rows)
+          and isinstance(st, dict) and type(st.get("threshold", 0)) in (int, float) and (rounding == "reported" or type(rounding) is int)
+          and (cmp.get("policy") is None or bool(POLICY_RE.match(str(cmp["policy"]))))
+          and lic.get("policy") == "reprocrowd-licensing/1" and isinstance(files, list) and all(isinstance(f, dict) for f in files))
+    code = sorted({str(f.get("license")) for f in files or [] if f.get("kind") in ("script", "code")}) if ok else []
+    if not ok or not set(code) <= CODE_LICENCES:
+        raise Refused("the archived `comparison.json` or `licenses.json` has values this repository doesn't accept")
+    summary = {"match": s.get("match", 0), "within": s.get("within", 0), "numeric": sum(r.get("type") != "figure" for r in rows),
+               "threshold": st.get("threshold", 0), "rounding": rounding, "policy": cmp.get("policy")}
+    return summary, code[0] if len(code) == 1 else ("none in this package" if not code else "per file, see `licenses.json`")
 
 
 def _version(release: dict[str, Any]) -> int | None:
@@ -262,25 +279,16 @@ def _version(release: dict[str, Any]) -> int | None:
     return int(m.group(1)) if m else None
 
 
-def _summary(pilot: dict[str, Any], version: int) -> dict[str, Any]:
-    c = pilot.get("comparison") or {}
-    return {"version": version, "run_key": pilot.get("run_key"), "match": (c.get("summary") or {}).get("match", 0),
-            "within": (c.get("summary") or {}).get("within", 0), "numeric": c.get("numeric_targets", 0),
-            "threshold": (c.get("settings") or {}).get("threshold", 0), "rounding": (c.get("settings") or {}).get("rounding", "reported"),
-            "policy": c.get("policy")}
-
-
-def _release_body(pilot: dict[str, Any], version: int, author: str, issue: int, files: list[tuple[str, int, str]]) -> str:
-    s = _summary(pilot, version)
-    lic = pilot.get("licenses") or {}
+def _release_body(pilot: dict[str, Any], s: dict[str, Any], code: str, author: str, issue: int, files: list[tuple[str, int, str]]) -> str:
     synthetic = "> [!CAUTION]\n> **SYNTHETIC test fixture — not a research result.**\n\n" if pilot.get("synthetic") else ""
     rows = "\n".join(f"| `{n}` | {size} | `{sha}` |" for n, size, sha in files)
     return (f"{synthetic}> [!WARNING]\n> {DISCLAIMER}\n\n"
-            f"**Run v{version}** of reproduction `{pilot['reproduction_id']}` (run key `{pilot['run_key']}`) of "
-            f"https://doi.org/{(pilot.get('paper') or {}).get('doi')}, submitted by [{author}](https://github.com/{author}) in #{issue}.\n\n"
+            f"**Run v{s['version']}** of reproduction `{pilot['reproduction_id']}` (run key `{pilot['run_key']}`) of "
+            f"https://doi.org/{pilot['paper']['doi']}, submitted by [{author}](https://github.com/{author}) in #{issue}.\n\n"
             f"{summary_line(s)}. Policy `{s['policy']}`.\n\n| File | Bytes | SHA-256 |\n|---|---:|---|\n{rows}\n\n"
-            f"Metadata and `pilot.json`: {lic.get('metadata')}. Report, comparison, evidence and outputs: {lic.get('outputs')}. "
-            f"New analysis code: {lic.get('code')}. Third-party material keeps its original licences; `licenses.json` lists every file.\n\n"
+            f"Licences (policy `reprocrowd-licensing/1`, each file listed in `licenses.json`): metadata and `pilot.json` CC0-1.0; "
+            f"report, comparison, evidence and outputs CC-BY-4.0; new analysis code {code}. The article's material and the input "
+            "data and code keep their original licences.\n\n"
             f"{release_mark(pilot['tag'])}\n<!-- reprocrowd-pilot-issue:{issue} -->\n<!-- reprocrowd-summary: {json.dumps(s, sort_keys=True)} -->\n")
 
 
@@ -316,7 +324,10 @@ def _update_runs(api: Api, repo: str, number: int, rid: str) -> None:
         new = old[:old.index(RUNS_START)] + section + old[old.index(RUNS_END) + len(RUNS_END):]
     else:
         new = old.rstrip() + "\n\n" + section + "\n"
-    api.request("PATCH", f"/repos/{repo}/issues/{number}", json={"body": new[:65_000]})
+    if len(new) > 65_000:  # GitHub's limit; cutting could drop the end marker. The runs stay listed in the releases and comments.
+        print(f"The table of runs doesn't fit in #{number}'s description; left unchanged.")
+        return
+    api.request("PATCH", f"/repos/{repo}/issues/{number}", json={"body": new})
 
 
 def main() -> None:
