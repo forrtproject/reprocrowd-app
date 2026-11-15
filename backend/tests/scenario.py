@@ -168,8 +168,13 @@ argv = ["{exe}", "{path(HERE / 'fake_agent.py')}", "python-ok", "--tools", "{{to
                     codegen["allow_exec"] = True
                 else:
                     argv = no_exec.json()["argv"]  # Bash may appear only as denied (--disallowedTools Bash), never as allowed
-                    allowed = argv[argv.index("--allowedTools") + 1] if "--allowedTools" in argv else ""
-                    assert "Bash" not in allowed, "no-analysis argv still allows Bash"
+                    allowed, taking = [], False  # every value of every --allowedTools (variadic, possibly repeated)
+                    for arg in argv:
+                        if arg.startswith("-"):
+                            taking = arg in ("--allowedTools", "--allowed-tools")
+                        elif taking:
+                            allowed.append(arg)
+                    assert not any("Bash" in a for a in allowed), "no-analysis argv still allows Bash"
             agent_preview = request("agent-preview", "POST", p + "/jobs:preview", codegen)
             def job(stage, body, deadline_s=30):
                 start = time.monotonic()
