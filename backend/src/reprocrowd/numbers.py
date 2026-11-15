@@ -1,14 +1,16 @@
 """Printed numbers and reported-precision comparisons. Pure; no filesystem or provider code.
 
-Expected tokens are decimal data. Reproduced JSON floats retain their exact binary
-value, preserving Python's historical half-even rounding at ties.
+Expected tokens and reproduced values are both read as decimals: a JSON float is taken
+as its shortest round-trip text (2.675, not its binary approximation 2.67499...).
+At the printed precision a value matches if rounding it half-up or half-down gives the
+printed number, so exact ties match either neighbour (2.675 -> 2.67 or 2.68).
 """
 from __future__ import annotations
 
 import math
 import re
 from dataclasses import dataclass
-from decimal import Decimal, InvalidOperation, ROUND_HALF_EVEN, localcontext
+from decimal import Decimal, InvalidOperation, ROUND_HALF_DOWN, ROUND_HALF_EVEN, ROUND_HALF_UP, localcontext
 from typing import Any
 
 from pydantic_core import PydanticCustomError
@@ -85,22 +87,28 @@ def reproduced_decimal(value: Any) -> Decimal:
     if isinstance(value, float):
         if not math.isfinite(value):
             raise ValueError("non-finite result")
-        return Decimal(value)
+        return Decimal(repr(value))  # the decimal the analysis wrote, not its binary approximation
     return parse_printed(value).value
 
 
-def round_to(value: Decimal, exponent: int) -> Decimal:
+def round_to(value: Decimal, exponent: int, rounding: str = ROUND_HALF_EVEN) -> Decimal:
     with localcontext() as ctx:
         ctx.prec = max(50, len(value.as_tuple().digits) + abs(exponent) + abs(value.adjusted()) + 10)
-        return value.quantize(Decimal(1).scaleb(exponent), rounding=ROUND_HALF_EVEN)
+        return value.quantize(Decimal(1).scaleb(exponent), rounding=rounding)
+
+
+def rounded_both(value: Decimal, exponent: int) -> tuple[Decimal, Decimal]:
+    """The value rounded at a tie towards and away from zero; equal unless it is an exact tie."""
+    return round_to(value, exponent, ROUND_HALF_DOWN), round_to(value, exponent, ROUND_HALF_UP)
 
 
 def compare_num(expected: Decimal, reproduced: Decimal, comparator: str, exponent: int,
                 threshold: float) -> tuple[str, float]:
-    rounded, wanted = round_to(reproduced, exponent), round_to(expected, exponent)
+    rounded, wanted = set(rounded_both(reproduced, exponent)), set(rounded_both(expected, exponent))
     deviation = float(abs(reproduced - expected) / abs(expected) * 100) if expected else (0.0 if not reproduced else math.inf)
+    # Either tie direction is accepted; strict bounds compare unrounded values.
     matches = {"<": reproduced < expected, ">": reproduced > expected,
-               "<=": rounded <= wanted, ">=": rounded >= wanted}.get(comparator, rounded == wanted)
+               "<=": min(rounded) <= max(wanted), ">=": max(rounded) >= min(wanted)}.get(comparator, bool(rounded & wanted))
     if matches:
         return "match", deviation
     if comparator not in ("<", ">") and deviation <= threshold:

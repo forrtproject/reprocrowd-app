@@ -9985,15 +9985,21 @@
         "properties": {
           "policy": {
             "type": "string",
-            "const": "reprocrowd-compare/2",
+            "enum": [
+              "reprocrowd-compare/3",
+              "reprocrowd-compare/2"
+            ],
             "title": "Policy",
-            "default": "reprocrowd-compare/2"
+            "default": "reprocrowd-compare/3"
           },
           "rounding_mode": {
             "type": "string",
-            "const": "half_even_exact_binary",
+            "enum": [
+              "either_direction_at_ties",
+              "half_even_exact_binary"
+            ],
             "title": "Rounding Mode",
-            "default": "half_even_exact_binary"
+            "default": "either_direction_at_ties"
           },
           "basis": {
             "anyOf": [
@@ -10069,9 +10075,12 @@
           },
           "policy": {
             "type": "string",
-            "const": "reprocrowd-compare/2",
+            "enum": [
+              "reprocrowd-compare/3",
+              "reprocrowd-compare/2"
+            ],
             "title": "Policy",
-            "default": "reprocrowd-compare/2"
+            "default": "reprocrowd-compare/3"
           }
         },
         "additionalProperties": false,

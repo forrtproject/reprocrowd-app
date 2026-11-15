@@ -28,8 +28,13 @@ def test_precision_and_ties():
     assert row(".170", .1704).status == "match"
     assert row("~10.0", 10.4).status == "within"
     assert row("<.001", .001001).status == "deviation"
-    assert row(".12", .125).status == "match"
-    assert row("2.68", 2.675).status == "within"
+    # A tie matches either neighbour: authors' software rounds half-up or half-even.
+    for printed, value in ((".12", .125), (".13", .125), ("2.67", 2.675), ("2.68", 2.675), ("-2.67", -2.675), ("-2.68", -2.675)):
+        assert row(printed, value).status == "match", (printed, value)
+    assert row("2.68", 2.6749).status == "within"  # not a tie
+    assert "2.67 or 2.68 (tie)" in row("2.68", 2.675).reproduced_text
+    assert row("<=.05", .055).status == "match" and row("<=.05", .0551).status != "match"
+    assert row(">=.06", .055).status == "match" and row(">=.06", .0549).status != "match"
     assert row(.17, .1704, decimals=2).status == "match"
     assert row(.17, .1704).precision == "inferred"
     assert round_to(Decimal("1200"), 2) == Decimal("1.2e3")

@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from decimal import Decimal, InvalidOperation
 
-from .numbers import parse_printed, reproduced_decimal, round_to, compare_num, quantum
+from .numbers import parse_printed, reproduced_decimal, rounded_both, compare_num, quantum
 
 import math
 import re
@@ -117,9 +117,10 @@ def compare_target(t: Target, out: OutputResult | None, st: CompareSettings) -> 
     exponent = printed.quantum if t.printed is not None or t.decimals is None else -t.decimals
     used_exponent = exponent if st.rounding == "reported" else -st.rounding
     status, dev = compare_num(printed.value, reproduced_decimal(out.value), t.comparator or "=", used_exponent, st.threshold)
-    rounded = round_to(reproduced_decimal(out.value), used_exponent)
+    down, up = rounded_both(reproduced_decimal(out.value), used_exponent)
+    rounded = f"{down:f}" if down == up else f"{down:f} or {up:f} (tie)"
     suffix = "" if st.rounding == "reported" else f"; rounded to {st.rounding} decimals (setting)"
-    return CompareRow(**base, status=status, deviation=_finite(dev), reproduced_text=f"{rounded:f}  ({_fmt(out.value)}){suffix}",
+    return CompareRow(**base, status=status, deviation=_finite(dev), reproduced_text=f"{rounded}  ({_fmt(out.value)}){suffix}",
                       precision="printed" if t.printed is not None else "explicit" if t.decimals is not None else "inferred", quantum=exponent)
 
 

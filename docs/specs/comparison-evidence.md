@@ -1,6 +1,6 @@
 # Comparison and execution evidence contract
 
-Status: agreed with Opus 5.5, 14 November 2026. The amendments B1–B7 in [opus-review.md](opus-review.md) are adopted verbatim and supersede conflicting draft wording below. Their acceptance checks and bounded scope are part of this agreement. Refs #82 and the comparison/output subset of #12.
+Status: agreed with Opus 5.5, 14 November 2026. Amended 15 November 2026 by Lukas: a reproduced value at an exact tie matches the printed value rounded in either direction, with reproduced JSON numbers read as decimals (policy `reprocrowd-compare/3`). This supersedes the half-even exact-binary rule below and in the review's Decisions to review 1. The amendments B1–B7 in [opus-review.md](opus-review.md) are adopted verbatim and supersede conflicting draft wording below. Their acceptance checks and bounded scope are part of this agreement. Refs #82 and the comparison/output subset of #12.
 
 ## Scope and current behavior
 

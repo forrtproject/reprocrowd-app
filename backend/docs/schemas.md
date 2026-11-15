@@ -780,8 +780,8 @@ GET …/comparison, and comparison.json written with the report.
 
 | Field | Type | Req. | Description |
 |---|---|---|---|
-| `policy` | `"reprocrowd-compare/2"` |  | default `reprocrowd-compare/2` |
-| `rounding_mode` | `"half_even_exact_binary"` |  | default `half_even_exact_binary` |
+| `policy` | `"reprocrowd-compare/3"` \| `"reprocrowd-compare/2"` |  | default `reprocrowd-compare/3` |
+| `rounding_mode` | `"either_direction_at_ties"` \| `"half_even_exact_binary"` |  | default `either_direction_at_ties` |
 | `basis` | [ComparisonBasis](#comparisonbasis) \| null |  |  |
 | `settings` | [CompareSettings](#comparesettings) | yes |  |
 | `summary` | map of integer | yes | number of targets per status |
@@ -834,4 +834,4 @@ GET …/comparison, and comparison.json written with the report.
 | `results_sha256` | string | yes |  |
 | `results_schema_sha256` | string | yes |  |
 | `created_at` | string (date-time) | yes |  |
-| `policy` | `"reprocrowd-compare/2"` |  | default `reprocrowd-compare/2` |
+| `policy` | `"reprocrowd-compare/3"` \| `"reprocrowd-compare/2"` |  | default `reprocrowd-compare/3` |

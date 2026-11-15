@@ -10,6 +10,10 @@ from pydantic import Field
 from .common import Model
 
 Status = Literal["match", "within", "deviation", "missing", "figure", "unparsable"]
+# /3 (current): decimal reading of reproduced values; a tie matches either neighbour.
+# /2 (recorded by earlier reports): exact binary value, half-even rounding.
+Policy = Literal["reprocrowd-compare/3", "reprocrowd-compare/2"]
+RoundingMode = Literal["either_direction_at_ties", "half_even_exact_binary"]
 STATUS_LABEL: dict[str, str] = {
     "match": "✓ match",
     "within": "≈ within tolerance",
@@ -56,14 +60,14 @@ class ComparisonBasis(Model):
     results_sha256: str
     results_schema_sha256: str
     created_at: datetime
-    policy: Literal["reprocrowd-compare/2"] = "reprocrowd-compare/2"
+    policy: Policy = "reprocrowd-compare/3"
 
 
 class Comparison(Model):
     """GET …/comparison, and comparison.json written with the report."""
 
-    policy: Literal["reprocrowd-compare/2"] = "reprocrowd-compare/2"
-    rounding_mode: Literal["half_even_exact_binary"] = "half_even_exact_binary"
+    policy: Policy = "reprocrowd-compare/3"
+    rounding_mode: RoundingMode = "either_direction_at_ties"
     basis: ComparisonBasis | None = None
     settings: CompareSettings
     summary: dict[str, int] = Field(description="number of targets per status")

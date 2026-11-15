@@ -287,8 +287,11 @@
           "type": "string"
         },
         "policy": {
-          "const": "reprocrowd-compare/2",
-          "default": "reprocrowd-compare/2",
+          "default": "reprocrowd-compare/3",
+          "enum": [
+            "reprocrowd-compare/3",
+            "reprocrowd-compare/2"
+          ],
           "title": "Policy",
           "type": "string"
         }
@@ -328,14 +331,20 @@
   "description": "GET …/comparison, and comparison.json written with the report.",
   "properties": {
     "policy": {
-      "const": "reprocrowd-compare/2",
-      "default": "reprocrowd-compare/2",
+      "default": "reprocrowd-compare/3",
+      "enum": [
+        "reprocrowd-compare/3",
+        "reprocrowd-compare/2"
+      ],
       "title": "Policy",
       "type": "string"
     },
     "rounding_mode": {
-      "const": "half_even_exact_binary",
-      "default": "half_even_exact_binary",
+      "default": "either_direction_at_ties",
+      "enum": [
+        "either_direction_at_ties",
+        "half_even_exact_binary"
+      ],
       "title": "Rounding Mode",
       "type": "string"
     },
