@@ -121,7 +121,7 @@ def parse_codex(line: str) -> Iterable[Raw]:
     elif t == "item.started" and kind == "command_execution":
         yield ("tool_use", f"shell {item.get('command', '')}"[:TOOL_RESULT_MAX], "shell", None)
     elif t == "item.completed":
-        if kind == "agent_message" and str(item.get("text", "")).strip():
+        if kind == "agent_message" and isinstance(item.get("text"), str) and item["text"].strip():
             yield ("text", item["text"].strip(), None, None)
         elif kind == "command_execution":
             code = item.get("exit_code")
@@ -138,8 +138,8 @@ def parse_codex(line: str) -> Iterable[Raw]:
         yield ("result", f"turn completed ({u.get('input_tokens', '?')} input, {u.get('output_tokens', '?')} output tokens)", None, False)
     elif t == "turn.failed":
         yield ("result", str((ev.get("error") or {}).get("message") or "turn failed"), None, True)
-    elif t == "error":
-        yield ("log", str(ev.get("message") or "error"), None, True)
+    elif t == "error":  # often recoverable ("Reconnecting... 2/5"); a terminal failure arrives as turn.failed
+        yield ("log", str(ev.get("message") or "error"), None, None)
 
 
 PARSERS: dict[str, Callable[[str], Iterable[Raw]]] = {"claude-stream-json": parse_claude, "opencode-json": parse_opencode, "codex-json": parse_codex,

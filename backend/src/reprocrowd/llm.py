@@ -131,7 +131,7 @@ def run(pkg: Package, task: str, prompt: str, *, profile_name: str | None, templ
     failure = providers.terminal_error(out, p.output)
     if failure:
         extra = {"subtype": (providers.envelope(out) or {}).get("subtype")} if p.output == "claude-json" else {}
-        raise ApiError(502, "llm_call_failed", f"the LLM CLI reported an error: {failure}", {"call": call_id, "result": failure, **extra})
+        raise ApiError(502, "llm_call_failed", f"the LLM CLI reported an error: {failure}", {"call": call_id, "result": failure, "stdout": out[-2000:], **extra})
     return call
 
 

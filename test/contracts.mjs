@@ -67,4 +67,6 @@ assert.equal(restarts, 2);
 writes = [];
 assert.equal(await applyProfileChange(original, text, { backup: () => {}, write: (x) => writes.push(x), restart: async () => {} }), text);
 assert.deepEqual(writes, [text]);
+await assert.rejects(applyProfileChange(original, text, { backup: () => {}, write: () => {}, restart: async () => { throw new Error('fixture down'); } }),
+  /did not start with it either: fixture down/); // a failed rollback restart is reported, not hidden
 console.log('Model scoping, profile preservation/validation, and failed-restart rollback passed.');

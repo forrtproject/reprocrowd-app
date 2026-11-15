@@ -65,7 +65,7 @@ export class CodegenStep implements Step {
               <label class="inline" title="${esc(profile?.exec_tools.join(", ") ?? "")}"><input type="checkbox" id="rp-exec" ${st.allowExec ? "checked" : ""} ${running || unsupported ? "disabled" : ""} /> let it run the analysis (R, Python, Snakemake)</label>
             </div>
             <p class="hint">${unsupported ? "This profile cannot run editing-only: with execution allowed, the agent can edit files and run commands in the package folder. Re-apply its preset in Settings if it is Codex or OpenCode." : `Without “let it run the analysis”: ${RESTRICTION_LABELS[profile?.exec_restriction ?? ""] ?? ""}.`}${profile?.available === false ? " The executable was not found; install it or update the command in Settings." : ""}</p>
-            ${this.models?.needsLogin?.includes(cliOf(profile?.argv) as LlmModel["cli"]) ? `<p class="hint warn-inline">${esc(CLI_LABELS[cliOf(profile?.argv)] ?? cliOf(profile?.argv))} is installed but not signed in. <button id="rp-login" type="button">Log in…</button></p>` : ""}
+            ${this.models?.needsLogin?.includes(cliOf(profile?.argv) as LlmModel["cli"]) ? `<p class="hint warn-inline">${esc(CLI_LABELS[cliOf(profile?.argv)] ?? cliOf(profile?.argv))} is installed but not signed in. <button id="rp-login" type="button">Log in…</button> <button id="rp-login-check" type="button">Check again</button></p>` : ""}
             ${unsupported && !st.allowExec ? `<button id="rp-allow-exec" type="button">Let the agent run the analysis</button>` : ""}
             <div class="form-row"><button id="rp-prompt" ${ready ? "" : "disabled"}>Show prompt</button></div>
             <label>Extra instructions <textarea id="rp-instr" rows="2" ${running ? "disabled" : ""} placeholder="optional">${esc(st.agentInstructions)}</textarea></label>
@@ -118,6 +118,7 @@ export class CodegenStep implements Step {
       st.agentModel = modelSel.value;
       this.w.app.save();
     });
+    body.querySelector("#rp-login-check")?.addEventListener("click", async () => { this.models = await host.llmModels(true).catch(() => this.models); this.w.render(); });
     body.querySelector("#rp-login")?.addEventListener("click", () => host.cliLogin(cliOf(this.profiles.find((p) => p.name === prof.value)?.argv)).then((m) => this.w.setStatus(m), (e) => this.w.setStatus((e as Error).message, "error")));
     body.querySelector("#rp-allow-exec")?.addEventListener("click", () => { st.allowExec = true; this.w.app.save(); this.w.render(); });
     body.querySelector<HTMLInputElement>("#rp-exec")!.addEventListener("change", (e) => {

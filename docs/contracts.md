@@ -93,7 +93,7 @@ uv run python tests/provider_smoke.py --profile codex          # offline layers 
 uv run python tests/provider_smoke.py --live --profile claude
 uv run python tests/provider_smoke.py --live --profile codex --model gpt-6.1-terra --effort low
 uv run python tests/provider_smoke.py --live --profile opencode --model deepseek/deepseek-v4-pro --spend-ledger PATH --max-usd 0.10
-uv run python tests/scenario.py --live --llm codex --agent codex --model gpt-6.1-terra --effort low
+uv run python tests/scenario.py --live --llm codex --agent codex --model gpt-6.1-terra --effort low --allow-exec   # Codex has no editing-only mode
 uv run python tests/scenario.py --live --llm opencode --agent opencode --model deepseek/deepseek-v4-pro --spend-ledger PATH --max-usd 0.30
 ```
 

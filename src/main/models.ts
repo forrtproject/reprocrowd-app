@@ -98,6 +98,8 @@ export function detectLlmModels(refresh = false): Promise<ModelSet> {
 async function detect(): Promise<ModelSet> {
   const lists: { cli: Cli; command: string }[] = [];
   if (which("opencode")) lists.push({ cli: "opencode", command: "opencode models" });
+  // T3 Code's list is shown for information only: no shipped profile runs t3code, so its models are labelled
+  // "no compatible profile" and can't be selected for a run, whichever providers they come from.
   if (which("t3code")) lists.push({ cli: "t3", command: "t3code models" });
   else if (which("t3")) lists.push({ cli: "t3", command: "t3 models" });
   const hasCodex = !!which("codex");

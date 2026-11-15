@@ -108,7 +108,7 @@ export interface LlmCall {
   exit_code: number | null;
 }
 /** What a call would send (POST …:preview); nothing was run. */
-export interface PromptPreview { available: boolean; output_protocol: string; exec_restriction: string; timeout_s: number; structured_output: boolean; prompt: string; argv: string[]; profile: string; model: string; effort: string; output_schema?: string | null; env?: Record<string, string> }
+export interface PromptPreview { available: boolean; output_protocol: string; exec_restriction: "tool_allowlist" | "cli_settings" | "unsupported" | "not_applicable"; timeout_s: number; structured_output: boolean; prompt: string; argv: string[]; profile: string; model: string; effort: string; output_schema?: string | null; env?: Record<string, string> }
 export interface LlmEntry<T> { base: T; edit?: Partial<T> | null; disabled?: boolean }
 export interface LlmRun<T> {
   id: string;
