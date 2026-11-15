@@ -26,10 +26,28 @@ Linux in the app menu (and as the `reprocrowd` command), on macOS in
 again after `git pull` to update; `scripts/install.sh --uninstall` removes the
 app (your reproductions and settings stay). Windows: use WSL. macOS is untested.
 
-For the AI steps, install [Claude Code](https://claude.com/claude-code) and sign
-in once (`claude`), or configure another LLM command in Settings → Backend
-(profiles for [OpenCode](https://opencode.ai) are included). To run
-reproductions you also need what the paper's analysis uses (R, Python, …).
+For the AI steps, install one of the supported coding CLIs and sign in once in a
+terminal: [Claude Code](https://claude.com/claude-code) (`claude`, then sign in),
+[Codex CLI](https://developers.openai.com/codex) (`codex login`) or
+[OpenCode](https://opencode.ai) (`opencode auth login`, e.g. for DeepSeek). The app
+uses that sign-in; it never asks for API keys. To run reproductions you also need
+what the paper's analysis uses (R, Python, …).
+
+### Choosing an AI tool
+
+1. Start the app. The start page lists the models each installed CLI offers, and says
+   when a CLI is installed but not signed in (with a button that opens its login).
+2. Open **⚙ Settings → Backend → Coding and extraction profiles…**. Pick the
+   operation (code generation or extraction), choose a preset (**Claude Code**,
+   **Codex CLI**, **OpenCode** or another plain-text CLI) and save. The form says
+   whether the command was found, offers only that CLI's models, and states whether
+   the profile can honour "don't run the analysis". Saving restarts the backend and
+   restores the previous settings if that fails. Nothing is sent to a model while you
+   edit.
+3. In a reproduction, choose the profile and model in step 2/3 ("Generate with LLM")
+   and in step 5 (coding agent). **Show prompt** shows the exact command and prompt
+   without running it. Claude Code can run with editing only; Codex and OpenCode
+   need "let it run the analysis", and the app refuses the other choice for them.
 
 ### Linux notes
 

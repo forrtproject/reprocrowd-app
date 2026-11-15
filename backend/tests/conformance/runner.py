@@ -20,7 +20,7 @@ HERE = Path(__file__).parent
 PROTOCOLS = ("text", "claude-json", "claude-stream-json", "opencode-json", "codex-json")
 
 
-def run_conformance(profile_overrides: dict | None = None) -> dict:
+def run_conformance(profile_overrides: dict | None = None, protocols: tuple[str, ...] = PROTOCOLS) -> dict:
     from reprocrowd.config import settings, AgentProfile, LlmProfile
     from reprocrowd.api.app import app
     overrides = profile_overrides or {}
@@ -55,7 +55,7 @@ def run_conformance(profile_overrides: dict | None = None) -> dict:
                         if job.get("finished_at"): return job
                         time.sleep(.025)
                     raise TimeoutError(jid)
-                for protocol in PROTOCOLS:
+                for protocol in protocols:
                     for case in ("success", "mixed", "malformed", "nonzero", "timeout", *(["terminal-error"] if protocol != "text" else [])):
                         argv = [sys.executable, str(HERE / f"{protocol}.py"), case]
                         fields = {"timeout_s": 1 if case == "timeout" else 10, **overrides.get(protocol, {})}
