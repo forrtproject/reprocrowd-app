@@ -492,6 +492,7 @@ export class CurationStep implements Step {
     const fillModels = () => {
       const m = models;
       if (!m) return;
+      form.querySelector<HTMLElement>(".model-notice")!.textContent = "";
       const cli = cliOf(this.profiles.find((p) => p.name === profileSel.value)?.argv);
       claudeLogin.hidden = !(m.needsLogin ?? (m.claudeNeedsLogin ? ["claude"] : [])).includes(cli as LlmModel["cli"]);
       claudeLogin.querySelector(".cli-name")!.textContent = CLI_LABELS[cli] ?? cli;
@@ -520,6 +521,7 @@ export class CurationStep implements Step {
     });
     modelSel.addEventListener("change", () => {
       st.llmModel = modelSel.value;
+      form.querySelector<HTMLElement>(".model-notice")!.textContent = "";
       showArgv();
     });
     claudeLogin.querySelector("button")!.addEventListener("click", async () => {

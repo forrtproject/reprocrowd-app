@@ -119,6 +119,7 @@ export async function settingsDialog(onSaved: (changed: boolean) => void, focus?
   q("#be-profiles").addEventListener("click", () => profileEditor((text) => {
     cfg.backendConfig = text;
     q<HTMLTextAreaElement>("[name=becfg]").value = text;
+    void showBackend();
     onSaved(true);
   }));
 
