@@ -80,6 +80,22 @@ def answer(out: str, protocol: str) -> str | dict | list:
     return out
 
 
+# Event types kept in records that leave the machine (targets.json/actions.json go into archives and deposits):
+# answers and turn status, never tool calls or their outputs, which can hold any file the agent read.
+_KEPT = {"opencode-json": lambda ev: ev.get("type") in ("text", "step_finish", "error", "session_error"),
+         "codex-json": lambda ev: ev.get("type") in ("turn.completed", "turn.failed")
+         or (ev.get("type") == "item.completed" and isinstance(ev.get("item"), dict) and ev["item"].get("type") == "agent_message")}
+
+
+def recorded_output(out: str, protocol: str) -> str:
+    """The stdout kept in a package's run records: for event streams only the lines ``answer`` and
+    ``terminal_error`` read, so the record parses the same. The full stdout stays in llm-calls/<id>/stdout.txt."""
+    keep = _KEPT.get(protocol)
+    if keep is None:
+        return out
+    return "\n".join(json.dumps(ev, separators=(",", ":")) for ev in _events(out) if keep(ev))
+
+
 def _message(part: Any, fallback: str) -> str:
     if isinstance(part, dict):
         return str(part.get("message") or part.get("text") or part.get("error") or fallback)[:1000]

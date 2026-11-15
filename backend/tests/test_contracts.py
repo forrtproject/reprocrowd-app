@@ -291,3 +291,17 @@ def test_archive_refuses_evidence_that_no_longer_describes_scripts(client, pkg):
     assert "Changed inputs/scripts: analysis.py" in (root / "report.html").read_text()
     archived = client.put(p + "/archive")
     assert archived.status_code == 201, archived.text
+
+
+def test_run_records_drop_tool_outputs():
+    """targets.json/actions.json leave the machine; an agent's file reads must not."""
+    from reprocrowd.providers import recorded_output
+    secret = '{"type":"item.completed","item":{"type":"command_execution","command":"cat ~/private.md","aggregated_output":"PRIVATE","exit_code":0}}'
+    answer_line = '{"type":"item.completed","item":{"type":"agent_message","text":"{\\"targets\\": []}"}}'
+    full = "\n".join(['{"type":"thread.started","thread_id":"x"}', secret, answer_line, '{"type":"turn.completed","usage":{}}'])
+    kept = recorded_output(full, "codex-json")
+    assert "PRIVATE" not in kept and answer(kept, "codex-json") == answer(full, "codex-json") and terminal_error(kept, "codex-json") is None
+    tool = '{"type":"tool_use","part":{"tool":"read","state":{"status":"completed","output":"PRIVATE"}}}'
+    oc = "\n".join([tool, '{"type":"text","part":{"text":"{}"}}', '{"type":"error","error":{"message":"boom"}}'])
+    assert "PRIVATE" not in recorded_output(oc, "opencode-json") and terminal_error(recorded_output(oc, "opencode-json"), "opencode-json") == "boom"
+    assert recorded_output("plain answer", "text") == "plain answer"

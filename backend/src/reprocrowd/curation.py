@@ -13,7 +13,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ValidationError
 
-from . import llm
+from . import llm, providers
 from .errors import ApiError, conflict, invalid, not_found, pydantic_errors
 from .extractions import Scope, check_scope, listing
 from .extractions import get as get_extraction
@@ -388,7 +388,9 @@ class Curation:
                     entries.append(LlmEntry[self.spec.item](base=item))
                     new_id = next(ids, None)
             run_no = self._mark_issued(f).last_run + 1  # numbers of deleted runs are not reused either
-            run = LlmRun[self.spec.item](id=f"run{run_no}", request=request, call=call, entries=entries, rejected=rejected)
+            # The run record travels with the package (archive, deposit): keep the answer, not the CLI's tool outputs.
+            kept = call.model_copy(update={"output": providers.recorded_output(call.output, call.output_format)})
+            run = LlmRun[self.spec.item](id=f"run{run_no}", request=request, call=kept, entries=entries, rejected=rejected)
             f.llm_runs.append(run)
             self._save(f)
             return run
