@@ -75,7 +75,8 @@
           "enum": [
             "text",
             "claude-json",
-            "opencode-json"
+            "opencode-json",
+            "codex-json"
           ],
           "title": "Output Format",
           "type": "string"

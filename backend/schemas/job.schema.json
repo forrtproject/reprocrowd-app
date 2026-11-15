@@ -359,6 +359,7 @@
       "enum": [
         "claude-stream-json",
         "opencode-json",
+        "codex-json",
         "text"
       ],
       "title": "Events Format",

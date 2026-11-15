@@ -25,7 +25,13 @@ def main(protocol):
         print("fixture command failed", file=sys.stderr)
         raise SystemExit(3)
     if case == "terminal-error":
-        emit({"type": "result", "subtype": "error_max_turns", "is_error": True, "result": "fixture error"} if protocol.startswith("claude") else {"type": "error", "error": {"message": "fixture error"}})
+        if protocol == "codex-json":  # sanitized from codex-cli 0.167.0 with an unsupported model; exit 0 here on purpose
+            emit({"type": "thread.started", "thread_id": "fixture"})
+            emit({"type": "turn.started"})
+            emit({"type": "error", "message": "The 'fixture' model is not supported when using Codex with a ChatGPT account."})
+            emit({"type": "turn.failed", "error": {"message": "The 'fixture' model is not supported when using Codex with a ChatGPT account."}})
+        else:
+            emit({"type": "result", "subtype": "error_max_turns", "is_error": True, "result": "fixture error"} if protocol.startswith("claude") else {"type": "error", "error": {"message": "fixture error"}})
         return
     answer = {"targets": [{"type": "number", "description": "fixture", "expected": "2.31", "refs": ["sec3.p1.s1"]}]}
     if case == "mixed":
@@ -46,5 +52,19 @@ def main(protocol):
         else:
             emit({"type": "text", "part": {"text": json.dumps(answer)}})
             emit({"type": "step_finish", "part": {"reason": "stop"}})
+    elif protocol == "codex-json":
+        if case == "malformed":
+            print("malformed opaque log", flush=True)
+        else:  # shapes from codex-cli 0.167.0 exec --json; a reconnect error followed by a completed turn is recoverable
+            emit({"type": "thread.started", "thread_id": "fixture"})
+            emit({"type": "turn.started"})
+            if case == "mixed":
+                emit({"type": "error", "message": "Reconnecting... 1/5 (fixture)"})
+                emit({"type": "item.completed", "item": {"id": "item_0", "type": "error", "message": "fixture warning"}})
+            emit({"type": "item.completed", "item": {"id": "item_1", "type": "agent_message", "text": "I will read the paper first."}})
+            emit({"type": "item.started", "item": {"id": "item_2", "type": "command_execution", "command": "cat paper.txt", "aggregated_output": "", "exit_code": None, "status": "in_progress"}})
+            emit({"type": "item.completed", "item": {"id": "item_2", "type": "command_execution", "command": "cat paper.txt", "aggregated_output": "no such file", "exit_code": 1, "status": "failed"}})
+            emit({"type": "item.completed", "item": {"id": "item_3", "type": "agent_message", "text": json.dumps(answer)}})
+            emit({"type": "turn.completed", "usage": {"input_tokens": 10, "cached_input_tokens": 0, "output_tokens": 5, "reasoning_output_tokens": 0}})
     else:
         print("no answer" if case == "malformed" else json.dumps(answer), flush=True)

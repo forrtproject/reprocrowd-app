@@ -11692,6 +11692,7 @@
             "enum": [
               "claude-stream-json",
               "opencode-json",
+              "codex-json",
               "text"
             ],
             "title": "Events Format"
@@ -11876,7 +11877,8 @@
             "enum": [
               "text",
               "claude-json",
-              "opencode-json"
+              "opencode-json",
+              "codex-json"
             ],
             "title": "Output Format",
             "description": "how stdout was read",
@@ -12035,7 +12037,7 @@
           "output": {
             "type": "string",
             "title": "Output",
-            "description": "how stdout is read (text, claude-json, opencode-json); whether the profile takes a chosen model"
+            "description": "how stdout is read (text, claude-json, opencode-json, codex-json); whether the profile takes a chosen model"
           }
         },
         "type": "object",

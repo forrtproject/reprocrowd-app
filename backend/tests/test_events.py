@@ -1,5 +1,5 @@
 """The OpenCode ``run --format json`` event parser."""
-from reprocrowd.events import parse_opencode
+from reprocrowd.events import parse_codex, parse_opencode
 
 
 def test_opencode_text_event():
@@ -33,3 +33,15 @@ def test_opencode_step_start_and_reasoning_ignored():
 def test_opencode_non_json_becomes_log():
     out = list(parse_opencode("some plain line"))
     assert out == [("log", "some plain line", None, None)]
+
+
+def test_codex_events():
+    started = '{"type":"item.started","item":{"type":"command_execution","command":"python3 analysis.py","exit_code":null}}'
+    done = '{"type":"item.completed","item":{"type":"command_execution","command":"python3 analysis.py","aggregated_output":"boom","exit_code":1}}'
+    change = '{"type":"item.completed","item":{"type":"file_change","changes":[{"path":"/x/analysis.py","kind":"update"}]}}'
+    assert list(parse_codex(started)) == [("tool_use", "shell python3 analysis.py", "shell", None)]
+    assert list(parse_codex(done)) == [("tool_result", "boom", None, True)]
+    assert list(parse_codex(change)) == [("tool_use", "edit update analysis.py", "edit", None)]
+    assert list(parse_codex('{"type":"item.completed","item":{"type":"reasoning","text":"hm"}}')) == []
+    assert list(parse_codex('{"type":"turn.failed","error":{"message":"no access"}}')) == [("result", "no access", None, True)]
+    assert list(parse_codex("plain log")) == [("log", "plain log", None, None)]

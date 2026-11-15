@@ -16,9 +16,10 @@ class LlmProfile(BaseModel):
     read_files_argv: list[str] = Field(default_factory=list, description="appended when the LLM must read package files (cwd = package root)")
     json_schema_argv: list[str] = Field(default_factory=list, description="appended with {schema} = the task's output JSON Schema, for CLIs "
                                                                           "that constrain output to a schema (claude: --json-schema)")
-    output: Literal["text", "claude-json", "opencode-json"] = Field(default="text", description="how to read stdout: plain text, Claude's --output-format json "
-                                                                                "envelope (structured_output / result), or OpenCode's run --format json "
-                                                                                "event stream (the answer is the text of the text events)")
+    output: Literal["text", "claude-json", "opencode-json", "codex-json"] = Field(
+        default="text", description="how to read stdout: plain text, Claude's --output-format json envelope (structured_output / result), "
+                                    "OpenCode's run --format json event stream (the answer is the text of the text events), or Codex's "
+                                    "exec --json event stream (the answer is the last agent_message)")
     model: str = ""
     effort: str = ""
     timeout_s: int = Field(default=1800, gt=0)
@@ -35,22 +36,27 @@ class AgentProfile(BaseModel):
     model: str = ""
     effort: str = ""
     timeout_s: int = Field(default=7200, gt=0)
-    events: Literal["claude-stream-json", "opencode-json", "text"] = Field(default="claude-stream-json", description="how to read the agent's stdout as events")
+    events: Literal["claude-stream-json", "opencode-json", "codex-json", "text"] = Field(default="claude-stream-json", description="how to read the agent's stdout as events")
 
 
 def expand_argv(argv: list[str], values: dict[str, str]) -> list[str]:
-    """Substitute {name} placeholders. An argument that becomes empty is dropped, with the flag before it."""
+    """Substitute {name} placeholders. An argument with a placeholder whose value is empty is dropped, with the flag
+    before it: ``["--model", "{model}"]`` and ``["-c", "model_reasoning_effort={effort}"]`` both vanish when unset."""
     out: list[str] = []
     for arg in argv:
         value = arg
         for k, v in values.items():
             value = value.replace("{" + k + "}", v)
-        if value == "" and arg != "":
+        if (value == "" and arg != "") or any(not v and "{" + k + "}" in arg for k, v in values.items()):
             if out and out[-1].startswith("-"):
                 out.pop()
             continue
         out.append(value)
     return out
+
+
+CODEX_ARGV = ["codex", "exec", "--json", "--skip-git-repo-check", "--ephemeral", "--ignore-user-config",
+              "-m", "{model}", "-c", "model_reasoning_effort={effort}"]
 
 
 def _default_agents() -> dict[str, AgentProfile]:
@@ -72,6 +78,11 @@ def _default_agents() -> dict[str, AgentProfile]:
             tools=[],
             exec_tools=[],
         ),
+        # Codex CLI (https://developers.openai.com/codex): exec --json emits JSONL events (events.py's codex-json parser).
+        # Codex has no tool allowlist: in workspace-write it edits files and runs commands, with writes confined to the
+        # package by Codex's own sandbox. No-analysis mode is therefore refused (no {tools}); see providers.exec_restriction.
+        # --ignore-user-config skips ~/.codex/config.toml (MCP servers, default model) but keeps the login.
+        "codex": AgentProfile(argv=CODEX_ARGV + ["-s", "workspace-write", "-"], events="codex-json", tools=[], exec_tools=[]),
     }
 
 
@@ -93,6 +104,8 @@ def _default_profiles() -> dict[str, LlmProfile]:
             model="",
             effort="",
         ),
+        # Codex CLI, read-only sandbox: it can read the package files it is pointed to but not change them.
+        "codex": LlmProfile(argv=CODEX_ARGV + ["-s", "read-only", "-"], output="codex-json"),
     }
 
 

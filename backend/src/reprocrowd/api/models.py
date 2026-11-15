@@ -32,7 +32,7 @@ class LlmProfileView(BaseModel):
     model: str
     effort: str
     timeout_s: int
-    output: str = Field(description="how stdout is read (text, claude-json, opencode-json); whether the profile takes a chosen model")
+    output: str = Field(description="how stdout is read (text, claude-json, opencode-json, codex-json); whether the profile takes a chosen model")
 
 
 class PromptPreview(BaseModel):

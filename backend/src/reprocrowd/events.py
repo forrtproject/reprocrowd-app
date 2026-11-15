@@ -2,6 +2,8 @@
 
 One parser per output format, selected by the agent profile's ``events`` setting:
 - claude-stream-json: Claude Code's ``--output-format stream-json`` (one JSON object per line);
+- opencode-json: OpenCode's ``run --format json``;
+- codex-json: Codex's ``exec --json`` (thread/turn/item events);
 - text: every line is a "log" event (pipeline runs, other agents).
 """
 from __future__ import annotations
@@ -100,7 +102,48 @@ def parse_opencode(line: str) -> Iterable[Raw]:
         return
 
 
-PARSERS: dict[str, Callable[[str], Iterable[Raw]]] = {"claude-stream-json": parse_claude, "opencode-json": parse_opencode, "text": parse_text}
+def parse_codex(line: str) -> Iterable[Raw]:
+    """Codex's ``exec --json``. Items arrive as item.started/item.completed; only completed ones are shown, except a
+    command, shown when it starts (so a long run is visible) and again with its output when it finishes."""
+    try:
+        ev = json.loads(line)
+    except ValueError:
+        yield ("log", line, None, None)
+        return
+    if not isinstance(ev, dict):
+        yield ("log", line, None, None)
+        return
+    t = ev.get("type")
+    item = ev.get("item") if isinstance(ev.get("item"), dict) else {}
+    kind = item.get("type")
+    if t == "thread.started":
+        yield ("start", "session started", None, None)
+    elif t == "item.started" and kind == "command_execution":
+        yield ("tool_use", f"shell {item.get('command', '')}"[:TOOL_RESULT_MAX], "shell", None)
+    elif t == "item.completed":
+        if kind == "agent_message" and str(item.get("text", "")).strip():
+            yield ("text", item["text"].strip(), None, None)
+        elif kind == "command_execution":
+            code = item.get("exit_code")
+            yield ("tool_result", str(item.get("aggregated_output") or f"exit {code}")[:TOOL_RESULT_MAX], None, code not in (0, None))
+        elif kind == "file_change":
+            paths = ", ".join(f"{c.get('kind', 'edit')} {Path(str(c.get('path', '?'))).name}" for c in item.get("changes") or [] if isinstance(c, dict))
+            yield ("tool_use", f"edit {paths}", "edit", None)
+        elif kind in ("mcp_tool_call", "web_search"):
+            yield ("tool_use", f"{kind} {item.get('tool') or item.get('query') or ''}".strip(), kind, None)
+        elif kind == "error":  # a warning; the turn goes on
+            yield ("log", str(item.get("message", "")), None, None)
+    elif t == "turn.completed":
+        u = ev.get("usage") or {}
+        yield ("result", f"turn completed ({u.get('input_tokens', '?')} input, {u.get('output_tokens', '?')} output tokens)", None, False)
+    elif t == "turn.failed":
+        yield ("result", str((ev.get("error") or {}).get("message") or "turn failed"), None, True)
+    elif t == "error":
+        yield ("log", str(ev.get("message") or "error"), None, True)
+
+
+PARSERS: dict[str, Callable[[str], Iterable[Raw]]] = {"claude-stream-json": parse_claude, "opencode-json": parse_opencode, "codex-json": parse_codex,
+                                                     "text": parse_text}
 
 
 class EventReader:

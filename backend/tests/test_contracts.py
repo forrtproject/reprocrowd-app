@@ -10,7 +10,8 @@ from test_jobs import wait, ready_package
 from test_run import SCRIPT, package_with_targets
 from test_zenodo import ME
 from reprocrowd.config import settings, AgentProfile, LlmProfile
-from reprocrowd.providers import error_in_line, exec_restriction
+from reprocrowd.config import expand_argv, _default_agents, _default_profiles
+from reprocrowd.providers import answer, exec_restriction, terminal_error
 
 
 def run(client, pkg):
@@ -116,10 +117,44 @@ def test_conflicting_step_is_warning(client, pkg):
 
 def test_terminal_errors_are_not_tool_errors():
     assert exec_restriction(AgentProfile(argv=["cli", "{tools}"], tools=[]), ["Bash"]) == "unsupported"
-    assert error_in_line('{"type":"error","error":{"message":"offline"}}', "opencode-json") == "offline"
-    assert error_in_line('{"type":"result","is_error":true,"result":"refused"}', "claude-stream-json") == "refused"
-    assert error_in_line('{"type":"tool_result","is_error":true}', "claude-stream-json") is None
-    assert error_in_line('[]', "opencode-json") is None
+    assert terminal_error('{"type":"error","error":{"message":"offline"}}', "opencode-json") == "offline"
+    assert terminal_error('{"type":"result","is_error":true,"result":"refused"}', "claude-stream-json") == "refused"
+    assert terminal_error('{"type":"tool_result","is_error":true}', "claude-stream-json") is None
+    assert terminal_error('[]', "opencode-json") is None
+
+
+def test_codex_errors_and_answer():
+    reconnect = '{"type":"error","message":"Reconnecting... 2/5"}'
+    done = '{"type":"turn.completed","usage":{}}'
+    warning = '{"type":"item.completed","item":{"type":"error","message":"fallback metadata"}}'
+    assert terminal_error("\n".join([reconnect, warning, done]), "codex-json") is None
+    assert terminal_error("\n".join([done, reconnect]), "codex-json") == "Reconnecting... 2/5"  # no completed turn after it
+    assert terminal_error('{"type":"turn.failed","error":{"message":"model not supported"}}', "codex-json") == "model not supported"
+    msgs = [f'{{"type":"item.completed","item":{{"type":"agent_message","text":"{t}"}}}}' for t in ("reading", "final")]
+    assert answer("\n".join(msgs + [done]), "codex-json") == "final"
+    assert answer("not json", "codex-json") == ""
+
+
+def test_shipped_argv_expansion_unchanged():
+    """The empty-placeholder rule drops `-c key={effort}`; shipped profiles expand as before."""
+    values = {"model": "m", "effort": "e", "tools": "Read"}
+    for p in [*_default_agents().values(), *_default_profiles().values()]:
+        assert expand_argv(p.argv, values) == [a.replace("{model}", "m").replace("{effort}", "e").replace("{tools}", "Read") for a in p.argv]
+    assert expand_argv(["claude", "--model", "{model}", "--effort", "{effort}"], {"model": "", "effort": ""}) == ["claude"]
+    codex = _default_agents()["codex"].argv
+    assert "-c" not in expand_argv(codex, {"model": "", "effort": "", "tools": ""}) and "-m" not in expand_argv(codex, {"model": "", "effort": ""})
+    assert expand_argv(codex, {"model": "gpt", "effort": "low"})[-7:] == ["-m", "gpt", "-c", "model_reasoning_effort=low", "-s", "workspace-write", "-"]
+
+
+def test_codex_profiles_refuse_no_analysis(client, pkg, monkeypatch):
+    monkeypatch.setitem(settings().agent_profiles, "codex", _default_agents()["codex"])
+    ready_package(client, pkg)
+    p = f"/v1/packages/{pkg}"
+    problem(client.post(p + "/jobs:preview", json={"type": "codegen", "profile": "codex", "allow_exec": False}), 409, "exec_restriction_unsupported")
+    problem(client.post(p + "/jobs", json={"type": "codegen", "profile": "codex", "allow_exec": False}), 409, "exec_restriction_unsupported")
+    preview = client.post(p + "/jobs:preview", json={"type": "codegen", "profile": "codex", "allow_exec": True, "model": "gpt-x"}).json()
+    assert preview["output_protocol"] == "codex-json" and preview["exec_restriction"] == "unsupported"
+    assert preview["argv"][-3:] == ["-s", "workspace-write", "-"] and "gpt-x" in preview["argv"]
 
 
 def test_config_is_read_only_over_http(client):

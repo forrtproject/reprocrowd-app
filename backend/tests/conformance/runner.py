@@ -17,7 +17,7 @@ import time
 from fastapi.testclient import TestClient
 
 HERE = Path(__file__).parent
-PROTOCOLS = ("text", "claude-json", "claude-stream-json", "opencode-json")
+PROTOCOLS = ("text", "claude-json", "claude-stream-json", "opencode-json", "codex-json")
 
 
 def run_conformance(profile_overrides: dict | None = None) -> dict:

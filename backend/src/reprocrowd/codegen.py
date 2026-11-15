@@ -9,7 +9,7 @@ from __future__ import annotations
 from typing import NamedTuple
 
 from . import files, gitrepo, jobs
-from .providers import exec_restriction, error_in_line
+from .providers import exec_restriction, terminal_error
 from .config import AgentProfile, expand_argv, settings
 from .errors import ApiError, conflict
 from .package import Package
@@ -63,8 +63,7 @@ def start(pkg: Package, *, profile: str | None, allow_exec: bool, instructions: 
 
     def finish(job: Job) -> CodegenResult:
         if job.status == "succeeded":
-            with pkg.path(job.stdout).open(encoding="utf-8", errors="replace") as log:
-                failure = next((msg for line in log if (msg := error_in_line(line, prof.events))), None)
+            failure = terminal_error(pkg.path(job.stdout).read_text(encoding="utf-8", errors="replace"), prof.events)
             if failure:
                 job.status, job.error = "failed", f"the agent reported an error: {failure}"
         files.sync(pkg)

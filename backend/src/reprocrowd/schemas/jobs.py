@@ -84,6 +84,6 @@ class Job(Model):
     exit_code: int | None = None
     stdout: str = Field(description="package-relative path of the raw stdout")
     stderr: str
-    events_format: Literal["claude-stream-json", "opencode-json", "text"]
+    events_format: Literal["claude-stream-json", "opencode-json", "codex-json", "text"]
     result: JobResult | None = None
     error: str | None = None
