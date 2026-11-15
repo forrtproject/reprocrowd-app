@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import json
 import shutil
-from typing import Any
+from typing import Any, Iterable, Iterator
 
 from .config import AgentProfile, LlmProfile
 
@@ -39,17 +39,15 @@ def preview(profile: LlmProfile | AgentProfile, argv: list[str]) -> dict:
             "timeout_s": profile.timeout_s, "structured_output": bool(getattr(profile, "json_schema_argv", []))}
 
 
-def _events(out: str) -> list[dict]:
-    """The JSON objects among stdout's lines; other lines (logs, banners) are skipped."""
-    found = []
-    for line in out.splitlines():
+def _events(out: "str | Iterable[str]") -> Iterator[dict]:
+    """The JSON objects among stdout's lines; other lines (logs, banners) are skipped. Accepts the text or an open file."""
+    for line in (out.splitlines() if isinstance(out, str) else out):
         try:
             ev = json.loads(line)
         except ValueError:
             continue
         if isinstance(ev, dict):
-            found.append(ev)
-    return found
+            yield ev
 
 
 def envelope(out: str) -> dict | None:
@@ -108,18 +106,18 @@ def _message(part: Any, fallback: str) -> str:
     return str(part or fallback)[:1000]
 
 
-def terminal_error(out: str, protocol: str) -> str | None:
+def terminal_error(out: "str | Iterable[str]", protocol: str) -> str | None:
     """A failure the CLI declared in its output, which can happen at exit 0. Recoverable events don't count: failed
     tool results (the agent retries), Codex's ``error`` items (warnings) and its ``error`` events followed by a
-    completed turn ("Reconnecting... 2/5")."""
-    events = _events(out)
+    completed turn ("Reconnecting... 2/5"). ``out`` may be an open log file: it is read line by line."""
     if protocol == "claude-json":
-        env = envelope(out)
+        env = envelope(out if isinstance(out, str) else "".join(out))
         if env is None:
             return "no result envelope in the output"
         if env.get("is_error") or env.get("subtype") not in (None, "success"):
             return str(env.get("result") or env.get("subtype"))[:1000]
         return None
+    events = _events(out)
     if protocol == "claude-stream-json":
         for ev in events:
             if ev.get("type") == "result" and (ev.get("is_error") or ev.get("subtype", "success") != "success"):
@@ -129,11 +127,17 @@ def terminal_error(out: str, protocol: str) -> str | None:
             if ev.get("type") in ("error", "session_error"):
                 return _message(ev.get("part") or ev.get("error"), ev["type"])
     if protocol == "codex-json":
-        failed = [ev for ev in events if ev.get("type") == "turn.failed"]
+        failed = late = None  # the last turn.failed; the last error event not followed by a completed turn
+        for ev in events:
+            t = ev.get("type")
+            if t == "turn.failed":
+                failed = ev
+            elif t == "turn.completed":
+                late = None
+            elif t == "error":
+                late = ev
         if failed:
-            return _message(failed[-1].get("error"), "turn.failed")
-        last_completed = max((i for i, ev in enumerate(events) if ev.get("type") == "turn.completed"), default=-1)
-        late = [ev for ev in events[last_completed + 1:] if ev.get("type") == "error"]
+            return _message(failed.get("error"), "turn.failed")
         if late:
-            return _message(late[-1], "error")
+            return _message(late, "error")
     return None

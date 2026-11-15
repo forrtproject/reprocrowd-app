@@ -50,7 +50,8 @@ class LlmCall(Model):
     template: Literal["default", "custom"] = Field(description="whether the built-in prompt template or a caller-supplied one was used")
     instructions: str = Field(default="", description="extra instructions appended to the template")
     prompt: str = Field(description="the full prompt sent")
-    output: str = Field(description="raw stdout of the call")
+    output: str = Field(description="stdout of the call. In run records kept with the package (targets.json, actions.json) event-stream "
+                                    "CLIs keep only answer and turn-status events; the raw stdout is in llm-calls/<id>/stdout.txt")
     output_format: Literal["text", "claude-json", "opencode-json", "codex-json"] = Field(default="text", description="how stdout was read")
     output_schema: str | None = Field(default=None, description="name of the JSON Schema the CLI was asked to constrain its output to (structured output)")
     started_at: datetime

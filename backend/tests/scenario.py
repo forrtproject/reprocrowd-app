@@ -74,7 +74,7 @@ def run_scenario(output: Path, *, llm: str = "fixture", agent: str = "fixture", 
     if is_live:
         output = output / f"live-{llm}-{agent}"
     output.mkdir(parents=True, exist_ok=True)
-    previous = [p for p in sorted(output.glob("scenario-*/result.json")) if "projection" in json.loads(p.read_text())]
+    previous = [p for p in sorted(output.glob("scenario-*/result.json")) if "projection" in (r := json.loads(p.read_text())) and "error" not in r]
     folder = output / ("scenario-" + datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ"))
     folder.mkdir()
     exe = sys.executable.replace("\\", "/")
@@ -119,6 +119,7 @@ argv = ["{exe}", "{path(HERE / 'fake_agent.py')}", "python-ok", "--tools", "{{to
     result["providers"] = providers
     started_at = datetime.now(timezone.utc)
     started = time.monotonic()
+    killed: list[str] = []
     try:
         with respx.mock(assert_all_called=False) as network, TestClient(app) as client:
             work = {"id": "https://openalex.org/W1", "title": "Offline contract fixture (not a research result)",
@@ -178,11 +179,16 @@ argv = ["{exe}", "{path(HERE / 'fake_agent.py')}", "python-ok", "--tools", "{{to
                     if metered and stage == "codegen" and record.get("stdout"):
                         spent = live.reported_cost((folder / "package" / record["stdout"]).read_text(errors="replace"))
                         if spent * 2 > ledger.run_cap:  # doubled: peak pricing may apply
-                            client.delete(p + "/jobs/" + record["id"])
+                            kill(record)
                             raise RuntimeError(f"codegen cancelled at the per-run cap: reported {spent:.4f} USD")
                     time.sleep(.025 if not is_live else .5)
-                client.delete(p + "/jobs/" + record["id"])
+                kill(record)
                 raise TimeoutError(stage)
+            def kill(record):
+                client.delete(p + "/jobs/" + record["id"])
+                log = folder / "package" / str(record.get("stdout") or "jobs/none")
+                if metered and not (log.is_file() and live.reported_cost(log.read_text(errors="replace"))):
+                    killed.append(record["id"])  # may be billed without a reported cost
             codegen_job = job("codegen", codegen, job_timeout if agent != "fixture" else 30)
             run = job("run", {"type": "run"}, 120)
             comparison = request("compare", "GET", p + "/comparison")
@@ -237,8 +243,8 @@ argv = ["{exe}", "{path(HERE / 'fake_agent.py')}", "python-ok", "--tools", "{{to
             result["usage"] = usage(folder / "package", providers)
             if metered:
                 result["spend"] = ledger.record("scenario.py", f"live scenario {llm}/{agent} ({model or 'default model'})", started_at,
-                                                result["usage"]["reported_usd"], result["usage"]["tokens"], str(folder.resolve()))
-        if "projection" not in result:
+                                                result["usage"]["reported_usd"], result["usage"]["tokens"], str(folder.resolve()), len(killed))
+        if "projection" not in result or "error" in result:  # a failed run keeps its record (and is never a baseline)
             (folder / "result.json").write_text(json.dumps(result, indent=2) + "\n")
         if old_config is None:
             os.environ.pop("REPROCROWD_CONFIG", None)

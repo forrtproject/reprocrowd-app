@@ -24,6 +24,7 @@ from datetime import datetime, timezone
 import json
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -39,7 +40,11 @@ sys.path.insert(0, str(HERE / "conformance"))
 
 def processes_in(folder: Path) -> list[str]:
     """Processes whose working directory is inside ``folder`` (POSIX lsof); the CLI and anything it started there."""
+    if not shutil.which("lsof"):
+        raise SystemExit("the no-process-left check needs lsof (POSIX)")
     out = subprocess.run(["lsof", "-a", "-d", "cwd", "-Fpn"], capture_output=True, text=True).stdout
+    if not out.strip():  # it always lists at least this process; empty output means it could not list processes
+        raise SystemExit("lsof listed no processes; the no-process-left check cannot run")
     found, pid = [], None
     for line in out.splitlines():
         if line.startswith("p"):

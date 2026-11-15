@@ -30,9 +30,11 @@ export async function profileEditor(saved: (text: string) => void) {
     </details>
     <p class="hint">Saving restarts the backend. The form preserves other settings but drops TOML comments; the original file is backed up once as backend.toml.bak. The advanced raw editor remains available.</p>
     <p class="profile-status" aria-live="polite"></p>
-    <menu><button value="cancel" formnovalidate>Cancel</button><button value="save" class="primary">Save profile</button></menu>
+    <menu><button type="button" class="cancel">Cancel</button><button value="save" class="primary">Save profile</button></menu>
   </form>`);
   const form = dlg.querySelector("form")!;
+  // Cancel is not a submit button, so Enter in a field saves instead of closing the dialog.
+  dlg.querySelector<HTMLButtonElement>("button.cancel")!.addEventListener("click", () => dlg.close());
   const el = (name: string) => form.elements.namedItem(name) as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
   const value = (name: string) => el(name).value;
   const kind = () => value("kind") as Kind;
@@ -44,7 +46,8 @@ export async function profileEditor(saved: (text: string) => void) {
     el("protocol").innerHTML = list.map((s) => `<option>${s}</option>`).join("");
   };
   const load = (name: string, p: ConfiguredProfile) => {
-    set("name", name); set("command", p.argv[0]); set("args", p.argv.slice(1));
+    const argv = Array.isArray(p.argv) ? p.argv : []; // a hand-edited profile without argv still opens, and the form asks for a command
+    set("name", name); set("command", argv[0]); set("args", argv.slice(1));
     set("model", p.model); set("effort", p.effort); set("timeout", p.timeout_s);
     set("protocol", kind() === "agent" ? p.events : p.output);
     set("tools", p.tools); set("exec", p.exec_tools); set("read", p.read_files_argv); set("schema", p.json_schema_argv);

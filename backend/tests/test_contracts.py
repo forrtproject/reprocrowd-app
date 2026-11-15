@@ -134,6 +134,9 @@ def test_codex_errors_and_answer():
     msgs = [f'{{"type":"item.completed","item":{{"type":"agent_message","text":"{t}"}}}}' for t in ("reading", "final")]
     assert answer("\n".join(msgs + [done]), "codex-json") == "final"
     assert answer("not json", "codex-json") == ""
+    import io
+    stream = io.StringIO("\n".join([reconnect, done, reconnect]) + "\n")  # a log file is read line by line
+    assert terminal_error(stream, "codex-json") == "Reconnecting... 2/5"
 
 
 def test_shipped_argv_expansion_unchanged():
@@ -142,6 +145,7 @@ def test_shipped_argv_expansion_unchanged():
     for p in [*_default_agents().values(), *_default_profiles().values()]:
         assert expand_argv(p.argv, values) == [a.replace("{model}", "m").replace("{effort}", "e").replace("{tools}", "Read") for a in p.argv]
     assert expand_argv(["claude", "--model", "{model}", "--effort", "{effort}"], {"model": "", "effort": ""}) == ["claude"]
+    assert expand_argv(["cli", "--verbose", "--model={model}"], {"model": ""}) == ["cli", "--verbose"]  # a flag=value drops only itself
     codex = _default_agents()["codex"].argv
     assert "-c" not in expand_argv(codex, {"model": "", "effort": "", "tools": ""}) and "-m" not in expand_argv(codex, {"model": "", "effort": ""})
     assert expand_argv(codex, {"model": "gpt", "effort": "low"})[-6:] == ["-m", "gpt", "-c", "model_reasoning_effort=low", "-s", "workspace-write"]

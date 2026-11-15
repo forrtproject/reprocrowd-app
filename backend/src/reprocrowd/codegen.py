@@ -66,7 +66,8 @@ def start(pkg: Package, *, profile: str | None, allow_exec: bool, instructions: 
 
     def finish(job: Job) -> CodegenResult:
         if job.status == "succeeded":
-            failure = terminal_error(pkg.path(job.stdout).read_text(encoding="utf-8", errors="replace"), prof.events)
+            with pkg.path(job.stdout).open(encoding="utf-8", errors="replace") as log:  # line by line: logs can be large
+                failure = terminal_error(log, prof.events)
             if failure:
                 job.status, job.error = "failed", f"the agent reported an error: {failure}"
         files.sync(pkg)

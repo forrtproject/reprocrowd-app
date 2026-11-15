@@ -52,7 +52,8 @@ def expand_argv(argv: list[str], values: dict[str, str]) -> list[str]:
         for k, v in values.items():
             value = value.replace("{" + k + "}", v)
         if (value == "" and arg != "") or any(not v and "{" + k + "}" in arg for k, v in values.items()):
-            if out and out[-1].startswith("-"):
+            # A dropped value takes its flag with it (`-c effort={effort}`); a dropped `--model={model}` is its own flag.
+            if out and out[-1].startswith("-") and not arg.startswith("-"):
                 out.pop()
             continue
         out.append(value)
