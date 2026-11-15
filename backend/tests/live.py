@@ -144,3 +144,30 @@ def run_env(argv: list[str]) -> dict[str, str]:
     """Environment changes for a live run: OpenCode otherwise forwards ~/.claude/CLAUDE.md (private, unrelated
     instructions) to the model provider."""
     return {"OPENCODE_DISABLE_CLAUDE_CODE": "1"} if cli_of(argv) == "opencode" else {}
+
+
+if __name__ == "__main__":
+    # Price a package whose metered calls were made from the app UI, with the same counting rule:
+    #   uv run python tests/live.py record-package PACKAGE_DIR --spend-ledger PATH --since ISO_TIME --what "..."
+    #   uv run python tests/live.py total --spend-ledger PATH
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("action", choices=["record-package", "total"])
+    parser.add_argument("package", nargs="?", type=Path)
+    parser.add_argument("--spend-ledger", type=Path, required=True)
+    parser.add_argument("--since", help="UTC ISO time the UI run started (for the peak rule); default: now")
+    parser.add_argument("--what", default="UI-driven run")
+    parser.add_argument("--killed-jobs", type=int, default=0, help="metered jobs stopped before reporting a cost")
+    a = parser.parse_args()
+    ledger = Ledger(a.spend_ledger.expanduser(), 0)
+    if a.action == "total":
+        d = ledger.data()
+        print(json.dumps({"counted_usd": ledger.total(), "hard_cap_usd": d["hard_cap_usd"], "remaining_usd": round(d["hard_cap_usd"] - ledger.total(), 6)}))
+    else:
+        started = datetime.fromisoformat(a.since) if a.since else datetime.now(timezone.utc)
+        if started.tzinfo is None:
+            started = started.replace(tzinfo=timezone.utc)
+        # Only calls written since the UI run started: earlier (already recorded) calls in the package are not recounted.
+        files = [f for f in [*a.package.glob("llm-calls/*/stdout.txt"), *a.package.glob("jobs/*/stdout.log")] if f.stat().st_mtime >= started.timestamp()]
+        text = "".join(f.read_text(errors="replace") + "\n" for f in files)
+        print(json.dumps(ledger.record("live.py", a.what, started, reported_cost(text), tokens(text), str(a.package), a.killed_jobs)))
