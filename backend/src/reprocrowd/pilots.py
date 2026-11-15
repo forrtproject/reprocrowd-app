@@ -52,7 +52,7 @@ BODY_LIMIT = 65_000  # GitHub's issue/comment body limit is 65,536 characters
 ROW_LIMIT = 60
 SUMMARY_RE = re.compile(r"<!-- reprocrowd-summary: (\{.*?\}) -->")
 DISCLAIMER = ("**Pilot record — unreviewed.** Made with ReproCrowd by recreating the analysis from the article's text and "
-              "published data. Agreement at the reported precision shows that this code produced the printed numbers from "
+              "published data. Agreement at the printed precision shows that this code produced the printed numbers from "
               "these inputs. It is not peer review, a certificate of the study's validity, or an endorsement. The authors' "
               "code was left out of the agent's context; that is not verified blinding.")
 SYNTHETIC = ("**SYNTHETIC test fixture — not a research result.** The paper, data and DOI are invented for testing "
@@ -272,13 +272,15 @@ def _summary(plan: Plan, version: int | None) -> dict[str, Any]:
     cmp = plan.p.cmp
     numeric = sum(r.type != "figure" for r in cmp.rows)
     return {"version": version, "run_key": plan.run_key, "match": cmp.summary.get("match", 0), "within": cmp.summary.get("within", 0),
-            "numeric": numeric, "threshold": cmp.settings.threshold, "policy": cmp.policy}
+            "numeric": numeric, "threshold": cmp.settings.threshold, "rounding": cmp.settings.rounding, "policy": cmp.policy}
 
 
 def _summary_line(s: dict[str, Any]) -> str:
     if not s["numeric"]:
-        return "no numeric targets (figures need visual comparison)"
-    return (f"{s['match']} of {s['numeric']} numeric targets match at the reported precision; {s['within']} more within "
+        return "no results to compare automatically (figures need visual comparison)"
+    rounding = s.get("rounding", "reported")  # older release notes don't record it
+    how = "numbers at the printed precision" if rounding == "reported" else f"numbers rounded to {rounding} decimals"
+    return (f"{s['match']} of {s['numeric']} results match ({how}; text exactly); {s['within']} more within "
             f"{s['threshold']:g} % (exploratory)")
 
 

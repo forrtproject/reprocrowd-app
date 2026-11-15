@@ -4,7 +4,7 @@ Status: implemented on `issue12-github-pilots`, 15 November 2026. Refs [#12](htt
 
 ## Purpose
 
-A pilot is a public, reviewable record of a reproduction, made before anything is archived with a DOI. It reuses the existing package contract unchanged: the recorded `comparison.json`, `evidence/execution.json` and the archive ZIP. There is no second package model. A pilot is **unreviewed**. The issue, the release notes and `pilot.json` all say that agreement at the reported precision is not peer review, a certificate or an endorsement.
+A pilot is a public, reviewable record of a reproduction, made before anything is archived with a DOI. It reuses the existing package contract unchanged: the recorded `comparison.json`, `evidence/execution.json` and the archive ZIP. There is no second package model. A pilot is **unreviewed**. The issue, the release notes and `pilot.json` all say that agreement at the printed precision is not peer review, a certificate or an endorsement.
 
 ## Identity and keys
 

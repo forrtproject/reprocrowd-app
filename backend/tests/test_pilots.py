@@ -239,7 +239,7 @@ def test_create_update_and_retries_do_not_duplicate(client, pkg, gh):
     issue = gh.issues[0]
     assert issue["title"].startswith("[SYNTHETIC]") and {l["name"] for l in issue["labels"]} == {"reprocrowd-pilot", "unreviewed", "synthetic"}
     assert f"<!-- reprocrowd-pilot:{v1['reproduction_id']} -->" in issue["body"] and "Pilot record — unreviewed" in issue["body"]
-    assert "### Latest run: v1" in issue["body"] and "3 of 3 numeric targets match" in issue["body"]
+    assert "### Latest run: v1" in issue["body"] and "3 of 3 results match (numbers at the printed precision; text exactly)" in issue["body"]
     assert "first pilot" in gh.comments[1][0]["body"] and v1["assets"][0]["sha256"] in gh.comments[1][0]["body"]
 
     # the same archive again: nothing new on GitHub, the same local record
@@ -261,7 +261,7 @@ def test_create_update_and_retries_do_not_duplicate(client, pkg, gh):
     assert gh.counts() == {"issues": 1, "comments": 2, "releases": 2, "assets": 12}
     assert gh.releases[0]["tag_name"] == v1["tag"] and not gh.releases[0]["draft"]  # v1 kept, unchanged
     assert "### Latest run: v2" in gh.issues[0]["body"] and "| v1 |" in gh.issues[0]["body"] and "| v2 |" in gh.issues[0]["body"]
-    assert "2 of 3 numeric targets match" in gh.issues[0]["body"]
+    assert "2 of 3 results match (numbers at the printed precision; text exactly)" in gh.issues[0]["body"]
     assert [x["version"] for x in client.get(P + "/pilots").json()] == [1, 2]
 
     # the token is never stored or echoed
