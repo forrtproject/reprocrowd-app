@@ -75,6 +75,9 @@ def _default_agents() -> dict[str, AgentProfile]:
                   "--model", "{model}", "--effort", "{effort}", "--allowedTools", "{tools}"],
             model="sonnet",
             effort="high",
+            # --allowedTools only pre-approves: Claude Code still runs commands it classes as read-only (ls, cat).
+            # Denying Bash removes command execution when the analysis must not run (checked with Claude Code 2.1.322).
+            no_exec_argv=["--disallowedTools", "Bash"],
         ),
         # OpenCode (https://opencode.ai) as a headless coding agent: --auto approves the tool calls it makes
         # (Read/Write/Edit/Glob/Grep/Bash), so it can work without a terminal. --format json emits one event per

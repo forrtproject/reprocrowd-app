@@ -46,7 +46,8 @@ for (const kind of ['llm', 'agent']) assert.equal(configuredProfiles(DEFAULT_USE
 const { execRestriction } = await load('src/renderer/api.ts');
 const shipped = configuredProfiles(DEFAULT_USER_CONFIG).agent;
 assert.deepEqual(Object.fromEntries(Object.entries(shipped).map(([n, p]) => [n, execRestriction(p)])),
-  { claude: 'tool_allowlist', opencode: 'cli_settings', codex: 'unsupported' });
+  { claude: 'cli_settings', opencode: 'cli_settings', codex: 'unsupported' });
+assert.equal(execRestriction({ ...shipped.claude, no_exec_argv: [] }), 'tool_allowlist'); // an older Claude profile: allowlist only
 assert.equal(execRestriction({ argv: ['opencode', 'run'], model: '', effort: '', timeout_s: 1, tools: [], exec_tools: [], no_exec_argv: [], no_exec_env: {} }), 'unsupported');
 const noExec = { ...codexProfile, no_exec_argv: ['--disable', 'shell_tool'], no_exec_env: { OPENCODE_PERMISSION: '{}' } };
 assert.deepEqual({ ...parse(replaceProfile(original, 'agent', 'codex', noExec)).agent.profiles.codex.no_exec_env }, { OPENCODE_PERMISSION: '{}' });

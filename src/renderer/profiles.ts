@@ -65,7 +65,7 @@ export async function profileEditor(saved: (text: string) => void) {
         : type === "opencode" ? ["opencode", "run", "--format", "json", "-m", "{model}", "--variant", "{effort}", ...(agent ? ["--auto"] : [])] : ["your-cli"],
       model: type === "claude" ? "sonnet" : "", effort: type === "claude" ? "high" : "", timeout_s: agent ? 7200 : 1800,
       ...(agent ? { events: type === "claude" ? "claude-stream-json" : type === "codex" ? "codex-json" : type === "opencode" ? "opencode-json" : "text", tools: type === "claude" ? ["Read", "Write", "Edit", "Glob", "Grep"] : [], exec_tools: type === "claude" ? ["Bash(Rscript:*)", "Bash(python:*)", "Bash(python3:*)"] : [],
-          no_exec_argv: [],
+          no_exec_argv: type === "claude" ? ["--disallowedTools", "Bash"] : [],
           no_exec_env: type === "opencode" ? { OPENCODE_PERMISSION: OPENCODE_NO_EXEC } : {} }
         : { output: type === "claude" ? "claude-json" : type === "codex" ? "codex-json" : type === "opencode" ? "opencode-json" : "text", read_files_argv: type === "claude" ? ["--allowedTools", "Read"] : [], json_schema_argv: type === "claude" ? ["--json-schema", "{schema}"] : [] })
     });
@@ -77,7 +77,7 @@ export async function profileEditor(saved: (text: string) => void) {
     const argv = [value("command").trim(), ...lines("args")];
     const cli = cliOf(argv), label = CLI_LABELS[cli] ?? cli;
     const mode = execRestriction({ argv, model: "", effort: "", timeout_s: 1, tools: lines("tools"), exec_tools: lines("exec"), no_exec_argv: lines("noexec"), no_exec_env: env() });
-    const restriction = kind() !== "agent" ? "" : mode === "tool_allowlist" ? "No-analysis mode: enforced by the CLI's tool allowlist (not an OS sandbox)."
+    const restriction = kind() !== "agent" ? "" : mode === "tool_allowlist" ? "No-analysis mode: partial. The tool allowlist denies other commands, but the CLI may still run commands it treats as read-only (ls, cat). Re-apply the preset to deny command tools."
       : mode === "cli_settings" ? "No-analysis mode: the no-analysis settings remove the CLI's command tools (not an OS sandbox). The presets were checked live; the smoke test checks a changed profile."
       : "No-analysis mode: not supported. Runs with this profile need “let it run the analysis”; the agent can then run commands in the package folder.";
     form.querySelector(".capability")!.textContent = restriction;

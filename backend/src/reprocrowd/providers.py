@@ -20,14 +20,18 @@ PROTOCOLS = {"llm": ("text", "claude-json", "opencode-json", "codex-json"),
 
 
 def exec_restriction(profile: AgentProfile, tools: list[str] | None = None) -> str:
-    """How a profile honours allow_exec=false. tool_allowlist: derived from argv ({tools} with editing tools, execution
-    tools added only when allowed). cli_settings: the profile declares flags/environment that remove the CLI's
-    command tools; declared, so the live smoke check tests it (an environment nonce must stay unreadable).
-    Neither: unsupported, and no-analysis requests are refused before launch. None of these is an OS sandbox."""
+    """How a profile honours allow_exec=false. None of these is an OS sandbox.
+    cli_settings: the profile declares flags/environment that remove the CLI's command tools (Claude Code:
+      --disallowedTools Bash; OpenCode: OPENCODE_PERMISSION); declared, so the live smoke check tests it: no command
+      may run, not even ls, and an environment nonce must stay unreadable.
+    tool_allowlist: derived from argv ({tools} with editing tools; execution tools added only when allowed). Weaker:
+      the CLI denies commands outside the list but may still run commands it classes as read-only (Claude Code runs
+      ls/cat); profiles saved before no_exec settings existed get this.
+    Neither: unsupported, and no-analysis requests are refused before launch."""
+    if profile.no_exec_argv or profile.no_exec_env:
+        return "cli_settings"
     supports = any("{tools}" in arg for arg in profile.argv) and bool(profile.exec_tools) and bool(profile.tools) and bool(profile.tools if tools is None else tools)
-    if supports:
-        return "tool_allowlist"
-    return "cli_settings" if profile.no_exec_argv or profile.no_exec_env else "unsupported"
+    return "tool_allowlist" if supports else "unsupported"
 
 
 def available(argv: list[str]) -> bool:
