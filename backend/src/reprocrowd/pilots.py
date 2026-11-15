@@ -1,6 +1,6 @@
 """GitHub pilot submissions: a reviewable, public record of a reproduction before anything goes to Zenodo.
 
-Identity (docs/specs/github-pilots.md):
+Identity:
   reproduction  ``reproduction_id`` (repro-<10 hex>), stored in the package on the first submission. One GitHub issue
                 per reproduction, found by a hidden marker; the paper's DOI is metadata, not identity, so independent
                 reproductions of one paper get separate issues.

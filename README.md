@@ -91,7 +91,7 @@ Apple silicon Macs runs ARM64 Linux, which works like any other Linux.
   submission resumes. A new run becomes v2 on the same issue. It needs write access
   to the repository. A token saved in Settings → GitHub pilots is used first; without one,
   the app uses the GitHub CLI login (`gh auth login`). A numeric match is
-  not a scientific certificate. See [the pilot spec](docs/specs/github-pilots.md).
+  not a scientific certificate. See [the contract](docs/contracts.md#github-pilots-and-output-licences).
 - **⚙ Settings**: your name / ORCID / affiliation for records; Zenodo server
   (**sandbox by default**, for testing) and a personal access token for each
   server (scopes `deposit:write`, `deposit:actions`; kept encrypted with the
@@ -177,4 +177,4 @@ recorded per file in its archive's `licenses.json`. Metadata is CC0-1.0. Reports
 except quoted passages and original figures from the article, which keep the article's terms; outputs computed from
 third-party data are also subject to that data's terms. New analysis code follows `[licensing] code` (MIT by default).
 Third-party articles, data and code keep their own licences.
-See [the pilot spec](docs/specs/github-pilots.md#licences).
+See [the contract](docs/contracts.md#github-pilots-and-output-licences).
