@@ -58,7 +58,7 @@ TAGS = [
     {"name": "report", "description": "The reproduction report and the ZIP of the package."},
     {"name": "database", "description": "Submission to the package database (optional)."},
     {"name": "zenodo", "description": "Deposits on Zenodo: a draft with the package ZIP and a reserved DOI, published in a separate step."},
-    {"name": "pilots", "description": "GitHub pilot submissions: an issue per reproduction, a pre-release with the files per run. Unreviewed."},
+    {"name": "pilots", "description": "GitHub pilot submissions: an issue per reproduction, a pre-release with the files per run, open to any GitHub account. Unreviewed."},
 ]
 
 @asynccontextmanager
@@ -1043,27 +1043,30 @@ def github_pilot_status():
     return pilots.status()
 
 
-@api.post("/github-pilots:check", tags=["pilots"], response_model=M.GithubCheck, summary="Check a GitHub token against the pilots repository",
-          description="Reads the repository and its release settings; reports whether the account can submit. Writes nothing.", responses=errors(*GITHUB_ERRORS))
+@api.post("/github-pilots:check", tags=["pilots"], response_model=M.GithubCheck, summary="Check a GitHub login against the pilots repository",
+          description="Reads the repository and the account; reports whether it can submit and where its run files would go. Writes nothing.", responses=errors(*GITHUB_ERRORS))
 def github_pilot_check(body: M.GithubAuth = Body(default_factory=M.GithubAuth)):
     return pilots.check(_gh(body), body.repo)
 
 
-@api.get("/packages/{pkg}/pilots", tags=["pilots"], response_model=list[GithubPilot], summary="GitHub pilot submissions of this package")
+@api.get("/packages/{pkg}/pilots", tags=["pilots"], response_model=list[GithubPilot], summary="GitHub pilot submissions of this package",
+         description="A `submitted` run is marked `published` here once the pilots repository has copied it (a public read of its release).")
 def list_pilots(pkg: Pkg, page: Paged):
-    return page(pkg.load().reprocrowd.pilots)
+    return page(pilots.refresh(pkg))
 
 
 @api.post("/packages/{pkg}/pilots:preview", tags=["pilots"], response_model=M.PilotPreview, summary="Show what a pilot submission would send",
-          description="The issue title, labels, files with hashes, left-out groups and licences, without contacting GitHub.",
+          description="The issue title, files with hashes, left-out groups and licences, without contacting GitHub.",
           responses=errors(*PILOT_PRECONDITIONS))
 def preview_pilot(pkg: Pkg, body: M.PilotOptions = Body(default_factory=M.PilotOptions)):
     return pilots.preview(pkg, body.repo, body.exclude, body.note, body.synthetic)
 
 
 @api.post("/packages/{pkg}/pilots", tags=["pilots"], response_model=GithubPilot, summary="Submit this run as a GitHub pilot",
-          description="Finds or creates the reproduction's issue, uploads the files to a pre-release for this run (draft, verified by "
-                      "SHA-256, then published), comments on the issue and updates its summary. Idempotent per run key (archive hash "
+          description="Needs no write access to the pilots repository. Uploads the files to a pre-release in the submitter's fork "
+                      "(created if needed; verified by SHA-256), finds or opens the reproduction's issue and posts the run's comment. The "
+                      "pilots repository's Action then copies the files into its own immutable release; the record is `submitted` until "
+                      "then. Idempotent per run key (archive hash "
                       "and left-out groups): a retry resumes a `partial` record and creates nothing twice, so it always answers 200 with "
                       "the run's record. Same preconditions as a "
                       "Zenodo deposit; a stale report is refused (`report_stale`). A pilot is unreviewed, not a certificate.",

@@ -462,8 +462,8 @@ class DepositPreview(BaseModel):
 
 
 class GithubAuth(Req):
-    github_token: SecretStr | None = Field(default=None, description="the user's GitHub token (classic: public_repo; fine-grained: Contents "
-                                                                     "write, Issues write on the repository); passed on, never stored. Default: [github] token")
+    github_token: SecretStr | None = Field(default=None, description="the user's GitHub token (`gh auth token`, or classic with public_repo: it "
+                                                                     "must be able to create a fork); passed on, never stored. Default: [github] token")
     repo: str | None = Field(default=None, pattern=r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$", description="owner/name; default: [github] pilots_repo")
 
 
@@ -489,10 +489,10 @@ class GithubPilotStatus(BaseModel):
 class GithubCheck(BaseModel):
     repo: str
     url: str | None
+    login: str
     private: bool | None
-    can_submit: bool = Field(description="the token's account has write access (needed for issues with labels and releases)")
-    default_branch: str | None
-    immutable_releases: bool | None = Field(description="published releases can't be changed (null: couldn't be read)")
+    can_submit: bool = Field(description="the repository is public and this account can fork it (or owns it)")
+    files_in: str = Field(description="where this account's run files go: its fork, or the repository itself for its owner")
 
 
 class PilotPreview(BaseModel):
@@ -501,7 +501,6 @@ class PilotPreview(BaseModel):
     run_key: str
     tag: str
     issue_title: str
-    labels: list[str]
     summary: str
     assets: list[dict[str, Any]]
     exclude: list[str]

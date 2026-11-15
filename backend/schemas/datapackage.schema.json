@@ -264,7 +264,7 @@
     },
     "GithubPilot": {
       "additionalProperties": false,
-      "description": "One run of this reproduction submitted as a GitHub pilot: a pre-release with the files, a comment on the\nreproduction's issue. Keyed by run_key (archive hash + left-out groups); a retry resumes the same record.",
+      "description": "One run of this reproduction submitted as a GitHub pilot: a release with the files in the submitter's fork, a\ncomment on the reproduction's issue, and the copy the pilots repository's Action makes. Keyed by run_key (archive\nhash + left-out groups); a retry resumes the same record.",
       "properties": {
         "id": {
           "pattern": "^pil-[0-9a-f]+$",
@@ -297,13 +297,14 @@
             }
           ],
           "default": null,
-          "description": "run number within the reproduction, assigned when the release is created",
+          "description": "run number within the reproduction, assigned by the pilots repository when it copies the run",
           "title": "Version"
         },
         "status": {
-          "description": "partial: a step failed; submitting again resumes",
+          "description": "partial: a step failed, submitting again resumes; submitted: files and comment are up, the pilots repository hasn't copied them yet; published: the copy exists",
           "enum": [
             "partial",
+            "submitted",
             "published"
           ],
           "title": "Status",
@@ -337,17 +338,24 @@
           "default": null,
           "title": "Issue Url"
         },
-        "release_id": {
+        "files_repo": {
+          "default": "",
+          "description": "owner/name of the repository holding the submitted files (the submitter's fork)",
+          "title": "Files Repo",
+          "type": "string"
+        },
+        "files_url": {
           "anyOf": [
             {
-              "type": "integer"
+              "type": "string"
             },
             {
               "type": "null"
             }
           ],
           "default": null,
-          "title": "Release Id"
+          "description": "the submitted release",
+          "title": "Files Url"
         },
         "release_url": {
           "anyOf": [
@@ -359,6 +367,7 @@
             }
           ],
           "default": null,
+          "description": "the pilots repository's copy, once made",
           "title": "Release Url"
         },
         "comment_url": {

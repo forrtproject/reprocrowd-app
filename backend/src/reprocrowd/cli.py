@@ -675,7 +675,7 @@ def zen_discard(pkg: str, dep: str):
     out(call("POST", f"/packages/{pkg}/deposits/{dep}:discard", _zauth()))
 
 
-pilot = typer.Typer(help="GitHub pilot submissions (an issue per reproduction, a pre-release per run; unreviewed). The token comes "
+pilot = typer.Typer(help="GitHub pilot submissions (an issue per reproduction, a pre-release per run; unreviewed; any GitHub account). The token comes "
                          "from $REPROCROWD_GITHUB_TOKEN, else `gh auth token` (after `gh auth login`), else the service's [github] token.",
                     no_args_is_help=True)
 app.add_typer(pilot, name="pilot")
@@ -724,7 +724,7 @@ def pilot_status():
 
 @pilot.command("check")
 def pilot_check(repo: Optional[str] = _REPO):
-    """Check that your GitHub token can submit to the pilots repository (writes nothing)."""
+    """Check that your GitHub login can submit to the pilots repository, and where your files would go (writes nothing)."""
     body = {k: v for k, v in _pilot_body(repo, token=True).items() if k in ("repo", "github_token")}
     r = call("POST", "/github-pilots:check", body)
     out(r)
@@ -745,7 +745,8 @@ def pilot_submit(pkg: str, note: str = "", exclude: Optional[list[str]] = _EXCLU
     """Submit the current archive as a pilot run. Safe to repeat: a retry resumes and creates nothing twice."""
     p = call("POST", f"/packages/{pkg}/pilots", _pilot_body(repo, note, exclude, include_all, synthetic, token=True), timeout=None)
     out(p)
-    typer.echo(f"Run v{p['version']} of {p['reproduction_id']}: issue {p['issue_url']} · files {p['release_url']}", err=True)
+    where = f"run v{p['version']}, {p['release_url']}" if p["status"] == "published" else f"files {p['files_url']}; the pilots repository copies them shortly"
+    typer.echo(f"{p['reproduction_id']}: issue {p['issue_url']} · {where}", err=True)
 
 
 @pilot.command("list")

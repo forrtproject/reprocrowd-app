@@ -1,33 +1,40 @@
 """GitHub pilot submissions: a reviewable, public record of a reproduction before anything goes to Zenodo.
 
+Anyone with a GitHub account can submit; no write access to the pilots repository is needed.
+  1. The run's files go to a published pre-release in the submitter's fork of the pilots repository (created on the
+     first submission). The repository's owner, who can't fork it, uploads a draft release there instead.
+  2. The reproduction's issue is opened on the first submission (anyone can open issues), and each run gets a comment
+     whose hidden markers name the run and the repository holding its files.
+  3. The pilots repository's GitHub Action (pilot_copy.py) checks the run and copies the files into an immutable
+     pre-release there, numbers the run (v1, v2, …), labels the issue, updates its table of runs and replies.
+The local record is ``submitted`` after step 2 and ``published`` once the copy exists (checked when records are listed).
+
 Identity:
   reproduction  ``reproduction_id`` (repro-<10 hex>), stored in the package on the first submission. One GitHub issue
                 per reproduction, found by a hidden marker; the paper's DOI is metadata, not identity, so independent
                 reproductions of one paper get separate issues.
-  run           ``run_key`` = sha256(archive sha256 | left-out groups)[:12]. One pre-release per run, tagged
-                <reproduction_id>-<run_key>, with the files; one comment per run on the issue. ``version`` (v1, v2, …) is
-                assigned when the release is created and read back from it afterwards.
-Submitting is idempotent per run key: every step first looks for what an earlier attempt made (local record, then
-the issue/release/comment markers on GitHub) and only creates what is missing. A failure leaves a ``partial`` record;
-submitting again resumes. Published releases are never changed or deleted; with immutable releases enabled on the
-repository GitHub enforces that.
+  run           ``run_key`` = sha256(archive sha256 | left-out groups)[:12]. One release per run, tagged
+                <reproduction_id>-<run_key>, in the files repository and (copied) in the pilots repository; one comment
+                per run on the issue.
+Submitting is idempotent per run key: every step first looks for what an earlier attempt made (local record, then the
+markers on GitHub) and only creates what is missing. A failure leaves a ``partial`` record; submitting again resumes.
 
 Preconditions are those of a Zenodo deposit (``database.Prepared`` + the paper's text retrieved for its DOI): the
 recorded comparison (refused when stale), a run that succeeded and an up-to-date archive. The uploaded ZIP is the
 archive, or the copy without the left-out groups, built once per run key and kept under archive/ so a retry uploads
-the same bytes. report.html, comparison.json, execution.json and licenses.json are copied out of that ZIP.
+the same bytes. report.html, comparison.json, execution.json and licenses.json are copied out of that ZIP. A run's
+files must total under MAX_RUN, the limit the Action enforces.
 
-Files go to release assets (REST upload, < 2 GiB each); GitHub has no API for issue attachments. The token is passed
-per request and never stored.
+The token is passed per request and never stored.
 """
 from __future__ import annotations
 
 import hashlib
 import json
-import re
 import secrets
 import shutil
 import tempfile
+import time
 import zipfile
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -41,16 +48,15 @@ from .config import settings
 from .database import Prepared
 from .errors import ApiError, conflict, invalid
 from .package import Package, sha256_file
+from .pilot_copy import MAX_RUN, RUNS_END, RUNS_START, files_mark, issue_mark, release_mark, run_mark, summary_line
 from .report import ARCHIVE_DIR, archive_path
 from .schemas.common import now
 from .schemas.manifest import GithubPilot, PilotAsset
 from .zenodo import GROUPS, _check_published_paper, _group, _publication_zip, contents
 
-LABEL = "reprocrowd-pilot"
-MAX_ASSET = 2 * 1024**3 - 1  # GitHub: each release asset must be under 2 GiB
 BODY_LIMIT = 65_000  # GitHub's issue/comment body limit is 65,536 characters
 ROW_LIMIT = 60
-SUMMARY_RE = re.compile(r"<!-- reprocrowd-summary: (\{.*?\}) -->")
+FORK_WAIT = 30  # × 2 s: GitHub creates forks asynchronously
 DISCLAIMER = ("**Pilot record — unreviewed.** Made with ReproCrowd by recreating the analysis from the article's text and "
               "published data. Agreement under the recorded comparison settings shows that this code produced the "
               "reported numbers from these inputs. It is not peer review, a certificate of the study's validity, or an endorsement. The authors' "
@@ -62,26 +68,10 @@ EXTRACT = {"report.html": "report.html", "comparison.json": "comparison.json", "
 TYPES = {".zip": "application/zip", ".html": "text/html", ".json": "application/json"}
 
 
-def issue_mark(rid: str) -> str:
-    return f"<!-- reprocrowd-pilot:{rid} -->"
-
-
-def run_mark(rid: str, key: str) -> str:
-    return f"<!-- reprocrowd-pilot-run:{rid}:{key} -->"
-
-
-def release_mark(tag: str) -> str:
-    """In every release body: GitHub replaces a draft's tag with an ``untagged-…`` placeholder when the draft is
-    edited without tag_name, so releases are also matched by this marker, not only by their tag."""
-    return f"<!-- reprocrowd-pilot-release:{tag} -->"
-
-
 def _is_run(r: dict[str, Any], tag: str) -> bool:
+    """GitHub replaces a draft's tag with an ``untagged-…`` placeholder when the draft is edited without tag_name, so
+    releases are also matched by the marker in their body."""
     return r.get("tag_name") == tag or release_mark(tag) in (r.get("body") or "")
-
-
-def _of_reproduction(r: dict[str, Any], rid: str) -> bool:
-    return (r.get("tag_name") or "").startswith(f"{rid}-") or f"<!-- reprocrowd-pilot-release:{rid}-" in (r.get("body") or "")
 
 
 # ---------- GitHub REST ----------
@@ -91,7 +81,7 @@ class GitHub:
     def __init__(self, token: str | None, api: str | None = None):
         tok = token or settings().github_token
         if not tok:
-            raise ApiError(400, "github_token_missing", "a GitHub token is needed (github_token; for rc: $REPROCROWD_GITHUB_TOKEN or `gh auth login`)")
+            raise ApiError(400, "github_token_missing", "a GitHub login is needed (`gh auth login`; for rc also $REPROCROWD_GITHUB_TOKEN)")
         self.api = (api or settings().github_api_url).rstrip("/")
         self.headers = {"Authorization": f"Bearer {tok}", "Accept": "application/vnd.github+json",
                         "X-GitHub-Api-Version": "2022-11-28", "User-Agent": f"ReproCrowd/{__version__}"}
@@ -115,8 +105,8 @@ class GitHub:
             raise ApiError(403, "github_token_invalid", f"GitHub didn't accept the token ({msg})")
         if r.status_code in (403, 404):
             raise ApiError(403, "github_forbidden", f"GitHub refused {method} {url.split('?')[0].removeprefix(self.api)} ({msg}). "
-                           "Submitting needs write access to the repository; a fine-grained token needs Contents: write, "
-                           "Issues: write and Metadata: read for it")
+                           "Submitting needs a login that can open issues and create a fork: `gh auth login`, or a classic "
+                           "token with the public_repo scope")
         if r.status_code == 422:
             raise invalid("github_rejected", f"GitHub rejected {method} {url.split('?')[0].removeprefix(self.api)}: {msg}",
                           {"errors": (r.json() if r.content else {}).get("errors", [])})
@@ -135,21 +125,15 @@ class GitHub:
 
 
 def check(token: str | None, repo: str | None = None) -> dict[str, Any]:
-    """Can this token submit pilots to the repository? (One read; nothing is written.)"""
+    """Can this login submit pilots to the repository? (Reads only.)"""
     repo = repo or settings().github_pilots_repo
     gh = GitHub(token)
     info = gh.json("GET", f"/repos/{repo}")
-    perms = info.get("permissions") or {}
-    return {"repo": info.get("full_name", repo), "url": info.get("html_url"), "private": info.get("private"),
-            "can_submit": bool(perms.get("push")), "default_branch": info.get("default_branch"),
-            "immutable_releases": _immutable(gh, repo)}
-
-
-def _immutable(gh: GitHub, repo: str) -> bool | None:
-    try:
-        return bool(gh.json("GET", f"/repos/{repo}/immutable-releases").get("enabled"))
-    except ApiError:
-        return None
+    login = gh.json("GET", "/user")["login"]
+    own = info["owner"]["login"].lower() == login.lower()
+    return {"repo": info.get("full_name", repo), "url": info.get("html_url"), "login": login, "private": info.get("private"),
+            "can_submit": not info.get("private") and (own or info.get("allow_forking") is not False),
+            "files_in": repo if own else f"{login}/{info.get('name')} (your fork, created on the first submission)"}
 
 
 def status() -> dict[str, Any]:
@@ -183,7 +167,6 @@ class Plan:
     reproduction_id: str | None
     synthetic: bool
     note: str
-    branch: str = "main"
     files: list[Asset] = field(default_factory=list)
     excluded: list[str] = field(default_factory=list)
     licences: dict[str, Any] = field(default_factory=dict)  # from the archived licenses.json, not the current setting
@@ -223,10 +206,10 @@ def _build_files(plan: Plan, tmp: Path) -> None:
                 files.append(out)
     plan.files = [Asset(f.name, f, sha256_file(f), f.stat().st_size) for f in files]
     plan.licences = _archived_licences(next((f for f in files if f.name == licensing.FILE), None))
-    big = [a.name for a in plan.files if a.bytes > MAX_ASSET]
-    if big:
-        raise invalid("pilot_asset_too_large", f"GitHub release assets must be under 2 GiB; too large: {', '.join(big)}. "
-                                               "Leave out the inputs (exclude: inputs) or deposit on Zenodo instead")
+    total = sum(a.bytes for a in plan.files)
+    if total > MAX_RUN - 1024**2:  # leaves room for pilot.json
+        raise invalid("pilot_asset_too_large", f"a pilot run's files must total under {MAX_RUN // 1024**2} MB; these total "
+                                               f"{total / 1024**2:.0f} MB. Leave out the inputs (exclude: inputs) or deposit on Zenodo instead")
 
 
 def _evidence(plan: Plan) -> dict[str, Any]:
@@ -268,24 +251,15 @@ def _archived_licences(path: Path | None) -> dict[str, Any]:
             "third_party": "original licences retained; see licenses.json"}
 
 
-def _summary(plan: Plan, version: int | None) -> dict[str, Any]:
+def _summary(plan: Plan) -> dict[str, Any]:
     cmp = plan.p.cmp
-    numeric = sum(r.type != "figure" for r in cmp.rows)
-    return {"version": version, "run_key": plan.run_key, "match": cmp.summary.get("match", 0), "within": cmp.summary.get("within", 0),
-            "numeric": numeric, "threshold": cmp.settings.threshold, "rounding": cmp.settings.rounding, "policy": cmp.policy}
+    return {"run_key": plan.run_key, "match": cmp.summary.get("match", 0), "within": cmp.summary.get("within", 0),
+            "numeric": sum(r.type != "figure" for r in cmp.rows), "threshold": cmp.settings.threshold,
+            "rounding": cmp.settings.rounding, "policy": cmp.policy}
 
 
-def _summary_line(s: dict[str, Any]) -> str:
-    if not s["numeric"]:
-        return "no results to compare automatically (figures need visual comparison)"
-    rounding = s.get("rounding", "reported")  # older release notes don't record it
-    how = "numbers at printed precision" if rounding == "reported" else f"numbers rounded to {rounding} decimals"
-    return (f"{s['match']} of {s['numeric']} match ({how}; text exactly); {s['within']} more within "
-            f"{s['threshold']:g} % (exploratory)")
-
-
-def _pilot_json(plan: Plan, version: int) -> bytes:
-    """The machine-readable record of the run (CC0). Deterministic for a run key and version, so a retry matches."""
+def _pilot_json(plan: Plan) -> bytes:
+    """The machine-readable record of the run (CC0). Deterministic for a run key, so a retry matches."""
     cmp, m = plan.p.cmp, plan.p.m
     record = {
         "schema": "reprocrowd-pilot/1",
@@ -293,13 +267,12 @@ def _pilot_json(plan: Plan, version: int) -> bytes:
         "statement": DISCLAIMER.replace("**", ""),
         "synthetic": plan.synthetic,
         "reproduction_id": plan.reproduction_id,
-        "version": version,
         "run_key": plan.run_key,
         "tag": plan.tag,
         "paper": {"doi": plan.p.doi},
         "track": m.reprocrowd.track,
         "comparison": {"policy": cmp.policy, "rounding_mode": cmp.rounding_mode, "settings": cmp.settings.model_dump(mode="json"),
-                       "summary": cmp.summary, "numeric_targets": _summary(plan, version)["numeric"]},
+                       "summary": cmp.summary, "numeric_targets": _summary(plan)["numeric"]},
         "evidence": _evidence(plan),
         "archive": {"sha256": m.reprocrowd.archive.sha256, "exclude": plan.exclude, "excluded": plan.excluded},
         "assets": {a.name: f"sha256:{a.sha256}" for a in plan.files},
@@ -351,39 +324,32 @@ def _banner(plan: Plan) -> str:
     return (f"> [!CAUTION]\n> {SYNTHETIC}\n\n" if plan.synthetic else "") + f"> [!WARNING]\n> {DISCLAIMER}\n"
 
 
-def _release_body(plan: Plan, version: int, assets: list[Asset]) -> str:
-    s = _summary(plan, version)
-    return _clip(f"{_banner(plan)}\n**Run v{version}** of reproduction `{plan.reproduction_id}` (run key `{plan.run_key}`) of "
-                 f"https://doi.org/{plan.p.doi}\n\n{_summary_line(s)}. Policy `{s['policy']}`.\n\n{_evidence_line(plan)}\n{_assets_table(assets)}\n\n"
-                 f"{_licence_lines(plan)}\n\n{release_mark(plan.tag)}\n<!-- reprocrowd-summary: {json.dumps(s, sort_keys=True)} -->\n")
+def _release_body(plan: Plan, assets: list[Asset]) -> str:
+    return _clip(f"{_banner(plan)}\nRun `{plan.run_key}` of reproduction `{plan.reproduction_id}` of https://doi.org/{plan.p.doi}, "
+                 f"submitted as a pilot to {plan.repo}; the copy there is the record.\n\n{summary_line(_summary(plan))}.\n\n"
+                 f"{_evidence_line(plan)}\n{_assets_table(assets)}\n\n{_licence_lines(plan)}\n\n{release_mark(plan.tag)}\n")
 
 
 def _comment_body(plan: Plan, rec: GithubPilot) -> str:
-    s = _summary(plan, rec.version)
+    s = _summary(plan)
     note = f"\n**Submitter's note:** {' '.join(plan.note.split())[:2000]}\n" if plan.note else ""
-    return _clip(f"{run_mark(plan.reproduction_id, plan.run_key)}\n### Run v{rec.version} · `{plan.run_key}`\n\n"
-                 f"{_summary_line(s)}. Policy `{s['policy']}`, rounding `{plan.p.cmp.rounding_mode}`.\n\n{_evidence_line(plan)}{note}\n"
-                 f"Files: [release {rec.tag}]({rec.release_url}) (pre-release; earlier runs stay in their own releases).\n\n"
+    return _clip(f"{run_mark(plan.reproduction_id, plan.run_key)}\n{files_mark(rec.files_repo)}\n### Run `{plan.run_key}`\n\n"
+                 f"{summary_line(s)}. Policy `{s['policy']}`, rounding `{plan.p.cmp.rounding_mode}`.\n\n{_evidence_line(plan)}{note}\n"
+                 f"Files: [release {rec.tag}]({rec.files_url}) in {rec.files_repo}. This repository's Action checks them, copies them "
+                 "into its own immutable pre-release, numbers the run and replies below.\n\n"
                  f"{_assets_table(rec.assets)}\n\n<details><summary>Comparison ({len(plan.p.cmp.rows)} targets)</summary>\n\n"
                  f"{_comparison_table(plan)}\n\n</details>\n\n{_licence_lines(plan)}\n\n_Status: pilot, unreviewed. Reviewers: "
                  "reply here, or open a new issue for a separate reproduction._\n")
 
 
-def _issue_body(plan: Plan, runs: list[dict[str, Any]], repo_url: str) -> str:
-    latest = max(runs, key=lambda r: r["version"]) if runs else None
-    lines = [issue_mark(plan.reproduction_id), _banner(plan),
-             f"## Reproduction of: {plan.p.work['title']}", "",
+def _issue_body(plan: Plan) -> str:
+    lines = [issue_mark(plan.reproduction_id), _banner(plan), f"## Reproduction of: {plan.p.work['title']}", "",
              f"Paper: https://doi.org/{plan.p.doi} · Reproduction ID: `{plan.reproduction_id}` · Track: "
-             f"{plan.p.m.reprocrowd.track or 'unspecified (older package)'} · Status: **pilot, unreviewed**", ""]
-    if latest:
-        lines += [f"### Latest run: v{latest['version']} ({latest['date']})", "", f"{_summary_line(latest)}. Policy `{latest['policy']}`.",
-                  f"Files and SHA-256 hashes: [{latest['tag']}]({latest['url']}) · machine-readable record: `pilot.json`.", ""]
-    lines += ["### All runs", "", "| Run | Date | Exact | Within | Release |", "|---|---|---:|---:|---|"]
-    for r in sorted(runs, key=lambda r: -r["version"])[:100]:
-        lines.append(f"| v{r['version']} | {r['date']} | {r['match']}/{r['numeric']} | {r['within']} | [{r['tag']}]({r['url']}) |")
-    lines += ["", "Each run is a separate pre-release; earlier runs are kept and never changed. A comment below records each run.", "",
-              "### Licences", "", "Each run's `licenses.json` lists the licence of every file. For the run submitted last:", "", _licence_lines(plan), "",
-              f"_Updated by ReproCrowd {__version__}. Releases: {repo_url}/releases?q={plan.reproduction_id}_"]
+             f"{plan.p.m.reprocrowd.track or 'unspecified (older package)'} · Status: **pilot, unreviewed**", "",
+             RUNS_START, "_No run has been copied into this repository yet._", RUNS_END, "",
+             "Each run is a comment below and an immutable pre-release in this repository; earlier runs are never changed.", "",
+             "### Licences", "", "Each run's `licenses.json` lists the licence of every file. For the first run:", "", _licence_lines(plan), "",
+             f"_Opened by ReproCrowd {__version__}._"]
     return _clip("\n".join(lines) + "\n")
 
 
@@ -398,14 +364,10 @@ def preview(pkg: Package, repo: str | None, exclude: list[str] | None, note: str
         _build_files(plan, Path(tmp))  # builds the ZIP once per run key; a later preview or the submission reuses it
     existing = next((x for x in pkg.load().reprocrowd.pilots if x.run_key == plan.run_key and x.repo == plan.repo), None)
     return {"repo": plan.repo, "reproduction_id": plan.reproduction_id, "run_key": plan.run_key, "tag": plan.tag,
-            "issue_title": _issue_title(plan), "labels": _labels(plan), "summary": _summary_line(_summary(plan, None)),
+            "issue_title": _issue_title(plan), "summary": summary_line(_summary(plan)),
             "assets": [{"name": a.name, "bytes": a.bytes, "sha256": a.sha256} for a in plan.files] + [{"name": "pilot.json", "bytes": None, "sha256": None}],
             "exclude": plan.exclude, "excluded": plan.excluded, "contents": contents(pkg, plan.p.work),
             "licenses": plan.licences, "existing": existing.model_dump(mode="json") if existing else None}
-
-
-def _labels(plan: Plan) -> list[str]:
-    return [LABEL, "unreviewed"] + (["synthetic"] if plan.synthetic else [])
 
 
 def _save(pkg: Package, rec: GithubPilot) -> GithubPilot:
@@ -420,12 +382,9 @@ def submit(pkg: Package, *, token: str | None, repo: str | None, exclude: list[s
     with tempfile.TemporaryDirectory() as tmp:
         _build_files(plan, Path(tmp))  # size checks before anything is written on GitHub
         info = gh.json("GET", f"/repos/{plan.repo}")
-        plan.branch = info.get("default_branch") or "main"
         if info.get("private"):
             raise ApiError(403, "github_forbidden", f"{plan.repo} is private; pilots are public records, so submit them to a public repository")
-        if not (info.get("permissions") or {}).get("push"):
-            raise ApiError(403, "github_forbidden", f"this GitHub account can't write to {plan.repo}; pilot submissions create issues and "
-                                                    "releases, which needs write access (ask the maintainers, or configure your own repository)")
+        login = gh.json("GET", "/user")["login"]
         if plan.reproduction_id is None:
             with pkg.edit() as m:
                 m.reprocrowd.reproduction_id = m.reprocrowd.reproduction_id or f"repro-{secrets.token_hex(5)}"
@@ -439,70 +398,65 @@ def submit(pkg: Package, *, token: str | None, repo: str | None, exclude: list[s
             plan.note = rec.note
         rec.note, rec.error = plan.note, None
         try:
-            _issue(gh, plan, rec, pkg)
-            _release(gh, plan, rec, pkg, Path(tmp))
+            files_repo, branch = _files_repo(gh, info, login)
+            rec.files_repo = files_repo
+            _issue(gh, plan, rec, pkg, login)
+            _release(gh, plan, rec, pkg, Path(tmp), files_repo, branch)
             _comment(gh, plan, rec, pkg)
-            runs = _runs(gh, plan)
-            gh.request("PATCH", f"/repos/{plan.repo}/issues/{rec.issue_number}", json={"body": _issue_body(plan, runs, info.get("html_url", ""))})
         except Exception as e:
             rec.error = f"{e.code}: {e.message}" if isinstance(e, ApiError) else f"{type(e).__name__}: {e}"
             _save(pkg, rec)
             raise
-        rec.status = "published"
-        return _save(pkg, rec)
+        if rec.status == "partial":
+            rec.status = "submitted"
+        _save(pkg, rec)
+    return refresh(pkg, [rec])[0]
 
 
-def _issue(gh: GitHub, plan: Plan, rec: GithubPilot, pkg: Package) -> None:
+def _files_repo(gh: GitHub, info: dict[str, Any], login: str) -> tuple[str, str]:
+    """Where the run's files go: the submitter's fork (created if needed), or the repository itself for its owner."""
+    central, branch = info["full_name"], info.get("default_branch") or "main"
+    if info["owner"]["login"].lower() == login.lower():
+        return central, branch
+    r = gh.request("GET", f"/repos/{login}/{info['name']}", ok=(200, 404))
+    fork = r.json() if r.status_code == 200 and (r.json().get("parent") or {}).get("full_name", "").lower() == central.lower() else None
+    if fork is None:
+        fork = gh.json("POST", f"/repos/{central}/forks", ok=(202,), json={"default_branch_only": True})
+    name, branch = fork["full_name"], fork.get("default_branch") or branch
+    for _ in range(FORK_WAIT):
+        if gh.request("GET", f"/repos/{name}/branches/{branch}", ok=(200, 404)).status_code == 200:
+            return name, branch
+        time.sleep(2)
+    raise ApiError(502, "github_error", f"GitHub is still creating the fork {name}; submit again in a minute")
+
+
+def _issue(gh: GitHub, plan: Plan, rec: GithubPilot, pkg: Package, login: str) -> None:
     mark = issue_mark(plan.reproduction_id)
     known = rec.issue_number or next((x.issue_number for x in pkg.load().reprocrowd.pilots if x.repo == plan.repo and x.issue_number), None)
     issue = None
     if known:
         r = gh.request("GET", f"/repos/{plan.repo}/issues/{known}", ok=(200, 404, 410))
         issue = r.json() if r.status_code == 200 and mark in (r.json().get("body") or "") else None
+    for query in ({"creator": login}, {"labels": "reprocrowd-pilot"}):  # unlabelled until the Action has copied a run
+        if issue is None:
+            issue = next((i for i in gh.paged(f"/repos/{plan.repo}/issues", query | {"state": "all"})
+                          if "pull_request" not in i and mark in (i.get("body") or "")), None)
     if issue is None:
-        issue = next((i for i in gh.paged(f"/repos/{plan.repo}/issues", {"labels": LABEL, "state": "all"})
-                      if "pull_request" not in i and mark in (i.get("body") or "")), None)
-    if issue is None:
-        _ensure_labels(gh, plan)
-        body = f"{mark}\n{_banner(plan)}\n_The first run is being uploaded; this description is replaced when it is complete._\n"
-        issue = gh.json("POST", f"/repos/{plan.repo}/issues", json={"title": _issue_title(plan), "body": body, "labels": _labels(plan)})
+        issue = gh.json("POST", f"/repos/{plan.repo}/issues", json={"title": _issue_title(plan), "body": _issue_body(plan)})
     rec.issue_number, rec.issue_url = issue["number"], issue["html_url"]
     _save(pkg, rec)
 
 
-LABELS = {LABEL: ("1d76db", "A ReproCrowd pilot record (one issue per reproduction)"),
-          "unreviewed": ("fbca04", "Not reviewed: a numeric match is not a scientific certificate"),
-          "synthetic": ("cccccc", "Synthetic test fixture of the publication workflow, not research")}
-
-
-def _ensure_labels(gh: GitHub, plan: Plan) -> None:
-    """A configured repository of one's own may lack the labels; create those that are missing."""
-    for name in _labels(plan):
-        if gh.request("GET", f"/repos/{plan.repo}/labels/{name}", ok=(200, 404)).status_code == 404:
-            color, desc = LABELS[name]
-            gh.request("POST", f"/repos/{plan.repo}/labels", ok=(201, 422), json={"name": name, "color": color, "description": desc})
-
-
-def _versions(release: dict[str, Any]) -> int | None:
-    m = re.search(r"\bv(\d+)\b", release.get("name") or "")
-    return int(m.group(1)) if m else None
-
-
-def _release(gh: GitHub, plan: Plan, rec: GithubPilot, pkg: Package, tmp: Path) -> None:
-    mine = [r for r in gh.paged(f"/repos/{plan.repo}/releases") if _of_reproduction(r, plan.reproduction_id)]
-    rel = next((r for r in mine if _is_run(r, plan.tag)), None)
+def _release(gh: GitHub, plan: Plan, rec: GithubPilot, pkg: Package, tmp: Path, repo: str, branch: str) -> None:
+    """The run's release in the files repository: published in a fork; a draft, for the Action to publish, in the pilots
+    repository itself."""
+    rel = next((r for r in gh.paged(f"/repos/{repo}/releases") if _is_run(r, plan.tag)), None)
     if rel is None:
-        version = 1 + max((_versions(r) or 0 for r in mine), default=0)
-        rel = gh.json("POST", f"/repos/{plan.repo}/releases", json={
-            "tag_name": plan.tag, "target_commitish": plan.branch, "name": f"{plan.reproduction_id} v{version} (pilot, unreviewed)",
+        rel = gh.json("POST", f"/repos/{repo}/releases", json={
+            "tag_name": plan.tag, "target_commitish": branch, "name": f"{plan.reproduction_id} run {plan.run_key} (pilot, unreviewed)",
             "body": f"Upload in progress.\n\n{release_mark(plan.tag)}\n", "draft": True, "prerelease": True, "make_latest": "false"})
-    version = _versions(rel) or rec.version
-    if version is None:
-        raise conflict("pilot_release_mismatch", f"release {plan.tag} exists but its name has no version; fix it on GitHub")
-    rec.version, rec.release_id = version, rel["id"]
-    _save(pkg, rec)
     pj = tmp / "pilot.json"
-    pj.write_bytes(_pilot_json(plan, version))
+    pj.write_bytes(_pilot_json(plan))
     files = plan.files + [Asset("pilot.json", pj, sha256_file(pj), pj.stat().st_size)]
     if rel.get("draft"):
         have = {a["name"]: a for a in rel.get("assets") or []}
@@ -511,22 +465,22 @@ def _release(gh: GitHub, plan: Plan, rec: GithubPilot, pkg: Package, tmp: Path) 
             if old and old.get("state") == "uploaded" and _same(old, a):
                 continue
             if old:  # incomplete or different upload from an earlier attempt: replace it
-                gh.request("DELETE", f"/repos/{plan.repo}/releases/assets/{old['id']}", ok=(204, 404))
-            upload = rel["upload_url"].split("{")[0]
+                gh.request("DELETE", f"/repos/{repo}/releases/assets/{old['id']}", ok=(204, 404))
             with a.path.open("rb") as f:
-                gh.request("POST", upload, params={"name": a.name}, content=f, timeout=3600,
+                gh.request("POST", rel["upload_url"].split("{")[0], params={"name": a.name}, content=f, timeout=3600,
                            headers={"Content-Type": a.content_type, "Content-Length": str(a.bytes)})
-        keep = {"tag_name": plan.tag, "target_commitish": plan.branch}  # else GitHub drops the tag
-        gh.request("PATCH", f"/repos/{plan.repo}/releases/{rel['id']}", json=keep | {"body": _release_body(plan, version, files)})
-        _verify(gh.json("GET", f"/repos/{plan.repo}/releases/{rel['id']}"), files, plan.tag)
-        rel = gh.json("PATCH", f"/repos/{plan.repo}/releases/{rel['id']}", json=keep | {"draft": False})
-        if rel.get("tag_name") != plan.tag:
-            raise ApiError(502, "github_error", f"GitHub published the release under the tag {rel.get('tag_name')!r} instead of {plan.tag!r}")
-    rel = gh.json("GET", f"/repos/{plan.repo}/releases/{rel['id']}")
+        keep = {"tag_name": plan.tag, "target_commitish": branch}  # else GitHub drops the tag
+        gh.request("PATCH", f"/repos/{repo}/releases/{rel['id']}", json=keep | {"body": _release_body(plan, files)})
+        _verify(gh.json("GET", f"/repos/{repo}/releases/{rel['id']}"), files, plan.tag)
+        if repo != plan.repo:
+            rel = gh.json("PATCH", f"/repos/{repo}/releases/{rel['id']}", json=keep | {"draft": False})
+            if rel.get("tag_name") != plan.tag:
+                raise ApiError(502, "github_error", f"GitHub published the release under the tag {rel.get('tag_name')!r} instead of {plan.tag!r}")
+    rel = gh.json("GET", f"/repos/{repo}/releases/{rel['id']}")
     urls = _verify(rel, files, plan.tag)
-    rec.release_url = rel["html_url"]
-    rec.published_at = _time(rel.get("published_at")) or rec.published_at
-    rec.assets = [PilotAsset(name=a.name, bytes=a.bytes, sha256=a.sha256, url=urls[a.name]) for a in files]
+    rec.files_url = rel["html_url"]
+    if rec.status != "published":  # once copied, the links point at the pilots repository's release
+        rec.assets = [PilotAsset(name=a.name, bytes=a.bytes, sha256=a.sha256, url=urls[a.name]) for a in files]
     _save(pkg, rec)
 
 
@@ -559,17 +513,25 @@ def _comment(gh: GitHub, plan: Plan, rec: GithubPilot, pkg: Package) -> None:
     _save(pkg, rec)
 
 
-def _runs(gh: GitHub, plan: Plan) -> list[dict[str, Any]]:
-    """The published runs of this reproduction, from GitHub (so runs submitted elsewhere count too)."""
-    out = []
-    for r in gh.paged(f"/repos/{plan.repo}/releases"):
-        if r.get("draft") or not _of_reproduction(r, plan.reproduction_id):
+def refresh(pkg: Package, recs: list[GithubPilot] | None = None) -> list[GithubPilot]:
+    """Mark submitted runs ``published`` once the pilots repository's Action has copied them (a public read, no token)."""
+    recs = pkg.load().reprocrowd.pilots if recs is None else recs
+    api = settings().github_api_url.rstrip("/")
+    for rec in recs:
+        if rec.status != "submitted":
             continue
-        m = SUMMARY_RE.search(r.get("body") or "")
-        s = json.loads(m.group(1)) if m else {}
-        version = _versions(r)
-        if version is None:
+        try:
+            r = httpx.get(f"{api}/repos/{rec.repo}/releases/tags/{rec.tag}", timeout=10,
+                          headers={"Accept": "application/vnd.github+json", "User-Agent": f"ReproCrowd/{__version__}"})
+        except httpx.HTTPError:
             continue
-        out.append({"match": 0, "within": 0, "numeric": 0, "threshold": 0, "policy": "?", **s, "version": version,
-                    "tag": r["tag_name"], "url": r["html_url"], "date": (r.get("published_at") or "")[:10]})
-    return out
+        if r.status_code != 200 or r.json().get("draft"):
+            continue
+        rel = r.json()
+        urls = {a["name"]: a.get("browser_download_url") for a in rel.get("assets") or []}
+        version = next((int(w[1:]) for w in (rel.get("name") or "").split() if w[:1] == "v" and w[1:].isdigit()), None)
+        rec.status, rec.version, rec.release_url = "published", version, rel.get("html_url")
+        rec.published_at = _time(rel.get("published_at"))
+        rec.assets = [a.model_copy(update={"url": urls.get(a.name, a.url)}) for a in rec.assets]
+        _save(pkg, rec)
+    return recs

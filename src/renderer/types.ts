@@ -210,11 +210,13 @@ export interface GithubPilot {
   reproduction_id: string;
   run_key: string;
   version: number | null;
-  status: "partial" | "published";
+  /** partial: a step failed; submitted: waiting for the pilots repository to copy the files; published: copied */
+  status: "partial" | "submitted" | "published";
   tag: string;
   issue_number: number | null;
   issue_url: string | null;
-  release_id: number | null;
+  files_repo: string;
+  files_url: string | null;
   release_url: string | null;
   comment_url: string | null;
   archive_sha256: string;

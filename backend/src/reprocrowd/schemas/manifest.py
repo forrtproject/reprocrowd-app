@@ -190,20 +190,24 @@ class PilotAsset(Model):
 
 
 class GithubPilot(Model):
-    """One run of this reproduction submitted as a GitHub pilot: a pre-release with the files, a comment on the
-    reproduction's issue. Keyed by run_key (archive hash + left-out groups); a retry resumes the same record."""
+    """One run of this reproduction submitted as a GitHub pilot: a release with the files in the submitter's fork, a
+    comment on the reproduction's issue, and the copy the pilots repository's Action makes. Keyed by run_key (archive
+    hash + left-out groups); a retry resumes the same record."""
 
     id: str = Field(pattern=r"^pil-[0-9a-f]+$")
     repo: str = Field(description="owner/name")
     reproduction_id: str = Field(pattern=r"^repro-[0-9a-f]{10}$")
     run_key: str = Field(pattern=r"^[0-9a-f]{12}$")
-    version: int | None = Field(default=None, ge=1, description="run number within the reproduction, assigned when the release is created")
-    status: Literal["partial", "published"] = Field(description="partial: a step failed; submitting again resumes")
+    version: int | None = Field(default=None, ge=1, description="run number within the reproduction, assigned by the pilots repository when it copies the run")
+    status: Literal["partial", "submitted", "published"] = Field(
+        description="partial: a step failed, submitting again resumes; submitted: files and comment are up, the pilots "
+                    "repository hasn't copied them yet; published: the copy exists")
     tag: str
     issue_number: int | None = None
     issue_url: str | None = None
-    release_id: int | None = None
-    release_url: str | None = None
+    files_repo: str = Field(default="", description="owner/name of the repository holding the submitted files (the submitter's fork)")
+    files_url: str | None = Field(default=None, description="the submitted release")
+    release_url: str | None = Field(default=None, description="the pilots repository's copy, once made")
     comment_url: str | None = None
     archive_sha256: str = Field(description="hash of the package archive it was made from")
     exclude: list[Literal["paper", "inputs"]] = Field(default_factory=list)

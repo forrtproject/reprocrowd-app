@@ -95,9 +95,9 @@ export interface DepositPreview {
   exclude: string[];
 }
 export interface PilotAccount { repo: string; hasToken: boolean }
-export interface GithubCheck { repo: string; url: string | null; private: boolean | null; can_submit: boolean; default_branch: string | null; immutable_releases: boolean | null }
+export interface GithubCheck { repo: string; url: string | null; login: string; private: boolean | null; can_submit: boolean; files_in: string }
 export interface PilotPreview {
-  repo: string; reproduction_id: string; run_key: string; tag: string; issue_title: string; labels: string[]; summary: string;
+  repo: string; reproduction_id: string; run_key: string; tag: string; issue_title: string; summary: string;
   assets: { name: string; bytes: number | null; sha256: string | null }[]; exclude: string[]; excluded: string[];
   licenses: Record<string, string>; existing: GithubPilot | null;
 }

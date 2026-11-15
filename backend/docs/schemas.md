@@ -123,8 +123,9 @@ The last ZIP of the package (PUT …/archive).
 
 ### GithubPilot
 
-One run of this reproduction submitted as a GitHub pilot: a pre-release with the files, a comment on the
-reproduction's issue. Keyed by run_key (archive hash + left-out groups); a retry resumes the same record.
+One run of this reproduction submitted as a GitHub pilot: a release with the files in the submitter's fork, a
+comment on the reproduction's issue, and the copy the pilots repository's Action makes. Keyed by run_key (archive
+hash + left-out groups); a retry resumes the same record.
 
 | Field | Type | Req. | Description |
 |---|---|---|---|
@@ -132,13 +133,14 @@ reproduction's issue. Keyed by run_key (archive hash + left-out groups); a retry
 | `repo` | string | yes | owner/name |
 | `reproduction_id` | string | yes | pattern `^repro-[0-9a-f]{10}$` |
 | `run_key` | string | yes | pattern `^[0-9a-f]{12}$` |
-| `version` | integer \| null |  | run number within the reproduction, assigned when the release is created |
-| `status` | `"partial"` \| `"published"` | yes | partial: a step failed; submitting again resumes |
+| `version` | integer \| null |  | run number within the reproduction, assigned by the pilots repository when it copies the run |
+| `status` | `"partial"` \| `"submitted"` \| `"published"` | yes | partial: a step failed, submitting again resumes; submitted: files and comment are up, the pilots repository hasn't copied them yet; published: the copy exists |
 | `tag` | string | yes |  |
 | `issue_number` | integer \| null |  |  |
 | `issue_url` | string \| null |  |  |
-| `release_id` | integer \| null |  |  |
-| `release_url` | string \| null |  |  |
+| `files_repo` | string |  | owner/name of the repository holding the submitted files (the submitter's fork); default `` |
+| `files_url` | string \| null |  | the submitted release |
+| `release_url` | string \| null |  | the pilots repository's copy, once made |
 | `comment_url` | string \| null |  |  |
 | `archive_sha256` | string | yes | hash of the package archive it was made from |
 | `exclude` | list of `"paper"` \| `"inputs"` |  |  |

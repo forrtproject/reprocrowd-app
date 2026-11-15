@@ -8590,8 +8590,8 @@
         "tags": [
           "pilots"
         ],
-        "summary": "Check a GitHub token against the pilots repository",
-        "description": "Reads the repository and its release settings; reports whether the account can submit. Writes nothing.",
+        "summary": "Check a GitHub login against the pilots repository",
+        "description": "Reads the repository and the account; reports whether it can submit and where its run files would go. Writes nothing.",
         "operationId": "github_pilot_check_v1_github_pilots_check_post",
         "requestBody": {
           "content": {
@@ -8693,6 +8693,7 @@
           "pilots"
         ],
         "summary": "GitHub pilot submissions of this package",
+        "description": "A `submitted` run is marked `published` here once the pilots repository has copied it (a public read of its release).",
         "operationId": "list_pilots_v1_packages__pkg__pilots_get",
         "security": [
           {
@@ -8789,7 +8790,7 @@
           "pilots"
         ],
         "summary": "Submit this run as a GitHub pilot",
-        "description": "Finds or creates the reproduction's issue, uploads the files to a pre-release for this run (draft, verified by SHA-256, then published), comments on the issue and updates its summary. Idempotent per run key (archive hash and left-out groups): a retry resumes a `partial` record and creates nothing twice, so it always answers 200 with the run's record. Same preconditions as a Zenodo deposit; a stale report is refused (`report_stale`). A pilot is unreviewed, not a certificate.",
+        "description": "Needs no write access to the pilots repository. Uploads the files to a pre-release in the submitter's fork (created if needed; verified by SHA-256), finds or opens the reproduction's issue and posts the run's comment. The pilots repository's Action then copies the files into its own immutable release; the record is `submitted` until then. Idempotent per run key (archive hash and left-out groups): a retry resumes a `partial` record and creates nothing twice, so it always answers 200 with the run's record. Same preconditions as a Zenodo deposit; a stale report is refused (`report_stale`). A pilot is unreviewed, not a certificate.",
         "operationId": "submit_pilot_v1_packages__pkg__pilots_post",
         "security": [
           {
@@ -8915,7 +8916,7 @@
           "pilots"
         ],
         "summary": "Show what a pilot submission would send",
-        "description": "The issue title, labels, files with hashes, left-out groups and licences, without contacting GitHub.",
+        "description": "The issue title, files with hashes, left-out groups and licences, without contacting GitHub.",
         "operationId": "preview_pilot_v1_packages__pkg__pilots_preview_post",
         "security": [
           {
@@ -11771,7 +11772,7 @@
               }
             ],
             "title": "Github Token",
-            "description": "the user's GitHub token (classic: public_repo; fine-grained: Contents write, Issues write on the repository); passed on, never stored. Default: [github] token"
+            "description": "the user's GitHub token (`gh auth token`, or classic with public_repo: it must be able to create a fork); passed on, never stored. Default: [github] token"
           },
           "repo": {
             "anyOf": [
@@ -11808,6 +11809,10 @@
             ],
             "title": "Url"
           },
+          "login": {
+            "type": "string",
+            "title": "Login"
+          },
           "private": {
             "anyOf": [
               {
@@ -11822,40 +11827,22 @@
           "can_submit": {
             "type": "boolean",
             "title": "Can Submit",
-            "description": "the token's account has write access (needed for issues with labels and releases)"
+            "description": "the repository is public and this account can fork it (or owns it)"
           },
-          "default_branch": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Default Branch"
-          },
-          "immutable_releases": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Immutable Releases",
-            "description": "published releases can't be changed (null: couldn't be read)"
+          "files_in": {
+            "type": "string",
+            "title": "Files In",
+            "description": "where this account's run files go: its fork, or the repository itself for its owner"
           }
         },
         "type": "object",
         "required": [
           "repo",
           "url",
+          "login",
           "private",
           "can_submit",
-          "default_branch",
-          "immutable_releases"
+          "files_in"
         ],
         "title": "GithubCheck"
       },
@@ -11892,16 +11879,17 @@
               }
             ],
             "title": "Version",
-            "description": "run number within the reproduction, assigned when the release is created"
+            "description": "run number within the reproduction, assigned by the pilots repository when it copies the run"
           },
           "status": {
             "type": "string",
             "enum": [
               "partial",
+              "submitted",
               "published"
             ],
             "title": "Status",
-            "description": "partial: a step failed; submitting again resumes"
+            "description": "partial: a step failed, submitting again resumes; submitted: files and comment are up, the pilots repository hasn't copied them yet; published: the copy exists"
           },
           "tag": {
             "type": "string",
@@ -11929,16 +11917,23 @@
             ],
             "title": "Issue Url"
           },
-          "release_id": {
+          "files_repo": {
+            "type": "string",
+            "title": "Files Repo",
+            "description": "owner/name of the repository holding the submitted files (the submitter's fork)",
+            "default": ""
+          },
+          "files_url": {
             "anyOf": [
               {
-                "type": "integer"
+                "type": "string"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Release Id"
+            "title": "Files Url",
+            "description": "the submitted release"
           },
           "release_url": {
             "anyOf": [
@@ -11949,7 +11944,8 @@
                 "type": "null"
               }
             ],
-            "title": "Release Url"
+            "title": "Release Url",
+            "description": "the pilots repository's copy, once made"
           },
           "comment_url": {
             "anyOf": [
@@ -12045,7 +12041,7 @@
           "created_at"
         ],
         "title": "GithubPilot",
-        "description": "One run of this reproduction submitted as a GitHub pilot: a pre-release with the files, a comment on the\nreproduction's issue. Keyed by run_key (archive hash + left-out groups); a retry resumes the same record."
+        "description": "One run of this reproduction submitted as a GitHub pilot: a release with the files in the submitter's fork, a\ncomment on the reproduction's issue, and the copy the pilots repository's Action makes. Keyed by run_key (archive\nhash + left-out groups); a retry resumes the same record."
       },
       "GithubPilotStatus": {
         "properties": {
@@ -13386,7 +13382,7 @@
               }
             ],
             "title": "Github Token",
-            "description": "the user's GitHub token (classic: public_repo; fine-grained: Contents write, Issues write on the repository); passed on, never stored. Default: [github] token"
+            "description": "the user's GitHub token (`gh auth token`, or classic with public_repo: it must be able to create a fork); passed on, never stored. Default: [github] token"
           },
           "repo": {
             "anyOf": [
@@ -13512,13 +13508,6 @@
             "type": "string",
             "title": "Issue Title"
           },
-          "labels": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Labels"
-          },
           "summary": {
             "type": "string",
             "title": "Summary"
@@ -13577,7 +13566,6 @@
           "run_key",
           "tag",
           "issue_title",
-          "labels",
           "summary",
           "assets",
           "exclude",
@@ -16147,7 +16135,7 @@
     },
     {
       "name": "pilots",
-      "description": "GitHub pilot submissions: an issue per reproduction, a pre-release with the files per run. Unreviewed."
+      "description": "GitHub pilot submissions: an issue per reproduction, a pre-release with the files per run, open to any GitHub account. Unreviewed."
     }
   ]
 }
