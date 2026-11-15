@@ -8,6 +8,7 @@ certification.
 """
 from __future__ import annotations
 
+import io
 import json
 import shutil
 from typing import Any, Iterable, Iterator
@@ -41,7 +42,7 @@ def preview(profile: LlmProfile | AgentProfile, argv: list[str]) -> dict:
 
 def _events(out: "str | Iterable[str]") -> Iterator[dict]:
     """The JSON objects among stdout's lines; other lines (logs, banners) are skipped. Accepts the text or an open file."""
-    for line in (out.splitlines() if isinstance(out, str) else out):
+    for line in (io.StringIO(out) if isinstance(out, str) else out):  # newline-only splitting, as for files (not U+2028)
         try:
             ev = json.loads(line)
         except ValueError:

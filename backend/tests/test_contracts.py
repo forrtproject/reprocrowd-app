@@ -137,6 +137,8 @@ def test_codex_errors_and_answer():
     import io
     stream = io.StringIO("\n".join([reconnect, done, reconnect]) + "\n")  # a log file is read line by line
     assert terminal_error(stream, "codex-json") == "Reconnecting... 2/5"
+    sep = '{"type":"item.completed","item":{"type":"agent_message","text":"a\u2028b"}}'.replace("\\u2028", "\u2028")  # a raw U+2028 inside JSON
+    assert answer(sep, "codex-json") == "a\u2028b"
 
 
 def test_shipped_argv_expansion_unchanged():

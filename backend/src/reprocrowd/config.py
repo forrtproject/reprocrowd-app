@@ -38,7 +38,7 @@ class AgentProfile(BaseModel):
     timeout_s: int = Field(default=7200, gt=0)
     events: Literal["claude-stream-json", "opencode-json", "codex-json", "text"] = Field(default="claude-stream-json", description="how to read the agent's stdout as events")
     no_exec_argv: list[str] = Field(default_factory=list, description="appended when the caller forbids running the analysis (allow_exec=false): "
-                                                                    "CLI flags that remove its command-running tools (Codex: --disable shell_tool …)")
+                                                                    "CLI flags that remove its command-running tools while keeping its read and edit tools")
     no_exec_env: dict[str, str] = Field(default_factory=dict, description="environment added when allow_exec=false, e.g. OpenCode's "
                                                                          "OPENCODE_PERMISSION denying every tool but reading and editing")
 

@@ -51,6 +51,7 @@ assert.equal(execRestriction({ argv: ['opencode', 'run'], model: '', effort: '',
 const noExec = { ...codexProfile, no_exec_argv: ['--disable', 'shell_tool'], no_exec_env: { OPENCODE_PERMISSION: '{}' } };
 assert.deepEqual({ ...parse(replaceProfile(original, 'agent', 'codex', noExec)).agent.profiles.codex.no_exec_env }, { OPENCODE_PERMISSION: '{}' });
 assert.throws(() => replaceProfile(original, 'agent', 'codex', { ...noExec, no_exec_env: { OPENAI_API_KEY: 'x' } }), /credential/);
+for (const name of ['ANTHROPIC_AUTH', 'GH_CREDENTIALS', 'SITE_COOKIE']) assert.throws(() => replaceProfile(original, 'agent', 'codex', { ...noExec, no_exec_env: { [name]: 'x' } }), /credential/);
 assert.throws(() => replaceProfile(original, 'agent', 'codex', { ...noExec, no_exec_env: { 'BAD NAME': 'x' } }));
 assert.throws(() => replaceProfile(original, 'llm', 'fixture', { ...profile, no_exec_argv: ['x'] })); // agent-only field
 for (const bad of [{ argv: [] }, { timeout_s: 0 }, { timeout_s: NaN }, { output: 'invented' }, { tools: ['Edit'] }, { api_key: 'fake' }]) {

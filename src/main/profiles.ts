@@ -27,7 +27,7 @@ export function replaceProfile(text: string, kind: ProfileKind, name: string, pr
     if (typeof env !== "object" || env === null || Array.isArray(env)) throw new Error("The no-analysis environment must be NAME=value lines.");
     for (const [k, v] of Object.entries(env)) {
       if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(k) || typeof v !== "string") throw new Error(`Invalid environment variable ${k}.`);
-      if (/KEY|TOKEN|SECRET|PASSWORD/i.test(k)) throw new Error(`${k} looks like a credential; keep credentials in the CLI's own login, not in a profile.`);
+      if (/KEY|TOKEN|SECRET|PASSW|AUTH|CREDENTIAL|COOKIE|SESSION/i.test(k)) throw new Error(`${k} looks like a credential; keep credentials in the CLI's own login, not in a profile.`);
     }
   }
   const data = parse(text) as Record<string, any>;

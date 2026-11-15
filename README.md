@@ -37,7 +37,7 @@ what the paper's analysis uses (R, Python, …).
 
 1. Start the app. The start page lists the models each installed CLI offers, and says
    when Claude Code or Codex is installed but not signed in (with a button that opens
-   its login). OpenCode shows only the providers you have signed in to.
+   its login). OpenCode lists the providers it can use: its free models and those you have signed in to.
 2. Open **⚙ Settings → Backend → Coding and extraction profiles…**. Pick the
    operation (code generation or extraction), choose a preset (**Claude Code**,
    **Codex CLI**, **OpenCode** or another plain-text CLI) and save. The form says

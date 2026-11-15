@@ -77,8 +77,12 @@ def restriction_probe(client, p: str, name: str, extra_out: list[str]) -> dict:
             subprocess.run(["git", "init", "-q"], cwd=tmp)
             token = secrets.token_hex(6)
             (Path(tmp) / "probe-input.txt").write_text(token)
-            proc = subprocess.run(resolve_argv(pv["argv"]), input=PROBE, cwd=tmp, capture_output=True, text=True, timeout=600,
-                                  env=job_env({**pv.get("env", {}), "RC_PROBE_NONCE": nonce, "PWD": tmp}))
+            try:
+                proc = subprocess.run(resolve_argv(pv["argv"]), input=PROBE, cwd=tmp, capture_output=True, text=True, timeout=600,
+                                      env=job_env({**pv.get("env", {}), "RC_PROBE_NONCE": nonce, "PWD": tmp}))
+            except subprocess.TimeoutExpired as e:  # report the layer as failed; the other layers and the ledger entry still get written
+                extra_out.append(e.stdout.decode(errors="replace") if isinstance(e.stdout, bytes) else (e.stdout or ""))
+                return {"passed": False, "error": f"the {label} probe run exceeded 600 s", "runs": runs}
             extra_out.append(proc.stdout)
             leaked = (Path(tmp) / "probe-nonce.txt").is_file() and nonce in (Path(tmp) / "probe-nonce.txt").read_text(errors="replace")
             edit_file = Path(tmp) / "probe-edit.txt"
