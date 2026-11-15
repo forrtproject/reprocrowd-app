@@ -253,6 +253,10 @@ class Curation:
         if unknown:
             raise invalid("schema_invalid", f"cannot change {', '.join(sorted(unknown))}", {"editable": sorted(editable | {'disabled'})})
         changes = {k: v for k, v in patch.items() if k != "disabled"}
+        if self.spec.kind == "targets" and isinstance(changes.get("expected"), str):
+            # An edited printed token replaces the previous derived precision.
+            changes.setdefault("printed", None)
+            changes.setdefault("decimals", None)
         with self.pkg.locked():
             f = self.load()
             item, run, entry = self._locate(f, item_id)
@@ -271,7 +275,7 @@ class Curation:
                     if "disabled" in patch:
                         entry.disabled = bool(patch["disabled"])
             except ValidationError as e:
-                raise invalid("schema_invalid", f"{item_id}: the edited item is invalid", {"errors": pydantic_errors(e)})
+                raise invalid("target_contradiction" if any(x["type"] == "target_contradiction" for x in e.errors()) else "schema_invalid", f"{item_id}: the edited item is invalid", {"errors": pydantic_errors(e)})
             self._check(f, new)
             self._save(f)
             return next((i, o) for i, o in self._effective_of(f, True) if i.id == item_id)
@@ -408,7 +412,7 @@ class Curation:
 
     def _inputs_listing(self) -> str:
         rows = [f"- {r.name}: {r.path} [{r.reprocrowd.role}]{' — ' + r.reprocrowd.note if r.reprocrowd.note else ''}"
-                for r in Context(self.pkg).manifest.by_kind("input") if r.reprocrowd.used]
+                for r in Context(self.pkg).manifest.by_kind("input") if r.reprocrowd.used and r.reprocrowd.role != "code"]
         return "\n".join(rows) or "(no input files)"
 
     def _targets_listing(self) -> str:
@@ -417,17 +421,7 @@ class Curation:
 
 
 def _normalize_target(d: dict[str, Any]) -> dict[str, Any]:
-    """Light clean-up of common LLM slips: numbers given as strings, "=" as comparator."""
-    if d.get("comparator") == "=":
-        d["comparator"] = None
-    if d["type"] == "number" and isinstance(d.get("expected"), str):
-        s = d["expected"].strip().replace("−", "-").replace(",", "")
-        try:
-            d["expected"] = float(s) if any(c in s for c in ".eE") else int(s)
-            if d.get("decimals") is None and "." in s:
-                d["decimals"] = len(s.split(".")[1])
-        except ValueError:
-            pass  # leave it; validation rejects the item with a clear message
+    # TargetFields owns numeric normalization, including LLM strings and precision.
     if d["type"] != "number":
         d["comparator"], d["decimals"] = None, None
     return d

@@ -94,6 +94,9 @@ LLM calls and the coding agent run the commands configured in the backend
 configuration, by default Claude Code (`claude`) on your PATH. Runs of the
 master script use your R / Python.
 
+See [the implemented workflow, comparison and evidence contracts](docs/contracts.md)
+for printed precision, recreation versus original-code tracks, setup and offline rerun checks.
+
 ## How it fits together
 
 ```

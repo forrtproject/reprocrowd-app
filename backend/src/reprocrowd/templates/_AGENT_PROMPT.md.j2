@@ -14,21 +14,20 @@ Read first:
 
 {% else %}  (none)
 {% endfor %}
-{% if inputs.code %}- The original authors' code (prefer reusing their logic; cite the file you took it from in a comment):
-{% for r in inputs.code %}  - {{ r.path }}{% if r.reprocrowd.note %}: {{ r.reprocrowd.note }}{% endif %}
-
-{% endfor %}{% endif %}
 {% if inputs.other %}- Other material:
 {% for r in inputs.other %}  - {{ r.path }}{% if r.reprocrowd.note %}: {{ r.reprocrowd.note }}{% endif %}
 
 {% endfor %}{% endif %}
+
+Recreation (Track B): do not open inputs whose role is code. Rebuild from the article and data.
+Author code was excluded from this prompt, not isolated from the package folder.
 
 Rules:
 1. {{ tpl.agent_rule }}
 2. Replace every `{{ marker }}:` marker with working code and delete the marker. Keep the step header comments (ids, summaries, quotes) intact and in order.
 3. Use paths relative to the package root.
 4. Compute every result from the data. NEVER copy expected values from results_schema.json into the output; the point is to test whether they reproduce.
-5. outputs/results.json: {"results": [{"id": "<target id>", "value": <unrounded number or string>, "step": "<step id>"}, ...]}. Use "table" (array of rows, same layout as expected, header row included) for table targets, and "file" for figure targets (save figures as outputs/figures/<target id>.png). If a result cannot be computed, emit it with "value": null and a "note" explaining why.
+5. Write values at full precision; never round reproduced values. outputs/results.json: {"results": [{"id": "<target id>", "value": <unrounded number or string>, "step": "<step id>"}, ...]}. Use "table" (array of rows, same layout as expected, header row included) for table targets, and "file" for figure targets (save figures as outputs/figures/<target id>.png). If a result cannot be computed, emit it with "value": null and a "note" explaining why.
 6. List required packages in {{ "install.R (install.packages(...) calls)" if tpl.language == "R" else "requirements.txt" }}.
 7. If something in the paper is ambiguous, pick the most plausible reading and document it in a comment starting with "# ASSUMPTION:".
 8. When finished, run the pipeline once if you can and fix errors.

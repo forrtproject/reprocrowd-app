@@ -64,6 +64,7 @@ class TemplateView(BaseModel):
 
 
 class PackageCreate(Req):
+    track: Literal["recreation", "original_code"] = "recreation"
     path: str = Field(description="folder on the service's machine; created if missing, must be empty")
     identifier: str | None = Field(default=None, description="DOI, OpenAlex id (W…), pmid:…, or pmcid:…")
     fetch_metadata: bool = Field(default=False, description="query OpenAlex with the identifier right away")
@@ -71,6 +72,7 @@ class PackageCreate(Req):
 
 
 class PackageSummary(BaseModel):
+    track: Literal["recreation"] | None = None
     id: str
     path: str
     title: str | None
@@ -365,6 +367,8 @@ class ReportRequest(Req):
 
 
 class ReportResult(BaseModel):
+    matched: int = 0
+    within: int = 0
     path: str
     comparison: str
     summary: dict[str, int]

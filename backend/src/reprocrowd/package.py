@@ -172,7 +172,7 @@ class Package:
             counts[r.reprocrowd.kind] = counts.get(r.reprocrowd.kind, 0) + 1
         meta = m.reprocrowd
         return {"id": self.id, "path": str(self.root), "title": m.title, "identifier": meta.identifier,
-                "identifiers": meta.identifiers, "metadata_fetched_at": meta.metadata_fetched_at, "resources": counts}
+                "identifiers": meta.identifiers, "metadata_fetched_at": meta.metadata_fetched_at, "resources": counts, "track": meta.track}
 
 
 # ---------- creation ----------
@@ -235,6 +235,8 @@ class Registry:
                 raise conflict("folder_not_empty", f"{root} exists and is not empty")
             else:
                 init_package(root, root.name, identifier)
+                with Package("-", root).edit() as manifest:
+                    manifest.reprocrowd.track = "recreation"
             pid = slug(root.name)
             base, i = pid, 2
             while pid in data:

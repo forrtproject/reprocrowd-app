@@ -58,7 +58,7 @@ def resolve_plan(pkg: Package) -> AnalysisPlan:
     data = [r for r in m.by_kind("input") if r.reprocrowd.used and r.reprocrowd.role == "data"]
     loads = [PlanStep(id=f"L{i:02d}", kind="load", summary=f"Load {r.path}", inputs=[r.path]) for i, r in enumerate(data, 1)]
     load_of = {r.name: s.id for r, s in zip(data, loads)}
-    path_of = {r.name: r.path for r in m.by_kind("input")}
+    path_of = {r.name: r.path for r in m.by_kind("input") if r.reprocrowd.role != "code"}
     actions = _ordered([a for a, _ in Curation(pkg, "actions").effective()])
     targets = {t.id for t, _ in Curation(pkg, "targets").effective()}
     enabled = {a.id for a in actions}
@@ -187,7 +187,7 @@ def todo_status(pkg: Package, tpl: Template) -> TodoStatus:
 
 def agent_prompt(pkg: Package, tpl: Template, instructions: str = "") -> str:
     m = pkg.load()
-    used = [r for r in m.by_kind("input") if r.reprocrowd.used]
+    used = [r for r in m.by_kind("input") if r.reprocrowd.used and r.reprocrowd.role != "code"]
     by_role = {role: [r for r in used if r.reprocrowd.role == role] for role in ("data", "code", "other")}
     text = _env().get_template("_AGENT_PROMPT.md.j2").render(tpl=tpl, inputs=by_role, marker=TODO_MARK, folder=str(pkg.root))
     if instructions.strip():

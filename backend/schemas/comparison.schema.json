@@ -6,6 +6,42 @@
     "Cell": {
       "additionalProperties": false,
       "properties": {
+        "printed": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Printed"
+        },
+        "comparator": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Comparator"
+        },
+        "quantum": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Quantum"
+        },
         "expected": {
           "title": "Expected",
           "type": "string"
@@ -51,6 +87,42 @@
     "CompareRow": {
       "additionalProperties": false,
       "properties": {
+        "refs": {
+          "items": {
+            "$ref": "#/$defs/Ref"
+          },
+          "title": "Refs",
+          "type": "array"
+        },
+        "precision": {
+          "anyOf": [
+            {
+              "enum": [
+                "printed",
+                "explicit",
+                "inferred"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Precision"
+        },
+        "quantum": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Quantum"
+        },
         "target": {
           "title": "Target",
           "type": "string"
@@ -197,11 +269,87 @@
       },
       "title": "CompareSettings",
       "type": "object"
+    },
+    "ComparisonBasis": {
+      "additionalProperties": false,
+      "properties": {
+        "results_sha256": {
+          "title": "Results Sha256",
+          "type": "string"
+        },
+        "results_schema_sha256": {
+          "title": "Results Schema Sha256",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "policy": {
+          "const": "reprocrowd-compare/2",
+          "default": "reprocrowd-compare/2",
+          "title": "Policy",
+          "type": "string"
+        }
+      },
+      "required": [
+        "results_sha256",
+        "results_schema_sha256",
+        "created_at"
+      ],
+      "title": "ComparisonBasis",
+      "type": "object"
+    },
+    "Ref": {
+      "additionalProperties": false,
+      "description": "Points at one sentence, figure or table of an extraction.",
+      "properties": {
+        "extraction": {
+          "description": "resource name of the extraction, e.g. ex-grobid",
+          "title": "Extraction",
+          "type": "string"
+        },
+        "id": {
+          "description": "sentence (sec3.p2.s1, fig1.s1), figure (fig1) or table (tab1) id in that extraction",
+          "title": "Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "extraction",
+        "id"
+      ],
+      "title": "Ref",
+      "type": "object"
     }
   },
   "additionalProperties": false,
   "description": "GET …/comparison, and comparison.json written with the report.",
   "properties": {
+    "policy": {
+      "const": "reprocrowd-compare/2",
+      "default": "reprocrowd-compare/2",
+      "title": "Policy",
+      "type": "string"
+    },
+    "rounding_mode": {
+      "const": "half_even_exact_binary",
+      "default": "half_even_exact_binary",
+      "title": "Rounding Mode",
+      "type": "string"
+    },
+    "basis": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ComparisonBasis"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
     "settings": {
       "$ref": "#/$defs/CompareSettings"
     },

@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 from typing import Literal
+from datetime import datetime
+from .curation import Ref
 
 from pydantic import Field
 
@@ -24,6 +26,9 @@ class CompareSettings(Model):
 
 
 class Cell(Model):
+    printed: str | None = None
+    comparator: str | None = None
+    quantum: int | None = None
     expected: str
     reproduced: str
     status: Status
@@ -31,6 +36,9 @@ class Cell(Model):
 
 
 class CompareRow(Model):
+    refs: list[Ref] = Field(default_factory=list)
+    precision: Literal["printed", "explicit", "inferred"] | None = None
+    quantum: int | None = None
     target: str
     type: Literal["number", "categorical", "table", "figure"]
     description: str
@@ -44,9 +52,19 @@ class CompareRow(Model):
     note: str | None = Field(default=None, description="the reproduction's note on this result")
 
 
+class ComparisonBasis(Model):
+    results_sha256: str
+    results_schema_sha256: str
+    created_at: datetime
+    policy: Literal["reprocrowd-compare/2"] = "reprocrowd-compare/2"
+
+
 class Comparison(Model):
     """GET …/comparison, and comparison.json written with the report."""
 
+    policy: Literal["reprocrowd-compare/2"] = "reprocrowd-compare/2"
+    rounding_mode: Literal["half_even_exact_binary"] = "half_even_exact_binary"
+    basis: ComparisonBasis | None = None
     settings: CompareSettings
     summary: dict[str, int] = Field(description="number of targets per status")
     rows: list[CompareRow]

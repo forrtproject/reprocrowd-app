@@ -468,6 +468,20 @@
     "PackageMeta": {
       "additionalProperties": false,
       "properties": {
+        "track": {
+          "anyOf": [
+            {
+              "const": "recreation",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "None: older package with unspecified workflow; recreation is not certified blinding",
+          "title": "Track"
+        },
         "version": {
           "const": "1.0",
           "default": "1.0",

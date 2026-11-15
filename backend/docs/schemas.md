@@ -6,6 +6,46 @@ The JSON Schemas are in `schemas/`; every package gets a copy in its own `schema
 Validation beyond what JSON Schema expresses (references resolve, ids unique, no dependency cycles) is
 done by `GET /packages/{p}/validation` (src/reprocrowd/validation.py).
 
+## `execution-evidence`: evidence/execution.json
+
+File: `schemas/execution-evidence.schema.json`
+
+### Root
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `schema_version` | `"1"` |  | default `1` |
+| `track` | `"recreation"` \| null |  |  |
+| `run` | object \| null |  |  |
+| `stale` | list of string \| null |  |  |
+| `stale_reason` | string \| null |  |  |
+| `added_since_run` | list of string |  |  |
+| `results_match_run` | boolean \| null |  |  |
+| `codegen` | object \| null |  |  |
+| `targets` | list of [TargetEvidence](#targetevidence) |  |  |
+| `log_path` | string \| null |  |  |
+| `log_truncated` | boolean |  | default `False` |
+| `log_sha256` | string \| null |  |  |
+
+### Ref
+
+Points at one sentence, figure or table of an extraction.
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `extraction` | string | yes | resource name of the extraction, e.g. ex-grobid |
+| `id` | string | yes | sentence (sec3.p2.s1, fig1.s1), figure (fig1) or table (tab1) id in that extraction |
+
+### TargetEvidence
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `target` | string | yes |  |
+| `refs` | list of [Ref](#ref) | yes |  |
+| `step` | string \| null |  |  |
+| `step_evidence` | `"declared_matches_plan"` \| `"declared_conflicts_plan"` \| `"planned_only"` \| `"none"` | yes |  |
+| `level` | `"process"` |  | default `process` |
+
 ## `datapackage`: datapackage.json
 
 File: `schemas/datapackage.schema.json`
@@ -127,6 +167,7 @@ report: report.html and comparison.json · figure: originals of figure targets (
 
 | Field | Type | Req. | Description |
 |---|---|---|---|
+| `track` | `"recreation"` \| null |  | None: older package with unspecified workflow; recreation is not certified blinding |
 | `version` | `"1.0"` |  | default `1.0` |
 | `created_at` | string (date-time) | yes |  |
 | `identifier` | [Identifier](#identifier) \| null |  | identifier the package was created for |
@@ -431,15 +472,6 @@ Everything needed to understand (and repeat) one LLM call.
 | `entries` | list of [LlmEntry_Target_](#llmentry_target_) | yes |  |
 | `rejected` | list of [Rejected](#rejected) |  | items of the output that failed validation |
 
-### Ref
-
-Points at one sentence, figure or table of an extraction.
-
-| Field | Type | Req. | Description |
-|---|---|---|---|
-| `extraction` | string | yes | resource name of the extraction, e.g. ex-grobid |
-| `id` | string | yes | sentence (sec3.p2.s1, fig1.s1), figure (fig1) or table (tab1) id in that extraction |
-
 ### Rejected
 
 | Field | Type | Req. | Description |
@@ -455,6 +487,7 @@ Points at one sentence, figure or table of an extraction.
 | `unreferenced` | boolean |  | set to allow an empty refs list; then note is required; default `False` |
 | `note` | string \| null |  |  |
 | `type` | `"number"` \| `"categorical"` \| `"table"` \| `"figure"` | yes |  |
+| `printed` | string \| null |  | exact numeric token, without unit or comparator; preserves printed precision |
 | `description` | string | yes | self-contained: variable, model/test, subgroup |
 | `quote` | string |  | verbatim text from the paper that states the result; default `` |
 | `expected` | number \| integer \| string \| list of list of string \| null |  | number for number, string for categorical, rows of cell strings for table, null for figure |
@@ -700,6 +733,10 @@ jobs/<id>.json
 
 | Field | Type | Req. | Description |
 |---|---|---|---|
+| `commit_before` | string \| null |  |  |
+| `snapshot` | map of string \| null |  |  |
+| `results_sha256` | string \| null |  |  |
+| `log_sha256` | string \| null |  |  |
 | `type` | `"run"` |  | default `run` |
 | `command` | string | yes |  |
 | `log` | string | yes | package-relative path of the run log |
@@ -743,6 +780,9 @@ GET …/comparison, and comparison.json written with the report.
 
 | Field | Type | Req. | Description |
 |---|---|---|---|
+| `policy` | `"reprocrowd-compare/2"` |  | default `reprocrowd-compare/2` |
+| `rounding_mode` | `"half_even_exact_binary"` |  | default `half_even_exact_binary` |
+| `basis` | [ComparisonBasis](#comparisonbasis) \| null |  |  |
 | `settings` | [CompareSettings](#comparesettings) | yes |  |
 | `summary` | map of integer | yes | number of targets per status |
 | `rows` | list of [CompareRow](#comparerow) | yes |  |
@@ -753,6 +793,9 @@ GET …/comparison, and comparison.json written with the report.
 
 | Field | Type | Req. | Description |
 |---|---|---|---|
+| `printed` | string \| null |  |  |
+| `comparator` | string \| null |  |  |
+| `quantum` | integer \| null |  |  |
 | `expected` | string | yes |  |
 | `reproduced` | string | yes |  |
 | `status` | `"match"` \| `"within"` \| `"deviation"` \| `"missing"` \| `"figure"` \| `"unparsable"` | yes |  |
@@ -762,6 +805,9 @@ GET …/comparison, and comparison.json written with the report.
 
 | Field | Type | Req. | Description |
 |---|---|---|---|
+| `refs` | list of [Ref](#ref) |  |  |
+| `precision` | `"printed"` \| `"explicit"` \| `"inferred"` \| null |  |  |
+| `quantum` | integer \| null |  |  |
 | `target` | string | yes |  |
 | `type` | `"number"` \| `"categorical"` \| `"table"` \| `"figure"` | yes |  |
 | `description` | string | yes |  |
@@ -780,3 +826,12 @@ GET …/comparison, and comparison.json written with the report.
 |---|---|---|---|
 | `rounding` | `"reported"` \| integer |  | "reported": round to the decimals printed in the paper; or a number of decimals (0–10); default `reported` |
 | `threshold` | number |  | deviation in % up to which a numeric result counts as within tolerance; default `5` |
+
+### ComparisonBasis
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `results_sha256` | string | yes |  |
+| `results_schema_sha256` | string | yes |  |
+| `created_at` | string (date-time) | yes |  |
+| `policy` | `"reprocrowd-compare/2"` |  | default `reprocrowd-compare/2` |

@@ -53,6 +53,10 @@ class CodegenResult(Model):
 
 
 class RunResult(Model):
+    commit_before: str | None = None
+    snapshot: dict[str, str] | None = None
+    results_sha256: str | None = None
+    log_sha256: str | None = None
     type: Literal["run"] = "run"
     command: str
     log: str = Field(description="package-relative path of the run log")

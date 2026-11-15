@@ -37,6 +37,7 @@ rc script create phacking --template r
 rc codegen phacking                              # coding agent implements the TODO(LLM): markers, live progress
 rc script status phacking                        # markers left
 rc run phacking                                  # run the master script (live log), check outputs/results.json
+rc evidence phacking --json                     # local execution evidence, changed files, source refs
 rc compare phacking                              # reproduced vs. expected, per target
 rc coordinates phacking                          # what each full text locates on the PDF
 rc figures phacking                              # the original figures: as published, cropped, or their page
@@ -56,3 +57,8 @@ another machine, `rc fulltext add … --upload` and `rc input add … --upload` 
 uv run pytest                 # tests (a fake LLM CLI stands in for real profiles; OpenAlex is mocked)
 uv run reprocrowd-schemas export      # regenerate schemas/, docs/schemas.md, docs/openapi.json after model/API changes
 ```
+
+The desktop, `rc` and benchmark/test clients share [these contracts](../docs/contracts.md).
+Preserve numeric precision by supplying expected values as JSON strings, e.g.
+`rc target add phacking -f type=number -f description="Mean RT" -f 'expected="512.40"' --ref ex-europepmc-jats:sec3.p1.s2`.
+The dev-only paper harness is documented there.

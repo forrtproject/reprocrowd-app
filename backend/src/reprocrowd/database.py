@@ -25,10 +25,8 @@ from . import __version__, jobs, openalex
 from .config import settings
 from .errors import ApiError, conflict, not_found
 from .package import MANIFEST, Package
-from .report import archive_path
-from .run import comparison
+from .report import archive_path, recorded_comparison
 from .schemas.common import Identifier, now
-from .schemas.comparison import CompareSettings
 from .schemas.manifest import Submission
 
 
@@ -89,8 +87,8 @@ class Prepared:
         runs = [j for j in jobs.list_jobs(pkg) if j.type == "run"]
         if not runs or runs[-1].status != "succeeded":
             raise conflict("run_not_succeeded", "the last run of the master script must have succeeded (POST …/jobs {type: run})")
+        self.cmp = recorded_comparison(pkg)
         _check_archive(pkg)
-        self.cmp = comparison(pkg, CompareSettings())
         try:
             work = openalex.fetch_work(Identifier(scheme="doi", value=doi))
         except ApiError as e:

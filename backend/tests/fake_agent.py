@@ -17,6 +17,10 @@ def emit(ev):
 
 
 emit({"type": "system", "subtype": "init", "model": "fake-agent-1", "tools": ["Read", "Edit"]})
+if mode == "python-ok":
+    Path("analysis.py").write_text(Path(__file__).with_name("fixtures").joinpath("scenario_analysis.py").read_text())
+    emit({"type": "result", "subtype": "success", "is_error": False, "result": "Installed the deterministic fixture analysis."})
+    sys.exit(0)
 if mode == "fail":
     print("agent crashed", file=sys.stderr)
     sys.exit(2)

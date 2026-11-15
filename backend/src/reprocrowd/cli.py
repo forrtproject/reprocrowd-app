@@ -79,13 +79,18 @@ def parse_value(v: str) -> Any:
         return v
 
 
+# Printed numbers are sent as typed: JSON parsing "0.1700" would drop the trailing zeroes the server needs.
+PRINTED_KEYS = {"expected", "printed"}
+
+
 def key_values(pairs: list[str]) -> dict[str, Any]:
     outd = {}
     for kv in pairs:
         if "=" not in kv:
             raise typer.BadParameter(f"expected key=value, got {kv!r}")
         k, v = kv.split("=", 1)
-        outd[k] = parse_value(v)
+        value = parse_value(v)
+        outd[k] = v.strip() if k in PRINTED_KEYS and isinstance(value, (int, float)) and not isinstance(value, bool) else value
     return outd
 
 
@@ -479,6 +484,17 @@ def run_cmd(pkg: str, follow_: bool = typer.Option(True, "--follow/--detach", he
         raise typer.Exit(1)
 
 
+@app.command("evidence")
+def evidence_cmd(pkg: str, json_: bool = typer.Option(False, "--json", help="machine-readable process evidence")):
+    data = call("GET", f"/packages/{pkg}/evidence")
+    if json_:
+        out(data)
+    else:
+        typer.echo(f"Track: {data['track'] or 'unspecified (older package)'}")
+        typer.echo(f"Run: {(data['run'] or {}).get('status', 'none')}; changed: {data['stale']}; results match run: {data['results_match_run']}")
+        out(data)
+
+
 @app.command("compare")
 def compare_cmd(pkg: str, rounding: str = typer.Option("reported", help='"reported" or a number of decimals'),
                 threshold: float = typer.Option(5, help="% deviation counted as within tolerance"), as_json: bool = typer.Option(False, "--json")):
@@ -492,6 +508,7 @@ def compare_cmd(pkg: str, rounding: str = typer.Option("reported", help='"report
         dev = f"  ({r['deviation']:.1f} %)" if r.get("deviation") not in (None, 0) else ""
         typer.echo(f"{labels[r['status']]} {r['target']:6} expected {r['expected_text']:<18} got {r['reproduced_text']}{dev}  {r['description'][:50]}")
     typer.echo("  ".join(f"{k}: {v}" for k, v in c["summary"].items()))
+    typer.echo(f"Policy {c['policy']}, rounding {c['rounding_mode']}; within {c['settings']['threshold']}% is exploratory.")
     for e in c["output_errors"] + c["output_warnings"]:
         typer.echo(f"results.json: {e}", err=True)
 

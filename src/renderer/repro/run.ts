@@ -69,7 +69,7 @@ export class RunStep implements Step {
       <div class="card-head"><h3>Comparison</h3><span class="spacer"></span>
         ${this.cmp?.rows.some((r) => r.type === "figure") ? `<label title="Height of the figures in the table; they never get wider than their column">Figure size <input id="rp-figsize" type="range" min="${FIGURE_HEIGHT.min}" max="${FIGURE_HEIGHT.max}" step="20" value="${st.figureHeight}" /></label>` : ""}
         <label>Rounding <select id="rp-round"><option value="reported" ${c.rounding === "reported" ? "selected" : ""}>as reported</option>${[0, 1, 2, 3, 4, 5, 6].map((d) => `<option value="${d}" ${c.rounding === d ? "selected" : ""}>${d} decimals</option>`).join("")}</select></label>
-        <label>Within tolerance up to <input id="rp-thr" type="number" min="0" step="0.5" value="${c.threshold}" style="width:5em" /> %</label>
+        <label>Exploratory tolerance up to <input id="rp-thr" type="number" min="0" step="0.5" value="${c.threshold}" style="width:5em" /> %</label>
         <button id="rp-crop" title="Get the original figures of figure targets: as published where possible, otherwise from the PDF">Get original figures</button></div>
       ${this.cmpError ? `<p class="hint">${esc(this.cmpError)}</p>` : this.cmp ? compareHtml(this.cmp, this.originals) : ""}
     </div>`;
@@ -128,10 +128,11 @@ export class RunStep implements Step {
 }
 
 export function compareHtml(cmp: Comparison, originals: FigureOriginal[] = []): string {
-  const summary = `<p class="summary">${Object.entries(cmp.summary).map(([k, v]) => `<span class="st st-${k}">${STATUS_LABEL[k as Status] ?? k}: ${v}</span>`).join(" ")}</p>`;
+  const summary = `<p class="small">Exact matches and exploratory within-tolerance results are separate; tolerance ${cmp.settings.threshold}%. Policy ${esc(cmp.policy)}, rounding ${esc(cmp.rounding_mode)}.</p><p class="summary">${Object.entries(cmp.summary).map(([k, v]) => `<span class="st st-${k}">${STATUS_LABEL[k as Status] ?? k}: ${v}</span>`).join(" ")}</p>`;
   const problems = cmp.output_errors.length ? `<div class="warn"><ul>${cmp.output_errors.map((e) => `<li>${esc(e)}</li>`).join("")}</ul></div>` : "";
   const rows = cmp.rows.map((r) => rowHtml(r, originals.find((o) => o.target === r.target))).join("");
-  return problems + summary + `<table class="tbl-list tbl-compare"><colgroup><col class="c-id" /><col /><col class="c-reported" /><col class="c-reproduced" /><col class="c-dev" /><col class="c-status" /></colgroup><thead><tr><th>ID</th><th>Result</th><th>Reported</th><th>Reproduced</th><th>Dev.</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table>`;
+  const warnings = cmp.output_warnings.length ? `<details><summary>${cmp.output_warnings.length} coverage / precision warning(s)</summary><ul>${cmp.output_warnings.map((e) => `<li>${esc(e)}</li>`).join("")}</ul></details>` : "";
+  return problems + warnings + summary + `<table class="tbl-list tbl-compare"><colgroup><col class="c-id" /><col /><col class="c-reported" /><col class="c-reproduced" /><col class="c-dev" /><col class="c-status" /></colgroup><thead><tr><th>ID</th><th>Result</th><th>Reported</th><th>Reproduced</th><th>Dev.</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table>`;
 }
 
 function rowHtml(r: CompareRow, original?: FigureOriginal): string {

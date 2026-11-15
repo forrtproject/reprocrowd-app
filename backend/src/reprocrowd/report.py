@@ -6,13 +6,14 @@ from a package that passes validation, and its hash is recorded in the manifest 
 """
 from __future__ import annotations
 
+import math
 import zipfile
 from pathlib import Path
 from typing import Any
 
 from jinja2 import Environment, PackageLoader, StrictUndefined
 
-from . import jobs
+from . import jobs, evidence
 from .errors import conflict
 from .figures import listing as figure_listing
 from .package import MANIFEST, Package, atomic_write, sha256_file, slug
@@ -20,7 +21,7 @@ from .run import RESULTS, comparison, frozen_targets
 from .schemas.common import now
 from . import provenance
 from .extractions import get as get_extraction
-from .schemas.comparison import STATUS_LABEL, CompareSettings
+from .schemas.comparison import STATUS_LABEL, CompareSettings, Comparison
 from .schemas.exports import AnalysisPlan, InputEntry, InputsList
 from .schemas.manifest import ArchiveInfo, OtherMeta
 from .scripts import current_template
@@ -31,14 +32,14 @@ COMPARISON = "comparison.json"
 ARCHIVE_DIR = "archive"
 
 def _last_run(pkg: Package):
-    runs = [j for j in jobs.list_jobs(pkg) if j.type == "run"]
-    return runs[-1] if runs else None
+    return evidence.latest_run(pkg)
 
 
 def write_report(pkg: Package, st: CompareSettings) -> dict[str, Any]:
     jobs.ensure_idle(pkg)
     tpl = current_template(pkg)
     cmp = comparison(pkg, st)  # raises script_missing / results_missing
+    execution = evidence.write(pkg)
     targets = frozen_targets(pkg)
     plan = AnalysisPlan.model_validate(pkg.read_json("analysis_plan.json"))
     m = pkg.load()
@@ -78,7 +79,7 @@ def write_report(pkg: Package, st: CompareSettings) -> dict[str, Any]:
     html = env.get_template("_report.html.j2").render(
         title=m.title or "(untitled)", identifiers=m.reprocrowd.identifiers,
         authors=", ".join(a.get("author", {}).get("display_name", "") for a in work.get("authorships", [])),
-        generated_at=now().isoformat(), cmp=cmp, settings=st, labels=STATUS_LABEL, targets={t.id: t for t in targets},
+        generated_at=now().isoformat(), evidence=execution, cmp=cmp, settings=st, labels=STATUS_LABEL, targets={t.id: t for t in targets},
         reproduced=sum(r.status in ("match", "within") for r in numeric), numeric=len(numeric),
         plan=plan, svg=provenance.svg(graph), lineage=graph.lineage(), traces=traces, colors=provenance.COLORS, tpl=tpl, run=_last_run(pkg), codegen=codegen[-1] if codegen else None,
         inputs=m.by_kind("input"), extractions=m.by_kind("extraction"), fulltexts=m.by_kind("fulltext"), llm_runs=llm_runs,
@@ -87,11 +88,14 @@ def write_report(pkg: Package, st: CompareSettings) -> dict[str, Any]:
         atomic_write(pkg.path(REPORT), html.encode())
         pkg.put(m, pkg.describe("report", REPORT, type="file", format="html", mediatype="text/html", meta=OtherMeta(kind="report", added_at=now())))
         pkg.write_json(m, "comparison", COMPARISON, cmp, schema="comparison", meta=OtherMeta(kind="report", added_at=now()))
-    return {"path": REPORT, "comparison": COMPARISON, "summary": cmp.summary, "reproduced": f"{sum(r.status in ('match', 'within') for r in numeric)}/{len(numeric)}"}
+    return {"path": REPORT, "comparison": COMPARISON, "summary": cmp.summary, "matched": cmp.summary.get("match", 0), "within": cmp.summary.get("within", 0), "reproduced": f"{sum(r.status in ('match', 'within') for r in numeric)}/{len(numeric)}"}
 
 
 def write_archive(pkg: Package) -> ArchiveInfo:
     jobs.ensure_idle(pkg)
+    if not pkg.load().get("report"):
+        raise conflict("report_missing", "create the report first (PUT …/report)")
+    recorded_comparison(pkg)
     report = validate_package(pkg)
     if not report.valid:
         raise conflict("package_invalid", "the package doesn't validate; fix it before archiving",
@@ -126,3 +130,47 @@ def archive_path(pkg: Package) -> Path:
     if info is None or not pkg.path(info.path).exists():
         raise conflict("archive_missing", "create the archive first (PUT …/archive)")
     return pkg.path(info.path)
+
+
+def recorded_comparison(pkg: Package) -> Comparison:
+    """The comparison published with the report, never a default recomputation."""
+    if not pkg.path(COMPARISON).exists():
+        raise conflict("report_stale", "create or regenerate the report before archiving or depositing")
+    saved = Comparison.model_validate(pkg.read_json(COMPARISON))
+    if pkg.path("evidence/execution.json").exists():
+        published = pkg.read_json("evidence/execution.json")
+        latest = evidence.latest_run(pkg)
+        if latest and (published.get("run") or {}).get("id") != latest.id:
+            raise conflict("report_stale", "a newer run exists; regenerate the report and archive")
+        # The archived evidence must still describe the scripts and inputs that are archived with it.
+        live_evidence = evidence.get(pkg)
+        if (published.get("stale") != live_evidence.stale or
+                published.get("added_since_run", []) != live_evidence.added_since_run):
+            raise conflict("report_stale", "scripts or inputs changed since the report; regenerate the report and archive")
+    if saved.basis:
+        if (saved.basis.results_sha256 != evidence.digest(pkg, RESULTS) or
+                saved.basis.results_schema_sha256 != evidence.digest(pkg, "results_schema.json")):
+            raise conflict("report_stale", "results or targets changed; regenerate the report and archive")
+    else:
+        try:
+            live = comparison(pkg, saved.settings)
+        except Exception:
+            raise conflict("report_stale", "the older report can no longer be checked; regenerate it")
+        if not _same_legacy([r.model_dump() for r in live.rows], [r.model_dump() for r in saved.rows]) or live.summary != saved.summary:
+            raise conflict("report_stale", "the older comparison differs; regenerate the report")
+    return saved
+
+
+# Fields added to comparison rows/cells after the first comparison.json format.
+_LEGACY_NEW_FIELDS = {"refs", "precision", "quantum", "printed", "comparator"}
+
+
+def _same_legacy(a: Any, b: Any) -> bool:
+    """Equal public comparison content; deviations (display-only %) may differ in the last float bits."""
+    if isinstance(a, dict) and isinstance(b, dict):
+        return all(_same_legacy(a.get(k), b.get(k)) for k in (a.keys() | b.keys()) - _LEGACY_NEW_FIELDS)
+    if isinstance(a, list) and isinstance(b, list):
+        return len(a) == len(b) and all(_same_legacy(x, y) for x, y in zip(a, b))
+    if isinstance(a, float) and isinstance(b, float):
+        return math.isclose(a, b, rel_tol=1e-9)
+    return a == b
