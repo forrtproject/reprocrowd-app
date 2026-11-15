@@ -18,7 +18,7 @@ The printed token determines the rounding quantum (the place to which a result i
 
 Policy `reprocrowd-compare/3`, mode `either_direction_at_ties`:
 
-- Both sides are decimals: the expected side is the printed token, and a reproduced JSON number is read as written (`2.675`, not its binary approximation 2.67499…).
+- Both sides are decimals: the expected side is the printed token, and a reproduced JSON number is read as its shortest round-trip decimal (`2.675`, not its binary approximation 2.67499…). This equals the text that Python's `json` and R's `jsonlite` (`digits = NA`) write; a value written with more than about 17 significant digits is read at double precision. A reproduced value given as a JSON string keeps its exact digits.
 - At the chosen precision a reproduced value matches if rounding it half-down or half-up gives the printed number. Exact ties therefore match either neighbour, whichever convention the authors' software used: 2.675 matches 2.67 and 2.68; 0.125 matches .12 and .13. Non-ties have one rounding (2.6749 → 2.67). The report shows a tie as `2.67 or 2.68 (tie)`.
 - `=` and `~` match only at the chosen precision. `<=` and `>=` compare rounded sides, accepting either tie direction (`≤ .05` matches 0.055 but not 0.0551). Strict `<` and `>` compare unrounded sides and never return `within`.
 - Lukas chose this rule on 15 November 2026; it replaces `reprocrowd-compare/2` (exact binary value, half-even only). Comparisons recorded under `/2` keep that policy name until their report is regenerated.
