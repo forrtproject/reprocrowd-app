@@ -28,6 +28,7 @@ class FakeGitHub:
 
     def __init__(self, push=True):
         self.push = push
+        self.private = False
         self.issues: list[dict] = []
         self.comments: dict[int, list[dict]] = {}
         self.releases: list[dict] = []
@@ -72,7 +73,7 @@ class FakeGitHub:
         if method != "GET":
             self.writes.append(f"{method} {path}")
         if path == f"/repos/{REPO}":
-            return httpx.Response(200, json={"full_name": REPO, "html_url": f"https://github.test/{REPO}", "private": False,
+            return httpx.Response(200, json={"full_name": REPO, "html_url": f"https://github.test/{REPO}", "private": self.private,
                                              "default_branch": "main", "permissions": {"push": self.push, "pull": True}})
         if m := re.fullmatch(rf"/repos/{REPO}/labels(?:/(.+))?", path):
             if method == "GET":
@@ -213,7 +214,7 @@ def test_preview_sends_nothing(client, pkg, gh):
     assert len(list((root / "archive").glob(f"pilot-{pv['run_key']}/*.zip"))) == 1  # the ZIP the submission will upload, built once
 
 
-def test_create_update_and_retries_do_not_duplicate(client, pkg, gh):
+def test_create_update_and_retries_do_not_duplicate(client, pkg, gh, tmp_path):
     P = f"/v1/packages/{pkg}"
     root = Path(client.get(P).json()["path"])
     ready_published(client, pkg)
@@ -264,8 +265,8 @@ def test_create_update_and_retries_do_not_duplicate(client, pkg, gh):
     assert "2 of 3 match (numbers at printed precision; text exactly)" in gh.issues[0]["body"]
     assert [x["version"] for x in client.get(P + "/pilots").json()] == [1, 2]
 
-    # the token is never stored or echoed
-    for f in root.rglob("*"):
+    # the token is never stored or echoed, in the package or anywhere else the app writes
+    for f in tmp_path.rglob("*"):
         if f.is_file():
             assert TOKEN.encode() not in f.read_bytes(), f
 
@@ -320,6 +321,21 @@ def test_no_write_access_is_refused_before_writing(client, pkg, gh):
     assert client.post("/v1/github-pilots:check", json={"github_token": TOKEN}).json()["can_submit"] is False
     err = problem(client.post(P + "/pilots", json=body()), 403, "github_forbidden")
     assert "write access" in err["detail"] and gh.writes == []
+
+
+def test_private_repository_is_refused_before_writing(client, pkg, gh):
+    ready_published(client, pkg)
+    gh.private = True
+    err = problem(client.post(f"/v1/packages/{pkg}/pilots", json=body()), 403, "github_forbidden")
+    assert "public" in err["detail"] and gh.writes == []
+
+
+def test_repeated_left_out_groups_give_the_same_run(client, pkg, gh):
+    P = f"/v1/packages/{pkg}"
+    ready_published(client, pkg)
+    once = client.post(P + "/pilots:preview", json={"exclude": ["paper"]}).json()
+    twice = client.post(P + "/pilots:preview", json={"exclude": ["paper", "paper"]}).json()
+    assert once["exclude"] == ["paper"] and twice["run_key"] == once["run_key"] and twice["exclude"] == ["paper"]
 
 
 def test_licenses_json_covers_every_archived_file(client, pkg, gh):

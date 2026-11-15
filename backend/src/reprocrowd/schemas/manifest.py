@@ -184,7 +184,7 @@ class ZenodoDeposit(Model):
 
 class PilotAsset(Model):
     name: str
-    bytes: int
+    bytes: int = Field(ge=0)
     sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
     url: str | None = Field(default=None, description="download URL once the release is published")
 

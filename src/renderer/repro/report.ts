@@ -57,6 +57,7 @@ export class ReportStep implements Step {
   private preview?: DepositPreview | Error;
   private records?: ZenodoRecord[] | Error;
   private pilots: GithubPilot[] = [];
+  private pilotsError?: Error;
   private pilotAccount?: PilotAccount;
   private pilotPreview?: PilotPreview | Error;
   /** Groups left out, as chosen here (undefined: the default from the preview). */
@@ -69,14 +70,14 @@ export class ReportStep implements Step {
     const [manifest, deposits, pilots, jobs, validation, report] = await Promise.all([
       pkg.get<any>("/manifest"),
       pkg.get<ZenodoDeposit[]>("/deposits"),
-      pkg.get<GithubPilot[]>("/pilots").catch(() => []),
+      pkg.get<GithubPilot[]>("/pilots").catch((e) => e as Error),
       pkg.get<Job[]>("/jobs"),
       pkg.get<ValidationReport>("/validation").catch(() => undefined),
       pkg.text("/report").catch(() => undefined),
     ]);
     this.manifest = manifest;
     this.deposits = deposits;
-    this.pilots = pilots;
+    [this.pilots, this.pilotsError] = pilots instanceof Error ? [[], pilots] : [pilots, undefined];
     this.lastRun = jobs.filter((j) => j.type === "run").pop();
     this.validation = validation;
     this.report = report && (await inlineImages(report));
@@ -207,13 +208,14 @@ export class ReportStep implements Step {
     const checks: [boolean, string, string?][] = [...base, [!!acct?.hasToken, acct?.hasToken ? `GitHub CLI login (submits to ${acct.repo})` : "A GitHub login: run “gh auth login” (Settings)", "github"]];
     const same = archive && this.pilots.find((p) => p.repo === acct?.repo && p.archive_sha256 === archive.sha256 && [...p.exclude].sort().join() === exNow);
     const busy = this.w.running.has("pilot");
-    const ready = checks.every(([ok]) => ok) && !!pv && same?.status !== "published" && !busy;
+    const ready = checks.every(([ok]) => ok) && !!pv && same?.status !== "published" && !this.pilotsError && !busy;
     const label = busy ? "Submitting…" : same?.status === "partial" ? "Resume the submission" : "Submit this run as a GitHub pilot";
     return `<section class="card submit-card">
       <h3>Pilot on GitHub <span class="badge sandbox" title="public, unreviewed; not a certificate">Unreviewed</span></h3>
       <p class="hint">A public record to discuss before anything goes to Zenodo: one issue per reproduction in <code>${esc(acct?.repo ?? "")}</code>, and for each run a release with the ZIP, report, comparison, evidence, licences and their SHA-256 hashes. A numeric match is not a scientific certificate. The files left out above are left out here too.</p>
       <ul class="checklist">${checks.map(([ok, l, fix]) => `<li class="${ok ? "ok" : "no"}">${ok ? "✓" : "✗"} ${esc(l)}${!ok && fix ? ` <a href="#" data-settings="${fix}">Settings…</a>` : ""}</li>`).join("")}</ul>
       ${pv ? `<p class="small">${esc(pv.summary)}. Licences: metadata ${esc(pv.licenses.metadata)}, report and outputs ${esc(pv.licenses.outputs)}, new code ${esc(pv.licenses.code)}; third-party material keeps its own (<code>licenses.json</code>).</p>` : this.pilotPreview instanceof Error ? `<p class="hint">${esc(this.pilotPreview.message)}</p>` : ""}
+      ${this.pilotsError ? `<p class="warn-inline small">Couldn't read this package's pilot records: ${esc(this.pilotsError.message)}</p>` : ""}
       <div class="actions"><button id="rp-pilot" class="primary" ${ready ? "" : "disabled"}>${label}</button></div>
       ${same?.status === "published" ? `<p class="hint">This ZIP is pilot run v${same.version}. A new run (then report and ZIP) becomes the next version on the same issue.</p>` : ""}
       ${same?.status === "partial" && same.error ? `<p class="warn-inline small">The last attempt stopped: ${esc(same.error)}. Submitting again resumes it without duplicates.</p>` : ""}
@@ -227,7 +229,7 @@ export class ReportStep implements Step {
     const acct = this.pilotAccount!;
     const ok = await confirmDialog(
       "Submit a GitHub pilot",
-      `<p>The issue for this reproduction in <b>${esc(acct.repo)}</b> is created or updated, and this run's files are published there as a release. <b>Both are public.</b></p>
+      `<p>The issue for this reproduction in <b>${esc(acct.repo)}</b> is created or updated, and this run's files are published there as a release${this.note.trim() ? ", with your note in the run's comment" : ""}. <b>All of it is public.</b></p>
        <p class="hint">Published releases are kept unchanged; later runs are added as new versions. The record says “pilot, unreviewed”.</p>`,
       "Submit",
     );

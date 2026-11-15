@@ -82,7 +82,7 @@ class LicenseEntry(Model):
     path: str = Field(description="archive-relative path")
     kind: str = Field(description="resource kind (fulltext, input, script, output, report, …)")
     rights: Literal["ours", "third-party"] = Field(description="ours: authored for this reproduction; third-party: the article's or the source's")
-    license: str | None = Field(default=None, description="SPDX id of the licence we grant; null for third-party material (see source_license)")
+    license: str | None = Field(default=None, min_length=1, description="SPDX id of the licence we grant; null for third-party material (see source_license)")
     source_license: str | None = Field(default=None, description="third-party: the licence reported by the source (e.g. OpenAlex for the article); null = unknown")
     source: str | None = Field(default=None, description="third-party: where it came from (DOI, URL or repository id)")
     note: str = ""

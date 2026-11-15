@@ -59,7 +59,7 @@ def _entry(r: Resource, paper: str | None, doi: str | None) -> LicenseEntry:
         o = r.reprocrowd.origin
         src = getattr(o, "id", None) or getattr(o, "url", None)  # never a local path or file name: this file is public
         return LicenseEntry(path=r.path, kind=kind, rights="third-party", license=None, source=src,
-                            note="published by others; the licence at the source applies (not checked by ReproCrowd)")
+                            note="third-party or supplied by the user; the licence at the source applies, if known (not checked by ReproCrowd)")
     if kind in THIRD_PARTY:
         return LicenseEntry(path=r.path, kind=kind, rights="third-party", license=None, source_license=paper,
                             source=f"doi:{doi}" if doi else None, note="the article's material (or derived from its text)")

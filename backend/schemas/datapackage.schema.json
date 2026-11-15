@@ -785,6 +785,7 @@
           "type": "string"
         },
         "bytes": {
+          "minimum": 0,
           "title": "Bytes",
           "type": "integer"
         },

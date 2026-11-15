@@ -85,8 +85,8 @@ Apple silicon Macs runs ARM64 Linux, which works like any other Linux.
   default. Left-out files are listed with their hashes in the ZIP.
 - **Pilot on GitHub** (same step): a lighter, public, **unreviewed** record before
   Zenodo, in [forrtproject/reprocrowd-pilots](https://github.com/forrtproject/reprocrowd-pilots)
-  by default. Each reproduction gets one issue. Each run gets a pre-release with the ZIP, report,
-  comparison, evidence, `licenses.json` and `pilot.json`, verified by SHA-256, plus a comment on
+  by default. Each reproduction gets one issue. Each run gets a pre-release with the ZIP, `report.html`,
+  `comparison.json`, `execution.json`, `licenses.json` and `pilot.json`, verified by SHA-256, plus a comment on
   the issue. Submitting the same ZIP again creates nothing new, and an interrupted
   submission resumes. A new run becomes v2 on the same issue. It needs write access
   to the repository. The app uses the GitHub CLI login (`gh auth login`). A numeric match is

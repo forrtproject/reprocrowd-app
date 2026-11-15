@@ -726,7 +726,10 @@ def pilot_status():
 def pilot_check(repo: Optional[str] = _REPO):
     """Check that your GitHub token can submit to the pilots repository (writes nothing)."""
     body = {k: v for k, v in _pilot_body(repo, token=True).items() if k in ("repo", "github_token")}
-    out(call("POST", "/github-pilots:check", body))
+    r = call("POST", "/github-pilots:check", body)
+    out(r)
+    if not r.get("can_submit"):
+        raise typer.Exit(1)
 
 
 @pilot.command("preview")

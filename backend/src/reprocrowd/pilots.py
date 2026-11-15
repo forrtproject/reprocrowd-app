@@ -197,7 +197,7 @@ def _plan(pkg: Package, repo: str | None, exclude: list[str] | None, note: str, 
     _check_published_paper(pkg)
     p = Prepared(pkg)  # recorded comparison (report_stale), run succeeded, archive up to date, OpenAlex record
     c = contents(pkg, p.work)
-    ex = sorted(c["default_exclude"] if exclude is None else [g for g in exclude if c["groups"][g]["resources"]])
+    ex = sorted(set(c["default_exclude"] if exclude is None else [g for g in exclude if c["groups"][g]["resources"]]))
     archive_sha = p.m.reprocrowd.archive.sha256
     key = hashlib.sha256(f"{archive_sha}|{','.join(ex)}".encode()).hexdigest()[:12]
     return Plan(pkg, p, repo or settings().github_pilots_repo, ex, key, p.m.reprocrowd.reproduction_id, synthetic, note)
@@ -360,7 +360,7 @@ def _release_body(plan: Plan, version: int, assets: list[Asset]) -> str:
 
 def _comment_body(plan: Plan, rec: GithubPilot) -> str:
     s = _summary(plan, rec.version)
-    note = f"\n**Submitter's note:** {_cell(plan.note)[:2000]}\n" if plan.note else ""
+    note = f"\n**Submitter's note:** {' '.join(plan.note.split())[:2000]}\n" if plan.note else ""
     return _clip(f"{run_mark(plan.reproduction_id, plan.run_key)}\n### Run v{rec.version} · `{plan.run_key}`\n\n"
                  f"{_summary_line(s)}. Policy `{s['policy']}`, rounding `{plan.p.cmp.rounding_mode}`.\n\n{_evidence_line(plan)}{note}\n"
                  f"Files: [release {rec.tag}]({rec.release_url}) (pre-release; earlier runs stay in their own releases).\n\n"
@@ -421,6 +421,8 @@ def submit(pkg: Package, *, token: str | None, repo: str | None, exclude: list[s
         _build_files(plan, Path(tmp))  # size checks before anything is written on GitHub
         info = gh.json("GET", f"/repos/{plan.repo}")
         plan.branch = info.get("default_branch") or "main"
+        if info.get("private"):
+            raise ApiError(403, "github_forbidden", f"{plan.repo} is private; pilots are public records, so submit them to a public repository")
         if not (info.get("permissions") or {}).get("push"):
             raise ApiError(403, "github_forbidden", f"this GitHub account can't write to {plan.repo}; pilot submissions create issues and "
                                                     "releases, which needs write access (ask the maintainers, or configure your own repository)")
