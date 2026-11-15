@@ -452,6 +452,31 @@ def test_archive_without_licences_is_refused(client, pkg, gh):
     assert gh.writes == []
 
 
+def test_archive_from_before_licences_is_refused_for_every_submission(client, pkg, gh):
+    """An archive (and package) made before licenses.json existed: the shared archive check refuses it."""
+    import zipfile as zf
+    from reprocrowd.package import Registry
+    P = f"/v1/packages/{pkg}"
+    ready_published(client, pkg)
+    p = Registry().get(pkg)
+    with p.edit() as m:
+        m.resources = [r for r in m.resources if r.path != "licenses.json"]
+    path = p.path(p.load().reprocrowd.archive.path)
+    with zf.ZipFile(path) as src:
+        items = [(i, src.read(i)) for i in src.infolist() if i.filename != "licenses.json"]
+    with zf.ZipFile(path, "w") as out:
+        for i, data in items:
+            if i.filename == "datapackage.json":
+                dp = json.loads(data)
+                dp["resources"] = [r for r in dp["resources"] if r["path"] != "licenses.json"]
+                data = json.dumps(dp).encode()
+            out.writestr(i, data)
+    for url in ("/pilots:preview", "/submissions"):
+        err = problem(client.post(P + url, json={}), 409, "archive_stale")
+        assert "licenses.json" in err["detail"], url
+    assert gh.writes == []
+
+
 def test_license_entries_must_match_their_rights():
     from pydantic import ValidationError
     from reprocrowd.schemas.exports import LicenseEntry
