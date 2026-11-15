@@ -89,8 +89,7 @@ Apple silicon Macs runs ARM64 Linux, which works like any other Linux.
   comparison, evidence, `licenses.json` and `pilot.json`, verified by SHA-256, plus a comment on
   the issue. Submitting the same ZIP again creates nothing new, and an interrupted
   submission resumes. A new run becomes v2 on the same issue. It needs write access
-  to the repository. A token saved in Settings → GitHub pilots is used first; without one,
-  the app uses the GitHub CLI login (`gh auth login`). A numeric match is
+  to the repository. The app uses the GitHub CLI login (`gh auth login`). A numeric match is
   not a scientific certificate. See [the contract](docs/contracts.md#github-pilots-and-output-licences).
 - **⚙ Settings**: your name / ORCID / affiliation for records; Zenodo server
   (**sandbox by default**, for testing) and a personal access token for each

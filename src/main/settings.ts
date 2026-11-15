@@ -21,7 +21,7 @@ export interface Settings {
     community: string;
     creator: Creator;
   };
-  /** GitHub pilot submissions: the repository (owner/name) that receives them. The token is a secret (githubKey). */
+  /** GitHub pilot submissions: the repository (owner/name) that receives them. The login is the GitHub CLI's. */
   github: { repo: string };
   /** Advanced: start the backend with this command instead of the bundled one ({host}, {port}). */
   backendCmd: string;
@@ -135,7 +135,6 @@ export async function setSecret(key: string, value: string | null) {
 }
 
 export const zenodoKey = (server: ZenodoServer) => `zenodo-token:${server}`;
-export const githubKey = "github-token";
 export const serverOf = (sandbox: boolean): ZenodoServer => (sandbox ? "sandbox" : "zenodo");
 
 /** "weak" when Linux has no keyring and Electron falls back to a fixed key. */

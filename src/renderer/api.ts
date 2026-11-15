@@ -62,8 +62,8 @@ export interface Config {
   backendCmd: string;
   checkUpdates: boolean;
   autoUpdate: boolean;
-  tokens: { zenodo: boolean; sandbox: boolean; github: boolean };
-  /** The GitHub CLI: logged in (its login is used when no token is pasted), logged out, or not installed. */
+  tokens: { zenodo: boolean; sandbox: boolean };
+  /** The GitHub CLI, whose login submits pilots: logged in, logged out, or not installed. */
   ghLogin: "ok" | "logged-out" | "missing";
   secretStorage: "secure" | "weak" | "none";
   backend: BackendStatus;
@@ -94,7 +94,7 @@ export interface DepositPreview {
   contents: { groups: Record<string, { description: string; resources: string[]; bytes: number }>; paper_license: string | null; default_exclude: string[] };
   exclude: string[];
 }
-export interface PilotAccount { repo: string; hasToken: boolean; source: "settings" | "gh" | "none" }
+export interface PilotAccount { repo: string; hasToken: boolean }
 export interface GithubCheck { repo: string; url: string | null; private: boolean | null; can_submit: boolean; default_branch: string | null; immutable_releases: boolean | null }
 export interface PilotPreview {
   repo: string; reproduction_id: string; run_key: string; tag: string; issue_title: string; labels: string[]; summary: string;
@@ -160,8 +160,7 @@ export const host = {
     claudeLogin: () => call<string>("claudeLogin"),
   setZenodoToken: (server: "zenodo" | "sandbox", token: string | null) => call<void>("setZenodoToken", server, token),
   verifyZenodoToken: (sandbox: boolean, token?: string) => call<{ ok: boolean; url: string; sandbox: boolean }>("verifyZenodoToken", sandbox, token),
-  setGithubToken: (token: string | null) => call<void>("setGithubToken", token),
-  checkGithubToken: (repo?: string, token?: string) => call<GithubCheck>("checkGithubToken", repo, token),
+  checkGithubToken: (repo?: string) => call<GithubCheck>("checkGithubToken", repo),
   githubLogin: () => call<string>("githubLogin"),
   saveBackendConfig: (text: string) => call<void>("saveBackendConfig", text),
   backendStatus: () => call<BackendStatus>("backendStatus"),
