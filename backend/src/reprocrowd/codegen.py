@@ -45,7 +45,7 @@ def plan(pkg: Package, *, profile: str | None, allow_exec: bool, instructions: s
     tools = prof.tools + (prof.exec_tools if allow_exec else [])
     restriction = exec_restriction(prof, tools)
     if not allow_exec and restriction == "unsupported":
-        raise conflict("exec_restriction_unsupported", f"Profile {name!r} has neither a tool allowlist ({{tools}} with editing and execution tools) nor no-analysis settings (no_exec_argv/no_exec_env); it cannot honor no-analysis mode. Choose a compatible profile, re-apply its preset in Settings, or explicitly allow execution.")
+        raise conflict("exec_restriction_unsupported", f"Profile {name!r} has neither a tool allowlist ({{tools}} with editing and execution tools) nor no-analysis settings (no_exec_argv/no_exec_env); it cannot honor no-analysis mode. Choose a profile that supports it (Claude Code; OpenCode after re-applying its preset in Settings) or explicitly allow execution.")
     argv = expand_argv(prof.argv, {"model": model or prof.model, "effort": prof.effort, "tools": ",".join(tools)})
     restricted = not allow_exec and restriction == "cli_settings"
     argv += prof.no_exec_argv if restricted else []

@@ -39,7 +39,8 @@ export async function profileEditor(saved: (text: string) => void) {
   const value = (name: string) => el(name).value;
   const kind = () => value("kind") as Kind;
   const lines = (name: string) => value(name).split(/\r?\n/).filter((s) => s.trim());
-  const env = () => Object.fromEntries(lines("noenv").map((l) => { const i = l.indexOf("="); return i > 0 ? [l.slice(0, i).trim(), l.slice(i + 1)] : [l.trim(), ""]; }));
+  // NAME=value lines; a line without "=" is ignored, so it cannot make a profile look restricted without a setting.
+  const env = () => Object.fromEntries(lines("noenv").filter((l) => l.indexOf("=") > 0).map((l) => { const i = l.indexOf("="); return [l.slice(0, i).trim(), l.slice(i + 1)]; }));
   const set = (name: string, v: string | number | string[] | undefined) => { el(name).value = Array.isArray(v) ? v.join("\n") : String(v ?? ""); };
   const protocols = () => {
     const list = kind() === "agent" ? ["claude-stream-json", "codex-json", "opencode-json", "text"] : ["claude-json", "codex-json", "opencode-json", "text"];
