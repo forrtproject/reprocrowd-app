@@ -29,8 +29,8 @@ class PlanStep(Model):
     id: str = Field(description="L01… load steps, A… actions, OUT the results step")
     kind: Literal["load", "transform", "analysis", "results"]
     summary: str
-    quote: str = ""
     refs: list[Ref] = Field(default_factory=list)
+    note: str | None = Field(default=None, description="the action's note: anything beyond the referenced text, or where an unreferenced action comes from")
     inputs: list[str] = Field(default_factory=list, description="package-relative paths of input files")
     depends_on: list[str] = Field(default_factory=list)
     produces: list[str] = Field(default_factory=list, description="target ids")

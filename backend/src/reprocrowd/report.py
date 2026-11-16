@@ -19,6 +19,7 @@ from .package import MANIFEST, Package, atomic_write, sha256_file, slug
 from .run import RESULTS, comparison, frozen_targets
 from .schemas.common import now
 from . import provenance
+from .extractions import Passages
 from .extractions import get as get_extraction
 from .schemas.comparison import STATUS_LABEL, CompareSettings
 from .schemas.exports import AnalysisPlan, InputEntry, InputsList
@@ -68,9 +69,10 @@ def write_report(pkg: Package, st: CompareSettings) -> dict[str, Any]:
         try:
             docs[r.name] = get_extraction(pkg, r.name)[1]
         except Exception:  # unreadable extraction: passages show without text; validation reports it
-            pass
+            docs[r.name] = None
+    passages = Passages(pkg, docs)
     target_refs = {t.id: [(ref.extraction, ref.id) for ref in t.refs] for t in targets}
-    graph = provenance.build(m, docs, plan, cmp, outputs, target_refs)
+    graph = provenance.build(m, passages, plan, cmp, outputs, target_refs)
     traces = {t.id: provenance.trace(graph, t.id) for t in targets}
     validation = validate_package(pkg)
     numeric = [r for r in cmp.rows if r.type != "figure"]
@@ -80,7 +82,7 @@ def write_report(pkg: Package, st: CompareSettings) -> dict[str, Any]:
         authors=", ".join(a.get("author", {}).get("display_name", "") for a in work.get("authorships", [])),
         generated_at=now().isoformat(), cmp=cmp, settings=st, labels=STATUS_LABEL, targets={t.id: t for t in targets},
         reproduced=sum(r.status in ("match", "within") for r in numeric), numeric=len(numeric),
-        plan=plan, svg=provenance.svg(graph), lineage=graph.lineage(), traces=traces, colors=provenance.COLORS, tpl=tpl, run=_last_run(pkg), codegen=codegen[-1] if codegen else None,
+        plan=plan, source_text=lambda refs: " ".join(t for t in map(passages.text, refs) if t), svg=provenance.svg(graph), lineage=graph.lineage(), traces=traces, colors=provenance.COLORS, tpl=tpl, run=_last_run(pkg), codegen=codegen[-1] if codegen else None,
         inputs=m.by_kind("input"), extractions=m.by_kind("extraction"), fulltexts=m.by_kind("fulltext"), llm_runs=llm_runs,
         figures=figures, validation=validation, resources=sorted(m.resources, key=lambda r: r.path))
     with pkg.edit() as m:

@@ -56,20 +56,23 @@ export class CurationStep implements Step {
   // ---------- table ----------
 
   private head(): string[] {
-    return this.kind === "targets" ? ["Type", "Description / quote", "Expected", "Cmp", "dp", "Unit", "Refs"] : ["Kind", "Summary / quote", "Inputs", "Depends on", "Produces", "Refs"];
+    return this.kind === "targets" ? ["Type", "Description / source text", "Expected", "Cmp", "dp", "Unit", "Refs"] : ["Kind", "Summary / source text", "Inputs", "Depends on", "Produces", "Refs"];
   }
 
   private cells(v: Item, dis: boolean): string[] {
     const d = dis ? "disabled" : "";
     const refs = `<span class="badge" title="${esc(v.refs.map((r) => `${r.extraction}:${r.id}`).join("\n") || (v.unreferenced ? `unreferenced: ${v.note ?? ""}` : ""))}">${v.refs.length || (v.unreferenced ? "none" : 0)}</span>`;
-    const quote = v.quote ? `<div class="quote">“${esc(trunc(v.quote, 240))}”</div>` : "";
+    const main = v.refs.filter((r) => r.extraction === this.w.app.jats());
+    const text = refText(this.doc, main.map((r) => r.id));
+    const other = v.refs.length - main.length;
+    const source = (text ? `<div class="source">“${esc(trunc(text, 240))}”</div>` : "") + (other ? `<div class="small muted">${other} reference${other > 1 ? "s" : ""} to another text</div>` : "");
     if (this.kind === "targets") {
       const t = v as Target;
       const exp = t.type === "table" ? `<span class="muted">${(t.expected as string[][] | null)?.length ?? 0}×${(t.expected as string[][] | null)?.[0]?.length ?? 0} table</span>` : t.type === "figure" ? `<span class="muted">figure</span>` : `<input data-f="expected" value="${esc(t.expected ?? "")}" size="8" ${d} />`;
       const num = t.type === "number";
       return [
         `<select data-f="type" ${d}>${["number", "categorical", "table", "figure"].map((x) => `<option ${x === t.type ? "selected" : ""}>${x}</option>`).join("")}</select>`,
-        `<textarea data-f="description" rows="2" ${d}>${esc(t.description)}</textarea>${quote}`,
+        `<textarea data-f="description" rows="2" ${d}>${esc(t.description)}</textarea>${source}`,
         exp,
         num ? `<select data-f="comparator" ${d}>${COMPARATORS.map((c) => `<option ${(t.comparator ?? "=") === c ? "selected" : ""}>${c}</option>`).join("")}</select>` : "",
         num ? `<input data-f="decimals" value="${t.decimals ?? ""}" size="2" title="decimals as reported" ${d} />` : "",
@@ -80,7 +83,7 @@ export class CurationStep implements Step {
     const a = v as Action;
     return [
       `<select data-f="kind" ${d}>${["analysis", "transform"].map((k) => `<option ${a.kind === k ? "selected" : ""}>${k}</option>`).join("")}</select>`,
-      `<textarea data-f="summary" rows="2" ${d}>${esc(a.summary)}</textarea>${quote}`,
+      `<textarea data-f="summary" rows="2" ${d}>${esc(a.summary)}</textarea>${source}`,
       `<input data-f="inputs" value="${esc(a.inputs.join(", "))}" list="rp-input-names" ${d} title="input resource names, comma-separated" />`,
       `<input data-f="depends_on" value="${esc(a.depends_on.join(", "))}" size="8" ${d} title="action ids, comma-separated" />`,
       `<input data-f="produces" value="${esc(a.produces.join(", "))}" size="10" ${d} title="target ids, comma-separated" />`,
@@ -366,7 +369,7 @@ export class CurationStep implements Step {
   // ---------- dialogs ----------
 
   /** The scope tree of the paper's text (its JATS extraction). */
-  private async sourcePicker(el: HTMLElement, opts: { floats: boolean; presets: Preset[]; onChange?: () => void; initial?: (name: string) => { sections: string[]; items: string[] } | undefined }) {
+  private async sourcePicker(el: HTMLElement, opts: { floats: boolean; presets: Preset[]; initial?: (name: string) => { sections: string[]; items: string[] } | undefined }) {
     const sources = [this.w.app.jats()].filter(Boolean);
     el.innerHTML = `<select class="src-pick" hidden>${sources.map((s) => `<option>${esc(s)}</option>`).join("")}</select><div class="tree-box"></div>`;
     const sel = el.querySelector<HTMLSelectElement>(".src-pick")!;
@@ -377,7 +380,7 @@ export class CurationStep implements Step {
       box.innerHTML = `<p class="muted">Loading…</p>`;
       try {
         picker.doc = await this.w.app.loadDoc(picker.name);
-        picker.tree = new ScopeTree(box, picker.doc, { floats: opts.floats, presets: opts.presets, onChange: opts.onChange });
+        picker.tree = new ScopeTree(box, picker.doc, { floats: opts.floats, presets: opts.presets });
         const init = opts.initial?.(picker.name);
         if (init) picker.tree.scope = init;
       } catch (e) {
@@ -405,16 +408,12 @@ export class CurationStep implements Step {
          <label>Summary <textarea name="summary" rows="2" placeholder="imperative, specific enough to code" required></textarea></label>`;
     const dlg = modal("dlg-wide", `<form method="dialog"><h3>Add ${NOUN[this.kind]}</h3>
       <div class="grid2"><section>${fields}
-        <label>Quote <textarea name="quote" rows="4" placeholder="verbatim text from the paper (filled from the marked passages)"></textarea></label>
         <label class="inline"><input type="checkbox" name="unreferenced" /> No passage in the paper (needs a note)</label>
         <label>Note <input name="note" /></label>
         <p class="hint">Mark the passages on the right; they become the ${NOUN[this.kind]}'s references.</p></section>
       <section class="picker"></section></div>
       <menu><button value="cancel" formnovalidate>Cancel</button><button value="ok" class="primary">Add</button></menu></form>`);
     const form = dlg.querySelector("form")!;
-    const q = form.querySelector<HTMLTextAreaElement>("[name=quote]")!;
-    let touched = false;
-    q.addEventListener("input", () => (touched = true));
     // `picker` is filled in once the text source has loaded; the handlers below are attached before that.
     let picker: Awaited<ReturnType<CurationStep["sourcePicker"]>> | undefined;
     form.addEventListener("submit", async (e) => {
@@ -424,7 +423,7 @@ export class CurationStep implements Step {
       const v = (n: string) => (form.elements.namedItem(n) as HTMLInputElement).value.trim();
       const refs = (picker.tree?.ids ?? []).map((id) => ({ extraction: picker!.name, id }));
       const unref = (form.elements.namedItem("unreferenced") as HTMLInputElement).checked;
-      const body: Record<string, unknown> = { quote: v("quote") || refText(picker.doc, picker.tree?.ids ?? []), refs, unreferenced: unref || undefined, note: v("note") || undefined };
+      const body: Record<string, unknown> = { refs, unreferenced: unref || undefined, note: v("note") || undefined };
       if (isT) {
         const type = v("type");
         Object.assign(body, {
@@ -448,12 +447,7 @@ export class CurationStep implements Step {
       floats: true,
       presets: [],
       initial: () => (marked.length ? { sections: [], items: marked } : undefined),
-      onChange: () => {
-        const t = picker?.tree;
-        if (!touched && t) q.value = t.quote;
-      },
     });
-    if (marked.length && picker.tree && !touched) q.value = picker.tree.quote;
     // Once added, the marks have served their purpose.
     dlg.addEventListener("close", () => {
       if (dlg.returnValue !== "cancel" && marked.length) this.marked.clear();

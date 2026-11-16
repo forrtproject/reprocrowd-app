@@ -17,6 +17,7 @@ from jinja2 import Environment, PackageLoader, StrictUndefined
 from . import jobs
 from .curation import Curation
 from .errors import ApiError, conflict, invalid
+from .extractions import Passages
 from .package import Package, atomic_write, sha256_file, slug
 from .schemas.common import now
 from .schemas.exports import AnalysisPlan, Paper, PlanStep, ResultsSchema
@@ -67,7 +68,7 @@ def resolve_plan(pkg: Package) -> AnalysisPlan:
         deps = [d for d in a.depends_on if d in enabled] + [load_of[n] for n in a.inputs if n in load_of]
         if not deps:
             deps = [s.id for s in loads] if i == 0 else [actions[i - 1].id]
-        mid.append(PlanStep(id=a.id, kind=a.kind, summary=a.summary, quote=a.quote, refs=a.refs,
+        mid.append(PlanStep(id=a.id, kind=a.kind, summary=a.summary, refs=a.refs, note=a.note,
                             inputs=[path_of[n] for n in a.inputs if n in path_of], depends_on=list(dict.fromkeys(deps)),
                             produces=[t for t in a.produces if t in targets]))
     used = {d for s in mid for d in s.depends_on}
@@ -127,6 +128,7 @@ def write(pkg: Package, template_id: str, on_modified: OnModified = "refuse") ->
         kept = modified if on_modified == "keep" else []
 
         env = _env()
+        env.globals["passage_text"] = Passages(pkg).text
         ctx = {"paper": paper, "plan": plan, "tpl": tpl, "marker": TODO_MARK, "steps_by_id": {s.id: s for s in plan.steps}}
         with pkg.edit() as m:
             created = not m.by_kind("script")

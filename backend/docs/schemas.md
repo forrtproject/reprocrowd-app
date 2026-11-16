@@ -456,7 +456,6 @@ Points at one sentence, figure or table of an extraction.
 | `note` | string \| null |  |  |
 | `type` | `"number"` \| `"categorical"` \| `"table"` \| `"figure"` | yes |  |
 | `description` | string | yes | self-contained: variable, model/test, subgroup |
-| `quote` | string |  | verbatim text from the paper that states the result; default `` |
 | `expected` | number \| integer \| string \| list of list of string \| null |  | number for number, string for categorical, rows of cell strings for table, null for figure |
 | `comparator` | `"="` \| `"<"` \| `"<="` \| `">"` \| `">="` \| `"~"` \| null |  | for numbers: how the paper states it ("p < .001" -> "<"); null means "=" |
 | `decimals` | integer \| null |  | decimals as printed |
@@ -489,7 +488,6 @@ actions.json
 | `note` | string \| null |  |  |
 | `kind` | `"transform"` \| `"analysis"` | yes |  |
 | `summary` | string | yes | imperative description, specific enough to code |
-| `quote` | string |  | verbatim text from the paper this action implements; default `` |
 | `inputs` | list of string |  | input resource names (in-…) used directly |
 | `depends_on` | list of string |  | ids of actions that must run first |
 | `produces` | list of string |  | ids of targets this action computes |
@@ -532,7 +530,6 @@ Output format of the target-extraction prompt.
 |---|---|---|---|
 | `type` | `"number"` \| `"categorical"` \| `"table"` \| `"figure"` | yes |  |
 | `description` | string | yes |  |
-| `quote` | string |  | default `` |
 | `expected` | number \| integer \| string \| list of list of string \| null |  |  |
 | `comparator` | `"="` \| `"<"` \| `"<="` \| `">"` \| `">="` \| `"~"` \| null |  |  |
 | `decimals` | integer \| null |  |  |
@@ -558,7 +555,6 @@ Output format of the action-extraction prompt.
 | `key` | string | yes | A1, A2, … in order; used by depends_on |
 | `kind` | `"transform"` \| `"analysis"` | yes |  |
 | `summary` | string | yes |  |
-| `quote` | string |  | default `` |
 | `refs` | list of string | yes |  |
 | `inputs` | list of string |  | input names (in-…) used directly |
 | `depends_on` | list of string |  | keys of earlier actions |
@@ -608,8 +604,8 @@ analysis_plan.json: load steps (one per used data input), the enabled actions, t
 | `id` | string | yes | L01… load steps, A… actions, OUT the results step |
 | `kind` | `"load"` \| `"transform"` \| `"analysis"` \| `"results"` | yes |  |
 | `summary` | string | yes |  |
-| `quote` | string |  | default `` |
 | `refs` | list of [Ref](#ref) |  |  |
+| `note` | string \| null |  | the action's note: anything beyond the referenced text, or where an unreferenced action comes from |
 | `inputs` | list of string |  | package-relative paths of input files |
 | `depends_on` | list of string |  |  |
 | `produces` | list of string |  | target ids |

@@ -63,7 +63,6 @@ class TargetFields(Referenced):
 
     type: TargetType
     description: str = Field(min_length=1, description="self-contained: variable, model/test, subgroup")
-    quote: str = Field(default="", description="verbatim text from the paper that states the result")
     expected: float | int | str | list[list[str]] | None = Field(default=None, description="number for number, string for categorical, rows of cell strings for table, null for figure")
     comparator: Comparator | None = Field(default=None, description='for numbers: how the paper states it ("p < .001" -> "<"); null means "="')
     decimals: int | None = Field(default=None, ge=0, description="decimals as printed")
@@ -97,7 +96,6 @@ class ActionFields(Referenced):
 
     kind: Literal["transform", "analysis"]
     summary: str = Field(min_length=1, description="imperative description, specific enough to code")
-    quote: str = Field(default="", description="verbatim text from the paper this action implements")
     inputs: list[str] = Field(default_factory=list, description="input resource names (in-…) used directly")
     depends_on: list[str] = Field(default_factory=list, description="ids of actions that must run first")
     produces: list[str] = Field(default_factory=list, description="ids of targets this action computes")
@@ -164,7 +162,6 @@ class _LlmItem(Model):
 class TargetLlmItem(_LlmItem):
     type: TargetType
     description: str
-    quote: str = ""
     expected: float | int | str | list[list[str]] | None = None
     comparator: Comparator | None = None
     decimals: int | None = None
@@ -182,7 +179,6 @@ class ActionLlmItem(_LlmItem):
     key: str = Field(description="A1, A2, … in order; used by depends_on")
     kind: Literal["transform", "analysis"]
     summary: str
-    quote: str = ""
     refs: list[str] = Field(min_length=1)
     inputs: list[str] = Field(default_factory=list, description="input names (in-…) used directly")
     depends_on: list[str] = Field(default_factory=list, description="keys of earlier actions")

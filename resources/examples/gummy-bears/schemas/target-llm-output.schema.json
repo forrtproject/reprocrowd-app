@@ -19,11 +19,6 @@
           "title": "Description",
           "type": "string"
         },
-        "quote": {
-          "default": "",
-          "title": "Quote",
-          "type": "string"
-        },
         "expected": {
           "anyOf": [
             {
