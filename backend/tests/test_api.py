@@ -364,6 +364,10 @@ def test_actions_script_validation(client, pkg):
     problem(client.delete(P + "/targets/T001"), 409, "in_use")
     problem(client.delete(P + "/inputs/in-data.csv"), 409, "in_use")
 
+    # an action the paper doesn't describe: its note goes into the plan and the step header
+    note = "Reverse-code items 3 and 7 first, as the authors' R script does."
+    assert client.patch(P + "/actions/A03", json={"refs": [], "unreferenced": True, "note": note}).status_code == 200
+
     # script
     templates = {t["id"] for t in client.get("/v1/templates").json()}
     assert templates == {"r", "python", "targets", "snakemake"}
@@ -373,7 +377,14 @@ def test_actions_script_validation(client, pkg):
     script = (root / "analysis.R").read_text()
     assert "# ==== L01 [load]: Load inputs/data.csv ====" in script and "# ==== A02 [analysis]: Run the t-test ====" in script
     assert "TODO(LLM): implement OUT" in script
+    a02 = script[script.index("# ==== A02"):script.index("# ==== A03")]
+    doc = client.get(P + "/extractions/ex-paper-tei").json()
+    text = next(x["text"] for sec in doc["sections"] for par in sec["paragraphs"] for x in par["sentences"] if x["id"] == "sec2.p1.s1")
+    assert "# Source text:\n" in a02 and f"[sec2.p1.s1] {text}" in a02.replace("\n#   ", " ")
+    a03 = script[script.index("# ==== A03"):script.index("# ==== OUT")]
+    assert "Source text" not in a03 and f"# Note:\n#   {note}\n" in a03
     plan = json.loads((root / "analysis_plan.json").read_text())
+    assert plan["steps"][3]["note"] == note and "note" not in plan["steps"][2]
     assert [s["id"] for s in plan["steps"]] == ["L01", "A01", "A02", "A03", "OUT"]
     assert plan["steps"][1]["depends_on"] == ["L01"] and plan["steps"][-1]["depends_on"] == ["A03"]
     assert client.put(P + "/script", json={"template": "snakemake"}).status_code == 200

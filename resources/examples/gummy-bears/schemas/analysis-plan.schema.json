@@ -25,17 +25,25 @@
           "title": "Summary",
           "type": "string"
         },
-        "quote": {
-          "default": "",
-          "title": "Quote",
-          "type": "string"
-        },
         "refs": {
           "items": {
             "$ref": "#/$defs/Ref"
           },
           "title": "Refs",
           "type": "array"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "the action's note: anything beyond the referenced text, or where an unreferenced action comes from",
+          "title": "Note"
         },
         "inputs": {
           "description": "package-relative paths of input files",
