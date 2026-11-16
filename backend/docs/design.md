@@ -268,9 +268,10 @@ Targets and actions share one generic structure (`schemas/targets.schema.json`, 
 - **Ids** (`T001…`, `A01…`) are assigned by the service in creation order and never reused.
 - **References**: `refs: [{extraction, id}]` where `id` is a sentence, table or figure id of that extraction.
   They are checked against the document. With no refs, the item must set `unreferenced: true` and give a
-  `note`. The refs are an item's only link to the paper's text: wherever that text is shown (master-script
-  step headers, report), it is looked up by id (`extractions.Passages` loads and indexes each extraction
-  once, so a lookup is a dict access).
+  `note`. The refs are an item's only link to the paper's text: the curation table, master-script step
+  headers and report show the referenced text by id. In the backend, `extractions.Passages` loads and
+  indexes each extraction once, so a lookup is a dict access; the renderer uses its cached document index.
+  An action's note goes into its plan step, the step header and the report's plan table.
 - **LlmCall** stores the profile, argv, model, effort, template (`default` or `custom`), instructions, the
   full prompt, the raw output, start time, duration and exit code.
 - **Target** fields: `type` (number / categorical / table / figure), `description`, `expected`

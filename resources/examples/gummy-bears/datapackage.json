@@ -111,8 +111,8 @@
       "type": "json",
       "format": "json",
       "mediatype": "application/schema+json",
-      "bytes": 2719,
-      "hash": "sha256:99a013a9f4c01fc0291033c2c880344e5009b2b432ad4e77b00ec3e55eb70c52",
+      "bytes": 3079,
+      "hash": "sha256:14718afa2fb77d9c02a12964a07781ba3913b4631f1f102671e220731ef13fff",
       "reprocrowd": {
         "kind": "schema",
         "added_at": "2026-11-13T12:54:30Z"

@@ -111,8 +111,8 @@
       "type": "json",
       "format": "json",
       "mediatype": "application/schema+json",
-      "bytes": 2719,
-      "hash": "sha256:99a013a9f4c01fc0291033c2c880344e5009b2b432ad4e77b00ec3e55eb70c52",
+      "bytes": 3079,
+      "hash": "sha256:14718afa2fb77d9c02a12964a07781ba3913b4631f1f102671e220731ef13fff",
       "reprocrowd": {
         "kind": "schema",
         "added_at": "2026-11-13T10:36:51Z"
@@ -712,7 +712,7 @@
       "format": "html",
       "mediatype": "text/html",
       "bytes": 600889,
-      "hash": "sha256:e84ae45b8224c0fb395ac4db816b320893a32a0b9b25c021c25dfa00226c48b6",
+      "hash": "sha256:d3ad1927123d3bf093b42be338c96c9f04925b10e829c2cbe27c70eff6f1d3bb",
       "reprocrowd": {
         "kind": "report",
         "added_at": "2026-11-13T11:15:50Z"

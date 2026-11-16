@@ -62,8 +62,10 @@ export class CurationStep implements Step {
   private cells(v: Item, dis: boolean): string[] {
     const d = dis ? "disabled" : "";
     const refs = `<span class="badge" title="${esc(v.refs.map((r) => `${r.extraction}:${r.id}`).join("\n") || (v.unreferenced ? `unreferenced: ${v.note ?? ""}` : ""))}">${v.refs.length || (v.unreferenced ? "none" : 0)}</span>`;
-    const text = refText(this.doc, v.refs.filter((r) => r.extraction === this.w.app.jats()).map((r) => r.id));
-    const source = text ? `<div class="source">“${esc(trunc(text, 240))}”</div>` : "";
+    const main = v.refs.filter((r) => r.extraction === this.w.app.jats());
+    const text = refText(this.doc, main.map((r) => r.id));
+    const other = v.refs.length - main.length;
+    const source = (text ? `<div class="source">“${esc(trunc(text, 240))}”</div>` : "") + (other ? `<div class="small muted">${other} reference${other > 1 ? "s" : ""} to another text</div>` : "");
     if (this.kind === "targets") {
       const t = v as Target;
       const exp = t.type === "table" ? `<span class="muted">${(t.expected as string[][] | null)?.length ?? 0}×${(t.expected as string[][] | null)?.[0]?.length ?? 0} table</span>` : t.type === "figure" ? `<span class="muted">figure</span>` : `<input data-f="expected" value="${esc(t.expected ?? "")}" size="8" ${d} />`;

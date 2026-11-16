@@ -605,6 +605,7 @@ analysis_plan.json: load steps (one per used data input), the enabled actions, t
 | `kind` | `"load"` \| `"transform"` \| `"analysis"` \| `"results"` | yes |  |
 | `summary` | string | yes |  |
 | `refs` | list of [Ref](#ref) |  |  |
+| `note` | string \| null |  | the action's note: anything beyond the referenced text, or where an unreferenced action comes from |
 | `inputs` | list of string |  | package-relative paths of input files |
 | `depends_on` | list of string |  |  |
 | `produces` | list of string |  | target ids |

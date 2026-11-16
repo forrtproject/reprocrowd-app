@@ -68,7 +68,7 @@ def resolve_plan(pkg: Package) -> AnalysisPlan:
         deps = [d for d in a.depends_on if d in enabled] + [load_of[n] for n in a.inputs if n in load_of]
         if not deps:
             deps = [s.id for s in loads] if i == 0 else [actions[i - 1].id]
-        mid.append(PlanStep(id=a.id, kind=a.kind, summary=a.summary, refs=a.refs,
+        mid.append(PlanStep(id=a.id, kind=a.kind, summary=a.summary, refs=a.refs, note=a.note,
                             inputs=[path_of[n] for n in a.inputs if n in path_of], depends_on=list(dict.fromkeys(deps)),
                             produces=[t for t in a.produces if t in targets]))
     used = {d for s in mid for d in s.depends_on}

@@ -93,7 +93,7 @@ dag.querySelectorAll(".node").forEach((g) => g.addEventListener("click", () => f
 
 <h2>Analysis plan</h2>
 <table><tr><th>Step</th><th>Kind</th><th>Summary and source text</th><th>Depends on</th><th>Produces</th></tr>
-{% for s in plan.steps %}<tr><td><b>{{ s.id }}</b></td><td>{{ s.kind }}</td><td>{{ s.summary }}{% set src = source_text(s.refs) %}{% if src %}<div class="source">“{{ src }}”</div>{% endif %}{% if s.inputs %}<div><code>{{ s.inputs|join(", ") }}</code></div>{% endif %}</td><td>{{ s.depends_on|join(", ") }}</td><td>{{ trunc(s.produces|join(", "), 120) }}</td></tr>{% endfor %}
+{% for s in plan.steps %}<tr><td><b>{{ s.id }}</b></td><td>{{ s.kind }}</td><td>{{ s.summary }}{% set src = source_text(s.refs) %}{% if src %}<div class="source">“{{ src }}”</div>{% endif %}{% if s.note %}<div class="source">Note: {{ s.note }}</div>{% endif %}{% if s.inputs %}<div><code>{{ s.inputs|join(", ") }}</code></div>{% endif %}</td><td>{{ s.depends_on|join(", ") }}</td><td>{{ trunc(s.produces|join(", "), 120) }}</td></tr>{% endfor %}
 </table>
 
 <h2>Package contents</h2>
