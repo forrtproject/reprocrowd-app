@@ -1,12 +1,12 @@
 // The library: your reproductions (packages the app's backend knows), a new one from a DOI, or a package folder
 // opened from disk. Opening one switches the window to its numbered workflow (package.ts).
-import { ApiError, host, isBackendDown, JATS_ONLY, JatsAvailability, LibraryEntry, LlmModel, LlmModels, UpdateInfo, Work, ZenodoRecord } from "./api";
+import { ApiError, host, isBackendDown, JATS_ONLY, JatsAvailability, LibraryEntry, LlmModel, LlmModels, PilotRecord, UpdateInfo, Work, ZenodoRecord } from "./api";
 import { backendProblem } from "./backend";
 import { brandHtml } from "./brand";
 import { withProgress } from "./progress";
 import { settingsDialog } from "./settings";
 import type { ZenodoDeposit } from "./types";
-import { $, confirmDialog, esc, modal, showError } from "./util";
+import { $, confirmDialog, esc, modal, pilotLabel, showError } from "./util";
 import sticker from "../../resources/hex-sticker.gif";
 
 const STEPS: [string, string][] = [
@@ -543,10 +543,19 @@ function newDialog() {
     }
     jbox.innerHTML = `<p class="ok small">✓ JATS XML available from Europe PMC (${esc(jats.pmcid ?? "")}).</p>`;
     create.disabled = false;
-    const records = await host.zenodoRecords(work.doi).catch(() => [] as ZenodoRecord[]);
-    if (n !== seq || !records.length) return;
+    const [records, pilots] = await Promise.all([
+      host.zenodoRecords(work.doi).catch(() => [] as ZenodoRecord[]),
+      host.pilotRecords(work.doi).catch(() => [] as PilotRecord[]),
+    ]);
+    if (n !== seq || !(records.length || pilots.length)) return;
     rec.hidden = false;
-    rec.innerHTML = `<p class="notice small">Already on Zenodo: ${records.length} ReproCrowd record${records.length > 1 ? "s" : ""} for this paper — ${records.map((r) => `<a href="#" data-url="${esc(r.url)}">${esc(r.creators.join("; ") || "record")}, ${esc(r.published ?? "")}</a>`).join(" · ")}. You can still make your own.</p>`;
+    const zenodo = records.length
+      ? `Already on Zenodo: ${records.length} ReproCrowd record${records.length > 1 ? "s" : ""} for this paper — ${records.map((r) => `<a href="#" data-url="${esc(r.url)}">${esc(r.creators.join("; ") || "record")}, ${esc(r.published ?? "")}</a>`).join(" · ")}.`
+      : "";
+    const github = pilots.length
+      ? `Pilots on GitHub (unreviewed): ${pilots.length} reproduction${pilots.length > 1 ? "s" : ""} of this paper — ${pilots.map((p) => `<a href="#" data-url="${esc(p.url)}">${pilotLabel(p)}</a>`).join(" · ")}.`
+      : "";
+    rec.innerHTML = `<p class="notice small">${[zenodo, github].filter(Boolean).join("<br>")} You can still make your own.</p>`;
     rec.querySelectorAll<HTMLElement>("[data-url]").forEach((a) =>
       a.addEventListener("click", (e) => {
         e.preventDefault();

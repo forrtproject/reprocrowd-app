@@ -31,10 +31,12 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import secrets
 import shutil
 import tempfile
 import time
+from time import monotonic
 import zipfile
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -132,6 +134,52 @@ def check(token: str | None, repo: str | None = None) -> dict[str, Any]:
     return {"repo": info.get("full_name", repo), "url": info.get("html_url"), "login": login, "private": info.get("private"),
             "can_submit": not info.get("private") and (own or info.get("allow_forking") is not False),
             "files_in": repo if own else f"{login}/{info.get('name')} (your fork, created on the first submission)"}
+
+
+FIND_CACHE_S = 60  # the public search API allows 10 requests a minute without a token
+_found: dict[tuple[str, str], tuple[float, list[dict[str, Any]]]] = {}
+_RID_RE = re.compile(r"<!-- reprocrowd-pilot:(repro-[0-9a-f]+) -->")
+_LATEST_RE = re.compile(r"### Latest run: v(\d+) \(([^)]*)\)\s*\n\s*\n(.+?)\. Policy")
+
+
+def find(doi: str, repo: str | None = None) -> list[dict[str, Any]]:
+    """Pilot issues for the paper with this DOI in the pilots repository (public search, no token). An issue matches
+    when its title ends in ``(doi:<doi>)`` or, for a title shortened before that, its description names the paper's
+    DOI; either way it must carry a pilot's hidden marker. Other people's reproductions of the paper are listed too:
+    the DOI isn't a reproduction's identity."""
+    repo = repo or settings().github_pilots_repo
+    doi = doi.strip().lower().removeprefix("https://doi.org/").removeprefix("doi:")
+    if (hit := _found.get((repo, doi))) and monotonic() - hit[0] < FIND_CACHE_S:
+        return hit[1]
+    api = settings().github_api_url.rstrip("/")
+    headers = {"Accept": "application/vnd.github+json", "User-Agent": f"ReproCrowd/{__version__}"}
+    try:
+        r = httpx.get(f"{api}/search/issues", params={"q": f'repo:{repo} is:issue in:title,body "{doi}"', "per_page": 50,
+                                                      "sort": "created", "order": "desc"}, headers=headers, timeout=15)
+    except httpx.HTTPError as e:
+        raise ApiError(502, "github_unreachable", f"could not reach GitHub to search {repo}: {e}")
+    if r.status_code in (403, 429):
+        raise ApiError(429, "github_rate_limited", "GitHub's search rate limit was reached; try again in a minute")
+    if r.status_code == 422:  # the repository doesn't exist or isn't public: nothing to find there
+        return []
+    if r.status_code != 200:
+        raise ApiError(502, "github_error", f"GitHub returned HTTP {r.status_code} for the search of {repo}")
+    body_doi = re.compile(re.escape(f"https://doi.org/{doi}") + r"(?=[\s)]|$)", re.I)
+    out = []
+    for i in r.json().get("items") or []:
+        title, body = i.get("title") or "", i.get("body") or ""
+        rid = _RID_RE.search(body)
+        if "pull_request" in i or not rid or not (f"(doi:{doi})" in title.lower() or body_doi.search(body)):
+            continue
+        latest = _LATEST_RE.search(body)
+        labels = {lb.get("name") for lb in i.get("labels") or []}
+        out.append({"number": i["number"], "title": title, "url": i["html_url"], "state": i.get("state"),
+                    "author": (i.get("user") or {}).get("login"), "created_at": i.get("created_at"), "reproduction_id": rid.group(1),
+                    "runs": int(latest.group(1)) if latest else 0, "latest_date": latest.group(2) if latest else None,
+                    "latest_summary": latest.group(3) if latest else None,
+                    "synthetic": "synthetic" in labels or title.startswith("[SYNTHETIC]")})
+    _found[(repo, doi)] = (monotonic(), out)
+    return out
 
 
 def status() -> dict[str, Any]:

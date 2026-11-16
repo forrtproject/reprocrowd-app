@@ -94,6 +94,11 @@ export interface DepositPreview {
   contents: { groups: Record<string, { description: string; resources: string[]; bytes: number }>; paper_license: string | null; default_exclude: string[] };
   exclude: string[];
 }
+/** A pilot issue for a paper in the pilots repository (anyone's reproduction of it). */
+export interface PilotRecord {
+  number: number; title: string; url: string; state: string | null; author: string | null; created_at: string | null;
+  reproduction_id: string; runs: number; latest_date: string | null; latest_summary: string | null; synthetic: boolean;
+}
 export interface PilotAccount { repo: string; hasToken: boolean }
 export interface GithubCheck { repo: string; url: string | null; login: string; private: boolean | null; can_submit: boolean; files_in: string }
 export interface PilotPreview {
@@ -138,6 +143,7 @@ export const host = {
   packageDeposits: (id: string) => call<ZenodoDeposit[]>("packageDeposits", id),
   lookupDoi: (doi: string) => call<Work>("lookupDoi", doi),
   zenodoRecords: (doi: string) => call<ZenodoRecord[]>("zenodoRecords", doi),
+  pilotRecords: (doi: string) => call<PilotRecord[]>("pilotRecords", doi),
   suggestFolder: (name: string) => call<string>("suggestFolder", name),
   chooseFolder: (defaultPath?: string) => call<string | null>("chooseFolder", defaultPath),
   jatsAvailability: (doi: string) => call<JatsAvailability>("jatsAvailability", doi),

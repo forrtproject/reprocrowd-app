@@ -498,6 +498,20 @@ class GithubCheck(BaseModel):
     files_in: str = Field(description="where this account's run files go: its fork, or the repository itself for its owner")
 
 
+class PilotRecord(BaseModel):
+    number: int = Field(description="the issue number in the pilots repository")
+    title: str
+    url: str
+    state: str | None
+    author: str | None = Field(description="the GitHub login that opened the issue")
+    created_at: str | None
+    reproduction_id: str
+    runs: int = Field(description="runs copied into the pilots repository so far (the latest version); 0 while none has been")
+    latest_date: str | None
+    latest_summary: str | None = Field(description="the comparison summary of the latest copied run")
+    synthetic: bool
+
+
 class PilotPreview(BaseModel):
     repo: str
     reproduction_id: str

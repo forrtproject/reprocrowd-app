@@ -49,6 +49,7 @@ class FakeGitHub:
         self.calls: dict[str, int] = {}
         self.next_id = 1000
         self.digests = True  # GitHub reports a SHA-256 digest per asset
+        self.search_limited = False
 
     def _id(self):
         self.next_id += 1
@@ -93,6 +94,8 @@ class FakeGitHub:
         auth = request.headers.get("authorization", "")
         who = self.tokens.get(auth.removeprefix("Bearer ")) if auth else None
         path, method = urlparse(str(request.url)).path, request.method
+        if path == "/search/issues":  # public: no token needed
+            return self._search(request)
         if who is None and not (method == "GET" and re.fullmatch(r"/repos/[^/]+/[^/]+/(releases/tags/.+|issues/\d+/comments)", path)):
             return httpx.Response(401, json={"message": "Bad credentials"})
         upload = path.endswith("/assets") and method == "POST"
@@ -169,6 +172,19 @@ class FakeGitHub:
             self.comments[n].append(c)
             return httpx.Response(201, json=c)
         raise AssertionError(f"unexpected GitHub call {method} {path}")
+
+    def _search(self, request):
+        """Issue search: repo:, is:issue and a quoted phrase, matched case-insensitively in titles and descriptions."""
+        self.calls["search"] = self.calls.get("search", 0) + 1
+        if self.search_limited:
+            return httpx.Response(403, json={"message": "API rate limit exceeded for 203.0.113.1."}, headers={"x-ratelimit-remaining": "0"})
+        q = parse_qs(urlparse(str(request.url)).query)["q"][0]
+        repo, phrase = re.search(r"repo:(\S+)", q).group(1), re.search(r'"([^"]+)"', q).group(1).lower()
+        assert "is:issue" in q and "in:title,body" in q
+        if repo not in self.repos:
+            return httpx.Response(422, json={"message": "Validation Failed"})
+        items = [i for i in self.issues if phrase in (i["title"] + " " + i["body"]).lower()] if repo == REPO else []
+        return httpx.Response(200, json={"total_count": len(items), "items": items[::-1]})
 
     def _releases(self, request, method, repo, rest, body, who, upload):
         rels = self.releases[repo]
@@ -265,6 +281,7 @@ def gh(client, monkeypatch):
     settings.cache_clear()
     monkeypatch.setattr(pilots, "time", SimpleNamespace(sleep=lambda s: None))  # forks are ready at once here
     monkeypatch.setattr(pilots, "RECHECK_S", 0)
+    pilots._found.clear()
     fake = FakeGitHub()
     with respx.mock:
         respx.route(host="api.github.test").mock(side_effect=fake.handle)
@@ -724,3 +741,38 @@ def test_exported_licence_schema_states_the_same_rule():
         with pytest.raises(jsonschema.ValidationError):
             jsonschema.validate(good | {"files": [bad]}, schema)
 
+
+
+def test_records_of_a_paper_are_found_by_its_doi(client, pkg, gh, monkeypatch):
+    from reprocrowd import pilots
+    P, doi = f"/v1/packages/{pkg}", "10.1371/journal.pbio.1002106"
+    find = lambda d=doi: client.get("/v1/github-pilots/records", params={"doi": d})
+    assert find().json() == []
+    monkeypatch.setattr(pilots, "FIND_CACHE_S", 0)
+    ready_published(client, pkg)
+    v1 = client.post(P + "/pilots", json=body(synthetic=True)).json()
+    # someone else's issue mentioning the DOI, without a pilot's marker, and a longer DOI sharing the prefix: not listed
+    gh.issues.append({"number": 9, "id": 9, "title": f"Question about doi:{doi}", "body": "see https://doi.org/" + doi, "user": {"login": "bob"},
+                      "html_url": "https://github.test/x/9", "labels": [], "state": "open"})
+    gh.issues.append({"number": 10, "id": 10, "title": f"Pilot reproduction: X (doi:{doi}5)", "body": f"<!-- reprocrowd-pilot:repro-0000000000 -->\nPaper: https://doi.org/{doi}5 ·",
+                      "user": {"login": "bob"}, "html_url": "https://github.test/x/10", "labels": [], "state": "open"})
+    gh.comments.update({9: [], 10: []})
+    [r] = find().json()
+    assert r["number"] == v1["issue_number"] and r["reproduction_id"] == v1["reproduction_id"] and r["author"] == USER
+    assert r["runs"] == 0 and r["latest_summary"] is None and r["synthetic"] is True
+    assert [x["number"] for x in find(doi.upper()).json()] == [r["number"]] and find(f"https://doi.org/{doi}").json()[0]["number"] == r["number"]
+    gh.run_action()
+    [r] = find().json()
+    assert r["runs"] == 1 and r["latest_summary"].startswith("3 of 3 match") and r["latest_date"]
+    # a title shortened before its DOI is still found by the paper's link in the description
+    gh.issues[0]["title"] = "Pilot reproduction: " + "a very long title " * 20
+    assert [x["number"] for x in find().json()] == [r["number"]]
+    assert find("10.9999/none").json() == [] and client.get("/v1/github-pilots/records", params={"doi": doi, "repo": "nobody/none"}).json() == []
+
+
+def test_doi_search_is_cached_and_reports_the_rate_limit(client, gh):
+    client.get("/v1/github-pilots/records", params={"doi": "10.1/a"})
+    client.get("/v1/github-pilots/records", params={"doi": "10.1/a"})
+    assert gh.calls["search"] == 1
+    gh.search_limited = True
+    problem(client.get("/v1/github-pilots/records", params={"doi": "10.1/b"}), 429, "github_rate_limited")

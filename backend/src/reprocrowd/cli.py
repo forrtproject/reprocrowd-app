@@ -749,6 +749,12 @@ def pilot_submit(pkg: str, note: str = "", exclude: Optional[list[str]] = _EXCLU
     typer.echo(f"{p['reproduction_id']}: issue {p['issue_url']} · {where}", err=True)
 
 
+@pilot.command("records")
+def pilot_records(doi: str, repo: Optional[str] = _REPO):
+    """Pilot issues for a paper in the pilots repository, by anyone (public search, no login)."""
+    out(call("GET", "/github-pilots/records", params={"doi": doi, **({"repo": repo} if repo else {})}))
+
+
 @pilot.command("list")
 def pilot_list(pkg: str):
     """Pilot submissions of a package."""

@@ -90,7 +90,8 @@ Apple silicon Macs runs ARM64 Linux, which works like any other Linux.
   the issue. Submitting the same ZIP again creates nothing new, and an interrupted
   submission resumes. A new run becomes v2 on the same issue. Any GitHub account can
   submit: the files go to your fork of the repository, and its Action copies them into its own
-  immutable release. The app uses the GitHub CLI login (`gh auth login`). A numeric match is
+  immutable release. The app uses the GitHub CLI login (`gh auth login`). New from DOI and this
+  step list the pilots others have opened for the same paper, as they do for Zenodo records. A numeric match is
   not a scientific certificate. See [the contract](docs/contracts.md#github-pilots-and-output-licences).
 - **⚙ Settings**: your name / ORCID / affiliation for records; Zenodo server
   (**sandbox by default**, for testing) and a personal access token for each

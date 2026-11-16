@@ -2,10 +2,10 @@
 // reserved DOI) that you can look at on Zenodo; publishing registers the DOI for good and is a separate step here or
 // on Zenodo. What goes into the upload can be chosen: the paper's own material only when its license allows.
 // A GitHub pilot is the lighter, unreviewed alternative: an issue per reproduction, the files of each run in a release.
-import { ApiError, DepositPreview, host, PilotAccount, PilotPreview, pkg, ZenodoAccount, ZenodoRecord } from "../api";
+import { ApiError, DepositPreview, host, PilotAccount, PilotPreview, PilotRecord, pkg, ZenodoAccount, ZenodoRecord } from "../api";
 import { settingsDialog } from "../settings";
 import type { ArchiveInfo, GithubPilot, Job, PackageSummary, ReportResult, ValidationReport, ZenodoDeposit } from "../types";
-import { confirmDialog, dataUrl, esc, modal, showError, sizeText, when } from "../util";
+import { confirmDialog, dataUrl, esc, modal, pilotLabel, showError, sizeText, when } from "../util";
 import { STATUS_LABEL } from "./run";
 import type { Step, Wizard } from "./wizard";
 
@@ -49,7 +49,7 @@ export class ReportStep implements Step {
   title = "Report & deposit";
   private report?: string;
   private reportResult?: ReportResult;
-  private manifest?: { resources?: any[]; reprocrowd: { archive?: ArchiveInfo | null; identifiers?: Record<string, string> } };
+  private manifest?: { resources?: any[]; reprocrowd: { archive?: ArchiveInfo | null; identifiers?: Record<string, string>; reproduction_id?: string | null } };
   private validation?: ValidationReport;
   private deposits: ZenodoDeposit[] = [];
   private lastRun?: Job;
@@ -60,6 +60,8 @@ export class ReportStep implements Step {
   private pilotsError?: Error;
   private pilotAccount?: PilotAccount;
   private pilotPreview?: PilotPreview | Error;
+  /** Pilot issues for this paper in the pilots repository, this reproduction's own included. */
+  private paperPilots?: PilotRecord[] | Error;
   /** Groups left out, as chosen here (undefined: the default from the preview). */
   private exclude?: Set<string>;
   private note = "";
@@ -83,12 +85,13 @@ export class ReportStep implements Step {
     this.report = report && (await inlineImages(report));
     const doi = this.doi();
     // Account, preview and existing records are shown, but never block the step.
-    [this.account, this.preview, this.records, this.pilotAccount, this.pilotPreview] = await Promise.all([
+    [this.account, this.preview, this.records, this.pilotAccount, this.pilotPreview, this.paperPilots] = await Promise.all([
       host.zenodoAccount().catch(() => undefined),
       this.manifest?.reprocrowd.archive ? host.depositPreview({ note: "" }).catch((e) => e as Error) : Promise.resolve(undefined),
       doi ? host.zenodoRecords(doi).catch((e) => e as Error) : Promise.resolve([]),
       host.pilotAccount().catch(() => undefined),
       this.manifest?.reprocrowd.archive ? host.pilotPreview({ note: "" }).catch((e) => e as Error) : Promise.resolve(undefined),
+      doi ? host.pilotRecords(doi).catch((e) => e as Error) : Promise.resolve([]),
     ]);
     if (!this.exclude && this.preview && !(this.preview instanceof Error)) this.exclude = new Set(this.preview.exclude);
   }
@@ -225,7 +228,17 @@ export class ReportStep implements Step {
       ${this.pilots.length ? `<h4>Pilot runs of this package</h4><ul class="deposits">${[...this.pilots].reverse().map((p) => `<li class="deposit ${p.status}">
         <div><span class="badge st-${p.status === "published" ? "published" : "draft"}">${p.status === "published" ? `v${p.version}` : p.status === "submitted" ? (refused(p) ? "Refused" : "Waiting for the copy") : "Incomplete"}</span> ${esc(when(p.published_at ?? p.created_at))} · <code>${esc(p.run_key)}</code>${p.synthetic ? ` <span class="badge sandbox">Synthetic</span>` : ""}</div>
         <div class="actions">${p.issue_url ? `<a href="#" data-open="${esc(p.issue_url)}">Issue</a>` : ""}${p.release_url ?? p.files_url ? ` · <a href="#" data-open="${esc((p.release_url ?? p.files_url)!)}">Files</a>` : ""}${p.comment_url ? ` · <a href="#" data-open="${esc(p.comment_url)}">Run comment</a>` : ""}</div></li>`).join("")}</ul>` : ""}
+      ${this.otherPilots()}
     </section>`;
+  }
+
+  /** Other people's (or your other) pilot issues for this paper: each reproduction has its own issue, so these are separate. */
+  private otherPilots() {
+    if (this.paperPilots instanceof Error) return `<p class="warn-soft small">Couldn't search GitHub for other pilots of this paper.</p>`;
+    const own = this.manifest?.reprocrowd.reproduction_id;
+    const others = (this.paperPilots ?? []).filter((p) => p.reproduction_id !== own);
+    if (!others.length) return "";
+    return `<h4>Other pilots of this paper</h4><ul class="small">${others.map((p) => `<li><a href="#" data-open="${esc(p.url)}">${pilotLabel(p)}</a>${p.latest_summary ? ` · ${esc(p.latest_summary)}` : ""}</li>`).join("")}</ul>`;
   }
 
   private async submitPilot() {

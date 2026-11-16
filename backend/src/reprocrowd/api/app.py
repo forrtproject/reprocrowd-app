@@ -1043,6 +1043,16 @@ def github_pilot_status():
     return pilots.status()
 
 
+@api.get("/github-pilots/records", tags=["pilots"], response_model=list[M.PilotRecord], summary="Pilot issues for a paper",
+         description="Issues in the pilots repository (default: [github] pilots_repo) whose title ends in `(doi:<doi>)`, or whose "
+                     "description names the paper's DOI when the title was shortened. Independent reproductions of the paper each have "
+                     "their own issue. A public search without a token; results are kept for a minute.",
+         responses=errors("github_rate_limited", "github_unreachable", "github_error"))
+def github_pilot_records(doi: Annotated[str, Query(min_length=3)],
+                         repo: Annotated[str | None, Query(pattern=r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")] = None):
+    return pilots.find(doi, repo)
+
+
 @api.post("/github-pilots:check", tags=["pilots"], response_model=M.GithubCheck, summary="Check a GitHub login against the pilots repository",
           description="Reads the repository and the account; reports whether it can submit and where its run files would go. Writes nothing.", responses=errors(*GITHUB_ERRORS))
 def github_pilot_check(body: M.GithubAuth = Body(default_factory=M.GithubAuth)):

@@ -295,6 +295,7 @@ export function makeApi(wc: WebContents) {
     lookupDoi,
     jatsAvailability: async (doi: string) => get<any>("/v1/jats", { doi }, 60_000),
     zenodoRecords: async (doi: string) => get<any[]>("/v1/zenodo/records", { doi, sandbox: loadSettings().zenodo.sandbox }, 20_000),
+    pilotRecords: async (doi: string) => get<any[]>("/v1/github-pilots/records", { doi, repo: loadSettings().github.repo }, 20_000),
     suggestFolder: async (name: string) => suggestFolder(name),
     chooseFolder: async (defaultPath?: string) => {
       const r = await dialog.showOpenDialog(win(), { title: "Folder for the package", defaultPath, properties: ["openDirectory", "createDirectory"] });
