@@ -512,3 +512,32 @@ def test_preview_osf_same_name_in_two_folders(tmp_path, monkeypatch):
     out = acquire.preview(_make_pkg(tmp_path))
     assert [f["key"] for f in out["files"]] == ["osf:ab3cd:study1/data.csv", "osf:ab3cd:study2/data.csv"]
     assert out["limit_bytes"] == acquire.settings().max_download_mb * 2**20
+
+
+@respx.mock
+def test_preview_marks_files_already_fetched(tmp_path, monkeypatch):
+    """Files fetched before are marked ``present`` and left out of the total, by the same check acquire skips them with:
+    same repository record and download URL. A same-named file added by hand doesn't count, and neither does a file
+    whose input was deleted."""
+    monkeypatch.setattr(acquire, "manuscript_text", lambda pkg, fulltext=None: ZENODO_TEXT)
+    respx.get("https://zenodo.org/api/records/1").mock(return_value=httpx.Response(200, json={
+        "files": [{"key": "data.csv", "size": 11, "links": {"self": "https://zenodo.org/api/files/1/data.csv"}},
+                  {"key": "notes.md", "size": 5, "links": {"self": "https://zenodo.org/api/files/1/notes.md"}}]}))
+    respx.get("https://zenodo.org/api/files/1/data.csv").mock(return_value=httpx.Response(200, content=b"a,b\n1,2\n"))
+    pkg = _make_pkg(tmp_path)
+    upload = tmp_path / "notes.md"
+    upload.write_text("my own notes\n")
+    from reprocrowd import inputs
+    inputs.add(pkg, str(upload), None, "", True)
+
+    before = acquire.preview(pkg)
+    assert [f["present"] for f in before["files"]] == [False, False]
+    assert before["total_bytes"] == 16 and before["present_bytes"] == 0
+
+    acquire.acquire(pkg, selected=["zenodo:1:data.csv"])
+    after = acquire.preview(pkg)
+    assert {f["key"]: f["present"] for f in after["files"]} == {"zenodo:1:data.csv": True, "zenodo:1:notes.md": False}
+    assert after["total_bytes"] == 5 and after["present_bytes"] == 11
+
+    inputs.delete(pkg, "in-data.csv")
+    assert not any(f["present"] for f in acquire.preview(pkg)["files"])

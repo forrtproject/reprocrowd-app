@@ -314,12 +314,6 @@
           "title": "Description",
           "type": "string"
         },
-        "quote": {
-          "default": "",
-          "description": "verbatim text from the paper that states the result",
-          "title": "Quote",
-          "type": "string"
-        },
         "expected": {
           "anyOf": [
             {

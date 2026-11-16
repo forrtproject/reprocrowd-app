@@ -12,7 +12,6 @@ Guidelines:
 - Give actions keys A1, A2, … in order. "depends_on" lists keys of EARLIER actions only.
 - "kind": "transform" for data preparation, "analysis" for estimation, tests and figures.
 - "summary": an imperative description of exactly what to compute, specific enough to code.
-- "quote": the verbatim text the action implements.
 - Do not add actions for loading the input files or writing the final results file; those are added automatically.
 - Keep the paper's order where possible, split compound procedures into separate actions, and don't invent procedures the text doesn't describe.
 $instructions

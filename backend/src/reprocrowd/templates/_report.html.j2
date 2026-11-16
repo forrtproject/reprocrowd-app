@@ -6,7 +6,7 @@
 body{font:15px/1.5 Georgia,serif;max-width:1100px;margin:2em auto;padding:0 1.5em;color:#1d1d1b}
 h1{font-size:1.6em;line-height:1.25}h2{font-family:system-ui,sans-serif;border-bottom:1px solid #ddd;padding-bottom:.2em;margin-top:2em}
 table{border-collapse:collapse;width:100%;font:13px system-ui,sans-serif;margin:.5em 0}th,td{border:1px solid #ddd;padding:4px 6px;vertical-align:top;text-align:left}th{background:#f3f3ef}
-code{font-size:12px}.hash{font-size:10px;color:#777;word-break:break-all}.quote{color:#666;font-style:italic;font-size:12px;margin-top:2px}
+code{font-size:12px}.hash{font-size:10px;color:#777;word-break:break-all}.source{color:#666;font-style:italic;font-size:12px;margin-top:2px}
 .summary{display:flex;gap:10px;flex-wrap:wrap;font:14px system-ui,sans-serif}.summary div{padding:8px 12px;border-radius:6px;background:#f3f3ef}
 .st{white-space:nowrap;font-weight:600}.st-match{color:#2e7d32}.st-within{color:#b58900}.st-deviation{color:#c62828}.st-missing{color:#757575}.st-figure{color:#1565c0}.st-unparsable{color:#6a1b9a}
 .cells td{font-size:11px;text-align:right}.cells td.st-match{background:#e8f5e9}.cells td.st-within{background:#fff8e1}.cells td.st-deviation,.cells td.st-missing,.cells td.st-unparsable{background:#ffebee}
@@ -39,7 +39,7 @@ Pipeline: {{ tpl.label }}, <code>{{ tpl.command }}</code>{% if run %}, last run 
 <h2>Results comparison</h2>
 <table><tr><th>ID</th><th>Result</th><th>Reported</th><th>Reproduced</th><th>Deviation</th><th>Status</th></tr>
 {% for r in cmp.rows %}{% set t = targets[r.target] %}
-<tr id="target-{{ r.target }}"><td><b>{{ r.target }}</b></td><td>{{ r.description }}{% if t.quote %}<div class="quote">“{{ trunc(t.quote, 300) }}”</div>{% endif %}{% if r.note %}<div class="quote">Note: {{ r.note }}</div>{% endif %}
+<tr id="target-{{ r.target }}"><td><b>{{ r.target }}</b></td><td>{{ r.description }}{% set src = source_text(t.refs) %}{% if src %}<div class="source">“{{ trunc(src, 300) }}”</div>{% endif %}{% if r.note %}<div class="source">Note: {{ r.note }}</div>{% endif %}
 {% set tr = traces[r.target] %}<details class="trace"><summary>Provenance</summary>
 {% if tr.passage %}<h4>Text</h4><ul>{% for p in tr.passage %}<li id="source-{{ r.target }}-{{ p.extraction }}-{{ p.id }}"><a href="#source-{{ r.target }}-{{ p.extraction }}-{{ p.id }}"><code>{{ p.extraction }} {{ p.id }}</code></a> “{{ trunc(p.text, 400) }}”</li>{% endfor %}</ul>{% elif t.unreferenced %}<h4>Text</h4><p>Not from the paper's text: {{ t.note }}</p>{% endif %}
 {% if tr.step %}<h4>Procedure</h4><ul>{% for s in tr.step %}<li><b>{{ s.id }}</b> [{{ s.kind }}] {{ s.summary }}</li>{% endfor %}</ul>{% endif %}
@@ -96,8 +96,8 @@ dag.querySelectorAll(".node").forEach((g) => g.addEventListener("click", () => f
 </table>
 
 <h2>Analysis plan</h2>
-<table><tr><th>Step</th><th>Kind</th><th>Summary and source quote</th><th>Depends on</th><th>Produces</th></tr>
-{% for s in plan.steps %}<tr><td><b>{{ s.id }}</b></td><td>{{ s.kind }}</td><td>{{ s.summary }}{% if s.quote %}<div class="quote">“{{ s.quote }}”</div>{% endif %}{% if s.inputs %}<div><code>{{ s.inputs|join(", ") }}</code></div>{% endif %}</td><td>{{ s.depends_on|join(", ") }}</td><td>{{ trunc(s.produces|join(", "), 120) }}</td></tr>{% endfor %}
+<table><tr><th>Step</th><th>Kind</th><th>Summary and source text</th><th>Depends on</th><th>Produces</th></tr>
+{% for s in plan.steps %}<tr><td><b>{{ s.id }}</b></td><td>{{ s.kind }}</td><td>{{ s.summary }}{% set src = source_text(s.refs) %}{% if src %}<div class="source">“{{ src }}”</div>{% endif %}{% if s.note %}<div class="source">Note: {{ s.note }}</div>{% endif %}{% if s.inputs %}<div><code>{{ s.inputs|join(", ") }}</code></div>{% endif %}</td><td>{{ s.depends_on|join(", ") }}</td><td>{{ trunc(s.produces|join(", "), 120) }}</td></tr>{% endfor %}
 </table>
 
 <h2>Package contents</h2>
