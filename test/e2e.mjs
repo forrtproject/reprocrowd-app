@@ -363,6 +363,8 @@ json.dump({"results": [{"id": "T001", "value": 2.3149}, {"id": "T002", "value": 
   await shot("09-local-file-not-deposited");
 
   step("library: sort and filter");
+  await Promise.all([win.waitForEvent("load"), win.click("#library-btn")]);
+  await win.waitForSelector("[data-lib=sort]");
   await win.selectOption("[data-lib=sort]", "name-desc");
   assert.equal(await win.locator("[data-lib=sort]").inputValue(), "name-desc", "the sort select shows the choice");
   await win.click("[data-lib=query]");
