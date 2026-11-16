@@ -14,9 +14,9 @@
 {% if s.summary | length > 80 or "\n" in s.summary %}{{ c }}Summary:
 {% for line in (s.summary | wordwrap(88, true, "\n")).split("\n") %}{{ c }}  {{ line }}
 {% endfor %}{% endif -%}
-{% if s.quote %}{{ c }}Source quote:
-{% for line in (('"' ~ s.quote ~ '"') | wordwrap(88, true, "\n")).split("\n") %}{{ c }}  {{ line }}
-{% endfor %}{% endif -%}
+{% if s.refs %}{{ c }}Source text:
+{% for r in s.refs %}{% for line in (("[" ~ r.id ~ "] " ~ passage_text(r)) | wordwrap(88, true, "\n")).split("\n") %}{{ c }}  {{ line }}
+{% endfor %}{% endfor %}{% endif -%}
 {% if s.inputs %}{{ c }}Inputs: {{ s.inputs | join(", ") }}
 {% endif -%}
 {{ c }}Depends on: {{ s.depends_on | join(", ") or "—" }}

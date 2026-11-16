@@ -268,12 +268,14 @@ Targets and actions share one generic structure (`schemas/targets.schema.json`, 
 - **Ids** (`T001…`, `A01…`) are assigned by the service in creation order and never reused.
 - **References**: `refs: [{extraction, id}]` where `id` is a sentence, table or figure id of that extraction.
   They are checked against the document. With no refs, the item must set `unreferenced: true` and give a
-  `note`.
+  `note`. The refs are an item's only link to the paper's text: wherever that text is shown (master-script
+  step headers, report), it is looked up by id (`extractions.Passages` loads and indexes each extraction
+  once, so a lookup is a dict access).
 - **LlmCall** stores the profile, argv, model, effort, template (`default` or `custom`), instructions, the
   full prompt, the raw output, start time, duration and exit code.
-- **Target** fields: `type` (number / categorical / table / figure), `description`, `quote`, `expected`
+- **Target** fields: `type` (number / categorical / table / figure), `description`, `expected`
   (checked against the type), `comparator`, `decimals`, `unit`.
-- **Action** fields: `kind` (transform / analysis), `summary`, `quote`, `inputs` (input resource names),
+- **Action** fields: `kind` (transform / analysis), `summary`, `inputs` (input resource names),
   `depends_on` (actions, no cycles), `produces` (target ids).
 - LLM prompts list the document with ids in brackets and embed the JSON Schema of the expected output
   (`target-llm-output`, `action-llm-output`), generated from the same models. Custom prompts are templates
@@ -471,7 +473,7 @@ size and hashes are recorded in the manifest (`reprocrowd.archive`). `GET …/ar
 says for each whether it is the `published` image, an exact `crop` or a full `page`.
 
 - **Which figure**: one the target references (the figure or a caption sentence); otherwise one its
-  description, quote or referenced sentences mention ("Fig 3"); the result says which way it was found.
+  description or referenced sentences mention ("Fig 3"); the result says which way it was found.
   The prompt listing for a scope also includes the figures and tables its text mentions, so the extraction
   LLM can cite them.
 - **As published, first**: JATS has no coordinates, but its `<graphic>` names the figure's image file, and Europe

@@ -45,12 +45,6 @@
           "title": "Summary",
           "type": "string"
         },
-        "quote": {
-          "default": "",
-          "description": "verbatim text from the paper this action implements",
-          "title": "Quote",
-          "type": "string"
-        },
         "inputs": {
           "description": "input resource names (in-…) used directly",
           "items": {

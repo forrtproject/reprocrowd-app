@@ -21,8 +21,8 @@ from dataclasses import dataclass, field
 from html import escape
 from typing import Any
 
+from .extractions import Passages, item_text
 from .schemas.comparison import STATUS_LABEL, Comparison
-from .schemas.document import Document
 from .schemas.exports import AnalysisPlan
 from .schemas.manifest import Manifest
 
@@ -82,7 +82,7 @@ class Graph:
         return out
 
 
-def build(m: Manifest, docs: dict[str, Document], plan: AnalysisPlan, cmp: Comparison, outputs: dict[str, str | None],
+def build(m: Manifest, lookup: Passages, plan: AnalysisPlan, cmp: Comparison, outputs: dict[str, str | None],
           target_refs: dict[str, list[tuple[str, str]]]) -> Graph:
     nodes: dict[str, Node] = {}
 
@@ -119,10 +119,7 @@ def build(m: Manifest, docs: dict[str, Document], plan: AnalysisPlan, cmp: Compa
     passages: list[Node] = []
 
     def passage(extraction: str, item: str) -> str:
-        doc = docs.get(extraction)
-        found = doc.index().get(item) if doc else None
-        obj = found[1] if found else None
-        text = getattr(obj, "text", None) or (f"{obj.label}: " + " ".join(s.text for s in obj.caption) if obj is not None else "")
+        text = item_text(lookup.item(extraction, item))
         n = add(passages, Node(f"p:{extraction}:{item}", "passage", f"{item} {text}", f"{extraction} {item}: {text}", COLORS["passage"],
                                ["ex:" + extraction], data={"extraction": extraction, "id": item, "text": text}))
         return n.id
@@ -134,7 +131,7 @@ def build(m: Manifest, docs: dict[str, Document], plan: AnalysisPlan, cmp: Compa
     for s in plan.steps:
         n = Node("s:" + s.id, "step", f"{s.id} {s.summary}", f"{s.id} [{s.kind}] {s.summary}", COLORS["step"],
                  ["in:" + f for f in s.inputs] + ["s:" + d for d in s.depends_on],
-                 data={"id": s.id, "kind": s.kind, "summary": s.summary, "quote": s.quote, "depth": depth[s.id]})
+                 data={"id": s.id, "kind": s.kind, "summary": s.summary, "depth": depth[s.id]})
         for ref in s.refs:
             pid = passage(ref.extraction, ref.id)
             n.parents.append(pid)

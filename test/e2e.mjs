@@ -242,12 +242,11 @@ json.dump({"results": [{"id": "T001", "value": 2.3149}, {"id": "T002", "value": 
   await shot("04b-marked");
   // Cancel must close the dialog even while the required description is still empty.
   await win.click(".al-bar [data-act=add]");
-  await win.waitForSelector(".dlg-wide [name=quote]");
+  await win.waitForSelector(".dlg-wide [name=description]");
   await win.click(".dlg-wide button[value=cancel]");
   await win.waitForSelector(".dlg-wide", { state: "detached", timeout: 5000 });
   await win.click(".al-bar [data-act=add]");
-  await win.waitForSelector(".dlg-wide [name=quote]");
-  await win.waitForFunction(() => document.querySelector(".dlg-wide [name=quote]")?.value.length > 0);
+  await win.waitForSelector(`.dlg-wide .picker input[data-node="${free}"]:checked`, { state: "attached" });
   await win.fill(".dlg-wide [name=description]", "a result marked in the reader");
   await win.fill(".dlg-wide [name=expected]", "3");
   await win.click(".dlg-wide button[value=ok]");

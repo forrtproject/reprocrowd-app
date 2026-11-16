@@ -72,7 +72,6 @@ export interface Target extends Referenced {
   id: string;
   type: ResultType;
   description: string;
-  quote: string;
   expected?: number | string | string[][] | null;
   comparator?: Comparator | null;
   decimals?: number | null;
@@ -82,7 +81,6 @@ export interface Action extends Referenced {
   id: string;
   kind: "transform" | "analysis";
   summary: string;
-  quote: string;
   inputs: string[];
   depends_on: string[];
   produces: string[];

@@ -8996,12 +8996,6 @@
             "title": "Summary",
             "description": "imperative description, specific enough to code"
           },
-          "quote": {
-            "type": "string",
-            "title": "Quote",
-            "description": "verbatim text from the paper this action implements",
-            "default": ""
-          },
           "inputs": {
             "items": {
               "type": "string"
@@ -9080,12 +9074,6 @@
             "minLength": 1,
             "title": "Summary",
             "description": "imperative description, specific enough to code"
-          },
-          "quote": {
-            "type": "string",
-            "title": "Quote",
-            "description": "verbatim text from the paper this action implements",
-            "default": ""
           },
           "inputs": {
             "items": {
@@ -9184,17 +9172,6 @@
               }
             ],
             "title": "Summary"
-          },
-          "quote": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Quote"
           },
           "inputs": {
             "anyOf": [
@@ -13269,12 +13246,6 @@
             "title": "Description",
             "description": "self-contained: variable, model/test, subgroup"
           },
-          "quote": {
-            "type": "string",
-            "title": "Quote",
-            "description": "verbatim text from the paper that states the result",
-            "default": ""
-          },
           "expected": {
             "anyOf": [
               {
@@ -13402,12 +13373,6 @@
             "minLength": 1,
             "title": "Description",
             "description": "self-contained: variable, model/test, subgroup"
-          },
-          "quote": {
-            "type": "string",
-            "title": "Quote",
-            "description": "verbatim text from the paper that states the result",
-            "default": ""
           },
           "expected": {
             "anyOf": [
@@ -13555,17 +13520,6 @@
               }
             ],
             "title": "Description"
-          },
-          "quote": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Quote"
           },
           "expected": {
             "anyOf": [

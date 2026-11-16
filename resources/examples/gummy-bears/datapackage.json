@@ -46,8 +46,8 @@
       "type": "json",
       "format": "json",
       "mediatype": "application/schema+json",
-      "bytes": 10669,
-      "hash": "sha256:311a46f22366e87a462200d09bc65abb9554e60a7933ffa5a98b787ca1f70288",
+      "bytes": 10901,
+      "hash": "sha256:f3acf310d9910468ca973159ebb9892d36edfe2ca3b1ca053fa6f0e7f2e795f0",
       "reprocrowd": {
         "kind": "schema",
         "added_at": "2026-11-13T12:54:30Z"
@@ -59,8 +59,8 @@
       "type": "json",
       "format": "json",
       "mediatype": "application/schema+json",
-      "bytes": 9507,
-      "hash": "sha256:e1df51b038fec84875c5d06a25ea0924599dbc9b4ba0a5155f69885779b16add",
+      "bytes": 9739,
+      "hash": "sha256:8a78708da780da237dfe66c1cccb0f923251511055dfdfdb7cc46b344fcfdbaf",
       "reprocrowd": {
         "kind": "schema",
         "added_at": "2026-11-13T12:54:30Z"
@@ -72,8 +72,8 @@
       "type": "json",
       "format": "json",
       "mediatype": "application/schema+json",
-      "bytes": 2823,
-      "hash": "sha256:95ac8b98f9dd0c5b28e068de934e0903876a279bd35ea791fd0a2568f53f3748",
+      "bytes": 2713,
+      "hash": "sha256:3f93632aff55e5f1bf1b986bad8d0ccda15bb61e497f885d17a0497e988c6892",
       "reprocrowd": {
         "kind": "schema",
         "added_at": "2026-11-13T12:54:30Z"
@@ -85,8 +85,8 @@
       "type": "json",
       "format": "json",
       "mediatype": "application/schema+json",
-      "bytes": 2040,
-      "hash": "sha256:85b410427e1a3cc9fba5c9fbd6c0c4e3f21c4cbf25c4fe0e0d63e836f7db9563",
+      "bytes": 1930,
+      "hash": "sha256:5cfe0456915eea59beb38c2b962e5e8c89488b714250062f617f9ee6513b639d",
       "reprocrowd": {
         "kind": "schema",
         "added_at": "2026-11-13T12:54:30Z"
@@ -98,8 +98,8 @@
       "type": "json",
       "format": "json",
       "mediatype": "application/schema+json",
-      "bytes": 6598,
-      "hash": "sha256:028da489954a79626a6c3f9247902b56ff23b621190ec94e3985b5d85b562f62",
+      "bytes": 6408,
+      "hash": "sha256:7b7ee3594f626a8cb5212affb786edacfc3ffe6083bdfc5779877a342d5f8b20",
       "reprocrowd": {
         "kind": "schema",
         "added_at": "2026-11-13T12:54:30Z"
@@ -111,8 +111,8 @@
       "type": "json",
       "format": "json",
       "mediatype": "application/schema+json",
-      "bytes": 2829,
-      "hash": "sha256:f099341c944d9b6aba2f8b08bd5254f9619ee84ad50d57b1c8fd13582d4f52f3",
+      "bytes": 2719,
+      "hash": "sha256:99a013a9f4c01fc0291033c2c880344e5009b2b432ad4e77b00ec3e55eb70c52",
       "reprocrowd": {
         "kind": "schema",
         "added_at": "2026-11-13T12:54:30Z"
