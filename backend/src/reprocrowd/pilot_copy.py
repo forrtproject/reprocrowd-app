@@ -114,16 +114,16 @@ class GitHubError(RuntimeError):
 
 
 class Api:
-    def __init__(self, token: str | None, api: str = "https://api.github.com", agent: str = "reprocrowd-pilot-copy"):
-        """Without a token, for public reads only."""
-        self.api = api.rstrip("/")
+    def __init__(self, token: str | None, api: str = "https://api.github.com", agent: str = "reprocrowd-pilot-copy", timeout: float = 120):
+        """Without a token, for public reads only. ``timeout`` (seconds) applies to each request unless it passes its own."""
+        self.api, self.timeout = api.rstrip("/"), timeout
         self.headers = {"Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28", "User-Agent": agent}
         if token:
             self.headers["Authorization"] = f"Bearer {token}"
 
     def request(self, method: str, url: str, ok: tuple[int, ...] = (200, 201, 204), **kw) -> httpx.Response:
         url = url if url.startswith("http") else self.api + url
-        r = httpx.request(method, url, headers={**self.headers, **kw.pop("headers", {})}, timeout=kw.pop("timeout", 120),
+        r = httpx.request(method, url, headers={**self.headers, **kw.pop("headers", {})}, timeout=kw.pop("timeout", self.timeout),
                           follow_redirects=True, **kw)
         if r.status_code not in ok:
             raise GitHubError(r.status_code, f"GitHub returned HTTP {r.status_code} for {method} {url.split('?')[0]}: {r.text[:300]}")

@@ -138,6 +138,8 @@ def check(token: str | None, repo: str | None = None) -> dict[str, Any]:
 
 FIND_CACHE_S = 60  # the public search API allows 10 requests a minute without a token
 _found: dict[tuple[str, str], tuple[float, list[dict[str, Any]]]] = {}
+_releases: dict[str, tuple[float, list[dict[str, Any]]]] = {}  # per repository, shared by the lookups of all papers
+PUBLIC_TIMEOUT = 15
 
 
 @contextmanager
@@ -154,7 +156,7 @@ def _public_errors(path: str):
 
 def _public(api: str) -> pilot_copy.Api:
     """GitHub's REST API without a token, for public reads."""
-    return pilot_copy.Api(None, api, agent=f"ReproCrowd/{__version__}")
+    return pilot_copy.Api(None, api, agent=f"ReproCrowd/{__version__}", timeout=PUBLIC_TIMEOUT)
 
 
 def find(doi: str, repo: str | None = None) -> list[dict[str, Any]]:
@@ -178,23 +180,33 @@ def find(doi: str, repo: str | None = None) -> list[dict[str, Any]]:
         rid = pilot_copy.ISSUE_RE.search(body)
         if "pull_request" not in i and rid and pilot_copy.names_paper(title, body, doi):
             issues.append((i, rid.group(1)))
-    releases = []
-    if issues:
-        with _public_errors(f"/repos/{repo}/releases"):
-            releases = list(_public(api).paged(f"/repos/{repo}/releases"))
+    releases = _repo_releases(api, repo, t) if issues else []
     out = []
     for i, rid in issues:
-        runs = [r for r in pilot_copy.copied_runs(releases, rid) if r["issue"] == i["number"]]
+        # the Action's rule: a reproduction's runs belong to the issue that owns it, whatever other issues carry its marker
+        runs = pilot_copy.copied_runs(releases, rid) if pilot_copy.owner_issue(releases, rid) == i["number"] else []
         labels = {lb.get("name") for lb in i.get("labels") or []}
         out.append({"number": i["number"], "title": i.get("title") or "", "url": i["html_url"], "state": i.get("state"),
                     "author": (i.get("user") or {}).get("login"), "created_at": i.get("created_at"), "reproduction_id": rid,
                     "runs": len(runs), "latest_version": runs[0]["version"] if runs else None,
                     "latest_date": runs[0]["date"] if runs else None, "latest_summary": summary_line(runs[0]) if runs else None,
                     "synthetic": "synthetic" in labels or (i.get("title") or "").startswith("[SYNTHETIC]")})
-    for k in [k for k, (at, _) in _found.items() if t - at >= FIND_CACHE_S]:
-        del _found[k]
+    for cache in (_found, _releases):
+        for k in [k for k, (at, _) in cache.items() if t - at >= FIND_CACHE_S]:
+            del cache[k]
     _found[(repo, doi)] = (t, out)
     return out
+
+
+def _repo_releases(api: str, repo: str, t: float) -> list[dict[str, Any]]:
+    """The pilots repository's releases (one request per 100 of them, of the 60 an hour GitHub allows without a token),
+    read at most once a minute for all papers."""
+    if (hit := _releases.get(repo)) and t - hit[0] < FIND_CACHE_S:
+        return hit[1]
+    with _public_errors(f"/repos/{repo}/releases"):
+        releases = list(_public(api).paged(f"/repos/{repo}/releases"))
+    _releases[repo] = (t, releases)
+    return releases
 
 
 def status() -> dict[str, Any]:

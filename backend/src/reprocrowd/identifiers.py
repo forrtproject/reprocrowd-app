@@ -32,9 +32,10 @@ def parse_identifier(raw: str) -> Identifier:
 
 
 def doi(raw: str) -> str:
-    """A DOI in its canonical form (lower case, no resolver or doi: prefix), from any DOI form parse_identifier accepts."""
+    """A DOI in its canonical form (lower case, no resolver or doi: prefix), from any DOI form parse_identifier accepts.
+    Without double quotes, which the searches for records of a paper can't put in their quoted phrase."""
     ident = parse_identifier(raw)
-    if ident.scheme != "doi":
+    if ident.scheme != "doi" or '"' in ident.value:
         raise ApiError(400, "invalid_identifier", f"{raw!r} is not a DOI")
     return ident.value
 

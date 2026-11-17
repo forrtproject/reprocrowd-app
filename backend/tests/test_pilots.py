@@ -282,6 +282,7 @@ def gh(client, monkeypatch):
     monkeypatch.setattr(pilots, "time", SimpleNamespace(sleep=lambda s: None))  # forks are ready at once here
     monkeypatch.setattr(pilots, "RECHECK_S", 0)
     pilots._found.clear()
+    pilots._releases.clear()
     fake = FakeGitHub()
     with respx.mock:
         respx.route(host="api.github.test").mock(side_effect=fake.handle)
@@ -765,6 +766,7 @@ def test_records_of_a_paper_are_found_by_its_doi(client, pkg, gh, monkeypatch):
     for form in (doi.upper(), f"https://doi.org/{doi}", f"http://dx.doi.org/{doi}", f"doi:{doi}"):
         assert [x["number"] for x in find(form).json()] == [r["number"]], form
     problem(find("W2164005910"), 400, "invalid_identifier")
+    problem(find('10.1000/a"b'), 400, "invalid_identifier")  # can't be put in the search's quoted phrase
 
     gh.run_action()
     [r] = find().json()
@@ -782,9 +784,14 @@ def test_records_of_a_paper_are_found_by_its_doi(client, pkg, gh, monkeypatch):
     assert find("10.9999/none").json() == [] and client.get("/v1/github-pilots/records", params={"doi": doi, "repo": "nobody/none"}).json() == []
 
 
-def test_doi_search_is_cached_and_reports_the_rate_limit(client, gh):
-    client.get("/v1/github-pilots/records", params={"doi": "10.1000/a"})
-    client.get("/v1/github-pilots/records", params={"doi": "10.1000/a"})
-    assert gh.calls["search"] == 1
+def test_doi_search_is_cached_and_reports_the_rate_limit(client, pkg, gh):
+    ready_published(client, pkg)
+    client.post(f"/v1/packages/{pkg}/pilots", json=body())
+    reads = lambda: sum(1 for c in respx.calls if c.request.url.path == f"/repos/{REPO}/releases")
+    gh.issues.append({"number": 5, "id": 5, "title": "Pilot reproduction: A (doi:10.1000/a)", "body": "<!-- reprocrowd-pilot:repro-0000000000 -->",
+                      "user": {"login": "bob"}, "html_url": f"https://github.test/{REPO}/issues/5", "labels": [], "state": "open"})
+    for d in ("10.1371/journal.pbio.1002106", "10.1371/journal.pbio.1002106", "10.1000/a"):
+        assert client.get("/v1/github-pilots/records", params={"doi": d}).json()
+    assert gh.calls["search"] == 2 and reads() == 1  # the releases are read once a minute for all papers
     gh.search_limited = True
     problem(client.get("/v1/github-pilots/records", params={"doi": "10.1000/b"}), 429, "github_rate_limited")
