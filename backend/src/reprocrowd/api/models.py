@@ -484,6 +484,73 @@ class DepositPreview(BaseModel):
     exclude: list[str]
 
 
+# ---------- GitHub pilots ----------
+
+
+class GithubAuth(Req):
+    github_token: SecretStr | None = Field(default=None, description="the user's GitHub token (`gh auth token`, or classic with public_repo: it "
+                                                                     "must be able to create a fork); passed on, never stored. Default: [github] token")
+    repo: str | None = Field(default=None, pattern=r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$", description="owner/name; default: [github] pilots_repo")
+
+
+class PilotOptions(Req):
+    repo: str | None = Field(default=None, pattern=r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$", description="owner/name; default: [github] pilots_repo")
+    note: str = Field(default="", max_length=2000, description="shown in the run's comment")
+    exclude: list[Literal["paper", "inputs"]] | None = Field(default=None, description="groups of files to leave out of the ZIP, as for Zenodo. "
+                                                                                       "Default: paper, unless OpenAlex reports an open license for it")
+    synthetic: bool = Field(default=False, description="label the issue and files as a synthetic test fixture")
+
+
+class PilotCreate(PilotOptions, GithubAuth):
+    pass
+
+
+class GithubPilotStatus(BaseModel):
+    repo: str
+    api_url: str
+    token_configured: bool = Field(description="the service has a fallback token ([github] token)")
+    licenses: dict[str, str]
+
+
+class GithubCheck(BaseModel):
+    repo: str
+    url: str | None
+    login: str
+    private: bool | None
+    can_submit: bool = Field(description="the repository is public and this account can fork it (or owns it)")
+    files_in: str = Field(description="where this account's run files go: its fork, or the repository itself for its owner")
+
+
+class PilotRecord(BaseModel):
+    number: int = Field(description="the issue number in the pilots repository")
+    title: str
+    url: str
+    state: str | None
+    author: str | None = Field(description="the GitHub login that opened the issue")
+    created_at: str | None
+    reproduction_id: str
+    runs: int = Field(description="runs copied into the pilots repository for this issue, read from its releases; 0 while none has been")
+    latest_version: int | None = Field(description="the latest copied run's version (v1, v2, …)")
+    latest_date: str | None
+    latest_summary: str | None = Field(description="the comparison summary of the latest copied run")
+    synthetic: bool
+
+
+class PilotPreview(BaseModel):
+    repo: str
+    reproduction_id: str
+    run_key: str
+    tag: str
+    issue_title: str
+    summary: str
+    assets: list[dict[str, Any]]
+    exclude: list[str]
+    excluded: list[str]
+    contents: dict[str, Any]
+    licenses: dict[str, Any] = Field(description="as recorded in the archive's licenses.json")
+    existing: dict[str, Any] | None = Field(description="the local record if this run key was submitted before")
+
+
 # ---------- figure crops ----------
 
 

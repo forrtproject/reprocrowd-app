@@ -22,7 +22,7 @@ from typing import Any
 
 import httpx
 
-from . import __version__, jobs, openalex
+from . import __version__, jobs, licensing, openalex
 from .config import settings
 from .errors import ApiError, conflict, not_found
 from .package import MANIFEST, Package
@@ -73,6 +73,8 @@ def _check_archive(pkg: Package) -> None:
     then_res = sorted((r["path"], r["hash"]) for r in archived.get("resources", []))
     if now_res != then_res:
         raise conflict("archive_stale", "the package changed since the archive was made; create it again (PUT …/archive)")
+    if licensing.FILE not in {p for p, _ in then_res}:
+        raise conflict("archive_stale", "the archive was made before licences were recorded (no licenses.json); create it again (PUT …/archive)")
 
 
 class Prepared:

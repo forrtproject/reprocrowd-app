@@ -10,7 +10,7 @@ from pydantic import BaseModel
 
 from .curation import ActionLlmOutput, ActionsFile, TargetLlmOutput, TargetsFile
 from .document import Document, DocumentDraft
-from .exports import AnalysisPlan, InputsList, ReproducedOutput, ResultsSchema
+from .exports import AnalysisPlan, InputsList, LicenseMap, ReproducedOutput, ResultsSchema
 from .comparison import Comparison
 from .evidence import ExecutionEvidence
 from .jobs import Job
@@ -29,6 +29,7 @@ SCHEMAS: dict[str, tuple[type[BaseModel], str]] = {
     "results-schema": (ResultsSchema, "results_schema.json"),
     "analysis-plan": (AnalysisPlan, "analysis_plan.json"),
     "inputs": (InputsList, "inputs.json (written with the archive)"),
+    "licenses": (LicenseMap, "licenses.json (written with the archive)"),
     "results-output": (ReproducedOutput, "outputs/results.json"),
     "job": (Job, "jobs/<id>.json"),
     "comparison": (Comparison, "comparison.json (written with the report; also GET …/comparison)"),
