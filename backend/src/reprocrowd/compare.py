@@ -9,6 +9,10 @@ Rules (as in the MetaReader plugin):
 """
 from __future__ import annotations
 
+from decimal import Decimal, InvalidOperation
+
+from .numbers import parse_printed, reproduced_decimal, rounded_both, compare_num, quantum
+
 import math
 import re
 from typing import Any
@@ -23,53 +27,17 @@ from .schemas.exports import OutputResult, ReproducedOutput
 
 def parse_num(s: Any) -> float | None:
     """A number as printed in papers: unicode minus, thousands separators, %, leading < > = ~."""
-    if isinstance(s, bool):
+    try:
+        return float(parse_printed(s).value)
+    except (ValueError, InvalidOperation):
         return None
-    if isinstance(s, (int, float)):
-        return float(s) if math.isfinite(s) else None
-    if not isinstance(s, str):
-        return None
-    t = re.sub(r"[−–—]", "-", s)
-    t = re.sub(r"(\d),(\d{3})\b", r"\1\2", t)
-    t = re.sub(r"[\s%*†‡§]", "", t)
-    t = re.sub(r"^[<>≤≥=~≈]+", "", t)
-    if not re.fullmatch(r"[-+]?(\d+\.?\d*|\.\d+)(e[-+]?\d+)?", t, re.I):
-        return None
-    return float(t)
 
 
 def decimals_of(s: Any) -> int:
-    m = re.search(r"\.(\d+)", re.sub(r"[−–]", "-", str(s)))
-    return len(m.group(1)) if m else 0
-
-
-def _round(x: float, d: int) -> float:
-    return round(x, d)
-
-
-def _deviation(exp: float, rep: float) -> float:
-    if exp == 0:
-        return 0.0 if rep == 0 else math.inf
-    return abs(rep - exp) / abs(exp) * 100
-
-
-def _compare_num(exp: float, rep: float, cmp: str, reported_decimals: int, st: CompareSettings) -> tuple[Status, float]:
-    d = reported_decimals if st.rounding == "reported" else st.rounding
-    dev = _deviation(exp, rep)
-    r, e = _round(rep, d), _round(exp, d)
-    eps = 10 ** -(d + 6)
-    ok = {
-        "<": rep < exp,
-        "<=": r <= e + eps,
-        ">": rep > exp,
-        ">=": r >= e - eps,
-        "~": abs(r - e) < eps or dev <= st.threshold,
-    }.get(cmp, abs(r - e) < eps)
-    if ok:
-        return "match", dev
-    if cmp not in ("<", ">") and dev <= st.threshold:
-        return "within", dev
-    return "deviation", dev
+    try:
+        return max(0, -quantum(s))
+    except ValueError:
+        return 0
 
 
 def _norm(s: Any) -> str:
@@ -105,13 +73,16 @@ def _compare_table(exp: list[list[str]], rep: list[list[Any]], st: CompareSettin
                 if rn is None:
                     status: Status = "missing"
                 else:
-                    cmp = "<" if e.strip().startswith("<") else ">" if e.strip().startswith(">") else "="
-                    status, deviation = _compare_num(en, rn, cmp, decimals_of(e), st)
+                    printed = parse_printed(e)
+                    status, deviation = compare_num(printed.value, reproduced_decimal(rv), printed.comparator or "=",
+                                                    printed.quantum if st.rounding == "reported" else -st.rounding, st.threshold)
                 if status == "match":
                     matched += 1
             else:
                 status = "match" if not _norm(e) or _norm(e) == _norm(rv) else "unparsable"
-            out_row.append(Cell(expected=e, reproduced=_fmt(rv), status=status, deviation=_finite(deviation)))
+            out_row.append(Cell(expected=e, reproduced=_fmt(rv), status=status, deviation=_finite(deviation),
+                                 printed=parse_printed(e).token if en is not None else None, comparator=parse_printed(e).comparator if en is not None else None,
+                                 quantum=quantum(e) if en is not None else None))
         cells.append(out_row)
     return cells, matched, total
 
@@ -122,8 +93,8 @@ def compare_target(t: Target, out: OutputResult | None, st: CompareSettings) -> 
     elif t.type == "figure":
         expected_text = "(figure)"
     else:
-        expected_text = f"{t.comparator + ' ' if t.comparator and t.comparator != '=' else ''}{_fmt(t.expected)}{' ' + t.unit if t.unit else ''}"
-    base = {"target": t.id, "type": t.type, "description": t.description, "expected_text": expected_text, "note": out.note if out else None}
+        expected_text = f"{t.comparator + ' ' if t.comparator and t.comparator != '=' else ''}{t.printed or _fmt(t.expected)}{' ' + t.unit if t.unit else ''}"
+    base = {"target": t.id, "type": t.type, "description": t.description, "expected_text": expected_text, "note": out.note if out else None, "refs": t.refs}
     if t.type == "figure":
         return CompareRow(**base, status="figure" if out and out.file else "missing", reproduced_text=out.file if out and out.file else "—")
     if out is None:
@@ -142,13 +113,19 @@ def compare_target(t: Target, out: OutputResult | None, st: CompareSettings) -> 
     e, r = parse_num(t.expected), parse_num(out.value)
     if e is None or r is None:
         return CompareRow(**base, status="unparsable", reproduced_text=_fmt(out.value))
-    reported = t.decimals if t.decimals is not None else decimals_of(t.expected)
-    status, dev = _compare_num(e, r, t.comparator or "=", reported, st)
-    d = reported if st.rounding == "reported" else st.rounding
-    return CompareRow(**base, status=status, deviation=_finite(dev), reproduced_text=f"{_round(r, d):.{d}f}  ({_fmt(r)})")
+    printed = parse_printed(t.printed if t.printed is not None else repr(t.expected))
+    exponent = printed.quantum if t.printed is not None or t.decimals is None else -t.decimals
+    used_exponent = exponent if st.rounding == "reported" else -st.rounding
+    status, dev = compare_num(printed.value, reproduced_decimal(out.value), t.comparator or "=", used_exponent, st.threshold)
+    down, up = rounded_both(reproduced_decimal(out.value), used_exponent)
+    rounded = f"{down:f}" if down == up else f"{down:f} or {up:f} (tie)"
+    suffix = "" if st.rounding == "reported" else f"; rounded to {st.rounding} decimals (setting)"
+    return CompareRow(**base, status=status, deviation=_finite(dev), reproduced_text=f"{rounded}  ({_fmt(out.value)}){suffix}",
+                      precision="printed" if t.printed is not None else "explicit" if t.decimals is not None else "inferred", quantum=exponent)
 
 
-def check_output(raw: Any, targets: list[Target]) -> tuple[list[str], list[str], ReproducedOutput | None]:
+
+def check_output(raw: Any, targets: list[Target], plan=None) -> tuple[list[str], list[str], ReproducedOutput | None]:
     """Errors: the file doesn't have the required format; warnings: targets not covered, unknown ids."""
     try:
         output = ReproducedOutput.model_validate(raw)
@@ -163,6 +140,10 @@ def check_output(raw: Any, targets: list[Target]) -> tuple[list[str], list[str],
             errors.append(f"{at}: duplicate id")
         seen.add(r.id)
         t = by_id.get(r.id)
+        if plan is not None and r.step:
+            steps = {s.id: s for s in plan.steps}
+            if r.step not in steps or r.id not in steps[r.step].produces:
+                warnings.append(f"{at}: step {r.step} does not produce {r.id} in the plan")
         if t is None:
             warnings.append(f"{at}: not a target")
         elif t.type == "number" and r.value is not None and parse_num(r.value) is None:
@@ -171,6 +152,7 @@ def check_output(raw: Any, targets: list[Target]) -> tuple[list[str], list[str],
             errors.append(f"{at}: table target needs \"table\"")
         elif t.type == "figure" and r.value is not None and not r.file:
             errors.append(f"{at}: figure target needs \"file\"")
+    warnings += [f"{t.id}: precision inferred from an older numeric target; original trailing zeroes are unknown" for t in targets if t.type == "number" and t.printed is None and t.decimals is None]
     warnings += [f"{t}: missing from the output" for t in by_id if t not in seen]
     return errors, warnings, output
 
@@ -182,4 +164,5 @@ def compare(targets: list[Target], raw_output: Any, st: CompareSettings) -> Comp
     summary: dict[str, int] = {}
     for r in rows:
         summary[r.status] = summary.get(r.status, 0) + 1
-    return Comparison(settings=st, summary=summary, rows=rows, output_errors=errors, output_warnings=warnings)
+    return Comparison(policy="reprocrowd-compare/3", rounding_mode="either_direction_at_ties", settings=st, summary=summary, rows=rows,
+                      output_errors=errors, output_warnings=warnings)

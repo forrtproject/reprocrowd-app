@@ -183,6 +183,7 @@ class ZenodoDeposit(Model):
 
 
 class PackageMeta(Model):
+    track: Literal["recreation"] | None = Field(default=None, description="None: older package with unspecified workflow; recreation is not certified blinding")
     version: Literal["1.0"] = "1.0"
     created_at: datetime
     identifier: Identifier | None = Field(default=None, description="identifier the package was created for")

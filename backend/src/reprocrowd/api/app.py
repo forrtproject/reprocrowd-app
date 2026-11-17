@@ -24,6 +24,8 @@ from starlette.concurrency import run_in_threadpool
 from starlette.datastructures import UploadFile as StarletteUploadFile
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from ..schemas.evidence import ExecutionEvidence
+from .. import evidence
 from .. import __version__, acquire, openalex, zenodo, codegen, coordinates, curation, database, figures, report, run, extractions, files, fulltexts, inputs, jobs, llm, metadata, scripts
 from ..config import settings
 from ..errors import ApiError, not_found
@@ -102,7 +104,7 @@ async def _api_error(request: Request, e: ApiError):
 @app.exception_handler(RequestValidationError)
 async def _request_invalid(request: Request, e: RequestValidationError):
     errors = [{"loc": list(err["loc"]), "msg": err["msg"], "type": err["type"]} for err in e.errors()]
-    return problem(request, 422, "request_invalid", "the request doesn't match the API schema", {"errors": errors})
+    return problem(request, 422, "target_contradiction" if any(e["type"] == "target_contradiction" for e in errors) else "request_invalid", "the request doesn't match the API schema", {"errors": errors})
 
 
 @app.exception_handler(StarletteHTTPException)
@@ -315,8 +317,10 @@ def list_templates():
 @api.post("/packages", tags=["packages"], status_code=201, response_model=M.PackageSummary, summary="Create a package",
           description="Creates the folder with a minimal `datapackage.json`, schema copies and empty targets/actions, "
                       "and registers it. With `fetch_metadata`, OpenAlex is queried with the identifier.",
-          responses=errors("package_exists", "folder_not_empty", "path_not_allowed", "invalid_identifier", "openalex_not_found", "openalex_failed"))
+          responses=errors("track_unavailable", "package_exists", "folder_not_empty", "path_not_allowed", "invalid_identifier", "openalex_not_found", "openalex_failed"))
 def create_package(body: M.PackageCreate, response: Response):
+    if body.track == "original_code":
+        raise ApiError(422, "track_unavailable", "Original-code reproduction (Track A) is deferred; see issue #45. Use recreation (Track B).")
     ident = parse_identifier(body.identifier) if body.identifier else None
     pkg = Registry().create(FsPath(body.path), ident, adopt=body.adopt)
     if body.fetch_metadata:
@@ -590,7 +594,7 @@ def curation_routes(kind: str, fields: type, view: type, patch_model: type) -> N
 
     @api.post(base, tags=[kind], status_code=201, response_model=curation.CURATIONS[kind].item, summary=f"Add a {noun} by hand",
               description="Needs `refs` into an extraction, or `unreferenced: true` with a `note`.",
-              responses=errors("schema_invalid", "invalid_reference"))
+              responses=errors("schema_invalid", "target_contradiction", "invalid_reference"))
     def add_item(pkg: Pkg, body: fields, response: Response):  # type: ignore[valid-type]
         item = curation.Curation(pkg, kind).add(body.model_dump(exclude_unset=True))
         created(response, f"/v1/packages/{pkg.id}/{kind}/{item.id}")
@@ -642,7 +646,7 @@ def curation_routes(kind: str, fields: type, view: type, patch_model: type) -> N
     @api.patch(base + "/{item_id}", tags=[kind], response_model=view, summary=f"Edit or disable a {noun} (JSON merge patch)",
                description="Manual items are changed in place. LLM entries keep the LLM's version; the change is stored as an "
                            "edit on top of it (restore with `DELETE …/edit`). `disabled` applies to LLM entries only.",
-               responses=errors("not_found", "schema_invalid", "invalid_reference", "manual_item"))
+               responses=errors("not_found", "schema_invalid", "target_contradiction", "invalid_reference", "manual_item"))
     def patch_item(pkg: Pkg, item_id: str, body: patch_model):  # type: ignore[valid-type]
         i, o = curation.Curation(pkg, kind).patch(item_id, body.model_dump(exclude_unset=True))
         return {"item": i, "origin": o}
@@ -812,6 +816,12 @@ def get_comparison(pkg: Pkg, rounding: Annotated[str, Query(pattern=r"^(reported
     return run.comparison(pkg, st)
 
 
+@api.get("/packages/{pkg}/evidence", tags=["comparison"], response_model=ExecutionEvidence,
+         summary="Recorded process evidence and changes since the latest run")
+def get_evidence(pkg: Pkg):
+    return evidence.get(pkg)
+
+
 # ---------- figure crops ----------
 
 CROP_ERRORS = errors("not_found", "not_a_figure_target", "no_figure_reference", "no_coordinates", "pdf_unknown", "not_convertible")
@@ -884,7 +894,7 @@ def get_report(pkg: Pkg):
 @api.put("/packages/{pkg}/archive", tags=["report"], response_model=ArchiveInfo, summary="Create or replace the ZIP of the package",
          description="Zips `datapackage.json` and every resource it lists (a Frictionless zipped data package) into "
                      "`archive/`. Only for a package that validates and has a report; the archive's hash is recorded in the manifest.",
-         responses={201: {"model": ArchiveInfo, "description": "created"}, **errors("package_invalid", "report_missing", "job_running")})
+         responses={201: {"model": ArchiveInfo, "description": "created"}, **errors("package_invalid", "report_missing", "report_stale", "job_running")})
 def put_archive(pkg: Pkg, response: Response):
     first = pkg.load().reprocrowd.archive is None
     info = report.write_archive(pkg)
@@ -918,7 +928,7 @@ def database_packages(doi: Annotated[str, Query(min_length=3)]):
                       "run that succeeded and an up-to-date archive. With `database_token` (the user's token for the database) "
                       "the package is published at once (`status: submitted`). Without it, the submission waits for the user "
                       "to sign in and confirm at `finish_url`; `GET …/submissions/{id}` reports whether that happened.",
-          responses=errors("database_not_configured", "no_doi", "run_not_succeeded", "archive_missing", "archive_stale", "openalex_record_missing",
+          responses=errors("database_not_configured", "no_doi", "run_not_succeeded", "archive_missing", "archive_stale", "report_stale", "openalex_record_missing",
                            "duplicate_submission", "submission_rejected", "database_token_invalid", "database_forbidden",
                            "database_unreachable", "database_error", "job_running"))
 def submit(pkg: Pkg, response: Response, body: M.SubmissionCreate = Body(default_factory=M.SubmissionCreate)):
@@ -940,7 +950,7 @@ def get_submission(pkg: Pkg, sub: str):
 
 # ---------- Zenodo ----------
 
-DEPOSIT_PRECONDITIONS = ("local_paper_text", "no_doi", "run_not_succeeded", "archive_missing", "archive_stale", "openalex_record_missing", "job_running")
+DEPOSIT_PRECONDITIONS = ("local_paper_text", "no_doi", "run_not_succeeded", "archive_missing", "archive_stale", "report_stale", "openalex_record_missing", "job_running")
 
 
 def _tok(body: M.ZenodoAuth) -> str | None:

@@ -12,11 +12,13 @@ from .curation import ActionLlmOutput, ActionsFile, TargetLlmOutput, TargetsFile
 from .document import Document, DocumentDraft
 from .exports import AnalysisPlan, InputsList, ReproducedOutput, ResultsSchema
 from .comparison import Comparison
+from .evidence import ExecutionEvidence
 from .jobs import Job
 from .manifest import Manifest
 
 # name → (model, file it describes)
 SCHEMAS: dict[str, tuple[type[BaseModel], str]] = {
+    "execution-evidence": (ExecutionEvidence, "evidence/execution.json"),
     "datapackage": (Manifest, "datapackage.json"),
     "document": (Document, "extractions/<id>.json"),
     "document-draft": (DocumentDraft, "parser / reconcile-LLM output, before ids are assigned"),

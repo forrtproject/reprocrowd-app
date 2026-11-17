@@ -141,6 +141,20 @@
           "title": "Type",
           "type": "string"
         },
+        "printed": {
+          "anyOf": [
+            {
+              "pattern": "^[-+]?(?:\\d+\\.?\\d*|\\.\\d+)(?:[eE][-+]?\\d+)?$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "exact numeric token, without unit or comparator; preserves printed precision",
+          "title": "Printed"
+        },
         "description": {
           "description": "self-contained: variable, model/test, subgroup",
           "minLength": 1,

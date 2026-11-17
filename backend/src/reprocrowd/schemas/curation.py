@@ -11,6 +11,8 @@ from __future__ import annotations
 
 from typing import Any, Generic, Literal, TypeVar
 
+from ..numbers import normalize_number
+
 from pydantic import ConfigDict, Field, field_validator, model_validator
 
 from .common import LlmCall, Model
@@ -62,6 +64,14 @@ class TargetFields(Referenced):
     """A reported result the reproduction must recompute (target without id)."""
 
     type: TargetType
+    printed: str | None = Field(default=None, pattern=r"^[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?$",
+                                description="exact numeric token, without unit or comparator; preserves printed precision")
+
+    @model_validator(mode="before")
+    @classmethod
+    def _normalize_number(cls, data):
+        return normalize_number(data) if isinstance(data, dict) else data
+
     description: str = Field(min_length=1, description="self-contained: variable, model/test, subgroup")
     expected: float | int | str | list[list[str]] | None = Field(default=None, description="number for number, string for categorical, rows of cell strings for table, null for figure")
     comparator: Comparator | None = Field(default=None, description='for numbers: how the paper states it ("p < .001" -> "<"); null means "="')

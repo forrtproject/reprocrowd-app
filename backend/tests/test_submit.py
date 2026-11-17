@@ -4,6 +4,7 @@ import json
 import httpx
 import respx
 
+from conftest import FIXTURES
 from test_api import WORK, mock_openalex, problem
 from test_jobs import wait
 from test_run import SCRIPT, package_with_targets
@@ -58,8 +59,11 @@ def test_submit(client, pkg):
     problem(client.post(P + "/submissions", json={}), 502, "database_unreachable")
 
     # any change after the archive makes it stale
-    client.post(P + "/inputs", json={"path": str(root / "results_schema.json")})
+    assert client.post(P + "/fulltexts", json={"path": str(FIXTURES / "paper.jats.xml")}).status_code == 201
     problem(client.post(P + "/submissions", json={}), 409, "archive_stale")
+    # a new used input also no longer matches the report's recorded execution evidence
+    client.post(P + "/inputs", json={"path": str(root / "results_schema.json")})
+    problem(client.post(P + "/submissions", json={}), 409, "report_stale")
 
 
 @respx.mock

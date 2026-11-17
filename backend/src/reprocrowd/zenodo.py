@@ -238,13 +238,16 @@ def _creators(given: list[ZenodoCreator] | None) -> list[ZenodoCreator]:
 def metadata(p: Prepared, creators: list[ZenodoCreator], note: str, excluded: list[str], community: str | None) -> dict[str, Any]:
     work, doi = p.work, p.doi
     summary = p.cmp.summary
-    total = sum(summary.values())
+    total = sum(row.type != "figure" for row in p.cmp.rows)
     authors = ", ".join(p.authors[:6]) + (" et al." if len(p.authors) > 6 else "")
     cite = f"{escape(authors)}{f' ({p.year})' if p.year else ''}. <i>{escape(work['title'])}</i>.{f' {escape(p.venue)}.' if p.venue else ''}"
     parts = [
         f"<p>A computational reproduction of {cite} <a href=\"https://doi.org/{escape(doi)}\">https://doi.org/{escape(doi)}</a>, "
         "based on its published data and the procedures described in the text.</p>",
-        f"<p><b>Result:</b> {summary.get('match', 0)} of {total} target results reproduced "
+        f"<p><b>Result:</b> {summary.get('match', 0)} of {total} match "
+        f"({'numbers at printed precision' if p.cmp.settings.rounding == 'reported' else f'numbers rounded to {p.cmp.settings.rounding} decimals'}; text exactly); "
+        f"{summary.get('within', 0)} more within {p.cmp.settings.threshold} % (exploratory). "
+        f"Policy {p.cmp.policy}, rounding {p.cmp.rounding_mode}. "
         f"({', '.join(f'{escape(k)}: {v}' for k, v in summary.items())}).</p>" if total else "",
         f"<p><b>Master script:</b> {escape(p.template.label)} (<code>{escape(p.template.command)}</code>).</p>" if p.template else "",
         f"<p><b>Note:</b> {escape(note)}</p>" if note else "",

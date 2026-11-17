@@ -9,12 +9,14 @@ from __future__ import annotations
 
 from typing import Any
 
-from . import files, gitrepo, jobs
+from . import files, gitrepo, jobs, evidence
 from .compare import check_output, compare
 from .config import settings
 from .errors import conflict
 from .package import Package
-from .schemas.comparison import Comparison, CompareSettings
+from .schemas.comparison import Comparison, CompareSettings, ComparisonBasis
+from .schemas.common import now
+from .schemas.exports import AnalysisPlan
 from .schemas.curation import Target
 from .schemas.exports import ResultsSchema
 from .schemas.jobs import Job, RunResult
@@ -38,10 +40,12 @@ def start(pkg: Package) -> Job:
     targets = frozen_targets(pkg)
     jid = jobs.new_id()
     pkg.path(RESULTS).unlink(missing_ok=True)
+    files.sync(pkg)
+    before_snapshot = evidence.snapshot(pkg)
+    before = None
     use_git = gitrepo.available()
     if use_git:
-        files.sync(pkg)
-        gitrepo.commit(pkg, f"Before run ({jid})")
+        before = gitrepo.commit(pkg, f"Before run ({jid})") or gitrepo.head(pkg)
 
     def finish(job: Job) -> RunResult:
         files.sync(pkg)
@@ -50,15 +54,29 @@ def start(pkg: Package) -> Job:
         exists = pkg.path(RESULTS).exists()
         if exists:
             try:
-                errors, warnings, _ = check_output(pkg.read_json(RESULTS), targets)
+                plan = load_plan(pkg)
+                errors, warnings, _ = check_output(pkg.read_json(RESULTS), targets, plan)
+                warnings += [] if plan else [NO_PLAN]
             except ValueError as e:
                 errors = [f"not valid JSON: {e}"]
         after = gitrepo.commit(pkg, f"Run ({jid}, {job.status}, exit {job.exit_code})") if use_git else None
-        return RunResult(command=tpl.command, log=job.stdout, results_file=exists, output_errors=errors, output_warnings=warnings, commit_after=after)
+        return RunResult(commit_before=before, snapshot=before_snapshot, results_sha256=evidence.digest(pkg, RESULTS),
+                         log_sha256=evidence.digest(pkg, job.stdout), command=tpl.command, log=job.stdout, results_file=exists, output_errors=errors, output_warnings=warnings, commit_after=after)
 
     return jobs.start(pkg, jid=jid, type="run", argv=["bash", "-c", tpl.command], stdin="", timeout_s=settings().run_timeout_s,
                       events_format="text", profile=None, request={"template": tpl.id, "command": tpl.command}, finish=finish, merge_stderr=True,
                       env={"PYTHONUNBUFFERED": "1"})  # live, ordered log lines from Python pipelines
+
+
+NO_PLAN = "analysis_plan.json is missing or invalid; output steps were not checked against the plan"
+
+
+def load_plan(pkg: Package) -> AnalysisPlan | None:
+    """The frozen plan, or None if it is missing or invalid: it only adds step warnings."""
+    try:
+        return AnalysisPlan.model_validate(pkg.read_json("analysis_plan.json"))
+    except (OSError, ValueError):
+        return None
 
 
 def comparison(pkg: Package, st: CompareSettings) -> Comparison:
@@ -69,4 +87,9 @@ def comparison(pkg: Package, st: CompareSettings) -> Comparison:
         raw: Any = pkg.read_json(RESULTS)
     except ValueError as e:
         raw = {"error": str(e)}
-    return compare(targets, raw, st)
+    result = compare(targets, raw, st)
+    result.basis = ComparisonBasis(results_sha256=evidence.digest(pkg, RESULTS), results_schema_sha256=evidence.digest(pkg, "results_schema.json"), created_at=now())
+    plan = load_plan(pkg)
+    _, warnings, _ = check_output(raw, targets, plan)
+    result.output_warnings = warnings + ([] if plan else [NO_PLAN])
+    return result

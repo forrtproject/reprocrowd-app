@@ -5,8 +5,9 @@ The service holds no database credentials. Submitting uploads the archive with b
 up in OpenAlex by DOI at that moment (never from local fields); the database answers with a ``finish_url``
 where the user signs in and confirms. ``status`` polls whether that happened.
 
-Preconditions: a DOI, a run of the master script that succeeded, and an archive that is up to date (its
-datapackage.json lists the same resources as the package now).
+Preconditions: a DOI, a run of the master script that succeeded, a current report (its recorded comparison and
+evidence still match the results, targets, scripts and inputs: ``report.recorded_comparison``), and an archive that
+is up to date (its datapackage.json lists the same resources as the package now).
 
 A caller may pass the user's own database token (obtained by the client from the database's sign-in); it is
 forwarded with the upload, which the database then publishes at once, and never stored.
@@ -25,10 +26,8 @@ from . import __version__, jobs, openalex
 from .config import settings
 from .errors import ApiError, conflict, not_found
 from .package import MANIFEST, Package
-from .report import archive_path
-from .run import comparison
+from .report import archive_path, recorded_comparison
 from .schemas.common import Identifier, now
-from .schemas.comparison import CompareSettings
 from .schemas.manifest import Submission
 
 
@@ -77,7 +76,7 @@ def _check_archive(pkg: Package) -> None:
 
 
 class Prepared:
-    """What every submission needs, checked: a DOI, a last run that succeeded, an up-to-date archive and the work's
+    """What every submission needs, checked: a DOI, a last run that succeeded, a current report, an up-to-date archive and the work's
     OpenAlex record (bibliographic metadata comes only from there, looked up now)."""
 
     def __init__(self, pkg: Package):
@@ -89,8 +88,8 @@ class Prepared:
         runs = [j for j in jobs.list_jobs(pkg) if j.type == "run"]
         if not runs or runs[-1].status != "succeeded":
             raise conflict("run_not_succeeded", "the last run of the master script must have succeeded (POST …/jobs {type: run})")
+        self.cmp = recorded_comparison(pkg)
         _check_archive(pkg)
-        self.cmp = comparison(pkg, CompareSettings())
         try:
             work = openalex.fetch_work(Identifier(scheme="doi", value=doi))
         except ApiError as e:

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<article article-type="research-article">
+  <front><article-meta><title-group><article-title>Offline contract fixture</article-title></title-group>
+    <abstract><p>This synthetic paper tests software contracts. It is not a research result.</p></abstract>
+  </article-meta></front>
+  <body>
+    <sec><title>Methods</title><p>Compute group means from the supplied CSV. No cleaning is needed.</p></sec>
+    <sec><title>Results</title><p>Mean A was 512.40 ms and mean B was 498.10 ms. A minus B was 14.30 ms.</p>
+      <table-wrap><label>Table 1</label><caption><p>Group means.</p></caption><table>
+        <thead><tr><th>Group</th><th>M</th></tr></thead><tbody><tr><td>A</td><td>512.40</td></tr><tr><td>B</td><td>498.10</td></tr></tbody>
+      </table></table-wrap>
+    </sec>
+  </body>
+</article>

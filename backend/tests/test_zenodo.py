@@ -81,7 +81,7 @@ def test_deposit_draft_then_publish(client, pkg):
     assert md["title"] == f"Computational reproduction of: {WORK['title']}"
     assert md["creators"] == ME and md["upload_type"] == "publication" and md["prereserve_doi"] is True
     assert md["related_identifiers"][0] == {"identifier": "10.1371/journal.pbio.1002106", "relation": "reviews", "resource_type": "publication-article", "scheme": "doi"}
-    assert "ReproCrowd" in md["keywords"] and "all fine" in md["description"] and "3 of 4" in md["description"]
+    assert "ReproCrowd" in md["keywords"] and "all fine" in md["description"] and "3 of 3" in md["description"]
     assert "communities" not in md
 
     zf = uploaded_zip(z["upload"])

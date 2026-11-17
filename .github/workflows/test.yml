@@ -1,0 +1,25 @@
+name: Contracts and offline workflow
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: uv sync --project backend --python 3.13 --locked
+      - run: npm run build
+      - run: uv run --project backend reprocrowd-schemas check backend
+      - run: uv run --project backend pytest backend/tests -q

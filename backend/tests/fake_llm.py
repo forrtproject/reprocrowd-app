@@ -34,6 +34,12 @@ elif "RESULTS" in prompt:
         {"type": "number", "description": "bogus", "expected": 1, "refs": ["sec9.p1.s1"]},
         {"type": "table", "description": "Descriptives", "expected": [["Group", "M"], ["A", "512.4"]], "refs": ["tab1"]},
     ]}
+    if mode == "scenario":
+        out = {"targets": [
+            {"type": "number", "description": "Mean A", "expected": "512.40", "refs": ["sec3.p1.s1"]},
+            {"type": "number", "description": "A minus B", "expected": "14.30", "refs": ["sec3.p1.s2"]},
+            {"type": "table", "description": "Group means", "expected": [["Group", "M"], ["A", "512.40"], ["B", "498.10"]], "refs": ["tab1"]},
+        ]}
     if mode == "badschema":
         out = {"results": []}
 elif "ACTIONS" in prompt:
@@ -41,9 +47,12 @@ elif "ACTIONS" in prompt:
     targets = re.findall(r"^- (T\d+) ", prompt, re.M)
     out = {"actions": [
         {"key": "A1", "kind": "transform", "summary": "Clean the data", "refs": ["sec2.p1.s2"], "inputs": inputs[:1]},
-        {"key": "A2", "kind": "analysis", "summary": "Run the t-test", "refs": ["sec2.p1.s1"], "depends_on": ["A1"], "produces": targets[:1]},
+        {"key": "A2", "kind": "analysis", "summary": "Run the t-test", "refs": ["sec2.p1.s1"], "depends_on": ["A1"], "produces": targets if mode == "scenario" else targets[:1]},
         {"key": "A3", "kind": "analysis", "summary": "Depends on the future", "refs": ["sec2.p1.s1"], "depends_on": ["A9"]},
     ]}
+    if mode == "scenario":
+        out["actions"][0]["summary"] = "Check the supplied group labels"
+        out["actions"][1]["summary"] = "Compute group means and A minus B"
 else:
     out = {"unexpected": True}
 if mode == "structured":  # like claude --output-format json --json-schema: an envelope with structured_output

@@ -124,7 +124,7 @@ export class ReportStep implements Step {
           <h3>Report</h3>
           <p class="hint">The comparison (rounding ${c.rounding === "reported" ? "as reported" : `${c.rounding} decimals`}, tolerance ${c.threshold} %, as set in step 7), the provenance of every target, the sources, LLM calls, inputs, plan and every file with its hash.</p>
           <div class="actions"><button id="rp-report" class="primary" ${this.w.running.has("report") ? "disabled" : ""}>${this.report ? "Regenerate report" : "Create report"}</button>${this.report ? `<button id="rp-report-show">Show file</button>` : ""}</div>
-          ${this.reportResult ? `<p class="ok">✓ ${esc(this.reportResult.reproduced)} reproduced · ${Object.entries(this.reportResult.summary).map(([k, v]) => `${STATUS_LABEL[k as keyof typeof STATUS_LABEL] ?? k}: ${v}`).join(", ")}</p>` : ""}
+          ${this.reportResult ? `<p class="ok">✓ ${this.reportResult.matched} of ${esc(this.reportResult.reproduced.split("/")[1] ?? "?")} match; ${this.reportResult.within} more within tolerance (exploratory) · ${Object.entries(this.reportResult.summary).map(([k, v]) => `${STATUS_LABEL[k as keyof typeof STATUS_LABEL] ?? k}: ${v}`).join(", ")}</p>` : ""}
         </section>
         <section class="card">
           <h3>Package archive</h3>

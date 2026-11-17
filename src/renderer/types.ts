@@ -53,6 +53,7 @@ export interface AcquireResult { links: AcquireLink[]; resources: Resource[]; ex
 
 export interface Identifier { scheme: string; value: string }
 export interface PackageSummary {
+  track?: "recreation" | null;
   id: string;
   path: string;
   title: string | null;
@@ -72,6 +73,7 @@ export interface Target extends Referenced {
   id: string;
   type: ResultType;
   description: string;
+  printed?: string | null;
   expected?: number | string | string[][] | null;
   comparator?: Comparator | null;
   decimals?: number | null;
@@ -162,14 +164,19 @@ export interface CompareRow {
   matched?: number | null;
   total?: number | null;
   note?: string | null;
+  precision?: "printed" | "explicit" | "inferred" | null;
+  quantum?: number | null;
+  refs: Ref[];
 }
 export interface CompareSettings { rounding: "reported" | number; threshold: number }
-export interface Comparison { settings: CompareSettings; summary: Record<string, number>; rows: CompareRow[]; output_errors: string[]; output_warnings: string[] }
+export interface ComparisonBasis { results_sha256: string; results_schema_sha256: string; created_at: string; policy: ComparePolicy }
+export type ComparePolicy = "reprocrowd-compare/3" | "reprocrowd-compare/2";
+export interface Comparison { policy: ComparePolicy | null; rounding_mode: "either_direction_at_ties" | "half_even_exact_binary" | null; basis?: ComparisonBasis | null; settings: CompareSettings; summary: Record<string, number>; rows: CompareRow[]; output_errors: string[]; output_warnings: string[] }
 
 export interface FileEntry { path: string; size: number; modified: number; resource: string | null; kind: string | null }
 export interface Issue { stage: string; resource?: string | null; message: string }
 export interface ValidationReport { valid: boolean; errors: Issue[]; warnings: Issue[] }
-export interface ReportResult { path: string; comparison: string; summary: Record<string, number>; reproduced: string }
+export interface ReportResult { matched: number; within: number; path: string; comparison: string; summary: Record<string, number>; reproduced: string }
 export interface ArchiveInfo { path: string; bytes: number; sha256: string; created_at: string; manifest_sha256: string; files: number }
 export interface CropOutcome { target: string; ok: boolean; path?: string | null; page?: number | null; method?: "published" | "crop" | "page" | null; note?: string | null; error?: string | null; code?: string | null }
 export interface FigureOriginal { target: string; path: string; method: "published" | "crop" | "page"; page?: number | null; source?: string | null }

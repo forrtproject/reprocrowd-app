@@ -68,14 +68,14 @@ export class CurationStep implements Step {
     const source = (text ? `<div class="source">“${esc(trunc(text, 240))}”</div>` : "") + (other ? `<div class="small muted">${other} reference${other > 1 ? "s" : ""} to another text</div>` : "");
     if (this.kind === "targets") {
       const t = v as Target;
-      const exp = t.type === "table" ? `<span class="muted">${(t.expected as string[][] | null)?.length ?? 0}×${(t.expected as string[][] | null)?.[0]?.length ?? 0} table</span>` : t.type === "figure" ? `<span class="muted">figure</span>` : `<input data-f="expected" value="${esc(t.expected ?? "")}" size="8" ${d} />`;
+      const exp = t.type === "table" ? `<span class="muted">${(t.expected as string[][] | null)?.length ?? 0}×${(t.expected as string[][] | null)?.[0]?.length ?? 0} table</span>` : t.type === "figure" ? `<span class="muted">figure</span>` : `<input data-f="expected" value="${esc(t.printed ?? t.expected ?? "")}" size="8" ${d} />`;
       const num = t.type === "number";
       return [
         `<select data-f="type" ${d}>${["number", "categorical", "table", "figure"].map((x) => `<option ${x === t.type ? "selected" : ""}>${x}</option>`).join("")}</select>`,
         `<textarea data-f="description" rows="2" ${d}>${esc(t.description)}</textarea>${source}`,
         exp,
         num ? `<select data-f="comparator" ${d}>${COMPARATORS.map((c) => `<option ${(t.comparator ?? "=") === c ? "selected" : ""}>${c}</option>`).join("")}</select>` : "",
-        num ? `<input data-f="decimals" value="${t.decimals ?? ""}" size="2" title="decimals as reported" ${d} />` : "",
+        num ? `<input data-f="decimals" value="${t.decimals ?? ""}" size="2" title="decimals as reported" ${d} ${t.printed ? "readonly" : ""} />` : "",
         num ? `<input data-f="unit" value="${esc(t.unit ?? "")}" size="4" ${d} />` : "",
         refs,
       ];
@@ -94,7 +94,7 @@ export class CurationStep implements Step {
   private parse(field: string, raw: string, v: Item): unknown {
     if (this.kind === "targets") {
       const t = v as Target;
-      if (field === "expected") return raw === "" ? null : t.type === "number" && !Number.isNaN(Number(raw)) ? Number(raw) : raw;
+      if (field === "expected") return raw === "" ? null : raw;
       if (field === "decimals") return raw === "" ? null : Math.max(0, parseInt(raw, 10) || 0);
       if (field === "comparator") return raw === "=" ? null : raw;
       if (field === "unit") return raw || null;
@@ -207,7 +207,7 @@ export class CurationStep implements Step {
         t.type === "table" ? `${(t.expected as string[][] | null)?.length ?? 0}×${(t.expected as string[][] | null)?.[0]?.length ?? 0} table`
         : t.type === "figure" ? "a figure"
         : t.expected === null || t.expected === undefined || t.expected === "" ? `<span class="warn-inline">no expected value</span>`
-        : `<b>${esc(t.comparator && t.comparator !== "=" ? `${t.comparator} ` : "")}${esc(t.expected)}</b>${t.unit ? ` ${esc(t.unit)}` : ""}${t.decimals !== null && t.decimals !== undefined ? ` <span class="muted">(${t.decimals} dp)</span>` : ""}`;
+        : `<b>${esc(t.comparator && t.comparator !== "=" ? `${t.comparator} ` : "")}${esc(t.printed ?? t.expected)}</b>${t.unit ? ` ${esc(t.unit)}` : ""}${t.decimals !== null && t.decimals !== undefined ? ` <span class="muted">(${t.decimals} dp)</span>` : ""}`;
       detail = `<div class="al-desc">${esc(t.description)}</div><div class="small">Expected ${exp}</div>`;
     } else {
       const a = v as Action;
@@ -399,7 +399,7 @@ export class CurationStep implements Step {
       ? `<div class="form-row"><label>Type <select name="type"><option>number</option><option>categorical</option><option>table</option><option>figure</option></select></label>
            <label>Expected <input name="expected" placeholder="as reported" /></label>
            <label>Comparator <select name="comparator">${COMPARATORS.map((c) => `<option>${c}</option>`).join("")}</select></label>
-           <label>Decimals <input name="decimals" size="3" /></label><label>Unit <input name="unit" size="6" /></label></div>
+           <span class="hint">Precision comes from the printed number, including trailing zeroes.</span><label>Unit <input name="unit" size="6" /></label></div>
          <label>Description <textarea name="description" rows="2" placeholder="self-contained: variable, model/test, subgroup" required></textarea></label>`
       : `<div class="form-row"><label>Kind <select name="kind"><option>analysis</option><option>transform</option></select></label>
            <label>Inputs <input name="inputs" list="rp-input-names" placeholder="input names, comma-separated" /></label>
@@ -429,9 +429,8 @@ export class CurationStep implements Step {
         Object.assign(body, {
           type,
           description: v("description"),
-          expected: type === "number" && v("expected") !== "" && !Number.isNaN(Number(v("expected"))) ? Number(v("expected")) : v("expected") || undefined,
+          expected: v("expected") || undefined,
           comparator: type === "number" && v("comparator") !== "=" ? v("comparator") : undefined,
-          decimals: v("decimals") === "" ? undefined : parseInt(v("decimals"), 10),
           unit: v("unit") || undefined,
         });
       } else Object.assign(body, { kind: v("kind"), summary: v("summary"), inputs: list(v("inputs")), depends_on: list(v("depends_on")), produces: list(v("produces")) });
