@@ -85,6 +85,6 @@ export function dataUrl(data: ArrayBuffer, type: string) {
 
 /** One pilot issue in a list: number, who opened it, how far it got. Shown in New from DOI and in step 8. */
 export function pilotLabel(p: PilotRecord) {
-  const state = p.runs ? `v${p.runs}${p.latest_date ? `, ${p.latest_date}` : ""}` : "no run copied yet";
+  const state = p.latest_version ? `v${p.latest_version}${p.latest_date ? `, ${p.latest_date}` : ""}` : "no run copied yet";
   return `#${p.number} by ${esc(p.author ?? "unknown")} (${esc(state)}${p.state === "closed" ? ", closed" : ""}${p.synthetic ? ", synthetic" : ""})`;
 }

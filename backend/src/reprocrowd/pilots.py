@@ -31,13 +31,13 @@ from __future__ import annotations
 
 import hashlib
 import json
-import re
 import secrets
 import shutil
 import tempfile
 import time
 from time import monotonic
 import zipfile
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -45,12 +45,12 @@ from typing import Any, Iterator
 
 import httpx
 
-from . import __version__, licensing
+from . import __version__, identifiers, licensing, pilot_copy
 from .config import settings
 from .database import Prepared
 from .errors import ApiError, conflict, invalid
 from .package import Package, sha256_file
-from .pilot_copy import DISCLAIMER, MAX_RUN, RUNS_END, RUNS_START, files_mark, issue_mark, refused_mark, release_mark, run_mark, summary_line
+from .pilot_copy import DISCLAIMER, MAX_RUN, doi_tag, doi_url, RUNS_END, RUNS_START, files_mark, issue_mark, refused_mark, release_mark, run_mark, summary_line
 from .report import ARCHIVE_DIR, archive_path
 from .schemas.common import now
 from .schemas.manifest import GithubPilot, PilotAsset
@@ -138,47 +138,62 @@ def check(token: str | None, repo: str | None = None) -> dict[str, Any]:
 
 FIND_CACHE_S = 60  # the public search API allows 10 requests a minute without a token
 _found: dict[tuple[str, str], tuple[float, list[dict[str, Any]]]] = {}
-_RID_RE = re.compile(r"<!-- reprocrowd-pilot:(repro-[0-9a-f]+) -->")
-_LATEST_RE = re.compile(r"### Latest run: v(\d+) \(([^)]*)\)\s*\n\s*\n(.+?)\. Policy")
+
+
+@contextmanager
+def _public_errors(path: str):
+    try:
+        yield
+    except httpx.HTTPError as e:
+        raise ApiError(502, "github_unreachable", f"could not reach GitHub ({path}): {e}")
+    except pilot_copy.GitHubError as e:
+        if e.status in (403, 429):
+            raise ApiError(429, "github_rate_limited", "GitHub's rate limit for requests without a login was reached; try again in a minute")
+        raise ApiError(502, "github_error", f"GitHub returned HTTP {e.status} for {path}")
+
+
+def _public(api: str) -> pilot_copy.Api:
+    """GitHub's REST API without a token, for public reads."""
+    return pilot_copy.Api(None, api, agent=f"ReproCrowd/{__version__}")
 
 
 def find(doi: str, repo: str | None = None) -> list[dict[str, Any]]:
-    """Pilot issues for the paper with this DOI in the pilots repository (public search, no token). An issue matches
-    when its title ends in ``(doi:<doi>)`` or, for a title shortened before that, its description names the paper's
-    DOI; either way it must carry a pilot's hidden marker. Other people's reproductions of the paper are listed too:
-    the DOI isn't a reproduction's identity."""
-    repo = repo or settings().github_pilots_repo
-    doi = doi.strip().lower().removeprefix("https://doi.org/").removeprefix("doi:")
-    if (hit := _found.get((repo, doi))) and monotonic() - hit[0] < FIND_CACHE_S:
+    """Pilot issues for the paper with this DOI in the pilots repository (public reads, no token). An issue is listed when
+    it names the paper (pilot_copy.names_paper) and carries a pilot's marker; its runs are read from the repository's
+    releases, as the Action reads them, so an edited issue description can't add or hide any. Other people's
+    reproductions of the paper are listed too: the DOI isn't a reproduction's identity."""
+    repo, doi = repo or settings().github_pilots_repo, identifiers.doi(doi)
+    t = monotonic()
+    if (hit := _found.get((repo, doi))) and t - hit[0] < FIND_CACHE_S:
         return hit[1]
     api = settings().github_api_url.rstrip("/")
-    headers = {"Accept": "application/vnd.github+json", "User-Agent": f"ReproCrowd/{__version__}"}
-    try:
-        r = httpx.get(f"{api}/search/issues", params={"q": f'repo:{repo} is:issue in:title,body "{doi}"', "per_page": 50,
-                                                      "sort": "created", "order": "desc"}, headers=headers, timeout=15)
-    except httpx.HTTPError as e:
-        raise ApiError(502, "github_unreachable", f"could not reach GitHub to search {repo}: {e}")
-    if r.status_code in (403, 429):
-        raise ApiError(429, "github_rate_limited", "GitHub's search rate limit was reached; try again in a minute")
+    q = {"q": f'repo:{repo} is:issue in:title,body "{doi}"', "sort": "created", "order": "desc", "per_page": 100}
+    with _public_errors("/search/issues"):  # one page of 100, the most GitHub gives: each further page costs one of the 10 searches a minute
+        r = _public(api).request("GET", "/search/issues", ok=(200, 422), params=q)
     if r.status_code == 422:  # the repository doesn't exist or isn't public: nothing to find there
         return []
-    if r.status_code != 200:
-        raise ApiError(502, "github_error", f"GitHub returned HTTP {r.status_code} for the search of {repo}")
-    body_doi = re.compile(re.escape(f"https://doi.org/{doi}") + r"(?=[\s)]|$)", re.I)
-    out = []
+    issues = []
     for i in r.json().get("items") or []:
         title, body = i.get("title") or "", i.get("body") or ""
-        rid = _RID_RE.search(body)
-        if "pull_request" in i or not rid or not (f"(doi:{doi})" in title.lower() or body_doi.search(body)):
-            continue
-        latest = _LATEST_RE.search(body)
+        rid = pilot_copy.ISSUE_RE.search(body)
+        if "pull_request" not in i and rid and pilot_copy.names_paper(title, body, doi):
+            issues.append((i, rid.group(1)))
+    releases = []
+    if issues:
+        with _public_errors(f"/repos/{repo}/releases"):
+            releases = list(_public(api).paged(f"/repos/{repo}/releases"))
+    out = []
+    for i, rid in issues:
+        runs = [r for r in pilot_copy.copied_runs(releases, rid) if r["issue"] == i["number"]]
         labels = {lb.get("name") for lb in i.get("labels") or []}
-        out.append({"number": i["number"], "title": title, "url": i["html_url"], "state": i.get("state"),
-                    "author": (i.get("user") or {}).get("login"), "created_at": i.get("created_at"), "reproduction_id": rid.group(1),
-                    "runs": int(latest.group(1)) if latest else 0, "latest_date": latest.group(2) if latest else None,
-                    "latest_summary": latest.group(3) if latest else None,
-                    "synthetic": "synthetic" in labels or title.startswith("[SYNTHETIC]")})
-    _found[(repo, doi)] = (monotonic(), out)
+        out.append({"number": i["number"], "title": i.get("title") or "", "url": i["html_url"], "state": i.get("state"),
+                    "author": (i.get("user") or {}).get("login"), "created_at": i.get("created_at"), "reproduction_id": rid,
+                    "runs": len(runs), "latest_version": runs[0]["version"] if runs else None,
+                    "latest_date": runs[0]["date"] if runs else None, "latest_summary": summary_line(runs[0]) if runs else None,
+                    "synthetic": "synthetic" in labels or (i.get("title") or "").startswith("[SYNTHETIC]")})
+    for k in [k for k, (at, _) in _found.items() if t - at >= FIND_CACHE_S]:
+        del _found[k]
+    _found[(repo, doi)] = (t, out)
     return out
 
 
@@ -362,7 +377,7 @@ def _clip(body: str) -> str:
 
 
 def _issue_title(plan: Plan) -> str:
-    title = f"Pilot reproduction: {plan.p.work['title']} (doi:{plan.p.doi})"
+    title = f"Pilot reproduction: {plan.p.work['title']} {doi_tag(plan.p.doi)}"
     return ("[SYNTHETIC] " if plan.synthetic else "") + title[:240]
 
 
@@ -371,7 +386,7 @@ def _banner(plan: Plan) -> str:
 
 
 def _release_body(plan: Plan, assets: list[Asset]) -> str:
-    return _clip(f"{_banner(plan)}\nRun `{plan.run_key}` of reproduction `{plan.reproduction_id}` of https://doi.org/{plan.p.doi}, "
+    return _clip(f"{_banner(plan)}\nRun `{plan.run_key}` of reproduction `{plan.reproduction_id}` of {doi_url(plan.p.doi)}, "
                  f"submitted as a pilot to {plan.repo}; the copy there is the record.\n\n{summary_line(_summary(plan))}.\n\n"
                  f"{_evidence_line(plan)}\n{_assets_table(assets)}\n\n{_licence_lines(plan)}\n\n{release_mark(plan.tag)}\n")
 
@@ -390,7 +405,7 @@ def _comment_body(plan: Plan, rec: GithubPilot) -> str:
 
 def _issue_body(plan: Plan) -> str:
     lines = [issue_mark(plan.reproduction_id), _banner(plan), f"## Reproduction of: {plan.p.work['title']}", "",
-             f"Paper: https://doi.org/{plan.p.doi} · Reproduction ID: `{plan.reproduction_id}` · Track: "
+             f"Paper: {doi_url(plan.p.doi)} · Reproduction ID: `{plan.reproduction_id}` · Track: "
              f"{plan.p.m.reprocrowd.track or 'unspecified (older package)'} · Status: **pilot, unreviewed**", "",
              RUNS_START, "_No run has been copied into this repository yet._", RUNS_END, "",
              "Each run is a comment below and an immutable pre-release in this repository; earlier runs are never changed.", "",

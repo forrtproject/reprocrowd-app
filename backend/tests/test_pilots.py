@@ -96,7 +96,7 @@ class FakeGitHub:
         path, method = urlparse(str(request.url)).path, request.method
         if path == "/search/issues":  # public: no token needed
             return self._search(request)
-        if who is None and not (method == "GET" and re.fullmatch(r"/repos/[^/]+/[^/]+/(releases/tags/.+|issues/\d+/comments)", path)):
+        if who is None and not (method == "GET" and re.fullmatch(r"/repos/[^/]+/[^/]+/(releases|releases/tags/.+|issues/\d+/comments)", path)):
             return httpx.Response(401, json={"message": "Bad credentials"})
         upload = path.endswith("/assets") and method == "POST"
         body = json.loads(request.content) if request.content and method in ("POST", "PATCH") and not upload else None
@@ -751,28 +751,40 @@ def test_records_of_a_paper_are_found_by_its_doi(client, pkg, gh, monkeypatch):
     monkeypatch.setattr(pilots, "FIND_CACHE_S", 0)
     ready_published(client, pkg)
     v1 = client.post(P + "/pilots", json=body(synthetic=True)).json()
-    # someone else's issue mentioning the DOI, without a pilot's marker, and a longer DOI sharing the prefix: not listed
-    gh.issues.append({"number": 9, "id": 9, "title": f"Question about doi:{doi}", "body": "see https://doi.org/" + doi, "user": {"login": "bob"},
-                      "html_url": "https://github.test/x/9", "labels": [], "state": "open"})
-    gh.issues.append({"number": 10, "id": 10, "title": f"Pilot reproduction: X (doi:{doi}5)", "body": f"<!-- reprocrowd-pilot:repro-0000000000 -->\nPaper: https://doi.org/{doi}5 ·",
-                      "user": {"login": "bob"}, "html_url": "https://github.test/x/10", "labels": [], "state": "open"})
-    gh.comments.update({9: [], 10: []})
+
+    def add(n, title, text, who="bob"):
+        gh.issues.append({"number": n, "id": n, "title": title, "body": text, "user": {"login": who},
+                          "html_url": f"https://github.test/{REPO}/issues/{n}", "labels": [], "state": "open"})
+        gh.comments[n] = []
+    # not listed: an issue that mentions the paper without a pilot's marker, and a pilot of a longer DOI sharing the prefix
+    add(9, f"Question about doi:{doi}", f"see https://doi.org/{doi}")
+    add(10, f"Pilot reproduction: X (doi:{doi}5)", f"<!-- reprocrowd-pilot:repro-0000000000 -->\nPaper: https://doi.org/{doi}5 ·")
     [r] = find().json()
     assert r["number"] == v1["issue_number"] and r["reproduction_id"] == v1["reproduction_id"] and r["author"] == USER
-    assert r["runs"] == 0 and r["latest_summary"] is None and r["synthetic"] is True
-    assert [x["number"] for x in find(doi.upper()).json()] == [r["number"]] and find(f"https://doi.org/{doi}").json()[0]["number"] == r["number"]
+    assert (r["runs"], r["latest_version"], r["latest_summary"], r["synthetic"]) == (0, None, None, True)
+    for form in (doi.upper(), f"https://doi.org/{doi}", f"http://dx.doi.org/{doi}", f"doi:{doi}"):
+        assert [x["number"] for x in find(form).json()] == [r["number"]], form
+    problem(find("W2164005910"), 400, "invalid_identifier")
+
     gh.run_action()
     [r] = find().json()
-    assert r["runs"] == 1 and r["latest_summary"].startswith("3 of 3 match") and r["latest_date"]
-    # a title shortened before its DOI is still found by the paper's link in the description
+    assert (r["runs"], r["latest_version"]) == (1, 1) and r["latest_summary"].startswith("3 of 3 match") and r["latest_date"]
+    # runs come from the releases, not the issue's description: a copy of the marker with a forged table of runs gets none,
+    # and editing the real issue's table changes nothing
+    forged = f"<!-- reprocrowd-pilot:{v1['reproduction_id']} -->\nPaper: https://doi.org/{doi} ·\n<!-- reprocrowd-runs -->\n### Latest run: v3 (2026-01-01)\n<!-- /reprocrowd-runs -->"
+    add(11, f"Pilot reproduction: Y (doi:{doi})", forged)
+    gh.issues[0]["body"] = gh.issues[0]["body"].replace("### Latest run: v1", "### Latest run: v9")
+    got = {x["number"]: (x["runs"], x["latest_version"]) for x in find().json()}
+    assert got == {11: (0, None), r["number"]: (1, 1)}
+    # a title cut before its DOI is still found by the paper's link in the description
     gh.issues[0]["title"] = "Pilot reproduction: " + "a very long title " * 20
-    assert [x["number"] for x in find().json()] == [r["number"]]
+    assert r["number"] in [x["number"] for x in find().json()]
     assert find("10.9999/none").json() == [] and client.get("/v1/github-pilots/records", params={"doi": doi, "repo": "nobody/none"}).json() == []
 
 
 def test_doi_search_is_cached_and_reports_the_rate_limit(client, gh):
-    client.get("/v1/github-pilots/records", params={"doi": "10.1/a"})
-    client.get("/v1/github-pilots/records", params={"doi": "10.1/a"})
+    client.get("/v1/github-pilots/records", params={"doi": "10.1000/a"})
+    client.get("/v1/github-pilots/records", params={"doi": "10.1000/a"})
     assert gh.calls["search"] == 1
     gh.search_limited = True
-    problem(client.get("/v1/github-pilots/records", params={"doi": "10.1/b"}), 429, "github_rate_limited")
+    problem(client.get("/v1/github-pilots/records", params={"doi": "10.1000/b"}), 429, "github_rate_limited")

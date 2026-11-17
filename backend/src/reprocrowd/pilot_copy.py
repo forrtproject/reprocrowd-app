@@ -27,7 +27,7 @@ import json
 import os
 import re
 import zipfile
-from typing import Any, Iterator
+from typing import Any, Iterable, Iterator
 
 import httpx
 
@@ -39,7 +39,8 @@ FILES_RE = re.compile(r"<!-- reprocrowd-pilot-files:([A-Za-z0-9-]+/[A-Za-z0-9_.-
 SUMMARY_RE = re.compile(r"<!-- reprocrowd-summary: (\{.*?\}) -->")
 ISSUE_OF_RE = re.compile(r"<!-- reprocrowd-pilot-issue:(\d+) -->")  # in each copied release: the issue that owns the reproduction
 RUNS_START, RUNS_END = "<!-- reprocrowd-runs -->", "<!-- /reprocrowd-runs -->"
-DOI_RE = re.compile(r"^10\.\d{4,9}/[^\s<>\[\]()`|]+$")
+DOI_CHAR = r"[^\s<>\[\]()`|]"  # what pilot.json and the links accept in a DOI
+DOI_RE = re.compile(rf"^10\.\d{{4,9}}/{DOI_CHAR}+$")
 POLICY_RE = re.compile(r"^reprocrowd-compare/\d+$")
 CODE_LICENCES = {"MIT", "CC-BY-4.0"}
 MAX_JSON = 20 * 1024**2  # comparison.json and licenses.json are read from the ZIP only up to this size
@@ -51,6 +52,22 @@ MAINTAINERS = ("OWNER", "MEMBER", "COLLABORATOR")
 LABELS = {"reprocrowd-pilot": ("1d76db", "A ReproCrowd pilot record (one issue per reproduction)"),
           "unreviewed": ("fbca04", "Not reviewed: a numeric match is not a scientific certificate"),
           "synthetic": ("cccccc", "Synthetic test fixture of the publication workflow, not research")}
+
+
+def doi_tag(doi: str) -> str:
+    """How a pilot issue's title names its paper."""
+    return f"(doi:{doi})"
+
+
+def doi_url(doi: str) -> str:
+    """How pilot issues and releases link their paper."""
+    return f"https://doi.org/{doi}"
+
+
+def names_paper(title: str, body: str, doi: str) -> bool:
+    """Whether a pilot issue is about the paper with this (lower-case) DOI: its title carries doi_tag, or, as titles are
+    cut at 240 characters, its description links doi_url (not followed by more DOI characters)."""
+    return doi_tag(doi) in title.lower() or re.search(re.escape(doi_url(doi)) + rf"(?!{DOI_CHAR})", body, re.I) is not None
 
 
 def issue_mark(rid: str) -> str:
@@ -90,18 +107,26 @@ class Refused(Exception):
     """The run is not copied; the message is the reply."""
 
 
+class GitHubError(RuntimeError):
+    def __init__(self, status: int, message: str):
+        super().__init__(message)
+        self.status = status
+
+
 class Api:
-    def __init__(self, token: str, api: str = "https://api.github.com"):
+    def __init__(self, token: str | None, api: str = "https://api.github.com", agent: str = "reprocrowd-pilot-copy"):
+        """Without a token, for public reads only."""
         self.api = api.rstrip("/")
-        self.headers = {"Authorization": f"Bearer {token}", "Accept": "application/vnd.github+json",
-                        "X-GitHub-Api-Version": "2022-11-28", "User-Agent": "reprocrowd-pilot-copy"}
+        self.headers = {"Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28", "User-Agent": agent}
+        if token:
+            self.headers["Authorization"] = f"Bearer {token}"
 
     def request(self, method: str, url: str, ok: tuple[int, ...] = (200, 201, 204), **kw) -> httpx.Response:
         url = url if url.startswith("http") else self.api + url
         r = httpx.request(method, url, headers={**self.headers, **kw.pop("headers", {})}, timeout=kw.pop("timeout", 120),
                           follow_redirects=True, **kw)
         if r.status_code not in ok:
-            raise RuntimeError(f"GitHub returned HTTP {r.status_code} for {method} {url.split('?')[0]}: {r.text[:300]}")
+            raise GitHubError(r.status_code, f"GitHub returned HTTP {r.status_code} for {method} {url.split('?')[0]}: {r.text[:300]}")
         return r
 
     def json(self, method: str, url: str, **kw) -> Any:
@@ -147,8 +172,8 @@ def _copy(api: Api, repo: str, issue: dict[str, Any], comment: dict[str, Any], r
     if author.lower() != issue["user"]["login"].lower() and not maintainer:
         raise Refused(f"only the issue's author or a maintainer can add runs to it; submit your own reproduction as a new issue")
     ours = [r for r in api.paged(f"/repos/{repo}/releases") if (r.get("tag_name") or "").startswith(rid + "-")]
-    # the issue of the reproduction's first copied run owns it (issue bodies can be edited by their authors; releases can't)
-    owner = next((int(m.group(1)) for r in ours if not r.get("draft") and (m := ISSUE_OF_RE.search(r.get("body") or ""))), None)
+    # issue bodies can be edited by their authors; releases can't
+    owner = owner_issue(ours, rid)
     if owner is not None and owner != issue["number"]:
         raise Refused(f"reproduction `{rid}` belongs to #{owner}")
     fm = FILES_RE.search(comment["body"])
@@ -303,7 +328,7 @@ def _release_body(pilot: dict[str, Any], s: dict[str, Any], code: str, author: s
     rows = "\n".join(f"| `{n}` | {size} | `{sha}` |" for n, size, sha in files)
     return (f"{synthetic}> [!WARNING]\n> {DISCLAIMER}\n\n"
             f"**Run v{s['version']}** of reproduction `{pilot['reproduction_id']}` (run key `{pilot['run_key']}`) of "
-            f"https://doi.org/{pilot['paper']['doi']}, submitted by [{author}](https://github.com/{author}) in #{issue}.\n\n"
+            f"{doi_url(pilot['paper']['doi'])}, submitted by [{author}](https://github.com/{author}) in #{issue}.\n\n"
             f"{summary_line(s)}. Policy `{s['policy']}`.\n\n| File | Bytes | SHA-256 |\n|---|---:|---|\n{rows}\n\n"
             f"Licences (policy `reprocrowd-licensing/1`, each file listed in `licenses.json`): metadata and `pilot.json` CC0-1.0; "
             f"report, comparison, evidence and outputs CC-BY-4.0; new analysis code {code}. The article's material and the input "
@@ -320,15 +345,35 @@ def _label(api: Api, repo: str, number: int, pilot: dict[str, Any]) -> None:
     api.request("POST", f"/repos/{repo}/issues/{number}/labels", json={"labels": names})
 
 
-def _update_runs(api: Api, repo: str, number: int, rid: str) -> None:
+def copied_runs(releases: Iterable[dict[str, Any]], rid: str) -> list[dict[str, Any]]:
+    """A reproduction's runs copied into the pilots repository, newest first, read from its releases: issue bodies can be
+    edited by their authors, releases can't. Each run: its summary, version, tag, url, date and the issue it was copied
+    for (release_issue)."""
     runs = []
-    for r in api.paged(f"/repos/{repo}/releases"):
-        m = SUMMARY_RE.search(r.get("body") or "")
+    for r in releases:
+        body = r.get("body") or ""
+        m = SUMMARY_RE.search(body)
         if r.get("draft") or not (r.get("tag_name") or "").startswith(rid + "-") or not m or _version(r) is None:
             continue
         runs.append({**json.loads(m.group(1)), "version": _version(r), "tag": r["tag_name"], "url": r["html_url"],
-                     "date": (r.get("published_at") or "")[:10]})
-    runs.sort(key=lambda r: -r["version"])
+                     "date": (r.get("published_at") or "")[:10], "issue": release_issue(r)})
+    return sorted(runs, key=lambda r: -r["version"])
+
+
+def release_issue(release: dict[str, Any]) -> int | None:
+    """The issue a copied (published) release of the pilots repository was made for."""
+    m = ISSUE_OF_RE.search(release.get("body") or "")
+    return int(m.group(1)) if m and not release.get("draft") else None
+
+
+def owner_issue(releases: Iterable[dict[str, Any]], rid: str) -> int | None:
+    """The issue that owns a reproduction: the one its copied releases name. Any published release of the reproduction
+    that names an issue counts, with or without a summary (the Action refuses runs for any other issue)."""
+    return next((n for r in releases if (r.get("tag_name") or "").startswith(rid + "-") and (n := release_issue(r)) is not None), None)
+
+
+def _update_runs(api: Api, repo: str, number: int, rid: str) -> None:
+    runs = copied_runs(api.paged(f"/repos/{repo}/releases"), rid)
     lines = [RUNS_START]
     if runs:
         latest = runs[0]

@@ -506,7 +506,8 @@ class PilotRecord(BaseModel):
     author: str | None = Field(description="the GitHub login that opened the issue")
     created_at: str | None
     reproduction_id: str
-    runs: int = Field(description="runs copied into the pilots repository so far (the latest version); 0 while none has been")
+    runs: int = Field(description="runs copied into the pilots repository for this issue, read from its releases; 0 while none has been")
+    latest_version: int | None = Field(description="the latest copied run's version (v1, v2, …)")
     latest_date: str | None
     latest_summary: str | None = Field(description="the comparison summary of the latest copied run")
     synthetic: bool

@@ -34,7 +34,7 @@ from typing import Any, Iterable, Literal
 
 import httpx
 
-from . import __version__
+from . import __version__, identifiers
 from .config import settings
 from .database import Prepared
 from .errors import ApiError, conflict, invalid, not_found
@@ -120,7 +120,7 @@ def verify_token(token: str | None, sandbox: bool | None = None) -> dict[str, An
 def find(doi: str, sandbox: bool | None = None) -> list[dict[str, Any]]:
     """Published ReproCrowd records that relate to the paper with this DOI (public search, no token)."""
     url, _ = server(sandbox)
-    doi = doi.lower().removeprefix("https://doi.org/")
+    doi = identifiers.doi(doi)
     q = f'metadata.related_identifiers.identifier:"{doi}" AND keywords:"ReproCrowd"'
     r = _request("GET", f"{url}/api/records", params={"q": q, "size": 50, "sort": "mostrecent"}, timeout=15)
     out = []

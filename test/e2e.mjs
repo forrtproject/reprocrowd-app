@@ -40,9 +40,16 @@ const fake = http.createServer(async (req, res) => {
     const items = doi === DOI.toLowerCase() ? [{
       number: 7, title: `Pilot reproduction: The Extent and Consequences of P-Hacking in Science (doi:${DOI})`, html_url: `${base}/issues/7`,
       state: "open", user: { login: "someone-else" }, created_at: "2026-11-01T10:00:00Z", labels: [{ name: "reprocrowd-pilot" }],
-      body: `<!-- reprocrowd-pilot:repro-0123456789 -->\nPaper: https://doi.org/${DOI} · Status: **pilot, unreviewed**\n\n<!-- reprocrowd-runs -->\n### Latest run: v2 (2026-11-03)\n\n3 of 3 match (numbers at printed precision). Policy \`reprocrowd-compare/3\`.\n<!-- /reprocrowd-runs -->`,
+      body: `<!-- reprocrowd-pilot:repro-0123456789 -->\nPaper: https://doi.org/${DOI} · Status: **pilot, unreviewed**`,
     }] : [];
     return send(200, { total_count: items.length, items });
+  }
+  // the pilots repository's copied releases, which the runs are read from
+  if (req.method === "GET" && url.pathname === "/repos/forrtproject/reprocrowd-pilots/releases") {
+    const summary = { match: 3, within: 0, numeric: 3, threshold: 5, rounding: "reported", policy: "reprocrowd-compare/3", version: 2, run_key: "0123456789ab" };
+    return send(200, [{ tag_name: "repro-0123456789-0123456789ab", name: "repro-0123456789 v2 (pilot, unreviewed)", draft: false,
+      html_url: `${base}/releases/v2`, published_at: "2026-11-03T12:00:00Z",
+      body: `<!-- reprocrowd-pilot-issue:7 -->\n<!-- reprocrowd-summary: ${JSON.stringify(summary)} -->` }]);
   }
   // ---------- and a fake GitHub release, for the update check (REPROCROWD_UPDATE_SERVER) ----------
   if (req.method === "GET" && url.pathname === "/releases/latest") return send(200, { tag_name: "v99.0.0", html_url: `${base}/releases/tag/v99.0.0` });
@@ -376,7 +383,9 @@ json.dump({"results": [{"id": "T001", "value": 2.3149}, {"id": "T002", "value": 
   await win.locator("#route button").nth(6).click();
   await win.waitForSelector("#rp-report");
   // both the Zenodo and the GitHub pilot card refuse a paper from a local file
-  for (const t of await win.locator(".checklist").allInnerTexts()) assert.match(t, /comes from a file on your computer/);
+  const checklists = await win.locator(".checklist").allInnerTexts();
+  assert.equal(checklists.length, 2, "the Zenodo and the GitHub pilot checklists");
+  for (const t of checklists) assert.match(t, /comes from a file on your computer/);
   assert.equal(await win.locator("#rp-deposit:not([disabled]), #rp-pilot:not([disabled])").count(), 0);
   await assert.rejects(call("depositPreview", { note: "" }), /local_paper_text/);
   await shot("09-local-file-not-deposited");

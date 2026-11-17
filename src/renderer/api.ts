@@ -97,7 +97,7 @@ export interface DepositPreview {
 /** A pilot issue for a paper in the pilots repository (anyone's reproduction of it). */
 export interface PilotRecord {
   number: number; title: string; url: string; state: string | null; author: string | null; created_at: string | null;
-  reproduction_id: string; runs: number; latest_date: string | null; latest_summary: string | null; synthetic: boolean;
+  reproduction_id: string; runs: number; latest_version: number | null; latest_date: string | null; latest_summary: string | null; synthetic: boolean;
 }
 export interface PilotAccount { repo: string; hasToken: boolean }
 export interface GithubCheck { repo: string; url: string | null; login: string; private: boolean | null; can_submit: boolean; files_in: string }

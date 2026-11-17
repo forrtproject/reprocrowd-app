@@ -7756,6 +7756,17 @@
             },
             "description": "`request_invalid`: The request body or parameters don't match the API schema"
           },
+          "400": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "`invalid_identifier`: Unrecognized work identifier"
+          },
           "502": {
             "content": {
               "application/problem+json": {},
@@ -8591,7 +8602,7 @@
           "pilots"
         ],
         "summary": "Pilot issues for a paper",
-        "description": "Issues in the pilots repository (default: [github] pilots_repo) whose title ends in `(doi:<doi>)`, or whose description names the paper's DOI when the title was shortened. Independent reproductions of the paper each have their own issue. A public search without a token; results are kept for a minute.",
+        "description": "Issues in the pilots repository (default: [github] pilots_repo) with a pilot's marker whose title contains `(doi:<doi>)` or whose description links `https://doi.org/<doi>` (titles are cut at 240 characters). Their runs come from the repository's releases, which only its Action writes. Independent reproductions of the paper each have their own issue. Public reads without a token; results are kept for a minute.",
         "operationId": "github_pilot_records_v1_github_pilots_records_get",
         "security": [
           {
@@ -8663,6 +8674,17 @@
               }
             },
             "description": "`request_invalid`: The request body or parameters don't match the API schema"
+          },
+          "400": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "`invalid_identifier`: Unrecognized work identifier"
           },
           "429": {
             "content": {
@@ -13738,7 +13760,19 @@
           "runs": {
             "type": "integer",
             "title": "Runs",
-            "description": "runs copied into the pilots repository so far (the latest version); 0 while none has been"
+            "description": "runs copied into the pilots repository for this issue, read from its releases; 0 while none has been"
+          },
+          "latest_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Version",
+            "description": "the latest copied run's version (v1, v2, …)"
           },
           "latest_date": {
             "anyOf": [
@@ -13778,6 +13812,7 @@
           "created_at",
           "reproduction_id",
           "runs",
+          "latest_version",
           "latest_date",
           "latest_summary",
           "synthetic"

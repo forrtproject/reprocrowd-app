@@ -970,7 +970,7 @@ def zenodo_verify(body: M.ZenodoTokenCheck = Body(default_factory=M.ZenodoTokenC
 
 
 @api.get("/zenodo/records", tags=["zenodo"], response_model=list[M.ZenodoRecord], summary="Published ReproCrowd records for a paper",
-         description="Public records on Zenodo with the keyword ReproCrowd that relate to the DOI.", responses=errors("zenodo_unreachable", "zenodo_error"))
+         description="Public records on Zenodo with the keyword ReproCrowd that relate to the DOI.", responses=errors("invalid_identifier", "zenodo_unreachable", "zenodo_error"))
 def zenodo_records(doi: Annotated[str, Query(min_length=3)], sandbox: bool | None = None):
     return zenodo.find(doi, sandbox)
 
@@ -1044,10 +1044,11 @@ def github_pilot_status():
 
 
 @api.get("/github-pilots/records", tags=["pilots"], response_model=list[M.PilotRecord], summary="Pilot issues for a paper",
-         description="Issues in the pilots repository (default: [github] pilots_repo) whose title ends in `(doi:<doi>)`, or whose "
-                     "description names the paper's DOI when the title was shortened. Independent reproductions of the paper each have "
-                     "their own issue. A public search without a token; results are kept for a minute.",
-         responses=errors("github_rate_limited", "github_unreachable", "github_error"))
+         description="Issues in the pilots repository (default: [github] pilots_repo) with a pilot's marker whose title contains "
+                     "`(doi:<doi>)` or whose description links `https://doi.org/<doi>` (titles are cut at 240 characters). Their runs "
+                     "come from the repository's releases, which only its Action writes. Independent reproductions of the paper each "
+                     "have their own issue. Public reads without a token; results are kept for a minute.",
+         responses=errors("invalid_identifier", "github_rate_limited", "github_unreachable", "github_error"))
 def github_pilot_records(doi: Annotated[str, Query(min_length=3)],
                          repo: Annotated[str | None, Query(pattern=r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")] = None):
     return pilots.find(doi, repo)
