@@ -466,7 +466,7 @@ def _tamper(gh, tag, name, data):
 
 
 @pytest.mark.parametrize("case", ["other_commenter", "files_of_another_account", "changed_file", "too_large", "claimed_by_earlier_issue",
-                                  "unexpected_pilot_json"])
+                                  "unexpected_pilot_json", "malformed_pilot_json", "pilot_json_not_an_object"])
 def test_the_action_refuses_and_copies_nothing(client, pkg, gh, monkeypatch, case):
     from reprocrowd import pilot_copy
     P = f"/v1/packages/{pkg}"
@@ -489,6 +489,10 @@ def test_the_action_refuses_and_copies_nothing(client, pkg, gh, monkeypatch, cas
         pilot = json.loads(gh.blob(FORK, rec["tag"], "pilot.json"))
         pilot["paper"]["doi"] = "10.1/x <a href=https://evil.example>"
         _tamper(gh, rec["tag"], "pilot.json", json.dumps(pilot).encode())
+    elif case == "malformed_pilot_json":  # refused with a reply, not a failed workflow
+        _tamper(gh, rec["tag"], "pilot.json", b"{not json")
+    elif case == "pilot_json_not_an_object":
+        _tamper(gh, rec["tag"], "pilot.json", b"[]")
     replies = gh.run_action()
     assert len(replies) == 1 and "was **not copied**" in replies[0], replies
     assert not [r for r in gh.releases[REPO] if r["tag_name"] == rec["tag"]] and gh.issues[-1]["labels"] == []
@@ -510,6 +514,44 @@ def test_a_forged_refusal_is_ignored(client, pkg, gh):
     assert client.get(P + "/pilots").json()[0]["error"] is None
 
 
+def test_a_forged_copy_reply_doesn_t_stop_the_copy(client, pkg, gh):
+    """Anyone can paste the Action's reply marker into a comment; only the Action's own replies count."""
+    P = f"/v1/packages/{pkg}"
+    ready_published(client, pkg)
+    rec = client.post(P + "/pilots", json=body()).json()
+    gh.comments[1].append({"id": 5, "body": f"<!-- reprocrowd-pilot-copied:{rec['tag']} -->\nRun **v1** is copied", "user": {"login": "mallory"},
+                           "author_association": "NONE", "html_url": "x"})
+    assert "Run **v1** is copied" in gh.run_action()[0]
+    assert client.get(P + "/pilots").json()[0]["status"] == "published"
+    assert gh.run_action() == []  # the Action's own reply does count
+
+
+def test_resuming_from_another_github_account_is_refused_before_writing(client, pkg, gh):
+    """The run's comment names the first account's fork and is never rewritten, so another login can't resume it."""
+    P = f"/v1/packages/{pkg}"
+    ready_published(client, pkg)
+    assert client.post(P + "/pilots", json=body()).json()["files_repo"] == FORK
+    gh.tokens[TOKEN] = "bob"
+    writes = list(gh.writes)
+    err = problem(client.post(P + "/pilots", json=body()), 409, "pilot_other_login")
+    assert err["files_repo"] == FORK and gh.writes == writes and "bob/reprocrowd-pilots" not in gh.repos
+    gh.tokens[TOKEN] = USER
+    assert client.post(P + "/pilots", json=body()).status_code == 200
+
+
+def test_the_size_limit_counts_pilot_json(client, pkg, gh, monkeypatch):
+    from reprocrowd import pilots
+    P = f"/v1/packages/{pkg}"
+    ready_published(client, pkg)
+    rec = client.post(P + "/pilots", json=body()).json()
+    files = sum(a["bytes"] or 0 for a in client.post(P + "/pilots:preview", json={}).json()["assets"])
+    total = files + len(gh.blob(FORK, rec["tag"], "pilot.json"))  # the Action's limit counts every asset
+    monkeypatch.setattr(pilots, "MAX_RUN", total)  # exactly at the limit: accepted (no fixed reserve)
+    assert client.post(P + "/pilots:preview", json={}).status_code == 200
+    monkeypatch.setattr(pilots, "MAX_RUN", total - 1)
+    problem(client.post(P + "/pilots:preview", json={}), 422, "pilot_asset_too_large")
+
+
 def _zip(**members):
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w") as z:
@@ -521,15 +563,21 @@ def _zip(**members):
 def test_the_action_checks_the_archived_comparison_and_licences():
     from reprocrowd.pilot_copy import MAX_JSON, Refused, _from_zip
     cmp = {"policy": "reprocrowd-compare/3", "settings": {"threshold": 5, "rounding": "reported"}, "summary": {"match": 1}, "rows": [{"type": "number"}]}
-    files = [{"path": "comparison.json", "kind": "output", "rights": "ours", "license": "CC-BY-4.0"},
+    files = [{"path": "comparison.json", "kind": "report", "rights": "ours", "license": "CC-BY-4.0"},
              {"path": "licenses.json", "kind": "export", "rights": "ours", "license": "CC0-1.0"},
              {"path": "analysis.py", "kind": "script", "rights": "ours", "license": "MIT"}]
     lic = {"policy": "reprocrowd-licensing/1", "files": files}
     good = {"comparison__json": cmp, "licenses__json": lic, "analysis__py": "print(1)", "excluded-files__json": []}
     assert _from_zip(_zip(**good)) == ({"match": 1, "within": 0, "numeric": 1, "threshold": 5, "rounding": "reported", "policy": "reprocrowd-compare/3"}, "MIT")
     output_cc0 = {**lic, "files": [{**files[0], "license": "CC0-1.0"}, *files[1:]]}
+    ours_as_third_party = {**lic, "files": [{**files[0], "rights": "third-party", "license": None}, *files[1:]]}
+    relabelled = {**lic, "files": [{**files[0], "kind": "figure", "rights": "third-party", "license": None}, *files[1:]]}
+    odd_kind = {**lic, "files": [*files, {"path": "x.txt", "kind": ["figure"], "rights": "ours", "license": "CC0-1.0"}]}
     for bad in ({"comparison__json": [], "licenses__json": lic},  # not an object
                 {**good, "licenses__json": output_cc0},  # contradicts the policy
+                {**good, "licenses__json": ours_as_third_party},  # our output claimed as third-party
+                {**good, "licenses__json": relabelled},  # a file the app writes, given another kind
+                {**good, "licenses__json": odd_kind, "x__txt": "x"},  # a kind that isn't a string
                 {**good, "notes__txt": "unlisted"},  # a file licenses.json doesn't list
                 {**good, "comparison__json": " " * (MAX_JSON + 1)}):  # too large to read
         with pytest.raises(Refused):

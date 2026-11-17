@@ -39,8 +39,8 @@ community = ""             # e.g. "reprocrowd": deposits are submitted to this c
 license = "cc-by-4.0"
 creators = []              # used when a request names none, e.g. [{name = "Doe, Jane", orcid = "0000-0002-1825-0097"}]
 
-# Licence of newly authored analysis code in archives (licenses.json). Metadata is always CC0-1.0; reports,
-# figures and outputs CC-BY-4.0; third-party articles, data and code keep their own licences.
+# Licence of newly authored analysis code in archives (licenses.json). Metadata is always CC0-1.0; reports, reproduced
+# figures and outputs CC-BY-4.0; the article's material (full texts, original figures), input data and code keep their own licences.
 [licensing]
 code = "MIT"               # or "CC-BY-4.0"
 

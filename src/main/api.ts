@@ -425,10 +425,12 @@ export function makeApi(wc: WebContents) {
       if (!t) throw new ServiceError("No token stored for this server.", { status: 400, code: "zenodo_token_missing" });
       return post("/v1/zenodo:verify-token", { zenodo_token: t, sandbox }, 20_000);
     },
+    /** `repo` as typed in Settings ("" = the default pilots repository, as Save would store it); omitted = the saved one. */
     checkGithubToken: async (repo?: string) => {
       const t = (await ghToken()).token;
       if (!t) throw new ServiceError(NO_GITHUB_TOKEN, { status: 400, code: "github_token_missing" });
-      return post("/v1/github-pilots:check", { github_token: t, repo: repo?.trim() || loadSettings().github.repo }, 20_000);
+      const r = ((repo === undefined ? loadSettings().github.repo : repo) ?? "").trim();
+      return post("/v1/github-pilots:check", { github_token: t, repo: r || null }, 20_000);
     },
     githubLogin: async () => {
       const gh = which("gh");

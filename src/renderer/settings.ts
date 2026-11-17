@@ -279,10 +279,11 @@ export async function settingsDialog(onSaved: (changed: boolean) => void, focus?
       return;
     }
     try {
-      const token = q<HTMLInputElement>("[name=ztoken]").value.trim();
-      if (token) await host.setZenodoToken(server(), token);
+      // Every check before the first write, so a refused Save changes nothing.
       const repo = q<HTMLInputElement>("[name=ghrepo]").value.trim();
       if (repo && !/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repo)) throw new Error(`“${repo}” isn't a GitHub repository (owner/name).`);
+      const token = q<HTMLInputElement>("[name=ztoken]").value.trim();
+      if (token) await host.setZenodoToken(server(), token);
       if (q<HTMLTextAreaElement>("[name=becfg]").value !== cfg.backendConfig) await host.saveBackendConfig(q<HTMLTextAreaElement>("[name=becfg]").value);
       await host.setConfig({
         packagesRoot: q<HTMLInputElement>("[name=root]").value.trim(),

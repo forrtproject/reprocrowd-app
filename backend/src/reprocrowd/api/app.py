@@ -1081,7 +1081,7 @@ def preview_pilot(pkg: Pkg, body: M.PilotOptions = Body(default_factory=M.PilotO
                       "and left-out groups): a retry resumes a `partial` record and creates nothing twice, so it always answers 200 with "
                       "the run's record. Same preconditions as a "
                       "Zenodo deposit; a stale report is refused (`report_stale`). A pilot is unreviewed, not a certificate.",
-          responses=errors(*PILOT_PRECONDITIONS, *GITHUB_ERRORS, "pilot_release_mismatch"))
+          responses=errors(*PILOT_PRECONDITIONS, *GITHUB_ERRORS, "pilot_release_mismatch", "pilot_other_login"))
 def submit_pilot(pkg: Pkg, body: M.PilotCreate = Body(default_factory=M.PilotCreate)):
     return pilots.submit(pkg, token=_gh(body), repo=body.repo, exclude=body.exclude, note=body.note, synthetic=body.synthetic)
 

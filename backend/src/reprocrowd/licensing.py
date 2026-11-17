@@ -15,12 +15,13 @@ from typing import Any
 
 from .config import settings
 from .package import MANIFEST, Package
+from .pilot_copy import THIRD_PARTY_KINDS  # one definition, also used by the pilots repository's Action
 from .schemas.exports import LicenseEntry, LicenseMap
 from .schemas.manifest import Resource
 
 POLICY = "reprocrowd-licensing/1"
 METADATA, OUTPUTS = "CC0-1.0", "CC-BY-4.0"
-THIRD_PARTY = {"fulltext", "extraction", "figure", "input"}
+THIRD_PARTY = THIRD_PARTY_KINDS
 FILE = "licenses.json"
 OWN_LISTS = {"inputs.json", FILE}
 QUOTES = "may quote the article; quoted passages remain under the article's terms"

@@ -38,7 +38,7 @@ import time
 from time import monotonic
 import zipfile
 from contextlib import contextmanager
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterator
@@ -50,7 +50,7 @@ from .config import settings
 from .database import Prepared
 from .errors import ApiError, conflict, invalid
 from .package import Package, sha256_file
-from .pilot_copy import DISCLAIMER, MAX_RUN, doi_tag, doi_url, RUNS_END, RUNS_START, files_mark, issue_mark, refused_mark, release_mark, run_mark, summary_line
+from .pilot_copy import ACTION_LOGIN, DISCLAIMER, MAX_RUN, doi_tag, doi_url, RUNS_END, RUNS_START, files_mark, issue_mark, refused_mark, release_mark, run_mark, summary_line
 from .report import ARCHIVE_DIR, archive_path
 from .schemas.common import now
 from .schemas.manifest import GithubPilot, PilotAsset
@@ -59,7 +59,6 @@ from .zenodo import GROUPS, _check_published_paper, _group, _publication_zip, co
 BODY_LIMIT = 65_000  # GitHub's issue/comment body limit is 65,536 characters
 ROW_LIMIT = 60
 FORK_WAIT = 30  # × 2 s: GitHub creates forks asynchronously
-ACTION_LOGIN = "github-actions[bot]"  # the pilots repository's Action comments as this account
 RECHECK_S = 60  # listing records checks a submitted run on GitHub at most this often (unauthenticated reads are rate-limited)
 SYNTHETIC = ("**SYNTHETIC test fixture — not a research result.** The paper, data and DOI are invented for testing "
              "the publication workflow.")
@@ -279,9 +278,11 @@ def _build_files(plan: Plan, tmp: Path) -> None:
                 files.append(out)
     plan.files = [Asset(f.name, f, sha256_file(f), f.stat().st_size) for f in files]
     plan.licences = _archived_licences(next((f for f in files if f.name == licensing.FILE), None))
-    total, limit = sum(a.bytes for a in plan.files), MAX_RUN - 1024**2  # the Action's limit includes pilot.json: leave 1 MiB for it
-    if total > limit:
-        raise invalid("pilot_asset_too_large", f"a pilot run's files must total at most {limit // 1024**2} MiB; these total "
+    # the Action's limit includes pilot.json, whose size doesn't depend on the (fixed-length) reproduction ID
+    pilot_bytes = len(_pilot_json(replace(plan, reproduction_id=plan.reproduction_id or "repro-0000000000")))
+    total = sum(a.bytes for a in plan.files) + pilot_bytes
+    if total > MAX_RUN:
+        raise invalid("pilot_asset_too_large", f"a pilot run's files, pilot.json included, must total at most {MAX_RUN // 1024**2} MiB; these total "
                                                f"{total / 1024**2:.0f} MiB. Leave out the inputs (exclude: inputs) or deposit on Zenodo instead")
 
 
@@ -471,6 +472,12 @@ def submit(pkg: Package, *, token: str | None, repo: str | None, exclude: list[s
             plan.note = rec.note
         rec.note, rec.error = plan.note, None
         try:
+            if rec.comment_url and rec.files_repo and rec.files_repo.split("/")[0].lower() != login.lower():
+                # the run's comment names its files' repository (the account's fork, or the pilots repository for its
+                # owner) and is never rewritten: resume from that account, before anything is written for this one
+                raise conflict("pilot_other_login", f"this run was submitted with its files in {rec.files_repo}, and its comment points "
+                               f"there; log in to GitHub as {rec.files_repo.split('/')[0]} to resume it (now: {login})",
+                               {"files_repo": rec.files_repo, "login": login})
             files_repo, branch = _files_repo(gh, info, login)
             rec.files_repo = files_repo
             _issue(gh, plan, rec, pkg)

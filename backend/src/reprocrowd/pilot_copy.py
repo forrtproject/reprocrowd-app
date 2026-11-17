@@ -13,8 +13,8 @@ Before anything is copied:
 - the reproduction ID and run key agree in the issue, the comment, the tag and pilot.json;
 - the run is under MAX_RUN bytes, checked before downloading;
 - every file is listed in pilot.json and matches its SHA-256 there and GitHub's digest; the ZIP is readable and holds
-  datapackage.json and licenses.json.
-A refused run gets one reply with the reason; nothing is copied.
+  datapackage.json, comparison.json and licenses.json, and licenses.json follows the licence policy for every file.
+A refused run gets one reply with the reason; nothing is copied. Only this Action's own replies mark a run as answered.
 
 Source: backend/src/reprocrowd/pilot_copy.py in forrtproject/reprocrowd-app, where it is tested. The pilots repository
 runs a copy as .github/scripts/pilot_copy.py. Needs Python 3.10+ and httpx; imports nothing else from ReproCrowd.
@@ -49,6 +49,10 @@ DISCLAIMER = ("**Pilot record — unreviewed.** Made with ReproCrowd by recreati
               "reported numbers from these inputs. It is not peer review, a certificate of the study's validity, or an endorsement. The authors' "
               "code was left out of the agent's context; that is not verified blinding.")
 MAINTAINERS = ("OWNER", "MEMBER", "COLLABORATOR")
+ACTION_LOGIN = "github-actions[bot]"  # the Action comments as this account; replies by anyone else are ignored
+THIRD_PARTY_KINDS = {"fulltext", "extraction", "figure", "input"}  # reprocrowd-licensing/1: not relicensed; every other kind is ours
+GENERATED = {"datapackage.json": "manifest", "licenses.json": "export", "report.html": "report", "comparison.json": "report",
+             "evidence/execution.json": "report"}  # files the app writes itself: their kind (so their licence) is fixed
 LABELS = {"reprocrowd-pilot": ("1d76db", "A ReproCrowd pilot record (one issue per reproduction)"),
           "unreviewed": ("fbca04", "Not reviewed: a numeric match is not a scientific certificate"),
           "synthetic": ("cccccc", "Synthetic test fixture of the publication workflow, not research")}
@@ -148,7 +152,9 @@ def handle(api: Api, repo: str, issue: dict[str, Any], comment: dict[str, Any]) 
         return None
     rid, key = m.groups()
     tag = f"{rid}-{key}"
-    replies = [c.get("body") or "" for c in api.paged(f"/repos/{repo}/issues/{issue['number']}/comments")]
+    # only the Action's own replies count: anyone can paste a reply's marker into a comment
+    replies = [c.get("body") or "" for c in api.paged(f"/repos/{repo}/issues/{issue['number']}/comments")
+               if (c.get("user") or {}).get("login") == ACTION_LOGIN]
     if any(_reply_mark(tag, "copied") in b for b in replies):
         return None
     try:
@@ -183,7 +189,7 @@ def _copy(api: Api, repo: str, issue: dict[str, Any], comment: dict[str, Any], r
         raise Refused("the files must be in a release of the commenter's own repository")
     central = next((r for r in ours if r["tag_name"] == tag), None)
     if central and not central.get("draft"):  # copied before, but a later step or the reply failed: finish them
-        pilot = json.loads(_download(api, repo, _named(central, "pilot.json")))
+        pilot = _pilot(_download(api, repo, _named(central, "pilot.json")))
         _check_assets(central, pilot)
         _label(api, repo, issue["number"], pilot)
         _update_runs(api, repo, issue["number"], rid)
@@ -201,7 +207,7 @@ def _copy(api: Api, repo: str, issue: dict[str, Any], comment: dict[str, Any], r
     total = sum(a.get("size") or 0 for a in assets)
     if total > MAX_RUN:
         raise Refused(f"the run's files total {total:,} bytes; the limit is {MAX_RUN:,}")
-    pilot = json.loads(_download(api, src_repo, _named(source, "pilot.json")))
+    pilot = _pilot(_download(api, src_repo, _named(source, "pilot.json")))
     if (pilot.get("reproduction_id"), pilot.get("run_key"), pilot.get("tag")) != (rid, key, tag):
         raise Refused("`pilot.json` names a different reproduction or run")
     _validate(pilot)
@@ -244,6 +250,18 @@ def _named(release: dict[str, Any], name: str) -> dict[str, Any]:
 
 def _download(api: Api, repo: str, asset: dict[str, Any]) -> bytes:
     return api.request("GET", f"/repos/{repo}/releases/assets/{asset['id']}", headers={"Accept": "application/octet-stream"}).content
+
+
+def _pilot(raw: bytes) -> dict[str, Any]:
+    """pilot.json, refused unless it is an object whose assets map file names to digests."""
+    try:
+        pilot = json.loads(raw)
+    except ValueError:
+        raise Refused("`pilot.json` isn't valid JSON")
+    assets = pilot.get("assets") if isinstance(pilot, dict) else None
+    if not isinstance(assets, dict) or not all(isinstance(k, str) and isinstance(v, str) for k, v in assets.items()):
+        raise Refused("`pilot.json` must be a JSON object whose `assets` map file names to SHA-256 digests")
+    return pilot
 
 
 def _check_assets(release: dict[str, Any], pilot: dict[str, Any], data: dict[str, bytes] | None = None) -> None:
@@ -314,8 +332,15 @@ def _version(release: dict[str, Any]) -> int | None:
     return int(m.group(1)) if m else None
 
 
-def _policy_licence(f: dict[str, Any], code: list[str]) -> str | None:
-    """The licence policy reprocrowd-licensing/1 gives this entry (any listed code licence for code)."""
+_WRONG = object()  # no licence value equals it
+
+
+def _policy_licence(f: dict[str, Any], code: list[str]) -> object:
+    """The licence policy reprocrowd-licensing/1 gives this entry (any listed code licence for code), or _WRONG if the
+    entry's kind or rights contradict the policy (third-party rights only for the article's material and inputs)."""
+    kind = f.get("kind")
+    if not isinstance(kind, str) or GENERATED.get(str(f.get("path")), kind) != kind or f.get("rights") != ("third-party" if kind in THIRD_PARTY_KINDS else "ours"):
+        return _WRONG
     if f.get("rights") != "ours":
         return None
     if f.get("kind") in ("script", "code"):

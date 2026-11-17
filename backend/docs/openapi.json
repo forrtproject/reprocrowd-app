@@ -8976,7 +8976,7 @@
                 }
               }
             },
-            "description": "`pilot_asset_too_large`: A pilot run's files must total at most 199 MiB (200 MiB with pilot.json); `github_rejected`: GitHub rejected the request"
+            "description": "`pilot_asset_too_large`: A pilot run's files, pilot.json included, must total at most 200 MiB; `github_rejected`: GitHub rejected the request"
           },
           "409": {
             "content": {
@@ -8987,7 +8987,7 @@
                 }
               }
             },
-            "description": "`local_paper_text`: The paper's text comes from a local file; only reproductions of published papers, started from their DOI, can be deposited; `no_doi`: Only packages for a paper with a DOI can be submitted; `run_not_succeeded`: The last run of the master script must have succeeded; `archive_missing`: Create the archive first; `archive_stale`: The package changed since the archive was made; `report_stale`: Results or targets changed; regenerate the report and archive; `openalex_record_missing`: No OpenAlex record (with a title) for the DOI; `job_running`: Another job is running in this package; `pilot_release_mismatch`: The run's release on GitHub holds different files; published releases are never changed"
+            "description": "`local_paper_text`: The paper's text comes from a local file; only reproductions of published papers, started from their DOI, can be deposited; `no_doi`: Only packages for a paper with a DOI can be submitted; `run_not_succeeded`: The last run of the master script must have succeeded; `archive_missing`: Create the archive first; `archive_stale`: The package changed since the archive was made; `report_stale`: Results or targets changed; regenerate the report and archive; `openalex_record_missing`: No OpenAlex record (with a title) for the DOI; `job_running`: Another job is running in this package; `pilot_release_mismatch`: The run's release on GitHub holds different files; published releases are never changed; `pilot_other_login`: The run was submitted from another GitHub account, whose repository its comment names; log in as that account to resume"
           },
           "400": {
             "content": {
@@ -9102,7 +9102,7 @@
                 }
               }
             },
-            "description": "`pilot_asset_too_large`: A pilot run's files must total at most 199 MiB (200 MiB with pilot.json)"
+            "description": "`pilot_asset_too_large`: A pilot run's files, pilot.json included, must total at most 200 MiB"
           },
           "409": {
             "content": {
