@@ -192,7 +192,7 @@ export class InputsStep implements Step {
     const one = names.length === 1;
     const text = `${names.map((n) => this.shown(n)).join(", ")} ${one ? "is" : "are"} used by analysis steps; remove ${one ? "it" : "them"} from those steps in step 3 (Analysis plan) first.${bulk ? " Nothing was deleted." : ""}`;
     const html = `<p>${bulk ? `Nothing was deleted: ${one ? "this file is" : `these ${names.length} files are`}` : one ? "This file is" : `These ${names.length} files are`} used by analysis steps.
-        Remove ${one ? "it" : "them"} from those steps in <b>3. Analysis plan</b> first${bulk ? ", or untick the files you want to keep" : ""}.</p>
+        Remove ${one ? "it" : "them"} from those steps in <b>3. Analysis plan</b> first.</p>
       <ul class="err-files">${names.map((n) => `<li><code>${esc(this.shown(n))}</code> — used by ${(byInput[n].length ? byInput[n] : ["an analysis step"]).map(step).join(", ")}</li>`).join("")}</ul>`;
     return new ApiError(text, err.problem, html);
   }
@@ -204,23 +204,23 @@ export class InputsStep implements Step {
     const contents = d instanceof Error ? `<span class="warn-inline">${esc(d.message)}</span>` : d ? `${d.sections.length} sections · ${countSentences(d)} sentences · ${d.figures.length} figures · ${d.tables.length} tables` : "";
     const archives = this.inputs.filter((r) => this.inputs.some((m) => m.reprocrowd.archive === r.name));
     const loose = this.inputs.filter((r) => !r.reprocrowd.archive && !archives.includes(r));
+    // One change to the list at a time: adding, fetching and deleting each disable the others.
+    const locked = ["upload", "fetch", "delete"].some((k) => this.w.running.has(k));
     const roleSel = (r: InputRes) => `<select data-f="role" ${r.reprocrowd.used ? "" : "disabled"}>${ROLES.map((x) => `<option ${x === r.reprocrowd.role ? "selected" : ""}>${x}</option>`).join("")}</select>`;
     const row = (r: InputRes, nested: string) => `<tr data-name="${esc(r.name)}" class="${nested} ${r.reprocrowd.used ? "" : "rp-disabled"}">
         <td><input type="checkbox" data-f="used" ${r.reprocrowd.used ? "checked" : ""} title="Use this file in the reproduction" /></td>
         <td><code>${esc(nested ? r.path.split("/").slice(2).join("/") || r.path : r.path.replace(/^inputs\//, ""))}</code></td><td>${roleSel(r)}</td>
         <td><input data-f="note" value="${esc(r.reprocrowd.note)}" placeholder="note" ${r.reprocrowd.used ? "" : "disabled"} /></td>
-        <td class="nowrap">${sizeText(r.bytes)}</td><td>${nested ? "" : `<button data-act="del" title="Delete from the package">✕</button>`}</td></tr>`;
+        <td class="nowrap">${sizeText(r.bytes)}</td><td>${nested ? "" : `<button data-act="del" title="Delete from the package" ${locked ? "disabled" : ""}>✕</button>`}</td></tr>`;
     let rows = loose.map((r) => row(r, "")).join("");
     for (const a of archives) {
       const members = this.inputs.filter((m) => m.reprocrowd.archive === a.name);
       const off = members.filter((m) => !m.reprocrowd.used).length;
-      rows += `<tr class="rp-archive" data-name="${esc(a.name)}"><td></td><td colspan="3"><span class="badge">zip</span> <b>${esc(a.path.replace(/^inputs\//, ""))}</b> <span class="muted">${members.length} files unpacked${off ? `, ${off} not used` : ""}</span></td><td class="nowrap">${sizeText(a.bytes)}</td><td><button data-act="del" title="Remove the archive and all its files">✕</button></td></tr>`;
+      rows += `<tr class="rp-archive" data-name="${esc(a.name)}"><td></td><td colspan="3"><span class="badge">zip</span> <b>${esc(a.path.replace(/^inputs\//, ""))}</b> <span class="muted">${members.length} files unpacked${off ? `, ${off} not used` : ""}</span></td><td class="nowrap">${sizeText(a.bytes)}</td><td><button data-act="del" title="Remove the archive and all its files" ${locked ? "disabled" : ""}>✕</button></td></tr>`;
       rows += members.map((m) => row(m, "rp-nested")).join("");
     }
     const counts = ROLES.map((r) => `${this.inputs.filter((i) => i.reprocrowd.used && i.reprocrowd.role === r && !archives.includes(i)).length} ${r}`).join(" · ");
-    const uploading = this.w.running.has("upload");
-    const fetching = this.w.running.has("fetch");
-    const busy = uploading || fetching;
+    const busy = locked;
 
     // Bulk deletion. "Unselected" matches the backend: loose files not used, and archives none of whose files is
     // used; unused files in a partly used archive stay (members can't be deleted on their own, only left out).
@@ -230,10 +230,9 @@ export class InputsStep implements Step {
     const unusedCount = unusedTops.reduce((n, r) => n + (deadArchives.includes(r) ? members(r).length : 1), 0);
     const keptUnused = archives.filter((a) => !deadArchives.includes(a)).reduce((n, a) => n + members(a).filter((m) => !m.reprocrowd.used).length, 0);
     const files = this.inputs.filter((r) => !archives.includes(r));
-    const bulkOff = busy || this.w.running.has("delete");
     const keptNote = keptUnused ? ` ${keptUnused} unticked file(s) in partly used archives stay: files can't be removed from an archive, only left out.` : "";
-    const bulkButtons = `<button id="rp-del-unused" ${bulkOff || !unusedCount ? "disabled" : ""} title="Delete the files that aren't ticked as used; an archive goes when none of its files is used.${keptNote}">Delete unselected${unusedCount ? ` (${unusedCount})` : ""}</button>
-         <button id="rp-del-all" ${bulkOff ? "disabled" : ""} title="Delete every input file from the package">Delete all</button>`;
+    const bulkButtons = `<button id="rp-del-unused" ${locked || !unusedCount ? "disabled" : ""} title="Delete the files that aren't ticked as used; an archive goes when none of its files is used.${keptNote}">Delete unselected${unusedCount ? ` (${unusedCount})` : ""}</button>
+         <button id="rp-del-all" ${locked ? "disabled" : ""} title="Delete every input file from the package">Delete all</button>`;
     const toolbar = this.inputs.length
       ? `<div class="rp-bulk"><span class="muted small">${files.filter((r) => r.reprocrowd.used).length} of ${files.length} file(s) used${keptUnused ? ` · ${keptUnused} unticked file(s) in partly used archives can only be left out` : ""}</span><span class="spacer"></span>${bulkButtons}</div>`
       : "";
@@ -302,7 +301,7 @@ export class InputsStep implements Step {
           throw err instanceof ApiError && err.code === "in_use" ? await this.inUse(err, true) : err;
         }
       });
-      if (r) this.w.setStatus(`Deleted ${r.deleted.length} input file(s)${which === "unused" && keptUnused ? ` (${keptUnused} unticked file(s) in partly used archives kept)` : ""}`);
+      if (r) this.w.setStatus(`Deleted ${r.deleted.filter((n) => !archives.some((a) => a.name === n)).length} input file(s)${which === "unused" && keptUnused ? ` (${keptUnused} unticked file(s) in partly used archives kept)` : ""}`);
     };
     body.querySelector("#rp-del-all")?.addEventListener("click", () => bulkDelete("all"));
     body.querySelector("#rp-del-unused")?.addEventListener("click", () => bulkDelete("unused"));

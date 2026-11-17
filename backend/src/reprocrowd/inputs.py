@@ -161,7 +161,11 @@ def _remove(pkg: Package, m: Manifest, tops: list[Resource]) -> list[str]:
     """Remove top-level inputs (archives with all their members), or none of them if an action uses any."""
     from .curation import Curation  # avoid import cycle
 
-    doomed = [n for r in tops for n in (r.name, *(x.name for x in m.by_kind("input") if x.reprocrowd.archive == r.name))]
+    members: dict[str, list[str]] = {}
+    for x in m.by_kind("input"):
+        if x.reprocrowd.archive:
+            members.setdefault(x.reprocrowd.archive, []).append(x.name)
+    doomed = [n for r in tops for n in (r.name, *members.get(r.name, []))]
     users = {a.id: sorted(set(a.inputs) & set(doomed)) for a, _ in Curation(pkg, "actions").effective(include_disabled=True)}
     users = {a: names for a, names in users.items() if names}
     if users:
