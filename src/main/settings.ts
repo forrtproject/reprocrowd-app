@@ -21,6 +21,8 @@ export interface Settings {
     community: string;
     creator: Creator;
   };
+  /** GitHub pilot submissions: the repository (owner/name) that receives them. The login is the GitHub CLI's. */
+  github: { repo: string };
   /** Advanced: start the backend with this command instead of the bundled one ({host}, {port}). */
   backendCmd: string;
   /** LLM models (from OpenCode / T3 Code) the user turned off, so they don't accidentally spend tokens on them. */
@@ -39,6 +41,7 @@ export const DEFAULTS: Settings = {
   packagesRoot: path.join(os.homedir(), "ReproCrowd"),
   editorCmd: "",
   zenodo: { sandbox: true, community: "", creator: { name: "", orcid: "", affiliation: "" } },
+  github: { repo: "forrtproject/reprocrowd-pilots" },
   backendCmd: "",
   llmDisabled: [],
   checkUpdates: true,
@@ -74,6 +77,7 @@ export function loadSettings(): Settings {
       community: str(z.community, ""),
       creator: { name: str(c.name, ""), orcid: str(c.orcid, ""), affiliation: str(c.affiliation, "") },
     },
+    github: { repo: str(s.github?.repo, "") || DEFAULTS.github.repo },
     backendCmd: str(s.backendCmd, ""),
     llmDisabled: Array.isArray(s.llmDisabled) ? s.llmDisabled.map(String) : [],
     checkUpdates: typeof s.checkUpdates === "boolean" ? s.checkUpdates : DEFAULTS.checkUpdates,
@@ -81,13 +85,15 @@ export function loadSettings(): Settings {
   };
 }
 
-export function saveSettings(patch: Partial<Omit<Settings, "zenodo">> & { zenodo?: Partial<Omit<Settings["zenodo"], "creator">> & { creator?: Partial<Creator> } }) {
+export function saveSettings(patch: Partial<Omit<Settings, "zenodo" | "github">> & { github?: Partial<Settings["github"]> } & { zenodo?: Partial<Omit<Settings["zenodo"], "creator">> & { creator?: Partial<Creator> } }) {
   const cur = loadSettings();
   const next: Settings = {
     ...cur,
     ...patch,
     zenodo: { ...cur.zenodo, ...patch.zenodo, creator: { ...cur.zenodo.creator, ...patch.zenodo?.creator } },
+    github: { ...cur.github, ...patch.github },
   };
+  next.github.repo = next.github.repo.trim() || DEFAULTS.github.repo;
   next.packagesRoot = next.packagesRoot.trim().replace(/^~(?=$|\/)/, os.homedir()) || DEFAULTS.packagesRoot;
   next.llmDisabled = Array.isArray(next.llmDisabled) ? next.llmDisabled.filter(Boolean) : [];
   writeJson(settingsFile(), next);

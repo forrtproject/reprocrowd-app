@@ -7,7 +7,7 @@ const ZENODO = { zenodo: "https://zenodo.org", sandbox: "https://sandbox.zenodo.
 const tokenPage = (server: keyof typeof ZENODO) => `${ZENODO[server]}/account/settings/applications/tokens/new/`;
 const ORCID = /^\d{4}-\d{4}-\d{4}-\d{3}[\dX]$/;
 
-export async function settingsDialog(onSaved: (changed: boolean) => void, focus?: "zenodo" | "backend") {
+export async function settingsDialog(onSaved: (changed: boolean) => void, focus?: "zenodo" | "backend" | "github") {
   let cfg: Config;
   // Reading the settings asks the system keyring and the backend; if that takes a moment, say so.
   let waiting: HTMLDialogElement | undefined;
@@ -48,6 +48,14 @@ export async function settingsDialog(onSaved: (changed: boolean) => void, focus?
       <p class="z-check small" aria-live="polite"></p>
       <label>Community <input name="zcommunity" value="${esc(z.community)}" placeholder="optional, e.g. reprocrowd" spellcheck="false" /></label>
       <p class="hint">Deposits are submitted to this Zenodo community, whose curators accept them.</p>
+    </fieldset>
+    <fieldset id="set-github"><legend>GitHub pilots</legend>
+      <p class="hint">A pilot is a public, unreviewed record of a reproduction on GitHub: an issue per reproduction and the files of every run. Any GitHub account can submit to a public repository that allows forks: the files go to your fork (or, if you own the repository, a draft release there), and the repository's Action copies them into its own release.</p>
+      <label>Repository <input name="ghrepo" value="${esc(cfg.github.repo)}" placeholder="owner/name" spellcheck="false" /></label>
+      <p class="gh-login small"></p>
+      <div class="actions"><button type="button" id="gh-verify">Check</button><button type="button" id="gh-login" class="primary" hidden>Log in with gh</button></div>
+      <p class="gh-check small" aria-live="polite"></p>
+      ${cfg.ghLogin === "missing" ? `<p class="hint">Install the <a href="#" id="gh-install">GitHub CLI</a> and run <code>gh auth login</code> in a terminal (choose GitHub.com, then log in with a web browser). ReproCrowd then uses that login; nothing to paste.</p>` : ""}
     </fieldset>
     <fieldset><legend>Packages</legend>
       <label>Folder for new reproductions <span class="row"><input name="root" value="${esc(cfg.packagesRoot)}" spellcheck="false" /><button type="button" id="root-choose">Choose…</button></span></label>
@@ -109,6 +117,40 @@ export async function settingsDialog(onSaved: (changed: boolean) => void, focus?
     await host.setZenodoToken(server(), null).catch((e) => showError("Removing the token", e));
     cfg.tokens[server()] = false;
     showServer();
+  });
+  const ghCheck = q<HTMLElement>(".gh-check");
+  const showGhLogin = () => {
+    q<HTMLElement>(".gh-login").innerHTML = cfg.ghLogin === "ok"
+        ? `<span class="ok">✓ Using your GitHub CLI login (<code>gh</code>).</span>`
+        : cfg.ghLogin === "logged-out"
+          ? `<span class="warn-inline">The GitHub CLI (<code>gh</code>) isn't logged in.</span>`
+          : `<span class="warn-inline">The GitHub CLI (<code>gh</code>) isn't installed.</span>`;
+    q<HTMLButtonElement>("#gh-login").hidden = cfg.ghLogin === "ok";
+  };
+  showGhLogin();
+  q("#gh-verify").addEventListener("click", async () => {
+    ghCheck.innerHTML = `<span class="muted">Checking with GitHub…</span>`;
+    // A login finished in the terminal since the dialog opened: show the current gh state.
+    await host.getConfig().then((c) => { cfg.ghLogin = c.ghLogin; showGhLogin(); }).catch(() => {});
+    try {
+      const r = await host.checkGithubToken(q<HTMLInputElement>("[name=ghrepo]").value);
+      ghCheck.innerHTML = r.can_submit
+        ? `<span class="ok">✓ ${esc(r.login)} can submit pilots to ${esc(r.repo)}; the files go to ${esc(r.files_in)}.</span>`
+        : `<span class="warn-inline">${esc(r.repo)} is private or can't be forked; pilots need a public repository.</span>`;
+    } catch (e) {
+      ghCheck.innerHTML = `<span class="warn-inline">${esc((e as Error).message)}</span>`;
+    }
+  });
+  dlg.querySelector("#gh-install")?.addEventListener("click", (e) => {
+    e.preventDefault();
+    host.openUrl("https://cli.github.com");
+  });
+  dlg.querySelector("#gh-login")?.addEventListener("click", async () => {
+    try {
+      ghCheck.innerHTML = `<span class="muted">${esc(await host.githubLogin())}</span>`;
+    } catch (e) {
+      ghCheck.innerHTML = `<span class="warn-inline">${esc((e as Error).message)}</span>`;
+    }
   });
   q("#root-choose").addEventListener("click", async () => {
     const dir = await host.chooseFolder(q<HTMLInputElement>("[name=root]").value);
@@ -224,7 +266,7 @@ export async function settingsDialog(onSaved: (changed: boolean) => void, focus?
   upd.page.addEventListener("click", () => updUrl && host.openUrl(updUrl).catch((err) => showError("Opening the release page", err)));
   dlg.addEventListener("close", () => window.clearTimeout(updPoll));
 
-  if (focus) dlg.querySelector(`#set-${focus === "zenodo" ? "you" : "backend"}`)?.scrollIntoView();
+  if (focus) dlg.querySelector(`#set-${focus === "zenodo" ? "you" : focus}`)?.scrollIntoView();
 
   q<HTMLFormElement>("form").addEventListener("submit", async (e) => {
     if ((e.submitter as HTMLButtonElement | null)?.value !== "save") return;
@@ -237,6 +279,9 @@ export async function settingsDialog(onSaved: (changed: boolean) => void, focus?
       return;
     }
     try {
+      // Every check before the first write, so a refused Save changes nothing.
+      const repo = q<HTMLInputElement>("[name=ghrepo]").value.trim();
+      if (repo && !/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repo)) throw new Error(`“${repo}” isn't a GitHub repository (owner/name).`);
       const token = q<HTMLInputElement>("[name=ztoken]").value.trim();
       if (token) await host.setZenodoToken(server(), token);
       if (q<HTMLTextAreaElement>("[name=becfg]").value !== cfg.backendConfig) await host.saveBackendConfig(q<HTMLTextAreaElement>("[name=becfg]").value);
@@ -246,6 +291,7 @@ export async function settingsDialog(onSaved: (changed: boolean) => void, focus?
         backendCmd: q<HTMLInputElement>("[name=becmd]").value.trim(),
         checkUpdates: q<HTMLInputElement>("[name=checkupd]").checked,
         autoUpdate: q<HTMLInputElement>("[name=autoupd]").checked,
+        github: { repo },
         zenodo: {
           sandbox: server() === "sandbox",
           community: q<HTMLInputElement>("[name=zcommunity]").value.trim(),

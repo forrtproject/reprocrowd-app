@@ -34,6 +34,23 @@ const fake = http.createServer(async (req, res) => {
   };
   const authed = req.headers.authorization === "Bearer test-token";
   if (req.method === "GET" && url.pathname === "/api/records") return send(200, { hits: { hits: [] } });
+  // ---------- and GitHub's issue search, for pilots of the same paper ([github] api_url) ----------
+  if (req.method === "GET" && url.pathname === "/search/issues") {
+    const doi = (url.searchParams.get("q").match(/"([^"]+)"/) ?? [])[1];
+    const items = doi === DOI.toLowerCase() ? [{
+      number: 7, title: `Pilot reproduction: The Extent and Consequences of P-Hacking in Science (doi:${DOI})`, html_url: `${base}/issues/7`,
+      state: "open", user: { login: "someone-else" }, created_at: "2026-11-01T10:00:00Z", labels: [{ name: "reprocrowd-pilot" }],
+      body: `<!-- reprocrowd-pilot:repro-0123456789 -->\nPaper: https://doi.org/${DOI} · Status: **pilot, unreviewed**`,
+    }] : [];
+    return send(200, { total_count: items.length, items });
+  }
+  // the pilots repository's copied releases, which the runs are read from
+  if (req.method === "GET" && url.pathname === "/repos/forrtproject/reprocrowd-pilots/releases") {
+    const summary = { match: 3, within: 0, numeric: 3, threshold: 5, rounding: "reported", policy: "reprocrowd-compare/3", version: 2, run_key: "0123456789ab" };
+    return send(200, [{ tag_name: "repro-0123456789-0123456789ab", name: "repro-0123456789 v2 (pilot, unreviewed)", draft: false,
+      html_url: `${base}/releases/v2`, published_at: "2026-11-03T12:00:00Z",
+      body: `<!-- reprocrowd-pilot-issue:7 -->\n<!-- reprocrowd-summary: ${JSON.stringify(summary)} -->` }]);
+  }
   // ---------- and a fake GitHub release, for the update check (REPROCROWD_UPDATE_SERVER) ----------
   if (req.method === "GET" && url.pathname === "/releases/latest") return send(200, { tag_name: "v99.0.0", html_url: `${base}/releases/tag/v99.0.0` });
   if (url.pathname.startsWith("/api/deposit") || url.pathname.startsWith("/api/files")) {
@@ -79,6 +96,9 @@ fs.writeFileSync(path.join(userData, "backend.toml"), `
 [zenodo]
 url = "${ZURL}"
 sandbox_url = "${ZURL}"
+
+[github]
+api_url = "${ZURL}"
 
 [llm]
 default_profile = "fake"
@@ -148,6 +168,8 @@ try {
   assert.match(await win.locator("#nd-work b").innerText(), /p-hacking/i);
   assert.match(await win.locator("#nd-jats").innerText(), /PMC4359000/);
   assert.equal(await win.inputValue(".dlg-new [name=folder]"), path.join(packagesRoot, "10-1371-journal-pbio-1002106"));
+  await win.waitForSelector("#nd-records:not([hidden])", { timeout: 30_000 });
+  assert.match(await win.locator("#nd-records").innerText(), /Pilots on GitHub \(unreviewed\): 1 reproduction of this paper — #7 by someone-else \(v2, 2026-11-03\)/);
   await shot("02-new-dialog");
 
   step("new reproduction: cancelling the creation undoes it");
@@ -283,6 +305,9 @@ json.dump({"results": [{"id": "T001", "value": 2.3149}, {"id": "T002", "value": 
   await win.click("#rp-zip");
   await win.waitForSelector("#rp-zip-show", { timeout: 60_000 });
   await win.waitForSelector("#rp-deposit:not([disabled])", { timeout: 30_000 });
+  const pilotCard = win.locator(".submit-card", { hasText: "Other pilots of this paper" });
+  assert.match(await pilotCard.innerText(), /#7 by someone-else \(v2, 2026-11-03\) · 3 of 3 match/);
+  await pilotCard.screenshot({ path: path.join(OUT, "04b-pilot-card.png") });
   const groups = await win.locator("[data-group]").evaluateAll((els) => els.map((e) => [e.dataset.group, e.checked]));
   assert.deepEqual(Object.fromEntries(groups), { paper: true }, "PLOS Biology is CC-BY, so the paper's material is included by default; no inputs");
   await win.fill("#rp-note", "Checked by the end-to-end test.");
@@ -357,8 +382,11 @@ json.dump({"results": [{"id": "T001", "value": 2.3149}, {"id": "T002", "value": 
   assert.deepEqual((await P(`/extractions/${local}`)).data.sections.map((s) => s.title), ["Methods", "Results"]);
   await win.locator("#route button").nth(6).click();
   await win.waitForSelector("#rp-report");
-  assert.match(await win.locator(".checklist").innerText(), /comes from a file on your computer/);
-  assert.equal(await win.locator("#rp-deposit:not([disabled])").count(), 0);
+  // both the Zenodo and the GitHub pilot card refuse a paper from a local file
+  const checklists = await win.locator(".checklist").allInnerTexts();
+  assert.equal(checklists.length, 2, "the Zenodo and the GitHub pilot checklists");
+  for (const t of checklists) assert.match(t, /comes from a file on your computer/);
+  assert.equal(await win.locator("#rp-deposit:not([disabled]), #rp-pilot:not([disabled])").count(), 0);
   await assert.rejects(call("depositPreview", { note: "" }), /local_paper_text/);
   await shot("09-local-file-not-deposited");
 

@@ -262,6 +262,225 @@
       "title": "FulltextMeta",
       "type": "object"
     },
+    "GithubPilot": {
+      "additionalProperties": false,
+      "description": "One run of this reproduction submitted as a GitHub pilot: a release with the files in the submitter's fork, a\ncomment on the reproduction's issue, and the copy the pilots repository's Action makes. Keyed by run_key (archive\nhash + left-out groups); a retry resumes the same record.",
+      "properties": {
+        "id": {
+          "pattern": "^pil-[0-9a-f]+$",
+          "title": "Id",
+          "type": "string"
+        },
+        "repo": {
+          "description": "owner/name",
+          "title": "Repo",
+          "type": "string"
+        },
+        "reproduction_id": {
+          "pattern": "^repro-[0-9a-f]{10}$",
+          "title": "Reproduction Id",
+          "type": "string"
+        },
+        "run_key": {
+          "pattern": "^[0-9a-f]{12}$",
+          "title": "Run Key",
+          "type": "string"
+        },
+        "version": {
+          "anyOf": [
+            {
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "run number within the reproduction, assigned by the pilots repository when it copies the run",
+          "title": "Version"
+        },
+        "status": {
+          "description": "partial: a step failed, submitting again resumes; submitted: files and comment are up, the pilots repository hasn't copied them yet; published: the copy exists",
+          "enum": [
+            "partial",
+            "submitted",
+            "published"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "tag": {
+          "title": "Tag",
+          "type": "string"
+        },
+        "issue_number": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Issue Number"
+        },
+        "issue_url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Issue Url"
+        },
+        "files_repo": {
+          "default": "",
+          "description": "owner/name of the repository holding the submitted files (the submitter's fork)",
+          "title": "Files Repo",
+          "type": "string"
+        },
+        "files_url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "the submitted release",
+          "title": "Files Url"
+        },
+        "release_url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "the pilots repository's copy, once made",
+          "title": "Release Url"
+        },
+        "comment_url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Comment Url"
+        },
+        "archive_sha256": {
+          "description": "hash of the package archive it was made from",
+          "title": "Archive Sha256",
+          "type": "string"
+        },
+        "exclude": {
+          "items": {
+            "enum": [
+              "paper",
+              "inputs"
+            ],
+            "type": "string"
+          },
+          "title": "Exclude",
+          "type": "array"
+        },
+        "excluded": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Excluded",
+          "type": "array"
+        },
+        "assets": {
+          "items": {
+            "$ref": "#/$defs/PilotAsset"
+          },
+          "title": "Assets",
+          "type": "array"
+        },
+        "synthetic": {
+          "default": false,
+          "title": "Synthetic",
+          "type": "boolean"
+        },
+        "note": {
+          "default": "",
+          "title": "Note",
+          "type": "string"
+        },
+        "error": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "why the last attempt stopped, or why the pilots repository refused the run",
+          "title": "Error"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "published_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Published At"
+        },
+        "checked_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "when the pilots repository was last asked about this run",
+          "title": "Checked At"
+        }
+      },
+      "required": [
+        "id",
+        "repo",
+        "reproduction_id",
+        "run_key",
+        "status",
+        "tag",
+        "archive_sha256",
+        "created_at"
+      ],
+      "title": "GithubPilot",
+      "type": "object"
+    },
     "Identifier": {
       "additionalProperties": false,
       "description": "A work identifier that OpenAlex can resolve.",
@@ -551,12 +770,73 @@
           },
           "title": "Deposits",
           "type": "array"
+        },
+        "reproduction_id": {
+          "anyOf": [
+            {
+              "pattern": "^repro-[0-9a-f]{10}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "identity of this reproduction on pilot destinations (one GitHub issue); set on the first pilot submission",
+          "title": "Reproduction Id"
+        },
+        "pilots": {
+          "description": "GitHub pilot submissions, one per run key",
+          "items": {
+            "$ref": "#/$defs/GithubPilot"
+          },
+          "title": "Pilots",
+          "type": "array"
         }
       },
       "required": [
         "created_at"
       ],
       "title": "PackageMeta",
+      "type": "object"
+    },
+    "PilotAsset": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "bytes": {
+          "minimum": 0,
+          "title": "Bytes",
+          "type": "integer"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "url": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "download URL once the release is published",
+          "title": "Url"
+        }
+      },
+      "required": [
+        "name",
+        "bytes",
+        "sha256"
+      ],
+      "title": "PilotAsset",
       "type": "object"
     },
     "Resource": {

@@ -122,6 +122,12 @@ class Settings(BaseModel):
     zenodo_community: str = Field(default="", description="Zenodo community the deposits are submitted to; empty = none")
     zenodo_creators: list[dict[str, str]] = Field(default_factory=list, description="creators when a request names none: [{name, orcid?, affiliation?}]")
     zenodo_license: str = Field(default="cc-by-4.0", description="license id of the deposits")
+    license_code: Literal["MIT", "CC-BY-4.0"] = Field(default="MIT", description="SPDX licence of newly authored analysis code "
+                                                      "(scripts, code) in archives; metadata is CC0-1.0, reports and outputs CC-BY-4.0")
+    github_api_url: str = Field(default="https://api.github.com", description="GitHub REST API for pilot submissions")
+    github_pilots_repo: str = Field(default="forrtproject/reprocrowd-pilots", pattern=r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$",
+                                    description="owner/name of the repository that receives pilot submissions")
+    github_token: str = Field(default="", description="fallback token for local CLI use; clients usually send the user's own")
     run_timeout_s: int = Field(default=7200, description="limit for a run of the master script")
     agent_default_profile: str = "claude"
     agent_profiles: dict[str, AgentProfile] = Field(default_factory=_default_agents)
@@ -163,6 +169,10 @@ def load_settings(path: Path | None = None) -> Settings:
         data["database_url"] = raw["database"]["url"]
     for k, v in raw.get("zenodo", {}).items():
         data[f"zenodo_{k}"] = v
+    if "code" in raw.get("licensing", {}):
+        data["license_code"] = raw["licensing"]["code"]
+    for k, v in raw.get("github", {}).items():  # api_url, pilots_repo, token
+        data[f"github_{k}"] = v
     if "timeout_s" in raw.get("run", {}):
         data["run_timeout_s"] = raw["run"]["timeout_s"]
     agent = raw.get("agent", {})

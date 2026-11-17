@@ -26,7 +26,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from ..schemas.evidence import ExecutionEvidence
 from .. import evidence
-from .. import __version__, acquire, openalex, zenodo, codegen, coordinates, curation, database, figures, report, run, extractions, files, fulltexts, inputs, jobs, llm, metadata, scripts
+from .. import __version__, acquire, openalex, pilots, zenodo, codegen, coordinates, curation, database, figures, report, run, extractions, files, fulltexts, inputs, jobs, llm, metadata, scripts
 from ..config import settings
 from ..errors import ApiError, not_found
 from ..extractions import Scope
@@ -36,7 +36,7 @@ from ..events import EventReader, read_events
 from ..schemas.document import Document
 from ..schemas.comparison import Comparison, CompareSettings
 from ..schemas.jobs import Job, JobEvent
-from ..schemas.manifest import ArchiveInfo, Resource, Submission, ZenodoDeposit
+from ..schemas.manifest import ArchiveInfo, GithubPilot, Resource, Submission, ZenodoDeposit
 from ..validation import ValidationReport, validate_package
 from . import models as M
 from .problems import CATALOG, STATUS_CODES, Problem, ProblemType, problem_types
@@ -58,6 +58,7 @@ TAGS = [
     {"name": "report", "description": "The reproduction report and the ZIP of the package."},
     {"name": "database", "description": "Submission to the package database (optional)."},
     {"name": "zenodo", "description": "Deposits on Zenodo: a draft with the package ZIP and a reserved DOI, published in a separate step."},
+    {"name": "pilots", "description": "GitHub pilot submissions: an issue per reproduction, a pre-release with the files per run, open to any GitHub account. Unreviewed."},
 ]
 
 @asynccontextmanager
@@ -979,7 +980,7 @@ def zenodo_verify(body: M.ZenodoTokenCheck = Body(default_factory=M.ZenodoTokenC
 
 
 @api.get("/zenodo/records", tags=["zenodo"], response_model=list[M.ZenodoRecord], summary="Published ReproCrowd records for a paper",
-         description="Public records on Zenodo with the keyword ReproCrowd that relate to the DOI.", responses=errors("zenodo_unreachable", "zenodo_error"))
+         description="Public records on Zenodo with the keyword ReproCrowd that relate to the DOI.", responses=errors("invalid_identifier", "zenodo_unreachable", "zenodo_error"))
 def zenodo_records(doi: Annotated[str, Query(min_length=3)], sandbox: bool | None = None):
     return zenodo.find(doi, sandbox)
 
@@ -1034,6 +1035,65 @@ def publish_deposit(pkg: Pkg, dep: str, body: M.ZenodoAuth = Body(default_factor
           responses=errors("not_found", "deposit_not_draft", "zenodo_token_missing", "zenodo_token_invalid", "zenodo_unreachable", "zenodo_error"))
 def discard_deposit(pkg: Pkg, dep: str, body: M.ZenodoAuth = Body(default_factory=M.ZenodoAuth)):
     return zenodo.discard(pkg, dep, _tok(body))
+
+
+# ---------- GitHub pilots ----------
+
+PILOT_PRECONDITIONS = DEPOSIT_PRECONDITIONS + ("pilot_asset_too_large",)
+GITHUB_ERRORS = ("github_token_missing", "github_token_invalid", "github_forbidden", "github_rejected", "github_rate_limited",
+                 "github_unreachable", "github_error")
+
+
+def _gh(body: M.GithubAuth | M.PilotCreate) -> str | None:
+    return body.github_token.get_secret_value() if body.github_token else None
+
+
+@api.get("/github-pilots", tags=["pilots"], response_model=M.GithubPilotStatus, summary="Where pilot submissions go, and the licence policy")
+def github_pilot_status():
+    return pilots.status()
+
+
+@api.get("/github-pilots/records", tags=["pilots"], response_model=list[M.PilotRecord], summary="Pilot issues for a paper",
+         description="Issues in the pilots repository (default: [github] pilots_repo) with a pilot's marker whose title contains "
+                     "`(doi:<doi>)` or whose description links `https://doi.org/<doi>` (titles are cut at 240 characters). Their runs "
+                     "come from the repository's releases, which only its Action writes. Independent reproductions of the paper each "
+                     "have their own issue. Public reads without a token; results are kept for a minute.",
+         responses=errors("invalid_identifier", "github_rate_limited", "github_unreachable", "github_error"))
+def github_pilot_records(doi: Annotated[str, Query(min_length=3)],
+                         repo: Annotated[str | None, Query(pattern=r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")] = None):
+    return pilots.find(doi, repo)
+
+
+@api.post("/github-pilots:check", tags=["pilots"], response_model=M.GithubCheck, summary="Check a GitHub login against the pilots repository",
+          description="Reads the repository and the account; reports whether it can submit and where its run files would go. Writes nothing.", responses=errors(*GITHUB_ERRORS))
+def github_pilot_check(body: M.GithubAuth = Body(default_factory=M.GithubAuth)):
+    return pilots.check(_gh(body), body.repo)
+
+
+@api.get("/packages/{pkg}/pilots", tags=["pilots"], response_model=list[GithubPilot], summary="GitHub pilot submissions of this package",
+         description="A `submitted` run is marked `published` here once the pilots repository has copied it (a public read of its release).")
+def list_pilots(pkg: Pkg, page: Paged):
+    return page(pilots.refresh(pkg))
+
+
+@api.post("/packages/{pkg}/pilots:preview", tags=["pilots"], response_model=M.PilotPreview, summary="Show what a pilot submission would send",
+          description="The issue title, files with hashes, left-out groups and licences, without contacting GitHub.",
+          responses=errors(*PILOT_PRECONDITIONS))
+def preview_pilot(pkg: Pkg, body: M.PilotOptions = Body(default_factory=M.PilotOptions)):
+    return pilots.preview(pkg, body.repo, body.exclude, body.note, body.synthetic)
+
+
+@api.post("/packages/{pkg}/pilots", tags=["pilots"], response_model=GithubPilot, summary="Submit this run as a GitHub pilot",
+          description="Needs no write access to the pilots repository. Uploads the files to a pre-release in the submitter's fork "
+                      "(created if needed; verified by SHA-256), finds or opens the reproduction's issue and posts the run's comment. The "
+                      "pilots repository's Action then copies the files into its own immutable release; the record is `submitted` until "
+                      "then. Idempotent per run key (archive hash "
+                      "and left-out groups): a retry resumes a `partial` record and creates nothing twice, so it always answers 200 with "
+                      "the run's record. Same preconditions as a "
+                      "Zenodo deposit; a stale report is refused (`report_stale`). A pilot is unreviewed, not a certificate.",
+          responses=errors(*PILOT_PRECONDITIONS, *GITHUB_ERRORS, "pilot_release_mismatch", "pilot_other_login"))
+def submit_pilot(pkg: Pkg, body: M.PilotCreate = Body(default_factory=M.PilotCreate)):
+    return pilots.submit(pkg, token=_gh(body), repo=body.repo, exclude=body.exclude, note=body.note, synthetic=body.synthetic)
 
 
 # ---------- files ----------

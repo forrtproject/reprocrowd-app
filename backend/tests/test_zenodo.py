@@ -170,11 +170,11 @@ def test_zenodo_service(client):
     search = respx.get(f"{Z}/api/records").mock(return_value=httpx.Response(200, json={"hits": {"hits": [
         {"id": 5, "doi": "10.5281/zenodo.5", "metadata": {"title": "Computational reproduction of: X", "creators": [{"name": "Doe, Jane"}],
                                                           "publication_date": "2026-11-01"}, "links": {"self_html": f"{Z}/records/5"}}]}}))
-    recs = client.get("/v1/zenodo/records", params={"doi": "https://doi.org/10.1/X"}).json()
+    recs = client.get("/v1/zenodo/records", params={"doi": "http://dx.doi.org/10.1000/X"}).json()
     assert recs == [{"id": 5, "doi": "10.5281/zenodo.5", "title": "Computational reproduction of: X", "creators": ["Doe, Jane"],
                      "published": "2026-11-01", "url": f"{Z}/records/5"}]
     q = search.calls.last.request.url.params["q"]
-    assert '"10.1/x"' in q and 'keywords:"ReproCrowd"' in q
+    assert '"10.1000/x"' in q and 'keywords:"ReproCrowd"' in q
 
     st = client.get("/v1/zenodo").json()
     assert st == {"url": Z, "sandbox": False, "token_configured": False, "community": None, "reachable": True, "error": None}

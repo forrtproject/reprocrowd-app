@@ -1,0 +1,164 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://reprocrowd.example/schemas/licenses.schema.json",
+  "title": "LicenseMap (licenses.json (written with the archive))",
+  "$defs": {
+    "LicenseEntry": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "rights": {
+                "const": "third-party"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "license": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "rights": {
+                "const": "ours"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "license": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "license"
+            ]
+          }
+        }
+      ],
+      "properties": {
+        "path": {
+          "description": "archive-relative path",
+          "title": "Path",
+          "type": "string"
+        },
+        "kind": {
+          "description": "resource kind (fulltext, input, script, output, report, …)",
+          "title": "Kind",
+          "type": "string"
+        },
+        "rights": {
+          "description": "ours: authored for this reproduction; third-party: the article's or the source's",
+          "enum": [
+            "ours",
+            "third-party"
+          ],
+          "title": "Rights",
+          "type": "string"
+        },
+        "license": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "SPDX id of the licence we grant; null for third-party material (see source_license)",
+          "title": "License"
+        },
+        "source_license": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "third-party: the licence reported by the source (e.g. OpenAlex for the article); null = unknown",
+          "title": "Source License"
+        },
+        "source": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "third-party: where it came from (DOI, URL or repository id)",
+          "title": "Source"
+        },
+        "note": {
+          "default": "",
+          "title": "Note",
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "kind",
+        "rights"
+      ],
+      "title": "LicenseEntry",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "licenses.json (written with the archive): which licence applies to which file. Our licence covers only our own\ncontribution; third-party articles, data and code keep their original terms.",
+  "properties": {
+    "policy": {
+      "const": "reprocrowd-licensing/1",
+      "description": "version of the licence policy",
+      "title": "Policy",
+      "type": "string"
+    },
+    "rules": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "description": "the policy in words, by category",
+      "title": "Rules",
+      "type": "object"
+    },
+    "paper_license": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "the article's licence as reported by OpenAlex; null = unknown",
+      "title": "Paper License"
+    },
+    "files": {
+      "items": {
+        "$ref": "#/$defs/LicenseEntry"
+      },
+      "title": "Files",
+      "type": "array"
+    }
+  },
+  "required": [
+    "policy",
+    "rules",
+    "files"
+  ],
+  "type": "object"
+}

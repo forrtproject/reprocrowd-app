@@ -100,6 +100,17 @@ CATALOG: dict[str, tuple[int, str]] = {
     "zenodo_unreachable": (502, "Zenodo could not be reached"),
     "zenodo_error": (502, "Zenodo returned an unexpected answer"),
     "deposit_not_draft": (409, "Only a draft deposit can be published or discarded"),
+    # GitHub pilots
+    "github_token_missing": (400, "A GitHub token is needed"),
+    "github_token_invalid": (403, "GitHub didn't accept the token"),
+    "github_forbidden": (403, "GitHub refused the request; submitting needs a public pilots repository and a login that can fork it"),
+    "github_rejected": (422, "GitHub rejected the request"),
+    "github_rate_limited": (429, "GitHub's rate limit was reached; try again later"),
+    "github_unreachable": (502, "GitHub could not be reached"),
+    "github_error": (502, "GitHub returned an unexpected answer"),
+    "pilot_asset_too_large": (422, "A pilot run's files, pilot.json included, must total at most 200 MiB"),
+    "pilot_other_login": (409, "The run was submitted from another GitHub account, whose repository its comment names; log in as that account to resume"),
+    "pilot_release_mismatch": (409, "The run's release on GitHub holds different files; published releases are never changed"),
     # jobs
     "job_running": (409, "Another job is running in this package"),
     "job_finished": (409, "The job is not running"),
