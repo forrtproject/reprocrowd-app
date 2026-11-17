@@ -39,16 +39,29 @@ export const confirmDialog = async (title: string, messageHtml: string, ok = "OK
 export function showError(label: string, e: unknown) {
   if (isBackendDown(e)) return;
   const p = e instanceof ApiError ? e.problem : undefined;
+  const html = e instanceof ApiError ? e.html : undefined;
   const msg = (e as Error)?.message ?? String(e);
   const extra = p ? Object.entries(p).filter(([k]) => !["type", "title", "status", "detail", "code", "instance", "request_id"].includes(k)) : [];
-  const details = extra.map(([k, v]) => {
-    if (Array.isArray(v) && v.every((x) => typeof x === "string")) return `<h4>${esc(k)}</h4><ul>${v.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>`;
-    return `<h4>${esc(k)}</h4><pre>${esc(typeof v === "string" ? v : JSON.stringify(v, null, 2))}</pre>`;
-  });
+  // Lists of names (e.g. used_by) and validation messages are for the user; dumps (a response body, stderr, argv, …)
+  // help with a bug report, like the problem code, HTTP status and request id: those are folded away.
+  const shown: string[] = [];
+  const folded: string[] = [];
+  for (const [k, v] of extra) {
+    const list = (items: string[]) => `<h4>${esc(k)}</h4><ul>${items.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>`;
+    if (Array.isArray(v) && v.every((x) => typeof x === "string")) shown.push(list(v));
+    else if (k === "errors" && Array.isArray(v) && v.every((x) => typeof x?.msg === "string"))
+      shown.push(list(v.map((x) => `${Array.isArray(x.loc) ? `${x.loc.filter((l: unknown) => l !== "body").join(".")}: ` : ""}${x.msg}`)));
+    else folded.push(`<h4>${esc(k)}</h4><pre>${esc(typeof v === "string" ? v : JSON.stringify(v, null, 2))}</pre>`);
+  }
+  // With an html explanation, it says what the extras would have: they are left out.
+  const tech = p
+    ? `<details class="err-tech"><summary>Technical details</summary>
+        <p class="muted small">${esc(p.title ?? "")} · <code>${esc(p.code)}</code>${p.status ? ` · HTTP ${p.status}` : ""}${p.request_id ? ` · request ${esc(p.request_id)}` : ""}</p>
+        ${html ? "" : folded.join("")}</details>`
+    : "";
+  // Title and Close stay in place; only the body scrolls.
   modal("dlg-error", `<h3>${esc(label)} failed</h3>
-    <p>${esc(msg)}</p>
-    ${p ? `<p class="muted small">${esc(p.title ?? "")} · <code>${esc(p.code)}</code>${p.status ? ` · HTTP ${p.status}` : ""}${p.request_id ? ` · request ${esc(p.request_id)}` : ""}</p>` : ""}
-    ${details.join("")}
+    <div class="err-body">${html ?? `<p>${esc(msg)}</p>${shown.join("")}`}${tech}</div>
     <form method="dialog"><menu><button class="primary">Close</button></menu></form>`);
 }
 

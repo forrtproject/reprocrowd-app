@@ -556,6 +556,16 @@ def delete_input(pkg: Pkg, name: str):
     inputs.delete(pkg, name)
 
 
+@api.post("/packages/{pkg}/inputs:delete", tags=["inputs"], response_model=M.InputsDeleted, summary="Delete several inputs",
+          description="`which=all` deletes every input; `which=unused` the files marked unused and the archives none of whose members "
+                      "is used (a partly used archive stays, with its unused members). All or nothing: if an action uses any of "
+                      "them, nothing is deleted (`in_use`, with `inputs`: the inputs concerned, `used_by`: the actions using them, "
+                      "and `by_input`: input name → actions).",
+          responses=errors("in_use"))
+def delete_inputs(pkg: Pkg, body: M.InputsDelete):
+    return {"deleted": inputs.delete_many(pkg, body.which)}
+
+
 @api.post("/packages/{pkg}/acquire", tags=["inputs"], response_model=M.AcquireResult, summary="Fetch data & code from the manuscript",
           description="Scans a full text for links to data/code repositories (Zenodo, OSF, GitHub, GitLab, Figshare) and downloads "
                       "the files as inputs, so users don't have to upload anything by hand (metacheck-style). "
