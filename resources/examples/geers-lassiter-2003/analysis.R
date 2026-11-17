@@ -59,11 +59,13 @@ readme_lines <- readLines("inputs/readme.txt", warn = FALSE)
 #   Compute the original negative-expectation effect size by deriving f, eta-squared and the
 #   90% CI from the reported F(1,156)=12.09, MSE=3.30, p=.001, r^2=.07 and N=160 using
 #   esc::esc_f and MBESS::ci.pvaf.
-# Source quote:
-#   ""[t]he affective reactions of the negative-expectation participants were less positive
-#   than those of the no-expectation participants, regardless of their level of need for
-#   cognition, F(1, 156) = 12.09, MSE = 3.30, p = .001, r² = .07", f = 0.270, η² = .07, 90%
-#   CI [.02, .14] (p. 317)"
+# Source text:
+#   [sec1.p37.s1] 11 A Priori Sample Size Determination In their study, Geers and Lassiter
+#   found that, overall, “[t]he affective reactions of the negative-expectation participants
+#   were less positive than those of the no-expectation participants, regardless of their
+#   level of need for cognition, F(1, 156) = 12.09, MSE = 3.30, p = .001, r² = .07”, f =
+#   0.270, η² = .07, 90% CI [.02, .14] (p.
+#   [sec1.p37.s3] 318, N = 160).
 # Inputs: inputs/analyses_final_rev1.R
 # Depends on: L01, L02, L03, L04
 # Produces: T008, T009, T010, T011, T012, T013, T014, T015, T016
@@ -103,12 +105,13 @@ add_result("T016", value = ci_neg_high, step = "A01")
 #   Compute the original expectation x NFC interaction effect size by deriving f, eta-
 #   squared and the 90% CI from the reported F(1,154)=6.40, MSE=3.21, p=.01, r^2=.04 and
 #   N=160 using esc::esc_f and MBESS::ci.pvaf.
-# Source quote:
-#   ""relative to no-expectation participants, the affective reactions of those in the
-#   positive-expectation condition became more positive as the need for cognition decreased
-#   (i.e., an assimilation effect), and less positive as level of need for cognition
-#   increased (i.e., a contrast effect), F(1, 154) = 6.40, MSE = 3.21, p = .01, r² = .04", f
-#   = 0.200, η² = .04, 90% CI [.005, .10] (p. 318, N = 160)"
+# Source text:
+#   [sec1.p37.s2] 317) and that “relative to no-expectation participants, the affective
+#   reactions of those in the positive-expectation condition became more positive as the
+#   need for cognition decreased (i.e., an assimilation effect), and less positive as level
+#   of need for cognition increased (i.e., a contrast effect), F(1, 154) = 6.40, MSE = 3.21,
+#   p = .01, r² = .04”, f = 0.200, η² = .04, 90% CI [.005, .10] (p.
+#   [sec1.p37.s3] 318, N = 160).
 # Inputs: inputs/analyses_final_rev1.R
 # Depends on: A01
 # Produces: T001, T002, T003, T017, T018, T019, T020, T021, T022, T023, T024
@@ -144,9 +147,9 @@ add_result("T024", value = ci_int_high, step = "A02")
 # Summary:
 #   Compute the total sample size needed to achieve 95% power for the smaller effect of
 #   f=0.2 using pwr.anova.test with 3 groups (390 participants).
-# Source quote:
-#   "To achieve 95% power for the smaller of these two effects of f = 0.2, we would have
-#   needed 390 participants."
+# Source text:
+#   [sec1.p37.s4] To achieve 95% power for the smaller of these two effects of f = 0.2, we
+#   would have needed 390 participants.
 # Inputs: inputs/analyses_final_rev1.R
 # Depends on: A02
 # Produces: T025
@@ -159,9 +162,10 @@ add_result("T025", value = total_needed, step = "A03")
 # Summary:
 #   Round the required sample size up to N=400 and compute the multiple of the original
 #   sample size (400/160 = 2.5).
-# Source quote:
-#   "We rounded this number to N = 400 (see https://osf.io/6ua4s for the preregistered power
-#   analysis code), which corresponds to 2.5 times the original sample size."
+# Source text:
+#   [sec1.p37.s6] We rounded this number to N = 400 (see https://osf.io/6ua4s for the
+#   preregistered power analysis code), which corresponds to 2.5 times the original sample
+#   size.
 # Inputs: inputs/analyses_final_rev1.R
 # Depends on: A03
 # Produces: T026, T027
@@ -177,10 +181,11 @@ add_result("T027", value = multiple_original, step = "A04")
 #   as the mean of the 16 German NFC items, recode the experimental condition (RD01) into
 #   positive/negative/none, and apply the exclusion criteria retaining only participants
 #   with non-missing NFC, affect index and experimental condition.
-# Source quote:
-#   "At first, the preregistered exclusion criteria were applied. Participants were excluded
-#   if values for any of the following variables were not available: Need for cognition,
-#   affect index, experimental group (assigned automatically during the experiment)."
+# Source text:
+#   [sec1.p39.s4] At first, the preregistered exclusion criteria were applied.
+#   [sec1.p39.s5] Participants were excluded if values for any of the following variables
+#   were not available: Need for cognition, affect index, experimental group (assigned
+#   automatically during the experiment).
 # Inputs: inputs/gl2003-replication-raw-2023-03-28.csv, inputs/analyses_final_rev1.R
 # Depends on: L01
 # Produces: T028, T030
@@ -211,10 +216,11 @@ add_result("T030", value = n_rep, step = "A05")
 #   Compute the achieved statistical power for f=0.2 with the achieved sample size, the
 #   detectable effect size at 95% power, and the achieved power for the original f=0.200,
 #   using pwr.anova.test with 3 groups.
-# Source quote:
-#   "Achieved power was thus 81.37% for f = 0.2. This sample size is sufficient to detect
-#   effects of f = 0.249 with 95% power. The achieved power for the original effect size of
-#   f = 0.200 was 81.37%."
+# Source text:
+#   [sec1.p37.s9] Achieved power was thus 81.37% for f = 0.2.
+#   [sec1.p39.s15] This sample size is sufficient to detect effects of f = 0.249 with 95%
+#   power.
+#   [sec1.p39.s16] The achieved power for the original effect size of f = 0.200 was 81.37%.
 # Inputs: inputs/analyses_final_rev1.R
 # Depends on: A05
 # Produces: T029, T031, T032
@@ -229,9 +235,10 @@ add_result("T032", value = pwr_achieved, step = "A06")
 # Summary:
 #   Compute age descriptives: count participants who reported age, count missing values, and
 #   compute mean, SD, min and max age.
-# Source quote:
-#   "Only 138 participants reported their age (114 missing values). The reported mean age
-#   was M = 47.11 (SD = 16.48) with a range from 19 to 77."
+# Source text:
+#   [sec1.p39.s17] Only 138 participants reported their age (114 missing values).
+#   [sec1.p39.s18] The reported mean age was M = 47.11 (SD = 16.48) with a range from 19 to
+#   77.
 # Inputs: inputs/analyses_final_rev1.R
 # Depends on: A05
 # Produces: T033, T034, T035, T036, T037, T038
@@ -254,9 +261,10 @@ add_result("T038", value = age_max, step = "A07")
 # Summary:
 #   Tabulate gender: count male, female, diverse participants, those who did not want to
 #   disclose, and missing values.
-# Source quote:
-#   "76 male, 169 female and four diverse persons participated in the study (2 did not want
-#   to disclose, 1 missing value)."
+# Source text:
+#   [sec1.p39.s19] 76 male, 169 female and four diverse
+#   [sec1.p41.s1] 13 persons participated in the study (2 did not want to disclose, 1
+#   missing value).
 # Inputs: inputs/analyses_final_rev1.R
 # Depends on: A05
 # Produces: T039, T040, T041, T042, T043
@@ -272,10 +280,11 @@ add_result("T043", value = sum(is.na(ds$SD02)), step = "A08")               # mi
 # Summary:
 #   Tabulate occupation: count students, apprentices, employed, in search of employment,
 #   retired, and missing values.
-# Source quote:
-#   "31 participants reported that they were either bachelor- or master students, while only
-#   one person was in an apprenticeship. 153 subjects were employed, 5 in search for
-#   employment, and 61 in retirement (1 missing value)."
+# Source text:
+#   [sec1.p41.s2] 31 participants reported that they were either bachelor- or master
+#   students, while only one person was in an apprenticeship.
+#   [sec1.p41.s3] 153 subjects were employed, 5 in search for employment, and 61 in
+#   retirement (1 missing value).
 # Inputs: inputs/analyses_final_rev1.R
 # Depends on: A05
 # Produces: T044, T045, T046, T047, T048, T049
@@ -293,10 +302,12 @@ add_result("T049", value = sum(is.na(ds$SD03)), step = "A09")                   
 # Summary:
 #   Compute Cronbach's alpha for the 3-item affect index in the replication sample (with 95%
 #   CI) and report the original study's alpha of .93.
-# Source quote:
-#   "Responses of those items were averaged to gain a single affect index, which reached an
-#   internal consistency of α = .93. ... we analyzed the internal consistency of our affect
-#   index items and found α = .96 (95% CI [0.95, 0.97])."
+# Source text:
+#   [sec1.p41.s5] Responses of those items were averaged to gain a single affect index,
+#   which reached an internal consistency of α = .93.
+#   [sec1.p41.s6] To test if this would also hold true for our questionnaire, we analyzed
+#   the internal consistency of our affect index items and found α = .96 (95% CI [0.95,
+#   0.97]).
 # Inputs: inputs/analyses_final_rev1.R
 # Depends on: A05
 # Produces: T050, T051, T052, T053
@@ -311,9 +322,9 @@ add_result("T053", value = alpha_ai$feldt$upper.ci$raw_alpha, step = "A10")   # 
 # Summary:
 #   Compute Cronbach's alpha for the 16-item German NFC scale in the replication sample with
 #   95% CI.
-# Source quote:
-#   "In our sample and using the scale by Bless et al. (1994), we found a value of α = 0.85
-#   (95% CI [0.83, 0.88], 16 items)."
+# Source text:
+#   [sec1.p41.s9] In our sample and using the scale by Bless et al. (1994), we found a value
+#   of α = 0.85 (95% CI [0.83, 0.88], 16 items).
 # Inputs: inputs/analyses_final_rev1.R
 # Depends on: A05
 # Produces: T054, T055, T056, T057
@@ -328,9 +339,9 @@ add_result("T057", value = length(nfc_items), step = "A11")             # 16 ite
 # Summary:
 #   Run a one-way ANOVA of remembered expectation (BK03_07) on the induced expectation
 #   condition and report F, p and significance.
-# Source quote:
-#   "A one-way ANOVA revealed a significant influence of induced expectation on remembered
-#   expectations, F(2, 249) = 3.90, p = .021."
+# Source text:
+#   [sec1.p41.s11] A one-way ANOVA revealed a significant influence of induced expectation
+#   on remembered expectations, F(2, 249) = 3.90, p = .021.
 # Inputs: inputs/analyses_final_rev1.R
 # Depends on: A05
 # Produces: T058, T059, T060
@@ -348,10 +359,10 @@ add_result("T060", value = ifelse(mc_p < .05, "significant", "not significant"),
 #   Run Tukey HSD post-hoc comparisons of remembered expectation means between the positive
 #   and negative expectation groups; report group means, SDs, Ns, the mean difference, its
 #   95% CI and the p-value.
-# Source quote:
-#   "only a significant difference between the positive (M = 5.21, SD = 2.00, N = 75) and
-#   the negative (M = 4.35, SD = 1.94, N = 94) expectation group was found (Δ = 0.862, 95%
-#   CI [0.127, 1.597], p = .017)."
+# Source text:
+#   [sec1.p41.s13] Here, only a significant difference between the positive (M = 5.21, SD =
+#   2.00, N = 75) and the negative (M = 4.35, SD = 1.94, N = 94) expectation group was found
+#   (Δ = 0.862, 95% CI [0.127, 1.597], p = .017).
 # Inputs: inputs/analyses_final_rev1.R
 # Depends on: A05
 # Produces: T061, T062, T063, T064, T065, T066, T067, T068, T069, T070
@@ -376,9 +387,9 @@ add_result("T070", value = pos_neg[["p adj"]], step = "A13")
 # Summary:
 #   Report the descriptive statistics (mean, SD, N) for the control/no-expectation group's
 #   remembered expectation.
-# Source quote:
-#   "The control group's values were between the other two groups (M = 4.63, SD = 2.11, N =
-#   83)."
+# Source text:
+#   [sec1.p41.s14] The control group’s values were between
+#   [sec1.p43.s1] 14 the other two groups (M = 4.63, SD = 2.11, N = 83).
 # Inputs: inputs/analyses_final_rev1.R
 # Depends on: A05
 # Produces: T071, T072, T073
@@ -391,9 +402,9 @@ add_result("T073", value = ctrl_mc$n, step = "A14")
 # Summary:
 #   Create a violin/jitter plot of remembered expectation by induced expectation condition
 #   (Figure 1), with solid lines representing medians.
-# Source quote:
-#   "A distribution of the data can be seen in Figure 1. Figure 1 Remembered expectation by
-#   induced expectation. Solid lines represent medians."
+# Source text:
+#   [sec1.p43.s3] Figure 1 Remembered expectation by induced expectation
+#   [sec1.p44.s2] Solid lines represent medians.
 # Inputs: inputs/analyses_final_rev1.R
 # Depends on: A05
 # Produces: T139
@@ -415,8 +426,9 @@ add_result("T139", file = "outputs/figures/T139.png", step = "A15")
 # Summary:
 #   Fit a linear regression of affect index on expectation condition, NFC and their
 #   interaction; report the overall model F, p and R-squared and its significance.
-# Source quote:
-#   "The overall model test was not significant, F(5, 246) = 1.86, p = .103, R2 = 0.036."
+# Source text:
+#   [sec1.p48.s3] The overall model test was not significant, F(5, 246) = 1.86, p = .103, R2
+#   = 0.036.
 # Inputs: inputs/analyses_final_rev1.R
 # Depends on: A05
 # Produces: T074, T075, T076, T077
@@ -438,9 +450,9 @@ add_result("T077", value = ifelse(model_p < .05, "significant", "not significant
 # ==== A17 [analysis]: Report that none of the model's individual effects were significant (all ps > .… ====
 # Summary:
 #   Report that none of the model's individual effects were significant (all ps > .143).
-# Source quote:
-#   "In line with this, none of the model's effects were significant (all ps > .143, see
-#   Table 2)."
+# Source text:
+#   [sec1.p48.s4] In line with this, none of the model’s effects were significant (all ps >
+#   .143, see Table 2).
 # Inputs: inputs/analyses_final_rev1.R
 # Depends on: A16
 # Produces: T078, T079
@@ -455,12 +467,12 @@ add_result("T079", value = ifelse(all(coef_pvals > .05), "not significant", "sig
 # Summary:
 #   Produce Table 2, the linear regression of affective reaction on expectation, NFC and
 #   their interaction, reporting the coefficient B, SE, t and p for all terms.
-# Source quote:
-#   "Table 2 Linear Regression of Affective Reaction on Expectation, NFC, and Their
-#   Interaction Coefficient B SE t p Intercept 1.88 1.44 1.31 .192 Expectation (none) 2.53
-#   2.10 1.21 .229 Expectation (positive) 1.36 2.04 0.67 .506 NFC 0.42 0.29 1.47 .143
+# Source text:
+#   [sec1.p48.s5] Table 2 Linear Regression of Affective Reaction on Expectation, NFC, and
+#   Their Interaction Coefficient B SE t p Intercept 1.88 1.44 1.31 .192 Expectation (none)
+#   2.53 2.10 1.21 .229 Expectation (positive) 1.36 2.04 0.67 .506 NFC 0.42 0.29 1.47 .143
 #   Expectation (none) × NFC −0.55 0.42 −1.32 .190 Expectation (positive) × NFC −0.13 0.41
-#   −0.32 .750"
+#   −0.32 .750
 # Inputs: inputs/analyses_final_rev1.R
 # Depends on: A16
 # Produces: T080
@@ -489,9 +501,9 @@ add_result("T080", table = tab2, step = "A18")
 # Summary:
 #   Report the residual standard error (2.30 on 246 df) and the adjusted R-squared (.017)
 #   from the full regression model.
-# Source quote:
-#   "Residual SE = 2.30 on 246 df. R² = .036, adjusted R² = .017, F(5, 246) = 1.86, p =
-#   .103."
+# Source text:
+#   [sec1.p49.s3] Residual SE = 2.30 on 246 df.
+#   [sec1.p49.s4] R² = .036, adjusted R² = .017, F(5, 246) = 1.86, p = .103.
 # Inputs: inputs/analyses_final_rev1.R
 # Depends on: A16
 # Produces: T081, T082
@@ -504,11 +516,14 @@ add_result("T082", value = model_summary$adj.r.squared, step = "A19")        # a
 #   interaction); report F, p, eta-squared and the 90% CI for the expectation main effect,
 #   the NFC main effect and the interaction, and conclude there is no evidence for a group
 #   difference nor NFC moderation.
-# Source quote:
-#   "there was no main effect of expectation condition on the affect index, F(2, 246) =
-#   3.00, p = .051, η² = 0.02, 90% CI [0, 0.05], need for cognition F(1, 246) = 1.43, p =
-#   .233, η² < 0.01, 90% CI [0, 0.02] or an interaction effect F(2, 246) = 0.92, p = .398,
-#   η² < 0.01, 90% CI [0, 0.02]."
+# Source text:
+#   [sec1.p50.s1] Furthermore, an ANOVA was run to test for general effects of NFC,
+#   expectation and their interaction on the affect index.
+#   [sec1.p50.s2] Again, no significant effect was found (all ps ≥ .051).
+#   [sec1.p50.s3] Specifically, there was no main effect of expectation condition on the
+#   affect index, F(2, 246) = 3.00, p = .051, η² = 0.02, 90% CI [0, 0.05], need for
+#   cognition F(1, 246) = 1.43, p = .233, η² < 0.01, 90% CI [0, 0.02] or an interaction
+#   effect F(2, 246) = 0.92, p = .398, η² < 0.01, 90% CI [0, 0.02].
 # Inputs: inputs/analyses_final_rev1.R
 # Depends on: A05
 # Produces: T004, T005, T006, T007, T083, T084, T085, T086, T087, T088, T089, T090, T091, T092, T093, T094, T095, T096, T097, T098
@@ -561,10 +576,11 @@ add_result("T007", value = "no evidence", step = "A20")
 # Summary:
 #   For each expectation condition (positive, negative, none), fit a simple linear
 #   regression of affect index on NFC and report the slope b, SE, t and p.
-# Source quote:
-#   "Positive expectations: b = 0.288, se = 0.306, t(73) = 0.94, p = .349 • Negative
-#   expectations: b = 0.420, se = 0.275, t(92) = 1.53, p = .130 • Control group (no specific
-#   expectations): b = -0.131, se = 0.312, t(81) = -0.420, p = .675."
+# Source text:
+#   [sec1.p52.s2] None of them was significantly different from zero: • Positive
+#   expectations: b = 0.288, se = 0.306, t(73) = 0.94, p = .349 • Negative expectations: b =
+#   0.420, se = 0.275, t(92) = 1.53, p = .130 • Control group (no specific expectations): b
+#   = -0.131, se = 0.312, t(81) = -0.420, p = .675.
 # Inputs: inputs/analyses_final_rev1.R
 # Depends on: A05
 # Produces: T099, T100, T101, T102, T103, T104, T105, T106, T107, T108, T109, T110, T111
@@ -595,9 +611,10 @@ add_result("T111", value = ifelse(all(c(slope_pos["Pr(>|t|)"], slope_neg["Pr(>|t
 # Summary:
 #   Create a scatter plot with linear regression lines (with 95% confidence bands) of affect
 #   index on need for cognition for each expectation condition (Figure 2).
-# Source quote:
-#   "An overview of the results is presented in Figure 2 and Table 3. Figure 2 Regression
-#   lines predicting affect scores from need for cognition and expectation condition."
+# Source text:
+#   [sec1.p52.s3] An overview of the results is presented in Figure 2 and Table 3.
+#   [sec1.p54.s1] 18 Figure 2 Regression lines predicting affect scores from need for
+#   cognition and expectation condition.
 # Inputs: inputs/analyses_final_rev1.R
 # Depends on: A05
 # Produces: T140
@@ -619,9 +636,18 @@ add_result("T140", file = "outputs/figures/T140.png", step = "A22")
 #   Produce Table 3 comparing original and replication results for the interaction test and
 #   the three expectation-condition slopes, with interpretations according to LeBel et al.
 #   (2019).
-# Source quote:
-#   "Table 3 Comparison of original and replication results with interpretations according
-#   to LeBel et al. (2019)."
+# Source text:
+#   [sec1.p57.s2] Test Original Study Replication (preregistered Tukey HSD)2 Replication
+#   (planned contrasts)2 Interpretation Expectation × NFC F(1, 154) = 6.40, MSE = 3.21, p =
+#   .01, r²= .04, f = 0.200, η² = .04, 90% CI [.005, .10]” F(2, 246) = 0.92, p = .398, η² <
+#   0.01, 90% CI [0, 0.02] — No signal, inconsistent Slope for the positive expectation
+#   condition b = -0.03, SE = .02, t(154) = 1.91, p = .051 b = 0.288, se = 0.306, t(73) =
+#   0.94, p = .349 t(1, 246) = 0.969, p = .334 No signal, inconsistent1 Slope for the
+#   negative expectation condition b = -.008, SE = .019, t(154) = 0.42, p = .67 b = 0.420,
+#   se = 0.275, t(92) = 1.53, p = .130 t(1, 246) = 1.469, p = .143 No signal, consistent
+#   Slope for the no expectation condition b = .03, SE = .02, t(154) = 1.62, p = .10 b =
+#   -0.131, se = 0.312, t(81) = -0.420, p = .675 t(1, 246) = -0.428, p = .669 No signal,
+#   consistent Note.
 # Inputs: inputs/analyses_final_rev1.R
 # Depends on: A16, A21
 # Produces: T112
@@ -665,8 +691,9 @@ tab3 <- list(
 add_result("T112", table = tab3, step = "A23")
 
 # ==== A24 [analysis]: Create a histogram of the affect index scores (Figure 3). ====
-# Source quote:
-#   "Figure 3 Distribution of Affect Index Scores. N = 252."
+# Source text:
+#   [sec1.p65.s1] 22 Figure 3 Distribution of Affect Index Scores
+#   [sec1.p66.s2] N = 252.
 # Inputs: inputs/analyses_final_rev1.R
 # Depends on: A05
 # Produces: T141
@@ -681,8 +708,9 @@ ggsave("outputs/figures/T141.png", p_fig3, scale = 2, height = 800, width = 800,
 add_result("T141", file = "outputs/figures/T141.png", step = "A24")
 
 # ==== A25 [analysis]: Create a histogram of the need for cognition scores (Figure 4). ====
-# Source quote:
-#   "Figure 4 Distribution of Need for Cognition Scores. N = 252."
+# Source text:
+#   [sec1.p68.s1] 23 Figure 4 Distribution of Need for Cognition Scores
+#   [sec1.p69.s2] N = 252.
 # Inputs: inputs/analyses_final_rev1.R
 # Depends on: A05
 # Produces: T142
@@ -701,12 +729,14 @@ add_result("T142", file = "outputs/figures/T142.png", step = "A25")
 #   Convert the focal original (eta2=.04, N=160) and replication (eta2<.01, N=252) effect
 #   sizes to r=sqrt(eta2) and fit a fixed-effects meta-analytic moderator model (Lakens,
 #   2022) with study as moderator; report the replication coefficient, QM and p.
-# Source quote:
-#   "effect sizes for the focal original and replication test were converted from η² to r
-#   and compared using a meta-analytical test for moderation by the replication. Thereby,
-#   the replication effect was significantly smaller than the original effect. ... The
-#   moderator test QM(1) = 4.09, p = .043 indicates the replication effect size differed
-#   significantly from the original."
+# Source text:
+#   [sec1.p62.s3] Therefore, effect sizes for the focal original and replication test were
+#   converted from η² to r and compared using a meta-analytical test for moderation by the
+#   replication.
+#   [sec1.p62.s4] Thereby, the replication effect was significantly smaller than the
+#   original effect.
+#   [sec1.p63.s4] The moderator test QM(1) = 4.09, p = .043 indicates the replication effect
+#   size differed significantly from the original.
 # Inputs: inputs/analyses_final_rev1.R
 # Depends on: A02, A20
 # Produces: T113, T114, T115, T116
@@ -751,9 +781,9 @@ add_result("T116", value = res_meta$QMp, step = "A26")
 # Summary:
 #   Run a one-way ANOVA of affect index on expectation condition and report the F statistic
 #   and p-value.
-# Source quote:
-#   "Mean differences between the three expectation conditions did not differ overall, F(2,
-#   249) = 3.00, p = .052."
+# Source text:
+#   [sec1.p70.s2] Mean differences between the three expectation conditions did not differ
+#   overall, F(2, 249) = 3.00, p = .052.
 # Inputs: inputs/analyses_final_rev1.R
 # Depends on: A05
 # Produces: T117, T118
@@ -766,8 +796,9 @@ add_result("T118", value = aimain_summary$`Pr(>F)`[1], step = "A27")
 # ==== A28 [analysis]: Create a violin/jitter plot of affect index scores by expectation condition (Fi… ====
 # Summary:
 #   Create a violin/jitter plot of affect index scores by expectation condition (Figure 5).
-# Source quote:
-#   "Figure 5 Affect scores by expectation condition. Solid lines represent medians."
+# Source text:
+#   [sec1.p72.s1] 24 Figure 5 Affect scores by expectation condition.
+#   [sec1.p73.s2] Solid lines represent medians.
 # Inputs: inputs/analyses_final_rev1.R
 # Depends on: A05
 # Produces: T143
@@ -788,10 +819,12 @@ add_result("T143", file = "outputs/figures/T143.png", step = "A28")
 #   Count participants by number of correctly identified movie statements (4, 3, 2, 1,
 #   missing), compute the percentages, and confirm no participant got all four statements
 #   wrong.
-# Source quote:
-#   "149 participants (59.13%) identified all statements correctly, 77 (30.56%) identified
-#   3/4, 22 (8.73%) identified 2/4, and 3 (1.19%) only identified 1/4 (1 missing value,
-#   0.40%). No participant got all four statements wrong."
+# Source text:
+#   [sec1.p75.s1] 25 When asked to identify the correct ones of four statements about the
+#   movie, 149 participants (59.13%) identified all statements correctly, 77 (30.56%)
+#   identified 3/4, 22 (8.73%) identified 2/4, and 3 (1.19%) only identified 1/4 (1 missing
+#   value, 0.40%).
+#   [sec1.p75.s2] No participant got all four statements wrong.
 # Inputs: inputs/analyses_final_rev1.R
 # Depends on: A05
 # Produces: T119, T120, T121, T122, T123, T124, T125, T126, T127, T128, T129
@@ -825,10 +858,10 @@ add_result("T129", value = ifelse(ac_0 == 0, "none", "some"), step = "A29")
 # Summary:
 #   Re-run the main hypothesis model on the 149 participants who answered all four attention
 #   check items correctly; report F, p and R-squared.
-# Source quote:
-#   "Running the main hypothesis's model only on the 149 participants that responded
-#   correctly to the four attention check items did not affect the results, F(5, 143) =
-#   0.94, p = .459, R² = .032."
+# Source text:
+#   [sec1.p75.s3] Running the main hypothesis’ model only on the 149 participants that
+#   responded correctly to the four attention check items did not affect the results, F(5,
+#   143) = 0.94, p = .459, R² = .032.
 # Inputs: inputs/analyses_final_rev1.R
 # Depends on: A29
 # Produces: T130, T131, T132
@@ -849,10 +882,10 @@ add_result("T132", value = model_ac_summary$r.squared, step = "A30")
 # Summary:
 #   Report the replication and original sample sizes (Nreplication=252, Noriginal=160) and
 #   the approximate statistical power (~80%) in the discussion.
-# Source quote:
-#   "a lack of statistical power (~80%) may have led to a non-significant finding (false-
-#   negative) though our sample size is considerably larger than the original (Nreplication=
-#   252, Noriginal = 160)."
+# Source text:
+#   [sec1.p77.s3] Most importantly, a lack of statistical power (~80%) may have led to a
+#   non-significant finding (false-negative) though our sample size is considerably larger
+#   than the original (Nreplication= 252, Noriginal = 160).
 # Depends on: A05
 # Produces: T133, T134, T135
 add_result("T133", value = n_rep, step = "A31")
@@ -863,17 +896,21 @@ add_result("T135", value = 80, step = "A31")   # approximate power stated in the
 # Summary:
 #   Report the preregistered target sample size (400) and that the achieved sample still had
 #   >80% power for the original effect.
-# Source quote:
-#   "We did not achieve our preregistered target sample size for N = 400 participants but
-#   only N = 252, which still had >80% power for the original effect."
+# Source text:
+#   [sec1.p79.s7] We did not achieve our preregistered target sample size for N = 400
+#   participants but only N = 252, which still had >80% power for the original effect.
 # Depends on: A05
 # Produces: T136, T137
 add_result("T136", value = target_n, step = "A32")
 add_result("T137", value = pwr_achieved, step = "A32")   # achieved power > 80%
 
 # ==== A33 [analysis]: Report the recommended minimum sample size (N ≥ 400) for future studies. ====
-# Source quote:
-#   "use a very large sample size (N ≥ 400)."
+# Source text:
+#   [sec1.p84.s1] 29 the environment of the participants), conduct thorough pilot tests on
+#   the expectation induction and the target movie, use a freely available and non-
+#   copyrighted movie that should not need to be translated, include manipulation checks of
+#   the induction method, test for demand characteristics, and use a very large sample size
+#   (N ≥ 400).
 # Depends on: A32
 # Produces: T138
 add_result("T138", value = 400, step = "A33")

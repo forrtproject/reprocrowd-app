@@ -15,7 +15,7 @@ from pydantic import BaseModel, ValidationError
 
 from . import llm, providers
 from .errors import ApiError, conflict, invalid, not_found, pydantic_errors
-from .extractions import Scope, check_scope, listing
+from .extractions import Passages, Scope, check_scope, listing
 from .extractions import get as get_extraction
 from .package import Package
 from .schemas import json_schema
@@ -33,7 +33,6 @@ from .schemas.curation import (
     TargetLlmItem,
     TargetsFile,
 )
-from .schemas.document import Document
 
 Kind = Literal["targets", "actions"]
 
@@ -60,26 +59,19 @@ CURATIONS: dict[str, Spec] = {
 
 
 class Context:
-    """Looks things up for semantic checks; loads each extraction at most once."""
+    """Looks things up for semantic checks; loads and indexes each extraction at most once."""
 
     def __init__(self, pkg: Package):
         self.pkg = pkg
         self.manifest = pkg.load()
-        self._docs: dict[str, Document | None] = {}
-
-    def doc(self, name: str) -> Document | None:
-        if name not in self._docs:
-            r = self.manifest.get(name)
-            self._docs[name] = get_extraction(self.pkg, name)[1] if r and r.reprocrowd.kind == "extraction" else None
-        return self._docs[name]
+        self.passages = Passages(pkg)
 
     def ref_errors(self, refs: list[Ref]) -> list[str]:
         errors = []
         for ref in refs:
-            doc = self.doc(ref.extraction)
-            if doc is None:
+            if self.passages.doc(ref.extraction) is None:
                 errors.append(f"refs: no extraction {ref.extraction!r}")
-            elif ref.id not in doc.index():
+            elif ref.id not in self.passages.index(ref.extraction):
                 errors.append(f"refs: {ref.id!r} is not in {ref.extraction}")
         return errors
 

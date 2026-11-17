@@ -3,7 +3,7 @@
 //   Input files:      the study's published data (POST …/inputs; zip archives are unpacked).
 import { ApiError, host, pkg } from "../api";
 import { countSentences } from "../doc";
-import { ROLES, type AcquireFailure, type AcquirePreview, type AcquireResult, type Document, type Resource, type Role } from "../types";
+import { ROLES, type AcquireFailure, type Action, type AcquirePreview, type AcquireResult, type Document, type Resource, type Role } from "../types";
 import { confirmDialog, esc, modal, sizeText } from "../util";
 import type { Step, Wizard } from "./wizard";
 
@@ -30,12 +30,15 @@ function fetchStatus(r: AcquireResult): [string, "info" | "error"] {
 
 type InputRes = Resource & { reprocrowd: Extract<Resource["reprocrowd"], { kind: "input" }> };
 
+
 /** A file's size for the fetch dialog; 0 means the repository didn't say. */
 const fileSize = (n: number) => (n ? sizeText(n) : "size unknown");
 
 /** Ask the user what to download: all files, only the checked ones, or nothing (null). Links that couldn't be
  *  read are listed with the reason; the download limit applies to each link, so a link whose chosen files add
- *  up to more than it is flagged (files beyond the limit would be skipped). */
+ *  up to more than it is flagged (files beyond the limit would be skipped). Files already in the package (fetched
+ *  before) are shown as such, can't be chosen, and don't count towards the sizes; when every file is already
+ *  there, the dialog says so and offers no download. */
 function fetchDialog(p: AcquirePreview): Promise<{ action: "all" } | { action: "selected"; keys: string[] } | null> {
   return new Promise((resolve) => {
     const linkKey = (x: { repo: string; id: string }) => `${x.repo}:${x.id}`;
@@ -44,30 +47,40 @@ function fetchDialog(p: AcquirePreview): Promise<{ action: "all" } | { action: "
       files: p.files.filter((f) => linkKey(f) === linkKey(link)),
       failure: p.failures.find((x) => linkKey(x) === linkKey(link)),
     }));
+    const fresh = p.files.filter((f) => !f.present);
+    const present = p.files.length - fresh.length;
     const html = groups.map(({ link, files, failure }, g) => {
-      const rows = files.map((f) =>
-        `<label class="rp-file"><input type="checkbox" data-group="${g}" data-key="${esc(f.key)}" data-size="${f.size}" checked /><code>${esc(f.path)}</code> <span class="muted">${fileSize(f.size)}</span></label>`).join("");
-      const note = failure ? `<p class="rp-fetch-warn">Could not be read: ${esc(failure.error)}</p>` : files.length ? "" : `<p class="muted">No files found.</p>`;
-      const all = files.length ? `<label class="rp-file"><input type="checkbox" data-all="${g}" checked /> all ${files.length} file(s)</label>` : "";
+      const mine = files.filter((f) => !f.present);
+      const rows = files.map((f) => f.present
+        ? `<label class="rp-file rp-present" title="Fetched before; fetching again skips it"><input type="checkbox" disabled /><code>${esc(f.path)}</code> <span class="muted">${fileSize(f.size)}</span> <span class="badge">already added</span></label>`
+        : `<label class="rp-file"><input type="checkbox" data-group="${g}" data-key="${esc(f.key)}" data-size="${f.size}" checked /><code>${esc(f.path)}</code> <span class="muted">${fileSize(f.size)}</span></label>`).join("");
+      const note = failure ? `<p class="rp-fetch-warn">Could not be read: ${esc(failure.error)}</p>`
+        : !files.length ? `<p class="muted">No files found.</p>`
+        : !mine.length ? `<p class="muted">All ${files.length} file(s) are already in the package.</p>` : "";
+      const all = mine.length ? `<label class="rp-file"><input type="checkbox" data-all="${g}" checked /> all ${mine.length}${mine.length < files.length ? " new" : ""} file(s)</label>` : "";
       return `<div class="rp-group"><h4><a href="${esc(link.url)}" target="_blank" rel="noopener">${esc(link.label)}</a> <span class="muted">(${esc(link.kind)})</span></h4>
         ${note}${all}<div class="rp-group-files">${rows}</div><p class="rp-fetch-warn" data-over="${g}" hidden></p></div>`;
     }).join("");
-    const unknown = p.files.filter((f) => !f.size).length;
+    const unknown = fresh.filter((f) => !f.size).length;
+    const found = `Found ${p.links.length} link(s) with ${p.files.length} file(s)`;
+    const summary = !p.files.length ? `${found}.`
+      : !fresh.length ? `${found}. All of them are already in the package, so there is nothing new to download.`
+      : `${found}${present ? `, ${present} of them already in the package. The ${fresh.length} new file(s) take` : ","} <b>${sizeText(p.total_bytes)}</b> in total${unknown ? ` (plus ${unknown} file(s) of unknown size)` : ""}.
+        Files beyond the ${sizeText(p.limit_bytes)} download limit per link are skipped. Choose what to download:`;
     const dlg = modal("dlg-fetch", `
       <h3>Fetch supplemental materials</h3>
-      <p>Found ${p.links.length} link(s) with ${p.files.length} file(s), <b>${sizeText(p.total_bytes)}</b> in total${unknown ? ` (plus ${unknown} file(s) of unknown size)` : ""}.
-        Files beyond the ${sizeText(p.limit_bytes)} download limit per link are skipped. Choose what to download:</p>
+      <p>${summary}</p>
       <div class="rp-fetch-list">${html}</div>
-      <p class="muted" id="rp-fetch-sum"></p>
+      <p class="muted" id="rp-fetch-sum" ${fresh.length ? "" : "hidden"}></p>
       <menu>
-        <button value="cancel">Cancel</button>
-        ${p.files.length ? `<button value="selected" class="primary">Download selected</button><button value="all" class="primary">Download all</button>` : ""}
+        <button value="cancel">${fresh.length ? "Cancel" : "Close"}</button>
+        ${fresh.length ? `<button value="selected" class="primary">Download selected</button><button value="all" class="primary">Download all${present ? " new" : ""}</button>` : ""}
       </menu>`);
     const boxes = (g?: number) => [...dlg.querySelectorAll<HTMLInputElement>(g === undefined ? "input[data-key]" : `input[data-group="${g}"]`)];
     const update = () => {
       const on = boxes().filter((c) => c.checked);
       const bytes = on.reduce((n, c) => n + Number(c.dataset.size), 0);
-      dlg.querySelector("#rp-fetch-sum")!.textContent = `Selected: ${on.length} of ${p.files.length} file(s), ${sizeText(bytes)}`;
+      dlg.querySelector("#rp-fetch-sum")!.textContent = `Selected: ${on.length} of ${fresh.length}${present ? " new" : ""} file(s), ${sizeText(bytes)}`;
       const sel = dlg.querySelector<HTMLButtonElement>('button[value="selected"]');
       if (sel) sel.disabled = !on.length;
       groups.forEach((_, g) => {
@@ -87,7 +100,8 @@ function fetchDialog(p: AcquirePreview): Promise<{ action: "all" } | { action: "
     let keys: string[] = [];
     dlg.querySelectorAll<HTMLButtonElement>("menu button").forEach((b) => {
       b.addEventListener("click", () => {
-        if (b.value === "selected") keys = boxes().filter((c) => c.checked).map((c) => c.dataset.key!);
+        // The files already in the package go along, so the fetch reports them as already present instead of not chosen.
+        if (b.value === "selected") keys = [...boxes().filter((c) => c.checked).map((c) => c.dataset.key!), ...p.files.filter((f) => f.present).map((f) => f.key)];
         dlg.close(b.value);
       });
     });
@@ -160,6 +174,29 @@ export class InputsStep implements Step {
     </div>`;
   }
 
+  /** A file's path as the list shows it. */
+  private shown(name: string) {
+    return this.inputs.find((r) => r.name === name)?.path.replace(/^inputs\//, "") ?? name;
+  }
+
+  /** The backend's in_use refusal, said for people: which files, used by which analysis steps, and where to change that. */
+  private async inUse(err: ApiError, bulk: boolean): Promise<ApiError> {
+    const p = err.problem as { by_input?: Record<string, string[]>; inputs?: string[] } | undefined;
+    const byInput = p?.by_input ?? Object.fromEntries((p?.inputs ?? []).map((n) => [n, []]));
+    const actions = await pkg.get<{ item: Action }[]>("/actions", { include_disabled: true }).catch(() => []);
+    const step = (id: string) => {
+      const a = actions.find((x) => x.item.id === id)?.item;
+      return `<b>${esc(id)}</b>${a?.summary ? ` <span class="muted">${esc(a.summary)}</span>` : ""}`;
+    };
+    const names = Object.keys(byInput);
+    const one = names.length === 1;
+    const text = `${names.map((n) => this.shown(n)).join(", ")} ${one ? "is" : "are"} used by analysis steps; remove ${one ? "it" : "them"} from those steps in step 3 (Analysis plan) first.${bulk ? " Nothing was deleted." : ""}`;
+    const html = `<p>${bulk ? `Nothing was deleted: ${one ? "this file is" : `these ${names.length} files are`}` : one ? "This file is" : `These ${names.length} files are`} used by analysis steps.
+        Remove ${one ? "it" : "them"} from those steps in <b>3. Analysis plan</b> first.</p>
+      <ul class="err-files">${names.map((n) => `<li><code>${esc(this.shown(n))}</code> — used by ${(byInput[n].length ? byInput[n] : ["an analysis step"]).map(step).join(", ")}</li>`).join("")}</ul>`;
+    return new ApiError(text, err.problem, html);
+  }
+
   draw(body: HTMLElement) {
     const app = this.w.app;
     const d = this.docs.get(app.jats());
@@ -167,23 +204,38 @@ export class InputsStep implements Step {
     const contents = d instanceof Error ? `<span class="warn-inline">${esc(d.message)}</span>` : d ? `${d.sections.length} sections · ${countSentences(d)} sentences · ${d.figures.length} figures · ${d.tables.length} tables` : "";
     const archives = this.inputs.filter((r) => this.inputs.some((m) => m.reprocrowd.archive === r.name));
     const loose = this.inputs.filter((r) => !r.reprocrowd.archive && !archives.includes(r));
+    // One change to the list at a time: adding, fetching and deleting each disable the others.
+    const locked = ["upload", "fetch", "delete"].some((k) => this.w.running.has(k));
     const roleSel = (r: InputRes) => `<select data-f="role" ${r.reprocrowd.used ? "" : "disabled"}>${ROLES.map((x) => `<option ${x === r.reprocrowd.role ? "selected" : ""}>${x}</option>`).join("")}</select>`;
     const row = (r: InputRes, nested: string) => `<tr data-name="${esc(r.name)}" class="${nested} ${r.reprocrowd.used ? "" : "rp-disabled"}">
         <td><input type="checkbox" data-f="used" ${r.reprocrowd.used ? "checked" : ""} title="Use this file in the reproduction" /></td>
         <td><code>${esc(nested ? r.path.split("/").slice(2).join("/") || r.path : r.path.replace(/^inputs\//, ""))}</code></td><td>${roleSel(r)}</td>
         <td><input data-f="note" value="${esc(r.reprocrowd.note)}" placeholder="note" ${r.reprocrowd.used ? "" : "disabled"} /></td>
-        <td class="nowrap">${sizeText(r.bytes)}</td><td>${nested ? "" : `<button data-act="del" title="Delete from the package">✕</button>`}</td></tr>`;
+        <td class="nowrap">${sizeText(r.bytes)}</td><td>${nested ? "" : `<button data-act="del" title="Delete from the package" ${locked ? "disabled" : ""}>✕</button>`}</td></tr>`;
     let rows = loose.map((r) => row(r, "")).join("");
     for (const a of archives) {
       const members = this.inputs.filter((m) => m.reprocrowd.archive === a.name);
       const off = members.filter((m) => !m.reprocrowd.used).length;
-      rows += `<tr class="rp-archive" data-name="${esc(a.name)}"><td></td><td colspan="3"><span class="badge">zip</span> <b>${esc(a.path.replace(/^inputs\//, ""))}</b> <span class="muted">${members.length} files unpacked${off ? `, ${off} not used` : ""}</span></td><td class="nowrap">${sizeText(a.bytes)}</td><td><button data-act="del" title="Remove the archive and all its files">✕</button></td></tr>`;
+      rows += `<tr class="rp-archive" data-name="${esc(a.name)}"><td></td><td colspan="3"><span class="badge">zip</span> <b>${esc(a.path.replace(/^inputs\//, ""))}</b> <span class="muted">${members.length} files unpacked${off ? `, ${off} not used` : ""}</span></td><td class="nowrap">${sizeText(a.bytes)}</td><td><button data-act="del" title="Remove the archive and all its files" ${locked ? "disabled" : ""}>✕</button></td></tr>`;
       rows += members.map((m) => row(m, "rp-nested")).join("");
     }
     const counts = ROLES.map((r) => `${this.inputs.filter((i) => i.reprocrowd.used && i.reprocrowd.role === r && !archives.includes(i)).length} ${r}`).join(" · ");
-    const uploading = this.w.running.has("upload");
-    const fetching = this.w.running.has("fetch");
-    const busy = uploading || fetching;
+    const busy = locked;
+
+    // Bulk deletion. "Unselected" matches the backend: loose files not used, and archives none of whose files is
+    // used; unused files in a partly used archive stay (members can't be deleted on their own, only left out).
+    const members = (a: InputRes) => this.inputs.filter((m) => m.reprocrowd.archive === a.name);
+    const deadArchives = archives.filter((a) => !members(a).some((m) => m.reprocrowd.used));
+    const unusedTops = [...loose.filter((r) => !r.reprocrowd.used), ...deadArchives];
+    const unusedCount = unusedTops.reduce((n, r) => n + (deadArchives.includes(r) ? members(r).length : 1), 0);
+    const keptUnused = archives.filter((a) => !deadArchives.includes(a)).reduce((n, a) => n + members(a).filter((m) => !m.reprocrowd.used).length, 0);
+    const files = this.inputs.filter((r) => !archives.includes(r));
+    const keptNote = keptUnused ? ` ${keptUnused} unticked file(s) in partly used archives stay: files can't be removed from an archive, only left out.` : "";
+    const bulkButtons = `<button id="rp-del-unused" ${locked || !unusedCount ? "disabled" : ""} title="Delete the files that aren't ticked as used; an archive goes when none of its files is used.${keptNote}">Delete unselected${unusedCount ? ` (${unusedCount})` : ""}</button>
+         <button id="rp-del-all" ${locked ? "disabled" : ""} title="Delete every input file from the package">Delete all</button>`;
+    const toolbar = this.inputs.length
+      ? `<div class="rp-bulk"><span class="muted small">${files.filter((r) => r.reprocrowd.used).length} of ${files.length} file(s) used${keptUnused ? ` · ${keptUnused} unticked file(s) in partly used archives can only be left out` : ""}</span><span class="spacer"></span>${bulkButtons}</div>`
+      : "";
 
     body.innerHTML = `
     <div class="card">
@@ -196,6 +248,7 @@ export class InputsStep implements Step {
         <button id="rp-fetch" ${busy ? "disabled" : ""} title="Find data/code repository links in the manuscript and download them here">Fetch supplemental materials…</button>
         <label class="btn primary ${busy ? "disabled" : ""}">Add files…<input type="file" multiple hidden id="rp-add-files" /></label><button id="rp-add-dir" ${busy ? "disabled" : ""}>Add a folder…</button></div>
       <p class="hint">The study's published data. The analysis is rebuilt from the procedures described in the paper, so the authors' code isn't needed. The backend guesses the role from the file type; notes are passed on to the LLM and the report. Zip archives are unpacked; files in an archive can be left out (unticked) without changing it. You can also drop files here. <b>Fetch supplemental materials…</b> looks for data/code links (Zenodo, GitHub, GitLab, OSF, Figshare) in the manuscript and downloads them here.</p>
+      ${toolbar}
       <table class="tbl-list rp-inputs"><thead><tr><th title="Used">Use</th><th>File</th><th>Role</th><th>Note</th><th>Size</th><th></th></tr></thead>
         <tbody>${rows || `<tr><td colspan="6" class="muted">No input files yet.</td></tr>`}</tbody></table>
     </div>${this.fetchList()}`;
@@ -229,6 +282,30 @@ export class InputsStep implements Step {
         (this.fetch = await pkg.acquire(choice.action === "selected" ? { selected: choice.keys } : {})));
       if (r) this.w.setStatus(...fetchStatus(r));
     });
+
+    const shortList = (rs: InputRes[], max = 8) =>
+      `<ul class="rp-del-list">${rs.slice(0, max).map((r) => `<li><code>${esc(r.path.replace(/^inputs\//, ""))}</code>${deadArchives.includes(r) ? ` <span class="muted">(archive, ${members(r).length} files)</span>` : ""}</li>`).join("")}${rs.length > max ? `<li class="muted">and ${rs.length - max} more</li>` : ""}</ul>`;
+    const bulkDelete = async (which: "all" | "unused") => {
+      if (which === "all") {
+        const what = archives.length ? `, including ${archives.length} archive(s) and the ${files.length - loose.length} file(s) unpacked from them` : "";
+        if (!(await confirmDialog("Delete all inputs", `Delete all ${files.length} input file(s) from the package${what}? This can't be undone.`, "Delete all", true))) return;
+      } else {
+        const kept = keptUnused ? `<p class="hint">${esc(keptNote.trim())}</p>` : "";
+        if (!(await confirmDialog("Delete unselected inputs", `Delete the ${unusedCount} file(s) not ticked as used?${shortList(unusedTops)}${kept}`, "Delete", true))) return;
+      }
+      const label = which === "all" ? "Deleting all inputs" : "Deleting unselected inputs";
+      const r = await this.w.busy("delete", label, async () => {
+        try {
+          return await pkg.post<{ deleted: string[] }>("/inputs:delete", { which });
+        } catch (err) {
+          throw err instanceof ApiError && err.code === "in_use" ? await this.inUse(err, true) : err;
+        }
+      });
+      if (r) this.w.setStatus(`Deleted ${r.deleted.filter((n) => !archives.some((a) => a.name === n)).length} input file(s)${which === "unused" && keptUnused ? ` (${keptUnused} unticked file(s) in partly used archives kept)` : ""}`);
+    };
+    body.querySelector("#rp-del-all")?.addEventListener("click", () => bulkDelete("all"));
+    body.querySelector("#rp-del-unused")?.addEventListener("click", () => bulkDelete("unused"));
+
     const card = body.querySelector<HTMLElement>(".rp-drop")!;
     card.addEventListener("dragover", (e) => {
       e.preventDefault();
@@ -263,14 +340,13 @@ export class InputsStep implements Step {
       const name = b?.closest<HTMLElement>("tr[data-name]")?.dataset.name;
       if (!name) return;
       const n = this.inputs.filter((m) => m.reprocrowd.archive === name).length;
-      const what = n ? `the archive <code>${esc(name)}</code> and all ${n} files unpacked from it` : `<code>${esc(name)}</code>`;
+      const what = n ? `the archive <code>${esc(this.shown(name))}</code> and all ${n} files unpacked from it` : `<code>${esc(this.shown(name))}</code>`;
       if (!(await confirmDialog("Delete input", `Delete ${what} from the package?`, "Delete", true))) return;
-      await this.w.busy("delete", `Deleting ${name}`, async () => {
+      await this.w.busy("delete", `Deleting ${this.shown(name)}`, async () => {
         try {
           await pkg.del(`/inputs/${encodeURIComponent(name)}`);
         } catch (err) {
-          if (err instanceof ApiError && err.code === "in_use") throw new ApiError(`${name} is used by analysis steps (step 4); remove it there first.`, err.problem);
-          throw err;
+          throw err instanceof ApiError && err.code === "in_use" ? await this.inUse(err, false) : err;
         }
       });
     });

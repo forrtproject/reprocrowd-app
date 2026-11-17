@@ -4,9 +4,9 @@ C:\Users\user\ReproCrowd\260707-aemreplication-rev1
 Goal: implement the analysis so that running `Rscript analysis.R` from the package root reproduces the paper's results.
 
 Read first:
-- analysis.R: master R script with one section per analysis step. Each section has the step summary and the verbatim quote from the paper it implements.
+- analysis.R: master R script with one section per analysis step. Each section has the step summary and the text of the paper it implements.
 - analysis_plan.json: the same steps as structured data (ids, inputs, dependencies, target ids each step produces).
-- results_schema.json: the reproduction targets, in "results" (ids, descriptions, quotes, expected values).
+- results_schema.json: the reproduction targets, in "results" (ids, descriptions, expected values). Their "refs" point at the passages of the paper that report them: an extraction (extractions/<name>.json, the paper's text) and a sentence, figure or table id in it.
 - schemas/results-output.schema.json: the required format of outputs/results.json.
 - datapackage.json: every file of the package. Input files are the resources with "reprocrowd": {"kind": "input"}; their "role" (data / code / other) and "note" describe them. Never modify files in inputs/, and ignore inputs with "used": false.
 - Data files:
@@ -28,7 +28,7 @@ Read first:
 
 Rules:
 1. Implement each step section of analysis.R in place, in order.
-2. Replace every `TODO(LLM):` marker with working code and delete the marker. Keep the step header comments (ids, summaries, quotes) intact and in order.
+2. Replace every `TODO(LLM):` marker with working code and delete the marker. Keep the step header comments (ids, summaries, source text) intact and in order.
 3. Use paths relative to the package root.
 4. Compute every result from the data. NEVER copy expected values from results_schema.json into the output; the point is to test whether they reproduce.
 5. outputs/results.json: {"results": [{"id": "<target id>", "value": <unrounded number or string>, "step": "<step id>"}, ...]}. Use "table" (array of rows, same layout as expected, header row included) for table targets, and "file" for figure targets (save figures as outputs/figures/<target id>.png). If a result cannot be computed, emit it with "value": null and a "note" explaining why.

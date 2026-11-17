@@ -228,6 +228,45 @@ def test_inputs(client, pkg):
     assert not (root / "inputs" / "replication").exists()
 
 
+def test_inputs_bulk_delete(client, pkg, tmp_path):
+    P = f"/v1/packages/{pkg}"
+    merge = {"Content-Type": "application/merge-patch+json"}
+    names = lambda: sorted(x["name"] for x in client.get(P + "/inputs").json())  # noqa: E731
+    (tmp_path / "extra.csv").write_text("a,b\n1,2\n")
+    client.post(P + "/inputs", json={"path": str(FIXTURES / "data.csv")})
+    client.post(P + "/inputs", json={"path": str(tmp_path / "extra.csv")})
+    zip_, *members = client.post(P + "/inputs", json={"path": str(FIXTURES / "replication.zip")}).json()
+    client.patch(P + "/inputs/in-extra.csv", json={"used": False}, headers=merge)
+
+    # a partly used archive stays, with its unused member
+    client.patch(P + f"/inputs/{members[0]['name']}", json={"used": False}, headers=merge)
+    r = client.post(P + "/inputs:delete", json={"which": "unused"})
+    assert r.status_code == 200 and r.json() == {"deleted": ["in-extra.csv"]}
+    assert len(names()) == 2 + len(members)
+
+    # an archive none of whose members is used goes, with its members and their folder
+    client.patch(P + f"/inputs/{members[1]['name']}", json={"used": False}, headers=merge)
+    r = client.post(P + "/inputs:delete", json={"which": "unused"})
+    assert sorted(r.json()["deleted"]) == sorted([zip_["name"], *(m["name"] for m in members)])
+    assert names() == ["in-data.csv"]
+    root = Path(client.get(P).json()["path"])
+    assert not (root / "inputs" / "replication").exists()
+    assert client.post(P + "/inputs:delete", json={"which": "unused"}).json() == {"deleted": []}
+
+    # all or nothing: an input used by an action blocks the whole deletion
+    (tmp_path / "extra.csv").write_text("a,b\n3,4\n")
+    client.post(P + "/inputs", json={"path": str(tmp_path / "extra.csv")})
+    r = client.post(P + "/actions", json={"kind": "transform", "summary": "Load", "unreferenced": True, "note": "n", "inputs": ["in-data.csv"]})
+    assert r.status_code == 201, r.text
+    e = problem(client.post(P + "/inputs:delete", json={"which": "all"}), 409, "in_use")
+    assert e["used_by"] == [r.json()["id"]] and e["inputs"] == ["in-data.csv"] and e["by_input"] == {"in-data.csv": [r.json()["id"]]}
+    assert names() == ["in-data.csv", "in-extra.csv"]
+    client.delete(P + f"/actions/{r.json()['id']}")
+    assert sorted(client.post(P + "/inputs:delete", json={"which": "all"}).json()["deleted"]) == ["in-data.csv", "in-extra.csv"]
+    assert names() == []
+    problem(client.post(P + "/inputs:delete", json={"which": "some"}), 422, "request_invalid")
+
+
 # ---------- targets, actions, script, validation ----------
 
 
@@ -364,6 +403,10 @@ def test_actions_script_validation(client, pkg):
     problem(client.delete(P + "/targets/T001"), 409, "in_use")
     problem(client.delete(P + "/inputs/in-data.csv"), 409, "in_use")
 
+    # an action the paper doesn't describe: its note goes into the plan and the step header
+    note = "Reverse-code items 3 and 7 first, as the authors' R script does."
+    assert client.patch(P + "/actions/A03", json={"refs": [], "unreferenced": True, "note": note}).status_code == 200
+
     # script
     templates = {t["id"] for t in client.get("/v1/templates").json()}
     assert templates == {"r", "python", "targets", "snakemake"}
@@ -373,7 +416,14 @@ def test_actions_script_validation(client, pkg):
     script = (root / "analysis.R").read_text()
     assert "# ==== L01 [load]: Load inputs/data.csv ====" in script and "# ==== A02 [analysis]: Run the t-test ====" in script
     assert "TODO(LLM): implement OUT" in script
+    a02 = script[script.index("# ==== A02"):script.index("# ==== A03")]
+    doc = client.get(P + "/extractions/ex-paper-tei").json()
+    text = next(x["text"] for sec in doc["sections"] for par in sec["paragraphs"] for x in par["sentences"] if x["id"] == "sec2.p1.s1")
+    assert "# Source text:\n" in a02 and f"[sec2.p1.s1] {text}" in a02.replace("\n#   ", " ")
+    a03 = script[script.index("# ==== A03"):script.index("# ==== OUT")]
+    assert "Source text" not in a03 and f"# Note:\n#   {note}\n" in a03
     plan = json.loads((root / "analysis_plan.json").read_text())
+    assert plan["steps"][3]["note"] == note and "note" not in plan["steps"][2]
     assert [s["id"] for s in plan["steps"]] == ["L01", "A01", "A02", "A03", "OUT"]
     assert plan["steps"][1]["depends_on"] == ["L01"] and plan["steps"][-1]["depends_on"] == ["A03"]
     assert client.put(P + "/script", json={"template": "snakemake"}).status_code == 200

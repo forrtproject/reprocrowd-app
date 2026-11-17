@@ -22,11 +22,6 @@
           "title": "Summary",
           "type": "string"
         },
-        "quote": {
-          "default": "",
-          "title": "Quote",
-          "type": "string"
-        },
         "refs": {
           "items": {
             "type": "string"

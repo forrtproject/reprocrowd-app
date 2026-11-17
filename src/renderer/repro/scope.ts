@@ -1,6 +1,6 @@
 // Checkbox tree over a document (sections › paragraphs › sentences, plus figures and tables), used to choose what an
 // LLM call reads (its scope) and which passages a target or action refers to.
-import { countFloats, Float, floatsOf, refText, SectionNode, sectionTree } from "../doc";
+import { countFloats, Float, floatsOf, SectionNode, sectionTree } from "../doc";
 import type { Document } from "../types";
 import { esc, trunc } from "../util";
 
@@ -39,7 +39,7 @@ export class ScopeTree {
   private leaves = new Map<string, string[]>();
   private order: string[] = [];
 
-  constructor(private root: HTMLElement, private doc: Document, private opts: { floats: boolean; presets: Preset[]; onChange?: () => void }) {
+  constructor(private root: HTMLElement, private doc: Document, private opts: { floats: boolean; presets: Preset[] }) {
     this.render();
     root.addEventListener("change", (e) => {
       const cb = e.target as HTMLInputElement;
@@ -84,10 +84,6 @@ export class ScopeTree {
   set scope(v: { sections: string[]; items: string[] }) {
     this.selected = new Set([...v.items, ...v.sections.flatMap((s) => this.leaves.get(s) ?? [])]);
     this.sync();
-  }
-
-  get quote() {
-    return refText(this.doc, this.ids);
   }
 
   private select(pred: Pred) {
@@ -148,6 +144,5 @@ export class ScopeTree {
     });
     const count = this.root.querySelector(".scope-count");
     if (count) count.textContent = `${this.ids.length} selected`;
-    this.opts.onChange?.();
   }
 }

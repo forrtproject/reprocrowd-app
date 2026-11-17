@@ -296,8 +296,16 @@ def input_edit(pkg: str, name: str, role: Optional[str] = None, note: Optional[s
 
 
 @inp.command("rm")
-def input_rm(pkg: str, name: str):
-    out(call("DELETE", f"/packages/{pkg}/inputs/{name}"))
+def input_rm(pkg: str, name: Optional[str] = typer.Argument(None),
+             all_: bool = typer.Option(False, "--all", help="delete every input"),
+             unused: bool = typer.Option(False, "--unused", help="delete the inputs marked unused (and archives with no used member)")):
+    """Delete an input (an archive with its members), or several with --all / --unused (all or nothing)."""
+    if sum((name is not None, all_, unused)) != 1:
+        raise typer.BadParameter("give a NAME, --all or --unused")
+    if name is not None:
+        out(call("DELETE", f"/packages/{pkg}/inputs/{name}"))
+    else:
+        out(call("POST", f"/packages/{pkg}/inputs:delete", {"which": "all" if all_ else "unused"}))
 
 
 # ---------- targets and actions ----------

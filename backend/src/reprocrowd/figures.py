@@ -15,7 +15,7 @@ import pypdfium2 as pdfium
 from .coordinates import Source, find_caption, normalize, pdfs, sources
 from .curation import Curation
 from .errors import conflict, invalid, not_found
-from .extractions import float_number, mentions
+from .extractions import Passages, float_number, mentions
 from .extractions import get as get_extraction
 from .formats.base import Located
 from .package import Package
@@ -28,8 +28,8 @@ MARGIN_PT = 4
 
 
 def _figure_of(pkg: Package, target) -> tuple[str, Figure, str]:
-    """The figure a target is about: a referenced figure (or its caption), else the figure that its description,
-    quote or referenced sentences mention ("Fig 3"). Returns (extraction, figure, how it was found)."""
+    """The figure a target is about: a referenced figure (or its caption), else the figure that its description
+    or referenced sentences mention ("Fig 3"). Returns (extraction, figure, how it was found)."""
     for ref in target.refs:
         head = ref.id.split(".")[0]  # fig2 or fig2.s1 (a caption sentence) → fig2
         if head.startswith("fig"):
@@ -37,10 +37,12 @@ def _figure_of(pkg: Package, target) -> tuple[str, Figure, str]:
             fig = next((f for f in doc.figures if f.id == head), None)
             if fig:
                 return res.name, fig, "referenced"
+    passages = Passages(pkg)
     for ref in target.refs:
-        _, doc = get_extraction(pkg, ref.extraction)
-        found = doc.index().get(ref.id)
-        text = " ".join([target.description, target.quote, getattr(found[1], "text", "") if found else ""])
+        doc = passages.doc(ref.extraction)
+        if doc is None:
+            continue
+        text = " ".join([target.description, getattr(passages.item(ref.extraction, ref.id), "text", "")])
         numbers = mentions(text, "figure")
         fig = next((f for n in numbers for f in doc.figures if float_number(f.label) == n), None)
         if fig:
