@@ -3,7 +3,7 @@
 //   Input files:      the study's published data (POST …/inputs; zip archives are unpacked).
 import { ApiError, host, pkg } from "../api";
 import { countSentences } from "../doc";
-import { ROLES, type AcquireFailure, type AcquirePreview, type AcquireResult, type Document, type Resource, type Role } from "../types";
+import { ROLES, type AcquireFailure, type Action, type AcquirePreview, type AcquireResult, type Document, type Resource, type Role } from "../types";
 import { confirmDialog, esc, modal, sizeText } from "../util";
 import type { Step, Wizard } from "./wizard";
 
@@ -29,6 +29,7 @@ function fetchStatus(r: AcquireResult): [string, "info" | "error"] {
 }
 
 type InputRes = Resource & { reprocrowd: Extract<Resource["reprocrowd"], { kind: "input" }> };
+
 
 /** A file's size for the fetch dialog; 0 means the repository didn't say. */
 const fileSize = (n: number) => (n ? sizeText(n) : "size unknown");
@@ -173,6 +174,29 @@ export class InputsStep implements Step {
     </div>`;
   }
 
+  /** A file's path as the list shows it. */
+  private shown(name: string) {
+    return this.inputs.find((r) => r.name === name)?.path.replace(/^inputs\//, "") ?? name;
+  }
+
+  /** The backend's in_use refusal, said for people: which files, used by which analysis steps, and where to change that. */
+  private async inUse(err: ApiError, bulk: boolean): Promise<ApiError> {
+    const p = err.problem as { by_input?: Record<string, string[]>; inputs?: string[] } | undefined;
+    const byInput = p?.by_input ?? Object.fromEntries((p?.inputs ?? []).map((n) => [n, []]));
+    const actions = await pkg.get<{ item: Action }[]>("/actions", { include_disabled: true }).catch(() => []);
+    const step = (id: string) => {
+      const a = actions.find((x) => x.item.id === id)?.item;
+      return `<b>${esc(id)}</b>${a?.summary ? ` <span class="muted">${esc(a.summary)}</span>` : ""}`;
+    };
+    const names = Object.keys(byInput);
+    const one = names.length === 1;
+    const text = `${names.map((n) => this.shown(n)).join(", ")} ${one ? "is" : "are"} used by analysis steps; remove ${one ? "it" : "them"} from those steps in step 3 (Analysis plan) first.${bulk ? " Nothing was deleted." : ""}`;
+    const html = `<p>${bulk ? `Nothing was deleted: ${one ? "this file is" : `these ${names.length} files are`}` : one ? "This file is" : `These ${names.length} files are`} used by analysis steps.
+        Remove ${one ? "it" : "them"} from those steps in <b>3. Analysis plan</b> first${bulk ? ", or untick the files you want to keep" : ""}.</p>
+      <ul class="err-files">${names.map((n) => `<li><code>${esc(this.shown(n))}</code> — used by ${(byInput[n].length ? byInput[n] : ["an analysis step"]).map(step).join(", ")}</li>`).join("")}</ul>`;
+    return new ApiError(text, err.problem, html);
+  }
+
   draw(body: HTMLElement) {
     const app = this.w.app;
     const d = this.docs.get(app.jats());
@@ -198,6 +222,22 @@ export class InputsStep implements Step {
     const fetching = this.w.running.has("fetch");
     const busy = uploading || fetching;
 
+    // Bulk deletion. "Unselected" matches the backend: loose files not used, and archives none of whose files is
+    // used; unused files in a partly used archive stay (members can't be deleted on their own, only left out).
+    const members = (a: InputRes) => this.inputs.filter((m) => m.reprocrowd.archive === a.name);
+    const deadArchives = archives.filter((a) => !members(a).some((m) => m.reprocrowd.used));
+    const unusedTops = [...loose.filter((r) => !r.reprocrowd.used), ...deadArchives];
+    const unusedCount = unusedTops.reduce((n, r) => n + (deadArchives.includes(r) ? members(r).length : 1), 0);
+    const keptUnused = archives.filter((a) => !deadArchives.includes(a)).reduce((n, a) => n + members(a).filter((m) => !m.reprocrowd.used).length, 0);
+    const files = this.inputs.filter((r) => !archives.includes(r));
+    const bulkOff = busy || this.w.running.has("delete");
+    const keptNote = keptUnused ? ` ${keptUnused} unticked file(s) in partly used archives stay: files can't be removed from an archive, only left out.` : "";
+    const bulkButtons = `<button id="rp-del-unused" ${bulkOff || !unusedCount ? "disabled" : ""} title="Delete the files that aren't ticked as used; an archive goes when none of its files is used.${keptNote}">Delete unselected${unusedCount ? ` (${unusedCount})` : ""}</button>
+         <button id="rp-del-all" ${bulkOff ? "disabled" : ""} title="Delete every input file from the package">Delete all</button>`;
+    const toolbar = this.inputs.length
+      ? `<div class="rp-bulk"><span class="muted small">${files.filter((r) => r.reprocrowd.used).length} of ${files.length} file(s) used${keptUnused ? ` · ${keptUnused} unticked file(s) in partly used archives can only be left out` : ""}</span><span class="spacer"></span>${bulkButtons}</div>`
+      : "";
+
     body.innerHTML = `
     <div class="card">
       <div class="card-head"><h3>The paper's text</h3><span class="ok small">✓ ${ids.pmcid ? `JATS XML from Europe PMC (${esc(ids.pmcid)})` : "Text extracted"}</span></div>
@@ -209,6 +249,7 @@ export class InputsStep implements Step {
         <button id="rp-fetch" ${busy ? "disabled" : ""} title="Find data/code repository links in the manuscript and download them here">Fetch supplemental materials…</button>
         <label class="btn primary ${busy ? "disabled" : ""}">Add files…<input type="file" multiple hidden id="rp-add-files" /></label><button id="rp-add-dir" ${busy ? "disabled" : ""}>Add a folder…</button></div>
       <p class="hint">The study's published data. The analysis is rebuilt from the procedures described in the paper, so the authors' code isn't needed. The backend guesses the role from the file type; notes are passed on to the LLM and the report. Zip archives are unpacked; files in an archive can be left out (unticked) without changing it. You can also drop files here. <b>Fetch supplemental materials…</b> looks for data/code links (Zenodo, GitHub, GitLab, OSF, Figshare) in the manuscript and downloads them here.</p>
+      ${toolbar}
       <table class="tbl-list rp-inputs"><thead><tr><th title="Used">Use</th><th>File</th><th>Role</th><th>Note</th><th>Size</th><th></th></tr></thead>
         <tbody>${rows || `<tr><td colspan="6" class="muted">No input files yet.</td></tr>`}</tbody></table>
     </div>${this.fetchList()}`;
@@ -242,6 +283,30 @@ export class InputsStep implements Step {
         (this.fetch = await pkg.acquire(choice.action === "selected" ? { selected: choice.keys } : {})));
       if (r) this.w.setStatus(...fetchStatus(r));
     });
+
+    const shortList = (rs: InputRes[], max = 8) =>
+      `<ul class="rp-del-list">${rs.slice(0, max).map((r) => `<li><code>${esc(r.path.replace(/^inputs\//, ""))}</code>${deadArchives.includes(r) ? ` <span class="muted">(archive, ${members(r).length} files)</span>` : ""}</li>`).join("")}${rs.length > max ? `<li class="muted">and ${rs.length - max} more</li>` : ""}</ul>`;
+    const bulkDelete = async (which: "all" | "unused") => {
+      if (which === "all") {
+        const what = archives.length ? `, including ${archives.length} archive(s) and the ${files.length - loose.length} file(s) unpacked from them` : "";
+        if (!(await confirmDialog("Delete all inputs", `Delete all ${files.length} input file(s) from the package${what}? This can't be undone.`, "Delete all", true))) return;
+      } else {
+        const kept = keptUnused ? `<p class="hint">${esc(keptNote.trim())}</p>` : "";
+        if (!(await confirmDialog("Delete unselected inputs", `Delete the ${unusedCount} file(s) not ticked as used?${shortList(unusedTops)}${kept}`, "Delete", true))) return;
+      }
+      const label = which === "all" ? "Deleting all inputs" : "Deleting unselected inputs";
+      const r = await this.w.busy("delete", label, async () => {
+        try {
+          return await pkg.post<{ deleted: string[] }>("/inputs:delete", { which });
+        } catch (err) {
+          throw err instanceof ApiError && err.code === "in_use" ? await this.inUse(err, true) : err;
+        }
+      });
+      if (r) this.w.setStatus(`Deleted ${r.deleted.length} input file(s)${which === "unused" && keptUnused ? ` (${keptUnused} unticked file(s) in partly used archives kept)` : ""}`);
+    };
+    body.querySelector("#rp-del-all")?.addEventListener("click", () => bulkDelete("all"));
+    body.querySelector("#rp-del-unused")?.addEventListener("click", () => bulkDelete("unused"));
+
     const card = body.querySelector<HTMLElement>(".rp-drop")!;
     card.addEventListener("dragover", (e) => {
       e.preventDefault();
@@ -276,14 +341,13 @@ export class InputsStep implements Step {
       const name = b?.closest<HTMLElement>("tr[data-name]")?.dataset.name;
       if (!name) return;
       const n = this.inputs.filter((m) => m.reprocrowd.archive === name).length;
-      const what = n ? `the archive <code>${esc(name)}</code> and all ${n} files unpacked from it` : `<code>${esc(name)}</code>`;
+      const what = n ? `the archive <code>${esc(this.shown(name))}</code> and all ${n} files unpacked from it` : `<code>${esc(this.shown(name))}</code>`;
       if (!(await confirmDialog("Delete input", `Delete ${what} from the package?`, "Delete", true))) return;
-      await this.w.busy("delete", `Deleting ${name}`, async () => {
+      await this.w.busy("delete", `Deleting ${this.shown(name)}`, async () => {
         try {
           await pkg.del(`/inputs/${encodeURIComponent(name)}`);
         } catch (err) {
-          if (err instanceof ApiError && err.code === "in_use") throw new ApiError(`${name} is used by analysis steps (step 4); remove it there first.`, err.problem);
-          throw err;
+          throw err instanceof ApiError && err.code === "in_use" ? await this.inUse(err, false) : err;
         }
       });
     });

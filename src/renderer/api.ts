@@ -6,7 +6,9 @@ import type { AcquirePreview, AcquireResult, PackageSummary, ZenodoDeposit } fro
 export interface Problem { status: number; code: string; title?: string; detail?: string; [k: string]: unknown }
 
 export class ApiError extends Error {
-  constructor(message: string, public problem?: Problem) {
+  /** `html`: a richer explanation for the error pop-up than the plain message; it replaces the problem's own details,
+   *  which it should say in words. */
+  constructor(message: string, public problem?: Problem, public html?: string) {
     super(message);
   }
   get code() {

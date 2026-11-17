@@ -189,6 +189,17 @@ class InputPatch(Req):
     used: bool | None = None
 
 
+class InputsDelete(Req):
+    """Delete several inputs at once, all or nothing."""
+
+    which: Literal["all", "unused"] = Field(description="all: every input. unused: the files marked unused (used: false), and the "
+                                                        "archives none of whose members is used; partly used archives stay")
+
+
+class InputsDeleted(BaseModel):
+    deleted: list[str] = Field(description="names of the resources deleted (archives with their members)")
+
+
 class AcquireCreate(Req):
     """Detect data/code repository links in a manuscript and fetch them as inputs."""
 

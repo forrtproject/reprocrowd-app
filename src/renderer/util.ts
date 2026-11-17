@@ -39,16 +39,21 @@ export const confirmDialog = async (title: string, messageHtml: string, ok = "OK
 export function showError(label: string, e: unknown) {
   if (isBackendDown(e)) return;
   const p = e instanceof ApiError ? e.problem : undefined;
+  const html = e instanceof ApiError ? e.html : undefined;
   const msg = (e as Error)?.message ?? String(e);
   const extra = p ? Object.entries(p).filter(([k]) => !["type", "title", "status", "detail", "code", "instance", "request_id"].includes(k)) : [];
   const details = extra.map(([k, v]) => {
     if (Array.isArray(v) && v.every((x) => typeof x === "string")) return `<h4>${esc(k)}</h4><ul>${v.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>`;
     return `<h4>${esc(k)}</h4><pre>${esc(typeof v === "string" ? v : JSON.stringify(v, null, 2))}</pre>`;
   });
+  // The problem code, HTTP status and request id help with a bug report, not with fixing the problem: folded away.
+  const tech = p
+    ? `<details class="err-tech"><summary>Technical details</summary>
+        <p class="muted small">${esc(p.title ?? "")} · <code>${esc(p.code)}</code>${p.status ? ` · HTTP ${p.status}` : ""}${p.request_id ? ` · request ${esc(p.request_id)}` : ""}</p></details>`
+    : "";
+  // Title and Close stay in place; only the body scrolls.
   modal("dlg-error", `<h3>${esc(label)} failed</h3>
-    <p>${esc(msg)}</p>
-    ${p ? `<p class="muted small">${esc(p.title ?? "")} · <code>${esc(p.code)}</code>${p.status ? ` · HTTP ${p.status}` : ""}${p.request_id ? ` · request ${esc(p.request_id)}` : ""}</p>` : ""}
-    ${details.join("")}
+    <div class="err-body">${html ?? `<p>${esc(msg)}</p>${details.join("")}`}${tech}</div>
     <form method="dialog"><menu><button class="primary">Close</button></menu></form>`);
 }
 

@@ -157,21 +157,48 @@ def patch(pkg: Package, name: str, changes: dict[str, Any]) -> Resource:
         return r
 
 
-def delete(pkg: Package, name: str) -> list[str]:
-    """Delete an input (an archive with all its members). Members can only be marked unused."""
+def _remove(pkg: Package, m: Manifest, tops: list[Resource]) -> list[str]:
+    """Remove top-level inputs (archives with all their members), or none of them if an action uses any."""
     from .curation import Curation  # avoid import cycle
 
+    doomed = [n for r in tops for n in (r.name, *(x.name for x in m.by_kind("input") if x.reprocrowd.archive == r.name))]
+    users = {a.id: sorted(set(a.inputs) & set(doomed)) for a, _ in Curation(pkg, "actions").effective(include_disabled=True)}
+    users = {a: names for a, names in users.items() if names}
+    if users:
+        names = sorted({n for ns in users.values() for n in ns})
+        by_input = {n: [a for a, ns in users.items() if n in ns] for n in names}
+        raise conflict("in_use", f"{', '.join(names)} used by actions {', '.join(users)}",
+                       {"used_by": list(users), "inputs": names, "by_input": by_input})
+    for n in doomed:
+        pkg.remove(m, n)
+    for d in sorted((p for p in pkg.path("inputs").rglob("*") if p.is_dir()), key=lambda p: -len(p.parts)):
+        if not any(d.iterdir()):  # folders left empty by unpacked members
+            d.rmdir()
+    return doomed
+
+
+def delete(pkg: Package, name: str) -> list[str]:
+    """Delete an input (an archive with all its members). Members can only be marked unused."""
     with pkg.edit() as m:
         r = get(m, name)
         if r.reprocrowd.archive:
             raise conflict("archive_member", f"{name} belongs to {r.reprocrowd.archive}; mark it unused instead (used: false)")
-        doomed = [name] + [x.name for x in m.by_kind("input") if x.reprocrowd.archive == name]
-        users = [a.id for a, _ in Curation(pkg, "actions").effective(include_disabled=True) if set(a.inputs) & set(doomed)]
-        if users:
-            raise conflict("in_use", f"used by actions {', '.join(users)}", {"used_by": users})
-        for n in doomed:
-            pkg.remove(m, n)
-        for d in sorted((p for p in pkg.path("inputs").rglob("*") if p.is_dir()), key=lambda p: -len(p.parts)):
-            if not any(d.iterdir()):  # folders left empty by unpacked members
-                d.rmdir()
-        return doomed
+        return _remove(pkg, m, [r])
+
+
+def delete_many(pkg: Package, which: str) -> list[str]:
+    """Delete several inputs at once, all or nothing. `all`: every input. `unused`: the files marked unused, and the
+    archives none of whose members is used (archives that are partly used stay, with their unused members, since
+    members can't be deleted on their own). Returns the names deleted."""
+    with pkg.edit() as m:
+        res = m.by_kind("input")
+        members: dict[str, list[Resource]] = {}
+        for r in res:
+            if r.reprocrowd.archive:
+                members.setdefault(r.reprocrowd.archive, []).append(r)
+        tops = [r for r in res if not r.reprocrowd.archive]
+        if which == "unused":
+            def unused(r: Resource) -> bool:
+                return not any(x.reprocrowd.used for x in members[r.name]) if r.name in members else not r.reprocrowd.used
+            tops = [r for r in tops if unused(r)]
+        return _remove(pkg, m, tops)

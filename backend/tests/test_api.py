@@ -228,6 +228,45 @@ def test_inputs(client, pkg):
     assert not (root / "inputs" / "replication").exists()
 
 
+def test_inputs_bulk_delete(client, pkg, tmp_path):
+    P = f"/v1/packages/{pkg}"
+    merge = {"Content-Type": "application/merge-patch+json"}
+    names = lambda: sorted(x["name"] for x in client.get(P + "/inputs").json())  # noqa: E731
+    (tmp_path / "extra.csv").write_text("a,b\n1,2\n")
+    client.post(P + "/inputs", json={"path": str(FIXTURES / "data.csv")})
+    client.post(P + "/inputs", json={"path": str(tmp_path / "extra.csv")})
+    zip_, *members = client.post(P + "/inputs", json={"path": str(FIXTURES / "replication.zip")}).json()
+    client.patch(P + "/inputs/in-extra.csv", json={"used": False}, headers=merge)
+
+    # a partly used archive stays, with its unused member
+    client.patch(P + f"/inputs/{members[0]['name']}", json={"used": False}, headers=merge)
+    r = client.post(P + "/inputs:delete", json={"which": "unused"})
+    assert r.status_code == 200 and r.json() == {"deleted": ["in-extra.csv"]}
+    assert len(names()) == 2 + len(members)
+
+    # an archive none of whose members is used goes, with its members and their folder
+    client.patch(P + f"/inputs/{members[1]['name']}", json={"used": False}, headers=merge)
+    r = client.post(P + "/inputs:delete", json={"which": "unused"})
+    assert sorted(r.json()["deleted"]) == sorted([zip_["name"], *(m["name"] for m in members)])
+    assert names() == ["in-data.csv"]
+    root = Path(client.get(P).json()["path"])
+    assert not (root / "inputs" / "replication").exists()
+    assert client.post(P + "/inputs:delete", json={"which": "unused"}).json() == {"deleted": []}
+
+    # all or nothing: an input used by an action blocks the whole deletion
+    (tmp_path / "extra.csv").write_text("a,b\n3,4\n")
+    client.post(P + "/inputs", json={"path": str(tmp_path / "extra.csv")})
+    r = client.post(P + "/actions", json={"kind": "transform", "summary": "Load", "unreferenced": True, "note": "n", "inputs": ["in-data.csv"]})
+    assert r.status_code == 201, r.text
+    e = problem(client.post(P + "/inputs:delete", json={"which": "all"}), 409, "in_use")
+    assert e["used_by"] == [r.json()["id"]] and e["inputs"] == ["in-data.csv"] and e["by_input"] == {"in-data.csv": [r.json()["id"]]}
+    assert names() == ["in-data.csv", "in-extra.csv"]
+    client.delete(P + f"/actions/{r.json()['id']}")
+    assert sorted(client.post(P + "/inputs:delete", json={"which": "all"}).json()["deleted"]) == ["in-data.csv", "in-extra.csv"]
+    assert names() == []
+    problem(client.post(P + "/inputs:delete", json={"which": "some"}), 422, "request_invalid")
+
+
 # ---------- targets, actions, script, validation ----------
 
 
