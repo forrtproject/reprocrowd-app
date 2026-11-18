@@ -3,6 +3,7 @@
 import { brandHtml } from "./brand";
 import { ApiError, host, Info, isBackendDown, pkg } from "./api";
 import { backendProblem, TITLES } from "./backend";
+import { llmButton } from "./llm";
 import { withProgress } from "./progress";
 import { Wizard } from "./repro/wizard";
 import { settingsDialog } from "./settings";
@@ -73,6 +74,8 @@ const wizard = new Wizard({
   status,
 });
 
+// Changed models or profiles: reload, so the steps' model pickers and profiles are read again.
+$("#settings-btn").before(llmButton("", () => location.reload()));
 $("#settings-btn").addEventListener("click", () => settingsDialog((reconnect) => (reconnect ? location.reload() : status("Settings saved"))));
 let leaving = false;
 $("#library-btn").addEventListener("click", async () => {

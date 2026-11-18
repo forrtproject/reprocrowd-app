@@ -160,7 +160,7 @@ code.path { background: var(--surface-2); padding: 1px 5px; border-radius: 3px; 
 /* ---------- header and layout ---------- */
 header { display: flex; gap: 12px; align-items: center; padding: 6px 14px; border-bottom: 1px solid var(--border); background: color-mix(in srgb, var(--panel) 92%, transparent); backdrop-filter: blur(8px); position: relative; z-index: 5; }
 #paper-title { flex: 0 1 420px; min-width: 120px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-#route { flex: 1; display: flex; gap: 2px; align-items: center; overflow-x: auto; min-width: 0; }
+#route { flex: 1 1 auto; display: flex; gap: 2px; align-items: center; overflow-x: auto; min-width: 0; }
 #route button { border: 0; border-radius: 999px; background: transparent; white-space: nowrap; padding: 3px 8px; color: var(--muted); }
 #route button.done { color: var(--ink); }
 #route button.on { background: var(--accent-fill); color: var(--on-fill); }
@@ -320,7 +320,22 @@ textarea.big { width: 100%; height: 28vh; resize: vertical; }
 .card h4 { margin: 10px 0 4px; font-size: 13px; }
 .card-head { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 6px; }
 .card-head h3 { margin: 0; }
-.llm-models-card { margin-top: 6px; }
+/* LLM button (header) and dialog: the light is green when a CLI is ready, yellow when CLIs are installed but none is
+   usable (not signed in, or no profile runs it), red when none is installed. */
+#llm-btn { flex: none; display: inline-flex; align-items: center; gap: 6px; }
+.llm-light { flex: none; display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--line-no); vertical-align: -1px; box-shadow: 0 0 0 2px var(--panel), 0 0 0 3px var(--border); }
+.llm-light[data-level=ok] { background: #2f9e44; }
+.llm-light[data-level=warn] { background: #f59f00; }
+.llm-light[data-level=none] { background: #e03131; }
+.llm-light[data-level=checking] { animation: llm-pulse 1s ease-in-out infinite alternate; }
+@keyframes llm-pulse { to { opacity: .35; } }
+.dlg-llm { width: min(780px, 94vw); }
+.dlg-llm h4 { margin: 14px 0 4px; }
+.llm-summary { display: flex; align-items: center; gap: 8px; font-weight: 600; margin: 8px 0 0; }
+.llm-clis td { vertical-align: middle; padding: 5px 8px; }
+.llm-clis td:first-child { white-space: nowrap; }
+.llm-families { max-height: 42vh; overflow: auto; padding-right: 4px; }
+.dlg-llm label.llm-family { flex-direction: row; align-items: center; gap: 6px; font-size: 14px; }
 .claude-login { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line-soft); display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .llm-model-family { margin-top: 10px; }
 .llm-model-family:first-child { margin-top: 0; }
@@ -429,7 +444,6 @@ button.ghost { background: transparent; border-color: transparent; color: var(--
 button.ghost:hover:not(:disabled) { border-color: var(--border); color: var(--accent-dark); }
 .icon-btn { display: inline-flex; align-items: center; justify-content: center; padding: 4px 6px; line-height: 0; }
 .icon-btn svg { vertical-align: middle; }
-.llm-models .section-title { display: flex; align-items: center; gap: 8px; }
 .navlink { color: var(--ink-soft); text-decoration: none; font-weight: 600; font-size: 14px; }
 .navlink:hover { color: var(--accent-dark); }
 .btn-primary, .btn-secondary { display: inline-block; padding: .62rem 1.2rem; border-radius: 999px; font-weight: 600; font-size: 15px; border: 1px solid transparent; cursor: pointer; }
@@ -512,7 +526,8 @@ body.view-library .lib-header { padding-right: 96px; }
 .submit-card .groups label { flex-direction: row; align-items: baseline; gap: 6px; }
 #route { scrollbar-width: none; }
 #route::-webkit-scrollbar { display: none; }
-#paper-title { flex: 0 1 300px; font-size: 13.5px; }
+#paper-title { flex: 0 100 300px; font-size: 13.5px; } /* gives way well before the steps do */
+#library-btn { flex: none; white-space: nowrap; }
 
 /* ---------- targets and analysis plan: the paper with the items aligned next to it ---------- */
 .cur-reader > .card-head { position: sticky; top: -10px; z-index: 4; background: var(--panel); padding: 8px 0 4px; margin-top: -8px; }

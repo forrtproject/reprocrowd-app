@@ -22,6 +22,19 @@ const codex = { cli: 'codex', id: 'codex/gpt-x' };
 assert(modelCompatible(codex, ['codex']) && !modelCompatible(codex, ['opencode']) && !modelCompatible(open, ['codex']));
 const { cliModel } = await load('src/renderer/api.ts');
 assert.equal(cliModel('codex/gpt-x'), 'gpt-x'); assert.equal(cliModel('claude/opus'), 'opus'); assert.equal(cliModel('deepseek/deepseek-v4-pro'), 'deepseek/deepseek-v4-pro');
+const { status: llmStatus, cliStates } = await load('src/renderer/llm-status.ts');
+{
+  const models = (o) => ({ available: [], disabled: [], claudeNeedsLogin: false, needsLogin: [], installed: [], ...o });
+  const claudeProfile = [{ name: 'claude', argv: ['claude', '-p'] }];
+  assert.equal(llmStatus({ models: models({}), profiles: claudeProfile }).level, 'none'); // red: nothing installed
+  assert.equal(llmStatus({ models: models({ installed: ['claude'], needsLogin: ['claude'] }), profiles: claudeProfile }).level, 'warn'); // yellow: not signed in
+  assert.equal(llmStatus({ models: models({ installed: ['codex'] }), profiles: claudeProfile }).level, 'warn'); // yellow: signed in, no profile runs it
+  assert.equal(llmStatus({ models: models({ installed: ['claude', 'codex'], needsLogin: ['codex'] }), profiles: claudeProfile }).level, 'ok'); // green: one is ready
+  assert.equal(llmStatus({ models: models({ installed: ['opencode'] }), profiles: [{ name: 'oc', argv: ['opencode', 'run'] }] }).level, 'warn'); // OpenCode listing no models
+  assert.equal(llmStatus({ models: models({ installed: ['claude'] }), profiles: null }).level, 'ok'); // backend down: judged on install and login
+  assert.match(llmStatus({ models: models({ installed: ['claude'], needsLogin: ['claude'] }), profiles: claudeProfile }).text, /Claude Code: installed, not signed in/);
+  assert.deepEqual(cliStates({ models: models({}), profiles: [] }).map((c) => [c.cli, c.problem]), [['claude', 'not installed'], ['codex', 'not installed'], ['opencode', 'not installed']]);
+}
 const { parseCodexModels } = await load('src/main/models.ts');
 assert.deepEqual(parseCodexModels(JSON.stringify({ models: [{ slug: 'gpt-x', display_name: 'GPT X', visibility: 'list' }, { slug: 'hidden', visibility: 'hide' }] })),
   [{ cli: 'codex', provider: 'codex', id: 'codex/gpt-x', name: 'GPT X' }]);
@@ -80,4 +93,4 @@ await assert.rejects(applyProfileChange(original, text, { backup: () => {}, rest
 assert.deepEqual(writes, [text, original]); // a failed (possibly partial) write is rolled back too
 await assert.rejects(applyProfileChange(original, text, { backup: () => {}, write: () => { throw new Error('read-only'); }, restart: async () => {} }),
   /not saved: read-only\. Restoring the previous configuration failed too \(read-only\)/); // the original reason survives a failed restore
-console.log('Model scoping, profile preservation/validation, and failed-write/restart rollback passed.');
+console.log('Model scoping, LLM status light, profile preservation/validation, and failed-write/restart rollback passed.');
