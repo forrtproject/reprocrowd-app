@@ -31,8 +31,10 @@ terminal: [Claude Code](https://claude.com/claude-code) (`claude`, then sign in)
 [Codex CLI](https://developers.openai.com/codex) (`codex login`) or
 [OpenCode](https://opencode.ai) (`opencode auth login`, e.g. for DeepSeek). The app
 uses that sign-in; it never asks for API keys. Claude Code and Codex then run on your
-subscription, but an OpenCode provider you add with an API key (such as DeepSeek) is
-billed per use to that account. To run reproductions you also need
+subscription, unless `ANTHROPIC_API_KEY`, `OPENAI_API_KEY` or `CODEX_API_KEY` is set
+in the environment the app starts from (the CLIs then bill that API key per use). An
+OpenCode provider you add with an API key (such as DeepSeek) is billed per use to that
+account. To run reproductions you also need
 what the paper's analysis uses (R, Python, …).
 
 ### Choosing an AI tool
