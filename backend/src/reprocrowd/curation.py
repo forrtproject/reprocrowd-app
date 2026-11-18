@@ -250,16 +250,19 @@ class Curation:
             # An edited value replaces the previous printed token and derived precision.
             changes.setdefault("printed", None)
             changes.setdefault("decimals", None)
-            if "comparator" not in changes:
+        with self.pkg.locked():
+            f = self.load()
+            item, run, entry = self._locate(f, item_id)
+            # The operator typed with a number's value ("< .05") replaces the stored comparator. Only for number
+            # targets (the type in this edit, else the stored one): other types' text stays text.
+            if (self.spec.kind == "targets" and "expected" in changes and "comparator" not in changes
+                    and changes.get("type", getattr(item, "type", None)) == "number"):
                 try:
                     typed = parse_printed(changes["expected"]).comparator
                 except ValueError:
                     typed = None  # validation reports the unparsable value
                 if typed is not None:
-                    changes["comparator"] = typed  # the operator typed with the value replaces the stored one
-        with self.pkg.locked():
-            f = self.load()
-            item, run, entry = self._locate(f, item_id)
+                    changes["comparator"] = typed
             try:
                 if run is None:
                     if "disabled" in patch:

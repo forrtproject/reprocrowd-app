@@ -80,6 +80,15 @@ def test_edited_operator_replaces_stored_comparator(client, pkg):
     assert r.status_code == 200 and r.json()["item"]["comparator"] == ">=", r.text
     r = client.patch(url + "/T001", json={"expected": "< .05", "comparator": ">"})
     assert r.status_code == 422 and r.json()["code"] == "target_contradiction"
+    # Only number targets take a comparator from the typed value: a categorical value that looks like a bound stays text.
+    cat = dict(type="categorical", description="verdict", unreferenced=True, note="test", expected="significant")
+    tid = client.post(url, json=cat).json()["id"]
+    r = client.patch(f"{url}/{tid}", json={"expected": "< .05"})
+    assert r.status_code == 200, r.text
+    assert (r.json()["item"]["expected"], r.json()["item"]["comparator"]) == ("< .05", None)
+    # Changing the type to number in the same edit does take it.
+    r = client.patch(f"{url}/{tid}", json={"type": "number", "expected": "> .10"})
+    assert r.status_code == 200 and r.json()["item"]["comparator"] == ">", r.text
 
 
 def test_long_token_survives_model_roundtrip():
