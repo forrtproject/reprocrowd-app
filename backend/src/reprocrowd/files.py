@@ -28,7 +28,8 @@ def _skipped(rel: str) -> bool:
 
 
 def disk_files(pkg: Package) -> list[Path]:
-    return sorted(p for p in pkg.root.rglob("*") if p.is_file() and not _skipped(p.relative_to(pkg.root).as_posix()))
+    """Regular files only: a symlink (to ~/.ssh, say) is never registered, so never archived or deposited."""
+    return sorted(p for p in pkg.root.rglob("*") if p.is_file() and not p.is_symlink() and not _skipped(p.relative_to(pkg.root).as_posix()))
 
 
 def file_path(pkg: Package, rel: str) -> Path | None:
