@@ -100,6 +100,10 @@ def add_directory(pkg: Package, src: Path, role: Role | None, note: str) -> list
         rel = p.relative_to(src)
         if any(part.startswith(".") for part in rel.parts) or p.is_symlink() or not p.is_file():
             continue
+        try:
+            pkg.path(f"inputs/{rel.as_posix()}")  # before anything is copied: no line breaks etc. in the names
+        except ApiError:
+            raise ApiError(400, "invalid_filename", f"unusable file name {rel.as_posix()!r} in {src}; rename it, or zip the folder without it")
         files.append(rel)
         if len(files) > MAX_DIRECTORY_FILES:
             raise invalid("directory_too_large", f"{src} has more than {MAX_DIRECTORY_FILES} files; zip the part you need")
@@ -122,19 +126,27 @@ def _unpack(pkg: Package, m: Manifest, zpath: Path, rel: str, archive: str, orig
     base = pkg.free_path(rel.rsplit(".", 1)[0])
     out: list[Resource] = []
     with zipfile.ZipFile(zpath) as z:
+        # Every name is checked before anything is written: zip slip (..), drive prefixes, and line breaks or other control
+        # characters, which would end a comment line in the generated master script.
+        members = []
         for info in z.infolist():
             parts = [p for p in info.filename.replace("\\", "/").split("/") if p not in ("", ".")]
             if info.is_dir() or not parts or parts[0] == "__MACOSX" or parts[-1] == ".DS_Store":
                 continue
-            if ".." in parts:  # zip slip
-                shutil.rmtree(pkg.path(base), ignore_errors=True)
-                raise invalid("invalid_archive", f"unsafe path in zip: {info.filename}")
             member_rel = f"{base}/{'/'.join(parts)}"
-            dest = pkg.path(member_rel)
-            dest.parent.mkdir(parents=True, exist_ok=True)
-            with z.open(info) as fsrc, dest.open("wb") as fdst:
-                shutil.copyfileobj(fsrc, fdst)
-            out.append(_register(pkg, m, member_rel, InputMeta(added_at=now(), role=guess_role(member_rel), archive=archive, origin=origin)))
+            try:
+                members.append((info, member_rel, pkg.path(member_rel)))
+            except ApiError:
+                raise invalid("invalid_archive", f"unsafe path in zip: {info.filename!r}")
+        try:
+            for info, member_rel, dest in members:
+                dest.parent.mkdir(parents=True, exist_ok=True)
+                with z.open(info) as fsrc, dest.open("wb") as fdst:
+                    shutil.copyfileobj(fsrc, fdst)
+                out.append(_register(pkg, m, member_rel, InputMeta(added_at=now(), role=guess_role(member_rel), archive=archive, origin=origin)))
+        except BaseException:
+            shutil.rmtree(pkg.path(base), ignore_errors=True)
+            raise
     return out
 
 

@@ -227,7 +227,7 @@ One file of the package (Frictionless Data Resource).
 | Field | Type | Req. | Description |
 |---|---|---|---|
 | `name` | string | yes | unique id, e.g. ft-grobid, ex-grobid, in-data-csv; pattern `^[a-z0-9][a-z0-9._-]*$` |
-| `path` | string | yes | package-relative, /-separated |
+| `path` | string | yes | package-relative, /-separated; pattern `^[^\x00-\x1f\x7f\x85\u2028\u2029]+$` |
 | `type` | `"file"` \| `"json"` | yes | "json" for JSON files (frictionless parses them), "file" otherwise |
 | `format` | string | yes |  |
 | `mediatype` | string | yes |  |

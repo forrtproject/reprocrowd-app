@@ -14,6 +14,10 @@ from pydantic import AliasChoices, ConfigDict, Field, model_validator
 from .common import Identifier, Model
 
 RESOURCE_NAME = r"^[a-z0-9][a-z0-9._-]*$"
+#: Line breaks and other control characters, which no package path may contain: paths end up in generated code (a
+#: line break in a comment would start a line of code) and in commands.
+CONTROL_CHARS = r"\x00-\x1f\x7f\x85\u2028\u2029"
+RESOURCE_PATH = rf"^[^{CONTROL_CHARS}]+$"
 
 Flavor = Literal["pdf", "tei", "jats", "docling", "docx", "md"]
 Role = Literal["data", "code", "other"]
@@ -113,7 +117,7 @@ class Resource(Model):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
     name: str = Field(pattern=RESOURCE_NAME, description="unique id, e.g. ft-grobid, ex-grobid, in-data-csv")
-    path: str = Field(description="package-relative, /-separated")
+    path: str = Field(pattern=RESOURCE_PATH, description="package-relative, /-separated")
     type: Literal["file", "json"] = Field(description='"json" for JSON files (frictionless parses them), "file" otherwise')
     format: str
     mediatype: str

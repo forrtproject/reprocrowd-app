@@ -7,12 +7,14 @@ from typing import BinaryIO
 
 from .config import settings
 from .errors import ApiError
+from .package import CONTROL
 
 
 def upload_name(filename: str | None) -> str:
-    """The client's file name without any path; hidden or empty names are refused."""
+    """The client's file name without any path; hidden or empty names, and names with line breaks or other control
+    characters, are refused."""
     name = (filename or "").replace("\\", "/").rsplit("/", 1)[-1].strip()
-    if not name or name.startswith(".") or name in ("..",):
+    if not name or name.startswith(".") or name in ("..",) or CONTROL.search(name):
         raise ApiError(400, "invalid_filename", f"unusable file name {filename!r}")
     return name
 
