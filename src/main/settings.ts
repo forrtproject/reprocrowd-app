@@ -56,10 +56,12 @@ function readJson(file: string): any {
   }
 }
 
-function writeJson(file: string, data: unknown, mode = 0o644) {
+/** Only the user may read the app's settings (commands it runs, the GitHub repo) and secrets, whatever the umask. */
+function writeJson(file: string, data: unknown, mode = 0o600) {
   fs.mkdirSync(path.dirname(file), { recursive: true });
   const tmp = `${file}.tmp`;
   fs.writeFileSync(tmp, JSON.stringify(data, null, 2), { mode });
+  fs.chmodSync(tmp, mode); // (mode applies only when the file is created; a stale .tmp keeps its own)
   fs.renameSync(tmp, file);
 }
 
