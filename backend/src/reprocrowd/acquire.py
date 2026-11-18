@@ -599,7 +599,8 @@ def _fulltext_text(pkg: Package, r: Resource) -> str:
     flavor = r.reprocrowd.flavor
     p = pkg.path(r.path)
     if flavor in ("jats", "tei"):
-        root = etree.parse(str(p)).getroot()
+        from .formats.xmlmap import PARSER
+        root = etree.parse(str(p), PARSER).getroot()
         return " ".join(t for t in root.itertext() if t and t.strip())
     if flavor == "docling":
         import json
