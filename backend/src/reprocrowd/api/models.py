@@ -435,7 +435,7 @@ class ZenodoStatus(BaseModel):
     sandbox: bool
     token_configured: bool = Field(description="the service has a fallback token ([zenodo] token)")
     community: str | None
-    reachable: bool
+    reachable: bool | None = Field(description="null when not checked (probe=false)")
     error: str | None = None
 
 

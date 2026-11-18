@@ -206,6 +206,7 @@ export const host = {
   depositPreview: (opts: { note: string; exclude?: string[] }) => call<DepositPreview>("depositPreview", opts),
   deposit: (opts: { note: string; exclude?: string[]; publish: boolean }) => call<ZenodoDeposit>("deposit", opts),
   depositAction: (id: string, action: "refresh" | "publish" | "discard") => call<ZenodoDeposit>("depositAction", id, action),
+  openDeposit: (id: string) => call<void>("openDeposit", id),
   // GitHub pilots
   pilotAccount: () => call<PilotAccount>("pilotAccount"),
   pilotPreview: (opts: { note: string; exclude?: string[] }) => call<PilotPreview>("pilotPreview", opts),

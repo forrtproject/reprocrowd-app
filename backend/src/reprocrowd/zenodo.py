@@ -97,10 +97,12 @@ def _request(method: str, url: str, token: str | None = None, ok: Iterable[int] 
 # ---------- service-level ----------
 
 
-def status(sandbox: bool | None = None) -> dict[str, Any]:
+def status(sandbox: bool | None = None, probe: bool = True) -> dict[str, Any]:
     url, sb = server(sandbox)
     out: dict[str, Any] = {"url": url, "sandbox": sb, "token_configured": bool(settings().zenodo_token),
-                           "community": settings().zenodo_community or None, "reachable": False, "error": None}
+                           "community": settings().zenodo_community or None, "reachable": False if probe else None, "error": None}
+    if not probe:
+        return out
     try:
         r = httpx.get(f"{url}/api/records", params={"size": 1}, timeout=5)
         out["reachable"] = r.status_code == 200
@@ -358,6 +360,17 @@ def _find(pkg: Package, dep_id: str) -> ZenodoDeposit:
     return d
 
 
+def _server_of(d: ZenodoDeposit) -> str:
+    """The configured server the deposit is on. The record's own ``server`` comes from datapackage.json, which a shared
+    package can fill in at will: the token is only ever sent to the configured zenodo.org or sandbox URL."""
+    url, _ = server(d.sandbox)
+    if d.server.rstrip("/") != url:
+        raise conflict("deposit_server_unknown", f"the deposit is recorded on {d.server}, which isn't the configured "
+                                                 f"{'Zenodo sandbox' if d.sandbox else 'Zenodo'} server ({url}); it can't be checked or changed from here",
+                       {"server": d.server, "configured": url})
+    return url
+
+
 def _update(pkg: Package, dep_id: str, **changes: Any) -> ZenodoDeposit:
     with pkg.edit() as m:
         d = next(d for d in m.reprocrowd.deposits if d.id == dep_id)
@@ -372,11 +385,12 @@ def refresh(pkg: Package, dep_id: str, token: str | None) -> ZenodoDeposit:
     d = _find(pkg, dep_id)
     if d.status in ("discarded", "gone"):
         return d
-    r = _request("GET", f"{d.server}/api/deposit/depositions/{d.deposition_id}", _token(token), ok=(200, 404, 410), timeout=15)
+    url = _server_of(d)
+    r = _request("GET", f"{url}/api/deposit/depositions/{d.deposition_id}", _token(token), ok=(200, 404, 410), timeout=15)
     if r.status_code in (404, 410):
         return _update(pkg, dep_id, status="gone")
     dep = _body(r)
-    page, doi = _links(d.server, dep)
+    page, doi = _links(url, dep)
     if dep.get("submitted"):
         return _update(pkg, dep_id, status="published", url=page, doi=doi or d.doi, published_at=d.published_at or now())
     return _update(pkg, dep_id, url=page, doi=doi or d.doi)
@@ -388,9 +402,10 @@ def publish_deposit(pkg: Package, dep_id: str, token: str | None) -> ZenodoDepos
         return d
     if d.status != "draft":
         raise conflict("deposit_not_draft", f"the deposit is {d.status}; only drafts can be published")
-    r = _request("POST", f"{d.server}/api/deposit/depositions/{d.deposition_id}/actions/publish", _token(token), timeout=120)
+    url = _server_of(d)
+    r = _request("POST", f"{url}/api/deposit/depositions/{d.deposition_id}/actions/publish", _token(token), timeout=120)
     dep = _body(r)
-    page, doi = _links(d.server, {**dep, "submitted": True})
+    page, doi = _links(url, {**dep, "submitted": True})
     return _update(pkg, dep_id, status="published", url=page, doi=doi or d.doi, published_at=now())
 
 
@@ -399,5 +414,5 @@ def discard(pkg: Package, dep_id: str, token: str | None) -> ZenodoDeposit:
     d = _find(pkg, dep_id)
     if d.status != "draft":
         raise conflict("deposit_not_draft", f"the deposit is {d.status}; only drafts can be discarded")
-    _request("DELETE", f"{d.server}/api/deposit/depositions/{d.deposition_id}", _token(token), ok=(201, 202, 204, 404, 410), timeout=30)
+    _request("DELETE", f"{_server_of(d)}/api/deposit/depositions/{d.deposition_id}", _token(token), ok=(201, 202, 204, 404, 410), timeout=30)
     return _update(pkg, dep_id, status="discarded")

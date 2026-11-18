@@ -234,8 +234,18 @@ export function makeApi(wc: WebContents) {
 
   async function pkg(method: string, sub: string, json?: unknown, query?: Record<string, string | number | boolean>, responseType: ResponseType = "json") {
     if (!/^([/:][\w./:%-]*)?$/.test(sub) || sub.split("/").includes("..")) throw new Error(`invalid package path ${sub}`);
+    // Percent-encoded dot segments (%2e%2e) are resolved by the URL parser: check where the request really goes.
+    const scope = base(), target = new URL(scope + sub, "http://backend").pathname;
+    if (target !== scope && !target.startsWith(scope + "/") && !target.startsWith(scope + ":")) throw new Error(`invalid package path ${sub}`);
     if (!["GET", "POST", "PUT", "PATCH", "DELETE"].includes(method)) throw new Error(`invalid method ${method}`);
-    if (method !== "GET" && /^\/(fulltexts|extractions)\b/.test(sub)) throw new Error("The paper's text is its JATS XML, retrieved by the app.");
+    // On the path as the backend sees it: /%66ulltexts or /a/%2e%2e/fulltexts are /fulltexts too.
+    let rest: string;
+    try {
+      rest = decodeURIComponent(target.slice(scope.length));
+    } catch {
+      throw new Error(`invalid package path ${sub}`);
+    }
+    if (method !== "GET" && /^\/(fulltexts|extractions)\b/.test(rest)) throw new Error("The paper's text is its JATS XML, retrieved by the app.");
     return request(method, base() + sub, { json, query, responseType, timeout: method === "GET" ? 120_000 : LONG });
   }
 
@@ -550,6 +560,23 @@ export function makeApi(wc: WebContents) {
         timeout: LONG,
       });
       return r.data;
+    },
+    /** A deposit's page, only on the configured Zenodo server: the record's url comes from datapackage.json, which a shared
+     *  package fills in at will (a fake login page, say). */
+    openDeposit: async (dep: string) => {
+      if (!/^zen-[0-9a-f]+$/.test(dep)) throw new Error("invalid deposit");
+      const d = await get<any>(`${base()}/deposits/${dep}`);
+      const { url: server } = await get<any>("/v1/zenodo", { sandbox: !!d.sandbox, probe: false }, 10_000);
+      let page: URL;
+      try {
+        page = new URL(d.url);
+      } catch {
+        throw new Error(`The deposit's address isn't a web address: ${d.url}`);
+      }
+      if (String(d.server).replace(/\/+$/, "") !== server || page.origin !== new URL(server).origin) {
+        throw new Error(`The deposit's page (${page.origin}) isn't on the configured ${d.sandbox ? "Zenodo sandbox" : "Zenodo"} server (${server}); not opening it.`);
+      }
+      await openOutside(page.href);
     },
     depositAction: async (dep: string, action: "refresh" | "publish" | "discard") => {
       if (!["refresh", "publish", "discard"].includes(action) || !/^zen-[0-9a-f]+$/.test(dep)) throw new Error("invalid deposit action");

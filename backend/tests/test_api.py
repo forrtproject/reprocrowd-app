@@ -592,3 +592,24 @@ def test_typed_operator_on_llm_target(client, pkg):
     r = client.patch(f"{T}/{p_value['id']}", json={"expected": "> .05"})
     assert r.status_code == 200, r.text
     assert (r.json()["item"]["comparator"], r.json()["item"]["printed"]) == (">", ".05")
+
+
+def test_script_headers_keep_package_text_in_comments():
+    """Issue #91: titles, summaries, notes, source text and paths are package data; whatever line breaks they hold
+    (\\r ends a line in Python and R too), every line of the header stays a comment."""
+    from types import SimpleNamespace
+
+    from reprocrowd.scripts import _env
+
+    evil = 'x\rimport os; os.system("touch pwned")\n\u2028print(1)\x0bq\x85r\x0cs\x1ct\x1du\x1ev\u2029w\r\nz\x00'
+    step = SimpleNamespace(id="A01", kind="analysis", summary=evil, refs=[SimpleNamespace(id="s1")], note=evil,
+                           inputs=[f"inputs/{evil}.csv"], depends_on=["L01"], produces=["T001"])
+    paper = SimpleNamespace(title=evil, identifiers={"doi": evil})
+    env = _env()
+    env.globals["passage_text"] = lambda r: evil
+    tpl = SimpleNamespace(label="Python")
+    for indent in ("", "  "):
+        out = env.from_string('{% import "_macros.j2" as m %}{{ m.header(paper, tpl, "TODO") }}\n{{ m.step_header(s, ind) }}').render(
+            paper=paper, tpl=tpl, s=step, ind=indent)
+        lines = out.splitlines()  # splits on every kind of line break, like the stricter readers
+        assert len(lines) > 10 and all(line.lstrip().startswith("#") for line in lines if line.strip()), out

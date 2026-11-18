@@ -50,16 +50,26 @@ export const DEFAULTS: Settings = {
 
 function readJson(file: string): any {
   try {
+    if (process.platform !== "win32" && (fs.statSync(file).mode & 0o077) !== 0) {
+      // Written 0644 by older versions. Best effort: a failed chmod must not make the file read as empty (setSecret would
+      // then rewrite secrets.json without the other server's token).
+      try {
+        fs.chmodSync(file, 0o600);
+      } catch {}
+    }
     return JSON.parse(fs.readFileSync(file, "utf8"));
   } catch {
     return {};
   }
 }
 
-function writeJson(file: string, data: unknown, mode = 0o644) {
+/** On macOS and Linux only the user may read the app's settings (commands it runs, the GitHub repo) and secrets, whatever
+ *  the umask. (On Windows the mode is ignored; the files are in the user's own AppData, which other users can't read.) */
+function writeJson(file: string, data: unknown, mode = 0o600) {
   fs.mkdirSync(path.dirname(file), { recursive: true });
   const tmp = `${file}.tmp`;
-  fs.writeFileSync(tmp, JSON.stringify(data, null, 2), { mode });
+  fs.rmSync(tmp, { force: true }); // a stale .tmp would keep its own mode: create it afresh
+  fs.writeFileSync(tmp, JSON.stringify(data, null, 2), { mode, flag: "wx" });
   fs.renameSync(tmp, file);
 }
 

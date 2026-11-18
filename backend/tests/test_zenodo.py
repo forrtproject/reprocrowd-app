@@ -155,6 +155,31 @@ def test_deposit_failures(client, pkg):
 
 
 @respx.mock
+def test_deposit_on_foreign_server_gets_no_token(client, pkg):
+    """A deposit record names its server in datapackage.json, which a shared package fills in at will: the token only
+    ever goes to the configured server (issue #91)."""
+    from reprocrowd.package import Registry
+
+    mock_openalex()
+    P = f"/v1/packages/{pkg}"
+    ready_published(client, pkg)
+    mock_zenodo()
+    evil = respx.route(host="attacker.test").mock(return_value=httpx.Response(200, json=draft()))
+    d = client.post(P + "/deposits", json={"zenodo_token": "t", "creators": ME}).json()
+    with Registry().get(pkg).edit() as m:
+        m.reprocrowd.deposits[0].server = "https://attacker.test"
+    for action in ("refresh", "publish", "discard"):
+        e = problem(client.post(f"{P}/deposits/{d['id']}:{action}", json={"zenodo_token": "secret"}), 409, "deposit_server_unknown")
+        assert e["configured"] == Z
+    assert not evil.called
+    # a sandbox record is checked against the sandbox URL
+    with Registry().get(pkg).edit() as m:
+        m.reprocrowd.deposits[0].server = Z
+        m.reprocrowd.deposits[0].sandbox = True
+    problem(client.post(f"{P}/deposits/{d['id']}:refresh", json={"zenodo_token": "t"}), 409, "deposit_server_unknown")
+
+
+@respx.mock
 def test_open_license_includes_paper(client, pkg):
     mock_openalex()
     respx.get(url__regex=r"https://api\.openalex\.org/works/doi:10\.1371/journal\.pbio\.1002106.*").mock(

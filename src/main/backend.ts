@@ -186,7 +186,9 @@ export function readUserConfig(): string {
   const f = userConfigFile();
   if (!fs.existsSync(f)) {
     fs.mkdirSync(path.dirname(f), { recursive: true });
-    fs.writeFileSync(f, DEFAULT_USER_CONFIG);
+    fs.writeFileSync(f, DEFAULT_USER_CONFIG, { mode: 0o600 });
+  } else if (process.platform !== "win32" && (fs.statSync(f).mode & 0o077) !== 0) {
+    fs.chmodSync(f, 0o600); // written world-readable by older versions
   }
   return fs.readFileSync(f, "utf8");
 }
@@ -195,7 +197,8 @@ export function readUserConfig(): string {
 export function writeUserConfig(text: string) {
   const user = parse(text) as Record<string, any>;
   for (const k of ["server", "database"]) if (k in user) throw new Error(`[${k}] is set by the app; remove it from the backend configuration.`);
-  fs.writeFileSync(userConfigFile(), text);
+  fs.writeFileSync(userConfigFile(), text, { mode: 0o600 }); // it may hold API keys (OpenAlex)
+  fs.chmodSync(userConfigFile(), 0o600);
 }
 
 function remember(line: string) {
