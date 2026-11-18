@@ -139,6 +139,10 @@ def test_codex_errors_and_answer():
     assert terminal_error(stream, "codex-json") == "Reconnecting... 2/5"
     sep = '{"type":"item.completed","item":{"type":"agent_message","text":"a\u2028b"}}'.replace("\\u2028", "\u2028")  # a raw U+2028 inside JSON
     assert answer(sep, "codex-json") == "a\u2028b"
+    from reprocrowd.providers import envelope
+    raw = '{"type":"result","result":"a\u2028b"}'.replace("\\u2028", "\u2028")  # Node's JSON.stringify leaves U+2028 raw
+    for out in (raw, "banner\n" + raw, raw + "\nwarning"):
+        assert envelope(out) == {"type": "result", "result": "a\u2028b"}
 
 
 def test_shipped_argv_expansion_unchanged():
@@ -326,7 +330,7 @@ def test_no_exec_env_reaches_the_agent(client, pkg, monkeypatch):
     assert (root / "env-probe.txt").read_text() == "1 --no-shell"
     assert Path((root / "pwd.txt").read_text()).resolve() == root.resolve()  # OpenCode resolves relative paths from $PWD
     job = wait(client, pkg, client.post(f"/v1/packages/{pkg}/jobs", json={"type": "codegen", "profile": "probe", "allow_exec": True}).json()["id"])
-    assert (root / "env-probe.txt").read_text() == "missing "
+    assert (root / "env-probe.txt").read_text() == "missing " and job["request"]["exec_restriction"] == "none"  # nothing restricted this run
 
 
 def test_app_default_config_matches_backend_defaults():

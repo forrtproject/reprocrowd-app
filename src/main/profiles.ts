@@ -52,14 +52,19 @@ export async function applyProfileChange(previous: string, next: string, io: {
   backup(text: string): void; write(text: string): void; restart(): Promise<unknown>;
 }): Promise<string> {
   io.backup(previous);
-  io.write(next);
   try {
+    io.write(next); // inside try: a failed or partial write is rolled back too
     await io.restart();
     return next;
   } catch (e) {
-    io.write(previous);
+    const reason = `The profile was not saved: ${(e as Error).message}.`;
+    try {
+      io.write(previous);
+    } catch (err) {
+      throw new Error(`${reason} Restoring the previous configuration failed too (${(err as Error).message}); check backend.toml in the raw editor.`);
+    }
     const again = await io.restart().then(() => undefined, (err: unknown) => err as Error);
-    throw new Error(`The profile was not saved: ${(e as Error).message}. The previous configuration was restored`
+    throw new Error(`${reason} The previous configuration was restored`
       + (again ? `, but the backend did not start with it either: ${again.message}` : " and the backend restarted with it."));
   }
 }

@@ -80,7 +80,9 @@ def start(pkg: Package, *, profile: str | None, allow_exec: bool, instructions: 
         return CodegenResult(commit_before=before, commit_after=after, changed_files=changed, todo=todo_status(pkg, tpl), git_note=git_note)
 
     request = {"profile": name, "model": model or prof.model, "effort": prof.effort, "allow_exec": allow_exec, "instructions": instructions,
-               "template": tpl.id, "tools": tools, "exec_restriction": exec_restriction(prof, tools), "env": env,
+               "template": tpl.id, "tools": tools, "env": env,
+               # What restricted this run: "none" when execution was allowed, whatever the profile could have enforced.
+               "exec_restriction": "none" if allow_exec else exec_restriction(prof, tools),
                "code_context": "excluded_from_prompt", "code_files_on_disk": [r.path for r in pkg.load().by_kind("input") if r.reprocrowd.role == "code" and pkg.path(r.path).exists()]}
     return jobs.start(pkg, jid=jid, type="codegen", argv=argv, stdin=prompt, timeout_s=prof.timeout_s, events_format=prof.events,
                       profile=name, request=request, finish=finish, env=env)

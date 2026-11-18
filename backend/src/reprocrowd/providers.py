@@ -57,7 +57,7 @@ def _events(out: "str | Iterable[str]") -> Iterator[dict]:
 
 def envelope(out: str) -> dict | None:
     """Claude's --output-format json: one JSON object (the last line, if there are several)."""
-    for line in reversed([x for x in out.strip().splitlines() if x.strip()] or [""]):
+    for line in reversed([x for x in out.strip().split("\n") if x.strip()] or [""]):  # not splitlines(): raw U+2028 is valid inside JSON
         try:
             v = json.loads(line)
             return v if isinstance(v, dict) else None

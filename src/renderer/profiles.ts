@@ -112,7 +112,7 @@ export async function profileEditor(saved: (text: string) => void) {
     try {
       // A backend that is down has no jobs to interrupt; the form must still be able to repair its profiles.
       if ((await host.runningJobs().catch(() => [])).length && !(await confirmDialog("Restart the backend?", "<p>Running jobs will stop and be recorded as interrupted.</p>", "Stop jobs and save"))) return;
-      const p: ConfiguredProfile = { argv: [value("command"), ...lines("args")], model: value("model"), effort: value("effort"), timeout_s: Number(value("timeout")),
+      const p: ConfiguredProfile = { argv: [value("command").trim(), ...lines("args")], model: value("model"), effort: value("effort"), timeout_s: Number(value("timeout")),
         ...(kind() === "agent" ? { events: value("protocol"), tools: lines("tools"), exec_tools: lines("exec"), no_exec_argv: lines("noexec"), no_exec_env: env() } : { output: value("protocol"), read_files_argv: lines("read"), json_schema_argv: lines("schema") }) };
       const text = await host.saveProfile(kind(), value("name"), p);
       saved(text); dlg.close();

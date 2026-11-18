@@ -166,7 +166,7 @@ if __name__ == "__main__":
     parser.add_argument("action", choices=["record-package", "total"])
     parser.add_argument("package", nargs="?", type=Path)
     parser.add_argument("--spend-ledger", type=Path, required=True)
-    parser.add_argument("--since", help="UTC ISO time the UI run started (for the peak rule); default: now")
+    parser.add_argument("--since", help="UTC ISO time the UI run started (required for record-package: only files changed since are counted)")
     parser.add_argument("--what", default="UI-driven run")
     parser.add_argument("--killed-jobs", type=int, default=0, help="metered jobs stopped before reporting a cost")
     a = parser.parse_args()
@@ -175,7 +175,10 @@ if __name__ == "__main__":
         d = ledger.data()
         print(json.dumps({"counted_usd": ledger.total(), "hard_cap_usd": d["hard_cap_usd"], "remaining_usd": round(d["hard_cap_usd"] - ledger.total(), 6)}))
     else:
-        started = datetime.fromisoformat(a.since) if a.since else datetime.now(timezone.utc)
+        # No default: "now" would match no files and silently record $0 against the spend cap.
+        if a.package is None or not a.since:
+            parser.error("record-package needs PACKAGE_DIR and --since (the UTC ISO time the UI run started)")
+        started = datetime.fromisoformat(a.since)
         if started.tzinfo is None:
             started = started.replace(tzinfo=timezone.utc)
         # Only calls written since the UI run started: earlier (already recorded) calls in the package are not recounted.

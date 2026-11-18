@@ -74,4 +74,10 @@ assert.equal(await applyProfileChange(original, text, { backup: () => {}, write:
 assert.deepEqual(writes, [text]);
 await assert.rejects(applyProfileChange(original, text, { backup: () => {}, write: () => {}, restart: async () => { throw new Error('fixture down'); } }),
   /did not start with it either: fixture down/); // a failed rollback restart is reported, not hidden
-console.log('Model scoping, profile preservation/validation, and failed-restart rollback passed.');
+writes = [];
+await assert.rejects(applyProfileChange(original, text, { backup: () => {}, restart: async () => {},
+  write: (x) => { writes.push(x); if (x === text) throw new Error('disk full'); } }), /not saved: disk full.*restored/);
+assert.deepEqual(writes, [text, original]); // a failed (possibly partial) write is rolled back too
+await assert.rejects(applyProfileChange(original, text, { backup: () => {}, write: () => { throw new Error('read-only'); }, restart: async () => {} }),
+  /not saved: read-only\. Restoring the previous configuration failed too \(read-only\)/); // the original reason survives a failed restore
+console.log('Model scoping, profile preservation/validation, and failed-write/restart rollback passed.');
