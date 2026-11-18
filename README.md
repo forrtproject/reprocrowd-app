@@ -26,10 +26,36 @@ Linux in the app menu (and as the `reprocrowd` command), on macOS in
 again after `git pull` to update; `scripts/install.sh --uninstall` removes the
 app (your reproductions and settings stay). Windows: use WSL. macOS is untested.
 
-For the AI steps, install [Claude Code](https://claude.com/claude-code) and sign
-in once (`claude`), or configure another LLM command in Settings → Backend
-(profiles for [OpenCode](https://opencode.ai) are included). To run
-reproductions you also need what the paper's analysis uses (R, Python, …).
+For the AI steps, install one of the supported coding CLIs and sign in once in a
+terminal: [Claude Code](https://claude.com/claude-code) (`claude`, then sign in),
+[Codex CLI](https://developers.openai.com/codex) (`codex login`) or
+[OpenCode](https://opencode.ai) (`opencode auth login`, e.g. for DeepSeek). The app
+uses that sign-in; it never asks for API keys. Claude Code and Codex then run on your
+subscription, unless `ANTHROPIC_API_KEY`, `OPENAI_API_KEY` or `CODEX_API_KEY` is set
+in the environment the app starts from (the CLIs then bill that API key per use). An
+OpenCode provider you add with an API key (such as DeepSeek) is billed per use to that
+account. To run reproductions you also need
+what the paper's analysis uses (R, Python, …).
+
+### Choosing an AI tool
+
+1. Start the app. The start page lists the models each installed CLI offers, and says
+   when Claude Code or Codex is installed but not signed in (with a button that opens
+   its login). OpenCode lists the providers it can use: its free models and those you have signed in to.
+2. Open **⚙ Settings → Backend → Coding and extraction profiles…**. Pick the
+   operation (code generation or extraction), choose a preset (**Claude Code**,
+   **Codex CLI**, **OpenCode** or another plain-text CLI) and save. The form says
+   whether the command was found, offers only that CLI's models, and states whether
+   the profile can honour "don't run the analysis". Saving restarts the backend and
+   restores the previous settings if that fails. Nothing is sent to a model while you
+   edit.
+3. In a reproduction, choose the profile and model in step 2/3 ("Generate with LLM")
+   and in step 5 (coding agent). **Show prompt** shows the exact command and prompt
+   without running it. Unticking "let it run the analysis" lets the agent read and
+   edit files but not run code: Claude Code by denying its Bash tool
+   (`--disallowedTools Bash`), OpenCode through a permission setting that denies its
+   command tools, and Codex by removing its shell and giving it ReproCrowd's read-only
+   file tools instead (none of these is an OS sandbox).
 
 ### Linux notes
 
@@ -101,10 +127,13 @@ Apple silicon Macs runs ARM64 Linux, which works like any other Linux.
   coding-agent profiles, GROBID/Docling, OpenAlex key) as TOML.
 
 LLM calls and the coding agent run the commands configured in the backend
-configuration, by default Claude Code (`claude`) on your PATH. Runs of the
+configuration, by default Claude Code (`claude`) on your PATH. Settings → Backend →
+**Coding and extraction profiles…** adds or edits a profile without writing TOML.
+Profiles expose their output protocol and execution restrictions; model selection never
+switches the configured command. Runs of the
 master script use your R / Python.
 
-See [the implemented workflow, comparison and evidence contracts](docs/contracts.md)
+See [the implemented workflow, comparison/evidence and provider contracts](docs/contracts.md)
 for printed precision, recreation versus original-code tracks, setup and offline rerun checks.
 
 ## How it fits together

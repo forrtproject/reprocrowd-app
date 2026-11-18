@@ -25,24 +25,32 @@ class Health(BaseModel):
 
 
 class LlmProfileView(BaseModel):
+    available: bool = False
     name: str
     default: bool
     argv: list[str] = Field(description="read-only: configured in the service, never set by callers")
     model: str
     effort: str
     timeout_s: int
-    output: str = Field(description="how stdout is read (text, claude-json, opencode-json); whether the profile takes a chosen model")
+    output: str = Field(description="how stdout is read (text, claude-json, opencode-json, codex-json); whether the profile takes a chosen model")
 
 
 class PromptPreview(BaseModel):
     """What a call would send. Nothing was run or stored."""
 
+    available: bool = False
+    output_protocol: str = "text"
+    exec_restriction: str = "not_applicable"
+    timeout_s: int = 1800
+    structured_output: bool = False
     prompt: str = Field(description="the full prompt, as it would go to the command's stdin")
     argv: list[str] = Field(description="the exact command line")
     profile: str = Field(description="the profile used: the requested one, or the default")
     model: str
     effort: str
     output_schema: str | None = Field(default=None, description="JSON Schema the CLI is told to constrain its output to, if the profile supports that")
+    env: dict[str, str] = Field(default_factory=dict, description="environment variables added for this run (e.g. a no-analysis permission setting); "
+                                                                 "never credentials")
 
 
 class RunningJob(BaseModel):
@@ -330,11 +338,15 @@ class ScriptState(BaseModel):
 
 
 class AgentProfileView(BaseModel):
+    available: bool = False
+    exec_restriction: str = "unsupported"
     name: str
     default: bool
     argv: list[str] = Field(description="read-only: configured in the service; {tools} is filled from tools (+ exec_tools)")
     tools: list[str]
     exec_tools: list[str]
+    no_exec_argv: list[str] = Field(default_factory=list, description="appended when the analysis must not run (allow_exec=false)")
+    no_exec_env: dict[str, str] = Field(default_factory=dict, description="environment added when the analysis must not run")
     model: str
     effort: str
     timeout_s: int

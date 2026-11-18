@@ -25,7 +25,7 @@ from starlette.datastructures import UploadFile as StarletteUploadFile
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from ..schemas.evidence import ExecutionEvidence
-from .. import evidence
+from .. import evidence, providers
 from .. import __version__, acquire, openalex, pilots, zenodo, codegen, coordinates, curation, database, figures, report, run, extractions, files, fulltexts, inputs, jobs, llm, metadata, scripts
 from ..config import settings
 from ..errors import ApiError, not_found
@@ -296,7 +296,7 @@ api = APIRouter(prefix="/v1", dependencies=[Security(auth)], responses=errors("u
 @api.get("/llm-profiles", tags=["service"], response_model=list[M.LlmProfileView], summary="Configured LLM profiles")
 def llm_profiles():
     cfg = settings()
-    return [M.LlmProfileView(name=n, default=n == cfg.llm_default_profile, argv=p.argv, model=p.model, effort=p.effort, timeout_s=p.timeout_s, output=p.output)
+    return [M.LlmProfileView(name=n, default=n == cfg.llm_default_profile, argv=p.argv, model=p.model, effort=p.effort, timeout_s=p.timeout_s, output=p.output, available=providers.available(p.argv))
             for n, p in cfg.llm_profiles.items()]
 
 
@@ -461,7 +461,7 @@ EXTRACTION_ERRORS = errors("not_found", "not_parseable", "parse_failed", "extrac
 
 def _llm_preview(prompt: str, profile: str | None, *, read_files: bool = False, schema: str, model: str | None = None) -> M.PromptPreview:
     name, p, argv, structured = llm.command(profile, read_files=read_files, schema=schema, model=model)
-    return M.PromptPreview(prompt=prompt, argv=argv, profile=name, model=p.model if model is None else model, effort=p.effort, output_schema=structured)
+    return M.PromptPreview(prompt=prompt, argv=argv, profile=name, model=p.model if model is None else model, effort=p.effort, output_schema=structured, **providers.preview(p, argv))
 
 
 def _make_extraction(pkg: Package, body, name: str | None, replace: bool) -> Resource:
@@ -711,7 +711,7 @@ JOB_ERRORS = errors("not_found")
 def agent_profiles():
     cfg = settings()
     return [M.AgentProfileView(name=n, default=n == cfg.agent_default_profile, argv=p.argv, tools=p.tools, exec_tools=p.exec_tools,
-                               model=p.model, effort=p.effort, timeout_s=p.timeout_s, events=p.events) for n, p in cfg.agent_profiles.items()]
+                               no_exec_argv=p.no_exec_argv, no_exec_env=p.no_exec_env, model=p.model, effort=p.effort, timeout_s=p.timeout_s, events=p.events, available=providers.available(p.argv), exec_restriction=providers.exec_restriction(p)) for n, p in cfg.agent_profiles.items()]
 
 
 @api.post("/packages/{pkg}/jobs", tags=["jobs"], status_code=202, response_model=Job, summary="Start a job",
@@ -719,7 +719,7 @@ def agent_profiles():
                       "`TODO(LLM):` markers. `type: run` runs the master script with the template's command (output and "
                       "errors as `log` events), then checks `outputs/results.json`. The package is committed to git before "
                       "and after. Returns 202 at once; follow the job at its `Location`, its progress at `…/events`.",
-          responses=errors("script_missing", "job_running", "unknown_profile", "job_start_failed"))
+          responses=errors("script_missing", "job_running", "unknown_profile", "exec_restriction_unsupported", "job_start_failed"))
 def create_job(pkg: Pkg, body: Annotated[M.JobCreate, Body()], response: Response):
     if isinstance(body, M.RunJobCreate):
         job = run.start(pkg)
@@ -747,10 +747,11 @@ def running_jobs(page: Paged):
 
 @api.post("/packages/{pkg}/jobs:preview", tags=["jobs"], response_model=M.PromptPreview, summary="Show the prompt of a code-generation job",
           description="Takes the body of `POST …/jobs` with `type: codegen` and returns what would be sent. Runs nothing and stores nothing.",
-          responses=errors("script_missing", "unknown_profile"))
+          responses=errors("script_missing", "unknown_profile", "exec_restriction_unsupported"))
 def preview_codegen(pkg: Pkg, body: M.CodegenJobCreate):
     p = codegen.plan(pkg, profile=body.profile, allow_exec=body.allow_exec, instructions=body.instructions, model=body.model)
-    return M.PromptPreview(prompt=p.prompt, argv=p.argv, profile=p.name, model=body.model or p.profile.model, effort=p.profile.effort)
+    return M.PromptPreview(prompt=p.prompt, argv=p.argv, profile=p.name, model=body.model or p.profile.model, effort=p.profile.effort, env=p.env,
+                           **providers.preview(p.profile, p.argv))
 
 
 @api.get("/packages/{pkg}/jobs", tags=["jobs"], response_model=list[Job], summary="List jobs (oldest first)")

@@ -1,10 +1,10 @@
 // Step 6: code generation. Either in the user's own editor (the package folder plus AGENT_PROMPT.md), or by the
 // backend's headless coding agent as a job: its messages and tool calls stream in while it works, the package's
 // files are listed (most recently changed first) with the TODO(LLM) markers left.
-import { cliModel, host, pkg } from "../api";
+import { CLI_LABELS, cliModel, cliOf, host, pkg, modelCompatible, RESTRICTION_LABELS } from "../api";
 import type { LlmModel, LlmModels } from "../api";
 import type { AgentProfile, FileEntry, PromptPreview, ScriptState } from "../types";
-import { esc, modal, showPrompt, sizeText, when } from "../util";
+import { commandLine, esc, modal, showError, showPrompt, sizeText, when } from "../util";
 import { appendEvents, JobFollower, statusBadge } from "./jobs";
 import type { Step, Wizard } from "./wizard";
 
@@ -45,6 +45,7 @@ export class CodegenStep implements Step {
     const running = this.job.running;
     const ready = !!s?.template;
     const profile = this.profiles.find((p) => p.name === st.agentProfile) ?? this.profiles.find((p) => p.default) ?? this.profiles[0];
+    const unsupported = profile?.exec_restriction === "unsupported";
     const res = j?.result?.type === "codegen" ? j.result : undefined;
     body.innerHTML = `
     <div class="cols cols-codegen">
@@ -61,12 +62,15 @@ export class CodegenStep implements Step {
             <div class="form-row">
               <label>Profile <select id="rp-profile" ${running ? "disabled" : ""}>${this.profiles.map((p) => `<option value="${esc(p.name)}" ${p === profile ? "selected" : ""}>${esc(p.name)}: ${esc(p.model || "default")}${p.effort ? `, ${esc(p.effort)}` : ""}</option>`).join("")}</select></label>
               <label>Model <select id="rp-model" ${running ? "disabled" : ""}><option value="">(the CLI's default)</option></select></label>
-              <label class="inline" title="${esc(profile?.exec_tools.join(", ") ?? "")}"><input type="checkbox" id="rp-exec" ${st.allowExec ? "checked" : ""} ${running ? "disabled" : ""} /> let it run the analysis (R, Python, Snakemake)</label>
+              <label class="inline" title="${esc(profile?.exec_tools.join(", ") ?? "")}"><input type="checkbox" id="rp-exec" ${st.allowExec ? "checked" : ""} ${running || unsupported ? "disabled" : ""} /> let it run the analysis (R, Python, Snakemake)</label>
             </div>
+            <p class="hint">${unsupported ? "This profile cannot run editing-only: with execution allowed, the agent can edit files and run commands in the package folder. A Codex or OpenCode profile saved before no-analysis settings existed regains it when its preset is re-applied in Settings." : profile ? `Without “let it run the analysis”: ${RESTRICTION_LABELS[profile.exec_restriction] ?? profile.exec_restriction}.` : ""}${profile?.available === false ? " The executable was not found; install it or update the command in Settings." : ""}</p>
+            ${this.models?.needsLogin?.includes(cliOf(profile?.argv) as LlmModel["cli"]) ? `<p class="hint warn-inline">${esc(CLI_LABELS[cliOf(profile?.argv)] ?? cliOf(profile?.argv))} is installed but not signed in. <button id="rp-login" type="button">Log in…</button> <button id="rp-login-check" type="button">Check again</button></p>` : ""}
+            ${unsupported && !st.allowExec ? `<button id="rp-allow-exec" type="button">Let the agent run the analysis</button>` : ""}
             <div class="form-row"><button id="rp-prompt" ${ready ? "" : "disabled"}>Show prompt</button></div>
             <label>Extra instructions <textarea id="rp-instr" rows="2" ${running ? "disabled" : ""} placeholder="optional">${esc(st.agentInstructions)}</textarea></label>
           </div>
-          <button id="rp-gen" class="primary" ${running || !ready ? "disabled" : ""}>${running ? "Working…" : "Run agent…"}</button>
+          <button id="rp-gen" class="primary" ${running || !ready || (unsupported && !st.allowExec) ? "disabled" : ""}>${running ? "Working…" : "Run agent…"}</button>
           <button id="rp-stop" ${running ? "" : "disabled"}>Stop</button>
         </div>
         <div class="log-head"><h4>Agent activity</h4><span class="muted small">${j ? `${statusBadge(j)} · started ${esc(when(j.created_at))}` : ""}</span></div>
@@ -86,24 +90,16 @@ export class CodegenStep implements Step {
     const modelSel = body.querySelector<HTMLSelectElement>("#rp-model")!;
     prof.addEventListener("change", () => {
       st.agentProfile = prof.value;
-      // A model another profile runs doesn't go with this one.
-      const p = profileForModel(modelSel.value);
-      if (p && p !== prof.value) st.agentModel = modelSel.value = "";
+      fillModels();
       this.w.app.save();
+      this.w.render();
     });
-    /** The agent profile that runs a given model: Claude Code models → the Claude agent, everything else → the OpenCode agent. */
-    const profileForModel = (id: string) => {
-      if (!id) return undefined;
-      return (id.startsWith("claude/")
-        ? this.profiles.find((p) => p.events === "claude-stream-json")
-        : this.profiles.find((p) => p.events === "opencode-json"))?.name;
-    };
-    // The model list always comes from the detected models (never hard-coded); picking one selects the matching profile.
+    // Offer detected models only for the selected command-line tool.
     const fillModels = () => {
       const m = this.models;
       if (!m) return;
       const byProv = new Map<string, LlmModel[]>();
-      for (const x of m.available) if (!m.disabled.includes(x.id)) {
+      for (const x of m.available) if (!m.disabled.includes(x.id) && modelCompatible(x, this.profiles.find((p) => p.name === prof.value)?.argv)) {
         const a = byProv.get(x.provider) ?? [];
         a.push(x);
         byProv.set(x.provider, a);
@@ -111,17 +107,20 @@ export class CodegenStep implements Step {
       modelSel.innerHTML = `<option value="">(the CLI's default)</option>${[...byProv.entries()]
         .map(([p, arr]) => `<optgroup label="${esc(p)}">${arr.map((x) => `<option value="${esc(x.id)}">${esc(x.name)}</option>`).join("")}</optgroup>`)
         .join("")}`;
-      if (st.agentModel && m.available.some((x) => x.id === st.agentModel)) modelSel.value = st.agentModel;
-      const p = profileForModel(modelSel.value);
-      if (p && prof.value !== p) { prof.value = p; st.agentProfile = p; }
+      if (st.agentModel && [...modelSel.options].some((x) => x.value === st.agentModel)) modelSel.value = st.agentModel;
+      else if (st.agentModel) {
+        st.agentModel = "";
+        this.w.setStatus("The saved model was cleared: it is turned off on the start page or not offered for this profile's CLI.");
+      }
     };
     fillModels();
     modelSel.addEventListener("change", () => {
       st.agentModel = modelSel.value;
-      const p = profileForModel(modelSel.value);
-      if (p) { prof.value = p; st.agentProfile = p; }
       this.w.app.save();
     });
+    body.querySelector("#rp-login-check")?.addEventListener("click", async () => { this.models = await host.llmModels(true).catch(() => this.models); this.w.render(); });
+    body.querySelector("#rp-login")?.addEventListener("click", () => host.cliLogin(cliOf(this.profiles.find((p) => p.name === prof.value)?.argv)).then((m) => this.w.setStatus(m), (e) => this.w.setStatus((e as Error).message, "error")));
+    body.querySelector("#rp-allow-exec")?.addEventListener("click", () => { st.allowExec = true; this.w.app.save(); this.w.render(); });
     body.querySelector<HTMLInputElement>("#rp-exec")!.addEventListener("change", (e) => {
       st.allowExec = (e.target as HTMLInputElement).checked;
       this.w.app.save();
@@ -142,6 +141,7 @@ export class CodegenStep implements Step {
           instructions: body.querySelector<HTMLTextAreaElement>("#rp-instr")!.value.trim(),
           model: st.agentModel ? cliModel(st.agentModel) : undefined,
         }),
+        st.allowExec,
       ),
     );
     body.querySelector("#rp-gen")!.addEventListener("click", () => this.start());
@@ -179,26 +179,45 @@ export class CodegenStep implements Step {
     }
   }
 
+  private starting = false;
+
   private async start() {
+    if (this.starting) return; // a second click while the preview or confirmation is open
+    this.starting = true;
+    try {
+      await this.confirmAndStart();
+    } finally {
+      this.starting = false;
+    }
+  }
+
+  private async confirmAndStart() {
     const st = this.w.app.state;
     const profile = this.profiles.find((p) => p.name === (document.querySelector<HTMLSelectElement>("#rp-profile")?.value ?? ""));
     const model = document.querySelector<HTMLSelectElement>("#rp-model")?.value || "";
     st.agentModel = model;
     const cli = model ? cliModel(model) : "";
     st.agentInstructions = document.querySelector<HTMLTextAreaElement>("#rp-instr")?.value.trim() ?? "";
-    const tools = profile ? [...profile.tools, ...(st.allowExec ? profile.exec_tools : [])] : [];
+    // One snapshot for the preview, the confirmation and the start, so a toggle meanwhile can't change what runs.
+    const allowExec = st.allowExec;
+    // The exact command, added environment and restriction come from the backend's preview (the same as Show prompt).
+    const request = { profile: profile?.name, allow_exec: allowExec, instructions: st.agentInstructions, model: cli || undefined };
+    let pv: PromptPreview;
+    try { pv = await pkg.post<PromptPreview>("/jobs:preview", { type: "codegen", ...request }); } catch (e) { return showError("Preparing the coding agent", e); }
+    const env = Object.entries(pv.env ?? {}).map(([k, v]) => `${k}=${v}`).join(" ");
     const ok = await new Promise<boolean>((resolve) => {
       const dlg = modal("dlg-wide", `<h3>Run the coding agent?</h3>
-        <p>The agent works in <code>${esc(this.w.app.summary().path)}</code> and may take minutes to hours. It can read and write files there${st.allowExec ? " and run the analysis" : ""}.</p>
-        <div class="kv"><span>Profile</span><span>${esc(profile?.name ?? "(default)")} · model ${esc(cli || profile?.model || "default")} · effort ${esc(profile?.effort || "default")} · timeout ${profile ? Math.round(profile.timeout_s / 60) : "?"} min</span>
-          <span>Command</span><code>${esc(profile?.argv.join(" ").replace("{model}", cli || profile?.model || "").replace("{tools}", tools.join(",")) ?? "")}</code>
-          <span>Tools</span><span>${esc(tools.join(", "))}</span></div>
+        <p>The agent works in <code>${esc(this.w.app.summary().path)}</code> and may take minutes to hours. It can read and write files there${allowExec ? " and run the analysis" : ""}.</p>
+        <div class="kv"><span>Profile</span><span>${esc(pv.profile)} · model ${esc(pv.model || "default")} · effort ${esc(pv.effort || "default")} · timeout ${Math.round(pv.timeout_s / 60)} min</span>
+          <span>Command</span><code>${esc(commandLine(pv.argv))}</code>
+          ${env ? `<span>Environment</span><code>${esc(env)}</code>` : ""}
+          <span>Execution restriction</span><span>${esc(allowExec ? "none: the agent may run the analysis" : RESTRICTION_LABELS[pv.exec_restriction] ?? pv.exec_restriction)}</span></div>
         <form method="dialog"><menu><button value="cancel" formnovalidate>Cancel</button><button value="ok" class="primary">Run</button></menu></form>`);
       dlg.addEventListener("close", () => resolve(dlg.returnValue === "ok"));
     });
     if (!ok) return;
     this.w.app.save();
-    await this.w.busy("codegen-start", "Starting the coding agent", () => this.job.start({ profile: profile?.name, allow_exec: st.allowExec, instructions: st.agentInstructions, model: cli || undefined }));
+    await this.w.busy("codegen-start", "Starting the coding agent", () => this.job.start(request));
     this.w.repoll();
   }
 }

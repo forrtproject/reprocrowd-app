@@ -5676,7 +5676,7 @@
                 }
               }
             },
-            "description": "`script_missing`: Create the master script first; `job_running`: Another job is running in this package"
+            "description": "`script_missing`: Create the master script first; `job_running`: Another job is running in this package; `exec_restriction_unsupported`: This profile cannot restrict analysis execution"
           },
           "400": {
             "content": {
@@ -5965,7 +5965,7 @@
                 }
               }
             },
-            "description": "`script_missing`: Create the master script first"
+            "description": "`script_missing`: Create the master script first; `exec_restriction_unsupported`: This profile cannot restrict analysis execution"
           },
           "400": {
             "content": {
@@ -10024,6 +10024,16 @@
       },
       "AgentProfileView": {
         "properties": {
+          "available": {
+            "type": "boolean",
+            "title": "Available",
+            "default": false
+          },
+          "exec_restriction": {
+            "type": "string",
+            "title": "Exec Restriction",
+            "default": "unsupported"
+          },
           "name": {
             "type": "string",
             "title": "Name"
@@ -10053,6 +10063,22 @@
             },
             "type": "array",
             "title": "Exec Tools"
+          },
+          "no_exec_argv": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "No Exec Argv",
+            "description": "appended when the analysis must not run (allow_exec=false)"
+          },
+          "no_exec_env": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "No Exec Env",
+            "description": "environment added when the analysis must not run"
           },
           "model": {
             "type": "string",
@@ -12717,6 +12743,7 @@
             "enum": [
               "claude-stream-json",
               "opencode-json",
+              "codex-json",
               "text"
             ],
             "title": "Events Format"
@@ -12894,14 +12921,15 @@
           "output": {
             "type": "string",
             "title": "Output",
-            "description": "raw stdout of the call"
+            "description": "stdout of the call. In run records kept with the package (targets.json, actions.json) event-stream CLIs keep only answer and turn-status events; the raw stdout is in llm-calls/<id>/stdout.txt"
           },
           "output_format": {
             "type": "string",
             "enum": [
               "text",
               "claude-json",
-              "opencode-json"
+              "opencode-json",
+              "codex-json"
             ],
             "title": "Output Format",
             "description": "how stdout was read",
@@ -13024,6 +13052,11 @@
       },
       "LlmProfileView": {
         "properties": {
+          "available": {
+            "type": "boolean",
+            "title": "Available",
+            "default": false
+          },
           "name": {
             "type": "string",
             "title": "Name"
@@ -13055,7 +13088,7 @@
           "output": {
             "type": "string",
             "title": "Output",
-            "description": "how stdout is read (text, claude-json, opencode-json); whether the profile takes a chosen model"
+            "description": "how stdout is read (text, claude-json, opencode-json, codex-json); whether the profile takes a chosen model"
           }
         },
         "type": "object",
@@ -14024,6 +14057,31 @@
       },
       "PromptPreview": {
         "properties": {
+          "available": {
+            "type": "boolean",
+            "title": "Available",
+            "default": false
+          },
+          "output_protocol": {
+            "type": "string",
+            "title": "Output Protocol",
+            "default": "text"
+          },
+          "exec_restriction": {
+            "type": "string",
+            "title": "Exec Restriction",
+            "default": "not_applicable"
+          },
+          "timeout_s": {
+            "type": "integer",
+            "title": "Timeout S",
+            "default": 1800
+          },
+          "structured_output": {
+            "type": "boolean",
+            "title": "Structured Output",
+            "default": false
+          },
           "prompt": {
             "type": "string",
             "title": "Prompt",
@@ -14061,6 +14119,14 @@
             ],
             "title": "Output Schema",
             "description": "JSON Schema the CLI is told to constrain its output to, if the profile supports that"
+          },
+          "env": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Env",
+            "description": "environment variables added for this run (e.g. a no-analysis permission setting); never credentials"
           }
         },
         "type": "object",

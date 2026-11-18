@@ -6,9 +6,11 @@ markers are counted.
 """
 from __future__ import annotations
 
+import sys
 from typing import NamedTuple
 
 from . import files, gitrepo, jobs
+from .providers import exec_restriction, terminal_error
 from .config import AgentProfile, expand_argv, settings
 from .errors import ApiError, conflict
 from .package import Package
@@ -32,6 +34,7 @@ class Plan(NamedTuple):
     tools: list[str]
     argv: list[str]
     prompt: str
+    env: dict[str, str]
 
 
 def plan(pkg: Package, *, profile: str | None, allow_exec: bool, instructions: str, model: str | None = None) -> Plan:
@@ -41,12 +44,18 @@ def plan(pkg: Package, *, profile: str | None, allow_exec: bool, instructions: s
     if tpl is None:
         raise conflict("script_missing", "create the master script first (PUT …/script)")
     tools = prof.tools + (prof.exec_tools if allow_exec else [])
+    restriction = exec_restriction(prof, tools)
+    if not allow_exec and restriction == "unsupported":
+        raise conflict("exec_restriction_unsupported", f"Profile {name!r} has neither a tool allowlist ({{tools}} with editing and execution tools) nor no-analysis settings (no_exec_argv/no_exec_env); it cannot honor no-analysis mode. Re-apply its preset in Settings (Claude Code, Codex and OpenCode presets support it) or explicitly allow execution.")
     argv = expand_argv(prof.argv, {"model": model or prof.model, "effort": prof.effort, "tools": ",".join(tools)})
-    return Plan(name, prof, tpl, tools, argv, agent_prompt(pkg, tpl, instructions))
+    restricted = not allow_exec and restriction == "cli_settings"
+    # {python}: the backend's interpreter, for helper servers such as reprocrowd.mcp_files (Codex's read-only file tools).
+    argv += expand_argv(prof.no_exec_argv, {"python": sys.executable, "model": model or prof.model, "effort": prof.effort}) if restricted else []
+    return Plan(name, prof, tpl, tools, argv, agent_prompt(pkg, tpl, instructions, allow_exec=allow_exec), dict(prof.no_exec_env) if restricted else {})
 
 
 def start(pkg: Package, *, profile: str | None, allow_exec: bool, instructions: str, model: str | None = None) -> Job:
-    name, prof, tpl, tools, argv, prompt = plan(pkg, profile=profile, allow_exec=allow_exec, instructions=instructions, model=model)
+    name, prof, tpl, tools, argv, prompt, env = plan(pkg, profile=profile, allow_exec=allow_exec, instructions=instructions, model=model)
     jobs.ensure_idle(pkg)
     jid = jobs.new_id()
 
@@ -58,6 +67,11 @@ def start(pkg: Package, *, profile: str | None, allow_exec: bool, instructions: 
         git_note = "git not found: changes are not committed"
 
     def finish(job: Job) -> CodegenResult:
+        if job.status == "succeeded":
+            with pkg.path(job.stdout).open(encoding="utf-8", errors="replace") as log:  # line by line: logs can be large
+                failure = terminal_error(log, prof.events)
+            if failure:
+                job.status, job.error = "failed", f"the agent reported an error: {failure}"
         files.sync(pkg)
         after, changed = None, []
         if git_note is None:
@@ -66,7 +80,9 @@ def start(pkg: Package, *, profile: str | None, allow_exec: bool, instructions: 
         return CodegenResult(commit_before=before, commit_after=after, changed_files=changed, todo=todo_status(pkg, tpl), git_note=git_note)
 
     request = {"profile": name, "model": model or prof.model, "effort": prof.effort, "allow_exec": allow_exec, "instructions": instructions,
-               "template": tpl.id, "tools": tools,
+               "template": tpl.id, "tools": tools, "env": env,
+               # What restricted this run: "none" when execution was allowed, whatever the profile could have enforced.
+               "exec_restriction": "none" if allow_exec else exec_restriction(prof, tools),
                "code_context": "excluded_from_prompt", "code_files_on_disk": [r.path for r in pkg.load().by_kind("input") if r.reprocrowd.role == "code" and pkg.path(r.path).exists()]}
     return jobs.start(pkg, jid=jid, type="codegen", argv=argv, stdin=prompt, timeout_s=prof.timeout_s, events_format=prof.events,
-                      profile=name, request=request, finish=finish)
+                      profile=name, request=request, finish=finish, env=env)

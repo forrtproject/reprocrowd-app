@@ -12,45 +12,66 @@ from pydantic import BaseModel, Field
 
 
 class LlmProfile(BaseModel):
-    argv: list[str] = Field(description="command line; {model} and {effort} are substituted, the prompt goes to stdin")
+    argv: list[str] = Field(min_length=1, description="command line; {model} and {effort} are substituted, the prompt goes to stdin")
     read_files_argv: list[str] = Field(default_factory=list, description="appended when the LLM must read package files (cwd = package root)")
     json_schema_argv: list[str] = Field(default_factory=list, description="appended with {schema} = the task's output JSON Schema, for CLIs "
                                                                           "that constrain output to a schema (claude: --json-schema)")
-    output: Literal["text", "claude-json", "opencode-json"] = Field(default="text", description="how to read stdout: plain text, Claude's --output-format json "
-                                                                                "envelope (structured_output / result), or OpenCode's run --format json "
-                                                                                "event stream (the answer is the text of the text events)")
+    output: Literal["text", "claude-json", "opencode-json", "codex-json"] = Field(
+        default="text", description="how to read stdout: plain text, Claude's --output-format json envelope (structured_output / result), "
+                                    "OpenCode's run --format json event stream (the answer is the text of the text events), or Codex's "
+                                    "exec --json event stream (the answer is the last agent_message)")
     model: str = ""
     effort: str = ""
-    timeout_s: int = 1800
+    timeout_s: int = Field(default=1800, gt=0)
 
 
 class AgentProfile(BaseModel):
     """A headless coding agent for code generation. It runs in the package folder as a job."""
 
-    argv: list[str] = Field(description="command line; {model}, {effort} and {tools} (comma-separated allowed tools) are substituted, the prompt goes to stdin")
+    argv: list[str] = Field(min_length=1, description="command line; {model}, {effort} and {tools} (comma-separated allowed tools) are substituted, the prompt goes to stdin")
     tools: list[str] = Field(default_factory=lambda: ["Read", "Write", "Edit", "Glob", "Grep"], description="always allowed")
     exec_tools: list[str] = Field(
         default_factory=lambda: ["Bash(Rscript:*)", "Bash(R:*)", "Bash(python:*)", "Bash(python3:*)", "Bash(snakemake:*)", "Bash(pip:*)", "Bash(ls:*)"],
         description="added when the caller allows the agent to run the analysis (allow_exec)")
     model: str = ""
     effort: str = ""
-    timeout_s: int = 7200
-    events: Literal["claude-stream-json", "opencode-json", "text"] = Field(default="claude-stream-json", description="how to read the agent's stdout as events")
+    timeout_s: int = Field(default=7200, gt=0)
+    events: Literal["claude-stream-json", "opencode-json", "codex-json", "text"] = Field(default="claude-stream-json", description="how to read the agent's stdout as events")
+    no_exec_argv: list[str] = Field(default_factory=list, description="appended when the caller forbids running the analysis (allow_exec=false): "
+                                                                    "CLI flags that remove its command-running tools while keeping its read and edit tools")
+    no_exec_env: dict[str, str] = Field(default_factory=dict, description="environment added when allow_exec=false, e.g. OpenCode's "
+                                                                         "OPENCODE_PERMISSION denying every tool but reading and editing")
 
 
 def expand_argv(argv: list[str], values: dict[str, str]) -> list[str]:
-    """Substitute {name} placeholders. An argument that becomes empty is dropped, with the flag before it."""
+    """Substitute {name} placeholders. An argument with a placeholder whose value is empty is dropped, with the flag
+    before it: ``["--model", "{model}"]`` and ``["-c", "model_reasoning_effort={effort}"]`` both vanish when unset."""
     out: list[str] = []
     for arg in argv:
         value = arg
         for k, v in values.items():
             value = value.replace("{" + k + "}", v)
-        if value == "" and arg != "":
-            if out and out[-1].startswith("-"):
+        if (value == "" and arg != "") or any(not v and "{" + k + "}" in arg for k, v in values.items()):
+            # A dropped value takes its flag with it (`-c effort={effort}`); a dropped `--model={model}` is its own flag.
+            if out and out[-1].startswith("-") and not arg.startswith("-"):
                 out.pop()
             continue
         out.append(value)
     return out
+
+
+# --disable apps/plugins: no ChatGPT connectors (e.g. GitHub or site-deploy actions) for an agent the app runs.
+# The prompt is read from stdin (no prompt argument), so mode flags can be appended.
+CODEX_ARGV = ["codex", "exec", "--json", "--skip-git-repo-check", "--ephemeral", "--ignore-user-config", "--disable", "apps", "--disable", "plugins",
+              "-m", "{model}", "-c", "model_reasoning_effort={effort}"]
+# Editing-only Codex: no shell, no sub-agents; reading through reprocrowd.mcp_files (read-only, confined to the package,
+# its tools approved for this server only); edits with apply_patch. {python} is the backend's own interpreter.
+# Checked with codex-cli 0.167.0: it read and edited, could not run ls or read an environment nonce.
+CODEX_NO_EXEC = ["--disable", "shell_tool", "--disable", "unified_exec", "--disable", "multi_agent",
+                 "-c", "mcp_servers.rc_files.command='{python}'", "-c", 'mcp_servers.rc_files.args=["-I", "-m", "reprocrowd.mcp_files"]',
+                 "-c", 'mcp_servers.rc_files.default_tools_approval_mode="approve"']
+# Editing-only OpenCode: every tool denied except reading and editing. --auto approves only what is not denied.
+OPENCODE_NO_EXEC = {"OPENCODE_PERMISSION": '{"*":"deny","read":"allow","edit":"allow","glob":"allow","grep":"allow","list":"allow","todowrite":"allow"}'}
 
 
 def _default_agents() -> dict[str, AgentProfile]:
@@ -60,6 +81,9 @@ def _default_agents() -> dict[str, AgentProfile]:
                   "--model", "{model}", "--effort", "{effort}", "--allowedTools", "{tools}"],
             model="sonnet",
             effort="high",
+            # --allowedTools only pre-approves: Claude Code still runs commands it classes as read-only (ls, cat).
+            # Denying Bash removes command execution when the analysis must not run (checked with Claude Code 2.1.322).
+            no_exec_argv=["--disallowedTools", "Bash"],
         ),
         # OpenCode (https://opencode.ai) as a headless coding agent: --auto approves the tool calls it makes
         # (Read/Write/Edit/Glob/Grep/Bash), so it can work without a terminal. --format json emits one event per
@@ -71,7 +95,13 @@ def _default_agents() -> dict[str, AgentProfile]:
             effort="",
             tools=[],
             exec_tools=[],
+            no_exec_env=OPENCODE_NO_EXEC,
         ),
+        # Codex CLI (https://developers.openai.com/codex): exec --json emits JSONL events (events.py's codex-json parser).
+        # workspace-write: Codex's sandbox confines writes to the package. --ignore-user-config skips ~/.codex/config.toml
+        # (MCP servers, default model) but keeps the login. No-analysis mode (CODEX_NO_EXEC) removes its shell and
+        # sub-agent tools; Codex reads files only through its shell, so it gets the read-only file server instead.
+        "codex": AgentProfile(argv=CODEX_ARGV + ["-s", "workspace-write"], events="codex-json", tools=[], exec_tools=[], no_exec_argv=CODEX_NO_EXEC),
     }
 
 
@@ -93,6 +123,8 @@ def _default_profiles() -> dict[str, LlmProfile]:
             model="",
             effort="",
         ),
+        # Codex CLI, read-only sandbox: it can read the package files it is pointed to but not change them.
+        "codex": LlmProfile(argv=CODEX_ARGV + ["-s", "read-only"], output="codex-json"),
     }
 
 

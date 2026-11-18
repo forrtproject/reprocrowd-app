@@ -15,6 +15,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import net from "node:net";
 import path from "node:path";
+import { applyProfileChange, replaceProfile, configuredProfiles, type ProfileKind, type Profile } from "./profiles";
 import { parse, stringify } from "smol-toml";
 import { searchPath, splitCommand, which } from "./processes";
 import { loadSettings, userData } from "./settings";
@@ -126,6 +127,18 @@ model = ""
 effort = ""
 timeout_s = 1800
 
+# Codex CLI (https://developers.openai.com/codex), signed in with "codex login". exec --json emits one event per line
+# ("codex-json"). The read-only sandbox lets it read the package files without changing them. --ignore-user-config skips
+# ~/.codex/config.toml (MCP servers, default model) but keeps the login; --disable apps/plugins keeps ChatGPT
+# connectors (e.g. GitHub actions) away from the agent. model = "" uses Codex's default. The prompt goes to stdin.
+[llm.profiles.codex]
+argv = ["codex", "exec", "--json", "--skip-git-repo-check", "--ephemeral", "--ignore-user-config", "--disable", "apps",
+        "--disable", "plugins", "-m", "{model}", "-c", "model_reasoning_effort={effort}", "-s", "read-only"]
+output = "codex-json"
+model = ""
+effort = ""
+timeout_s = 1800
+
 # Coding agents for code generation. {tools}: the allowed tools, plus exec_tools when running the analysis is allowed.
 [agent]
 default_profile = "claude"
@@ -133,6 +146,9 @@ default_profile = "claude"
 [agent.profiles.claude]
 argv = ["claude", "-p", "--output-format", "stream-json", "--verbose", "--permission-mode", "acceptEdits",
         "--model", "{model}", "--effort", "{effort}", "--allowedTools", "{tools}"]
+# When the analysis must not run: --allowedTools only pre-approves tools (Claude Code still runs read-only commands
+# such as ls), so Bash is denied outright.
+no_exec_argv = ["--disallowedTools", "Bash"]
 tools = ["Read", "Write", "Edit", "Glob", "Grep"]
 exec_tools = ["Bash(Rscript:*)", "Bash(R:*)", "Bash(python:*)", "Bash(python3:*)", "Bash(snakemake:*)", "Bash(pip:*)", "Bash(ls:*)"]
 model = "sonnet"
@@ -141,13 +157,29 @@ timeout_s = 7200
 events = "claude-stream-json"
 
 # OpenCode as a headless coding agent: --auto approves the tool calls it makes (Read/Write/Edit/Glob/Grep/Bash).
-# model = "" uses the CLI's default; pick one of your models on the starting page.
+# When the analysis must not run, no_exec_env denies every tool but reading and editing (--auto approves only what
+# is not denied). model = "" uses the CLI's default; pick one of your models on the starting page.
 [agent.profiles.opencode]
 argv = ["opencode", "run", "--format", "json", "-m", "{model}", "--variant", "{effort}", "--auto"]
+no_exec_env = { OPENCODE_PERMISSION = '{"*":"deny","read":"allow","edit":"allow","glob":"allow","grep":"allow","list":"allow","todowrite":"allow"}' }
 model = ""
 effort = ""
 timeout_s = 7200
 events = "opencode-json"
+
+# Codex as a headless coding agent, in the workspace-write sandbox (writes confined to the package folder by Codex).
+# When the analysis must not run, no_exec_argv removes its shell and sub-agents and gives it ReproCrowd's read-only
+# file server instead ({python} = the backend's Python); it edits with apply_patch.
+[agent.profiles.codex]
+argv = ["codex", "exec", "--json", "--skip-git-repo-check", "--ephemeral", "--ignore-user-config", "--disable", "apps",
+        "--disable", "plugins", "-m", "{model}", "-c", "model_reasoning_effort={effort}", "-s", "workspace-write"]
+no_exec_argv = ["--disable", "shell_tool", "--disable", "unified_exec", "--disable", "multi_agent", "-c", "mcp_servers.rc_files.command='{python}'", "-c", 'mcp_servers.rc_files.args=["-I", "-m", "reprocrowd.mcp_files"]', "-c", 'mcp_servers.rc_files.default_tools_approval_mode="approve"']
+tools = []
+exec_tools = []
+model = ""
+effort = ""
+timeout_s = 7200
+events = "codex-json"
 `;
 
 export function readUserConfig(): string {
@@ -220,7 +252,8 @@ function writeConfig(port: number, token: string) {
   const agent = (user.agent ?? {}) as Record<string, any>;
   const agentProfiles = { ...((agent.profiles ?? {}) as Record<string, any>) };
   // Same for the headless coding agent: keep an OpenCode profile so the agent can use the user's OpenCode models.
-  if (!agentProfiles.opencode) agentProfiles.opencode = { argv: ["opencode", "run", "--format", "json", "-m", "{model}", "--variant", "{effort}", "--auto"], model: "", effort: "", timeout_s: 7200, events: "opencode-json" };
+  if (!agentProfiles.opencode) agentProfiles.opencode = { argv: ["opencode", "run", "--format", "json", "-m", "{model}", "--variant", "{effort}", "--auto"], model: "", effort: "", timeout_s: 7200, events: "opencode-json",
+    no_exec_env: { OPENCODE_PERMISSION: '{"*":"deny","read":"allow","edit":"allow","glob":"allow","grep":"allow","list":"allow","todowrite":"allow"}' } };
   const cfg = {
     ...user,
     llm: { ...llm, profiles },
@@ -374,4 +407,21 @@ export async function restart() {
   await stop();
   lastFailure = undefined;
   return ensure();
+}
+
+
+export const profileConfig = () => configuredProfiles(readUserConfig());
+
+/** Local administrator operation. Restore the exact previous text on failed restart. */
+export async function saveProfile(kind: ProfileKind, name: string, profile: Profile): Promise<string> {
+  const previous = readUserConfig();
+  const next = replaceProfile(previous, kind, name, profile);
+  return applyProfileChange(previous, next, {
+    backup(text) {
+      const backup = userConfigFile() + ".bak";
+      if (!fs.existsSync(backup)) fs.writeFileSync(backup, text, { mode: 0o600 });
+    },
+    write: writeUserConfig,
+    restart,
+  });
 }

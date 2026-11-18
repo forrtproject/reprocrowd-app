@@ -1,15 +1,13 @@
-// Which LLM models the user can use. We list the models the installed agent CLIs (OpenCode, T3 Code) offer, but only
-// from providers the user actually has access to: the ones configured in the agent's config file (where the user puts
-// their own API keys / local servers). Free built-in models (the OpenCode "opencode" provider) are always offered.
-// The models the user turns off on the starting page are kept (settings.llmDisabled) so they don't accidentally spend
-// tokens on them.
+// Which LLM models the user can use, and from which CLI. Each installed agent CLI is asked for its own list:
+// `opencode models` lists only providers the user has credentials for (plus OpenCode's free models), `codex debug
+// models` the models of the signed-in Codex account, and Claude Code takes its tier aliases once signed in. A model
+// belongs to the CLI that listed it; the renderer never routes it to another CLI. The models the user turns off on the
+// starting page are kept (settings.llmDisabled) so they don't accidentally spend tokens on them.
 import { exec } from "node:child_process";
-import fs from "node:fs";
-import os from "node:os";
-import path from "node:path";
 import { searchPath, which } from "./processes";
 
 export interface LlmModel {
+  cli: "claude" | "opencode" | "codex" | "t3";
   /** The model's provider/family, e.g. "unigpt", "opencode", "ollama". */
   provider: string;
   /** Full id passed to the CLI, e.g. "unigpt/DeepSeek-V4-Flash". */
@@ -19,13 +17,37 @@ export interface LlmModel {
 }
 
 const TTL = 5 * 60_000; // the CLI's model list doesn't change often; re-detect at most every few minutes
-interface ModelSet { available: LlmModel[]; claudeNeedsLogin: boolean }
+type Cli = LlmModel["cli"];
+/** needsLogin: installed CLIs that report no login. claudeNeedsLogin is kept for older renderer code. */
+interface ModelSet { available: LlmModel[]; claudeNeedsLogin: boolean; needsLogin: Cli[] }
 let cache: { at: number; value: ModelSet } | undefined;
 
 function run(cmd: string): Promise<string> {
   return new Promise((resolve) => {
-    exec(cmd, { timeout: 20_000, env: { ...process.env, PATH: searchPath() } }, (_err, stdout) => resolve(stdout ?? ""));
+    exec(cmd, { timeout: 20_000, maxBuffer: 16 * 1024 * 1024, env: { ...process.env, PATH: searchPath() } }, (_err, stdout) => resolve(stdout ?? ""));
   });
+}
+
+/** Whether Codex is signed in, from `codex login status` ("Logged in using …" / "Not logged in"); undefined if it can't tell. */
+function codexLoggedIn(): Promise<boolean | undefined> {
+  return new Promise((resolve) => {
+    exec("codex login status", { timeout: 20_000, env: { ...process.env, PATH: searchPath() } }, (_err, stdout, stderr) => {
+      const text = `${stdout ?? ""}\n${stderr ?? ""}`;
+      resolve(/not logged in/i.test(text) ? false : /logged in/i.test(text) ? true : undefined);
+    });
+  });
+}
+
+/** Codex's model catalog (`codex debug models`, JSON): the models listed for the signed-in account, as `codex/<slug>`. */
+export function parseCodexModels(out: string): LlmModel[] {
+  try {
+    const raw = JSON.parse(out);
+    const list: any[] = Array.isArray(raw) ? raw : Array.isArray(raw?.models) ? raw.models : [];
+    return list.filter((m) => m && typeof m.slug === "string" && (m.visibility ?? "list") === "list")
+      .map((m) => ({ cli: "codex", provider: "codex", id: `codex/${m.slug}`, name: typeof m.display_name === "string" ? m.display_name : m.slug }));
+  } catch {
+    return [];
+  }
 }
 
 /** Lines like `provider/model` (OpenCode lists one id per line). */
@@ -53,33 +75,15 @@ async function claudeLoggedIn(): Promise<boolean | undefined> {
   }
 }
 
-/** Providers the user has configured in their agent's config (where they put their own API keys / local servers). */
-function configuredProviders(): Set<string> {
-  const providers = new Set<string>();
-  const read = (file: string) => {
-    try {
-      const cfg = JSON.parse(fs.readFileSync(file, "utf8"));
-      if (cfg && typeof cfg.provider === "object" && cfg.provider) for (const name of Object.keys(cfg.provider)) providers.add(name);
-    } catch {
-      /* unreadable or missing */
-    }
-  };
-  const env = process.env.OPENCODE_CONFIG;
-  if (env && env.trim() && !env.trim().startsWith("{")) read(env.trim());
-  read(path.join(os.homedir(), ".config", "opencode", "opencode.json"));
-  read(path.join(os.homedir(), ".opencode.json"));
-  return providers;
-}
-
 function displayName(short: string): string {
   return short.replace(/[-_]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-function modelOf(id: string): LlmModel {
+function modelOf(id: string, cli: LlmModel["cli"]): LlmModel {
   const i = id.indexOf("/");
   const provider = i > 0 ? id.slice(0, i) : "";
   const short = i > 0 ? id.slice(i + 1) : id;
-  return { provider, id, name: displayName(short) };
+  return { cli, provider, id, name: displayName(short) };
 }
 
 let pending: Promise<ModelSet> | undefined;
@@ -92,29 +96,36 @@ export function detectLlmModels(refresh = false): Promise<ModelSet> {
 }
 
 async function detect(): Promise<ModelSet> {
-  const available = configuredProviders();
-  available.add("opencode"); // OpenCode's free built-in models need no key
-  const clis: string[] = [];
-  if (which("opencode")) clis.push("opencode models");
-  if (which("t3code")) clis.push("t3code models");
-  else if (which("t3")) clis.push("t3 models");
+  const lists: { cli: Cli; command: string }[] = [];
+  if (which("opencode")) lists.push({ cli: "opencode", command: "opencode models" });
+  // T3 Code's list is shown for information only: no shipped profile runs t3code, so its models are labelled
+  // "no compatible profile" and can't be selected for a run, whichever providers they come from.
+  if (which("t3code")) lists.push({ cli: "t3", command: "t3code models" });
+  else if (which("t3")) lists.push({ cli: "t3", command: "t3 models" });
+  const hasCodex = !!which("codex");
   // The CLIs are asked at the same time: each can take a while (it may check its providers over the network).
-  const [lists, claude] = await Promise.all([Promise.all(clis.map(run)), which("claude") ? claudeLoggedIn() : Promise.resolve(undefined)]);
+  const [outs, claude, codexIn, codexModels] = await Promise.all([
+    Promise.all(lists.map(async (c) => ({ cli: c.cli, out: await run(c.command) }))),
+    which("claude") ? claudeLoggedIn() : Promise.resolve(undefined),
+    hasCodex ? codexLoggedIn() : Promise.resolve(undefined),
+    hasCodex ? run("codex debug models") : Promise.resolve(""),
+  ]);
   const found: LlmModel[] = [];
   const seen = new Set<string>();
-  for (const out of lists) {
+  for (const { cli, out } of outs) {
     for (const id of parseModels(out)) {
-      const m = modelOf(id);
-      if (!available.has(m.provider) || seen.has(m.id)) continue;
-      seen.add(m.id);
-      found.push(m);
+      if (seen.has(`${cli}:${id}`)) continue;
+      seen.add(`${cli}:${id}`);
+      found.push(modelOf(id, cli));
     }
   }
-  // Claude Code (a separate CLI from OpenCode): its models once it's signed in, else a login is offered. The `claude/`
-  // prefix makes it its own family; the renderer strips it before handing the model to the CLI (cliModel).
-  if (claude) for (const [alias, name] of CLAUDE_MODELS) found.push({ provider: "claude", id: `claude/${alias}`, name });
+  // Claude Code: its tier aliases once signed in. The `claude/` (and Codex's `codex/`) prefix makes each CLI its own
+  // family; the renderer strips it before handing the model to the CLI (cliModel).
+  if (claude) for (const [alias, name] of CLAUDE_MODELS) found.push({ cli: "claude", provider: "claude", id: `claude/${alias}`, name });
+  if (codexIn !== false) found.push(...parseCodexModels(codexModels)); // unknown login state: still list the catalog
   found.sort((a, b) => a.provider.localeCompare(b.provider) || a.name.localeCompare(b.name));
-  const value: ModelSet = { available: found, claudeNeedsLogin: claude === false };
+  const needsLogin: Cli[] = [...(claude === false ? ["claude" as const] : []), ...(codexIn === false ? ["codex" as const] : [])];
+  const value: ModelSet = { available: found, claudeNeedsLogin: claude === false, needsLogin };
   cache = { at: Date.now(), value };
   return value;
 }

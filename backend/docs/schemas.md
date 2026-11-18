@@ -489,8 +489,8 @@ Everything needed to understand (and repeat) one LLM call.
 | `template` | `"default"` \| `"custom"` | yes | whether the built-in prompt template or a caller-supplied one was used |
 | `instructions` | string |  | extra instructions appended to the template; default `` |
 | `prompt` | string | yes | the full prompt sent |
-| `output` | string | yes | raw stdout of the call |
-| `output_format` | `"text"` \| `"claude-json"` \| `"opencode-json"` |  | how stdout was read; default `text` |
+| `output` | string | yes | stdout of the call. In run records kept with the package (targets.json, actions.json) event-stream CLIs keep only answer and turn-status events; the raw stdout is in llm-calls/<id>/stdout.txt |
+| `output_format` | `"text"` \| `"claude-json"` \| `"opencode-json"` \| `"codex-json"` |  | how stdout was read; default `text` |
 | `output_schema` | string \| null |  | name of the JSON Schema the CLI was asked to constrain its output to (structured output) |
 | `started_at` | string (date-time) | yes |  |
 | `duration_ms` | integer | yes |  |
@@ -781,7 +781,7 @@ jobs/<id>.json
 | `exit_code` | integer \| null |  |  |
 | `stdout` | string | yes | package-relative path of the raw stdout |
 | `stderr` | string | yes |  |
-| `events_format` | `"claude-stream-json"` \| `"opencode-json"` \| `"text"` | yes |  |
+| `events_format` | `"claude-stream-json"` \| `"opencode-json"` \| `"codex-json"` \| `"text"` | yes |  |
 | `result` | [CodegenResult](#codegenresult) \| [RunResult](#runresult) \| null |  |  |
 | `error` | string \| null |  |  |
 

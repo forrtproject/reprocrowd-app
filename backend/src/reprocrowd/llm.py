@@ -20,6 +20,7 @@ from importlib import resources
 from string import Template
 from typing import Any
 
+from . import providers
 from .config import LlmProfile, expand_argv, settings
 from .errors import ApiError
 from .package import Package, atomic_write, dump_json
@@ -105,7 +106,8 @@ def run(pkg: Package, task: str, prompt: str, *, profile_name: str | None, templ
         return call
 
     try:
-        proc = subprocess.Popen(resolve_argv(argv), cwd=pkg.root, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        # PWD follows cwd: some CLIs (OpenCode) resolve relative paths from $PWD, which would otherwise be the service's folder.
+        proc = subprocess.Popen(resolve_argv(argv), cwd=pkg.root, env={**os.environ, "PWD": str(pkg.root)}, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                 text=True, encoding="utf-8", errors="replace", start_new_session=True)
     except OSError as e:
         record("", str(e), None)
@@ -126,11 +128,10 @@ def run(pkg: Package, task: str, prompt: str, *, profile_name: str | None, templ
     if proc.returncode != 0:
         raise ApiError(502, "llm_call_failed", f"the LLM command exited with {proc.returncode}",
                        {"call": call_id, "stderr": err[-2000:], "stdout": out[-2000:]})
-    if p.output == "claude-json":
-        env = _envelope(out)
-        if env is None or env.get("is_error") or env.get("subtype") not in (None, "success"):
-            raise ApiError(502, "llm_call_failed", "the LLM CLI reported an error",
-                           {"call": call_id, "result": str((env or {}).get("result") or out[-2000:])[:2000], "subtype": (env or {}).get("subtype")})
+    failure = providers.terminal_error(out, p.output)
+    if failure:
+        extra = {"subtype": (providers.envelope(out) or {}).get("subtype")} if p.output == "claude-json" else {}
+        raise ApiError(502, "llm_call_failed", f"the LLM CLI reported an error: {failure}", {"call": call_id, "result": failure, "stdout": out[-2000:], **extra})
     return call
 
 
@@ -141,50 +142,10 @@ def cli_schema(name: str) -> str:
     return json.dumps(schema, separators=(",", ":"))
 
 
-def _envelope(out: str) -> dict | None:
-    """Claude's --output-format json: one JSON object (the last line, if there are several)."""
-    for line in reversed([x for x in out.strip().splitlines() if x.strip()] or [""]):
-        try:
-            v = json.loads(line)
-            return v if isinstance(v, dict) else None
-        except ValueError:
-            continue
-    try:
-        v = json.loads(out)
-        return v if isinstance(v, dict) else None
-    except ValueError:
-        return None
-
-
-def _opencode_text(out: str) -> str:
-    """OpenCode's ``run --format json``: one JSON event per line; the model's answer is the ``text`` of the
-    ``text`` events, in order (reasoning, tool calls and other events are ignored)."""
-    parts: list[str] = []
-    for line in out.splitlines():
-        line = line.strip()
-        if not line:
-            continue
-        try:
-            ev = json.loads(line)
-        except ValueError:
-            continue
-        if isinstance(ev, dict) and ev.get("type") == "text":
-            part = ev.get("part")
-            if isinstance(part, dict) and isinstance(part.get("text"), str):
-                parts.append(part["text"])
-    return "\n".join(parts)
-
-
 def output_json(call: LlmCall) -> Any:
     """The JSON object the call produced: the structured output if the CLI gave one, else parsed from the text."""
-    if call.output_format == "claude-json":
-        env = _envelope(call.output) or {}
-        if isinstance(env.get("structured_output"), (dict, list)):
-            return env["structured_output"]
-        return extract_json(str(env.get("result") or ""))
-    if call.output_format == "opencode-json":
-        return extract_json(_opencode_text(call.output))
-    return extract_json(call.output)
+    found = providers.answer(call.output, call.output_format)
+    return found if isinstance(found, (dict, list)) else extract_json(found)
 
 
 def extract_json(text: str) -> Any:

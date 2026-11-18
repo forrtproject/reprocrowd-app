@@ -120,7 +120,7 @@ def start(pkg: Package, *, jid: str, type: JobType, argv: list[str], stdin: str,
         out, err = open(pkg.path(job.stdout), "wb"), open(pkg.path(job.stderr), "wb")
         try:
             proc = subprocess.Popen(resolve_argv(argv), cwd=pkg.root, stdin=subprocess.PIPE, stdout=out, stderr=subprocess.STDOUT if merge_stderr else err,
-                                    start_new_session=True, env=job_env(env))
+                                    start_new_session=True, env=job_env({**(env or {}), "PWD": str(pkg.root)}))  # PWD: some CLIs (OpenCode) resolve relative paths from it
         except OSError as e:
             out.close(), err.close()
             job.status, job.finished_at, job.error = "failed", now(), f"could not start: {e}"

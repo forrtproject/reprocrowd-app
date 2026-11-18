@@ -61,4 +61,4 @@ uv run reprocrowd-schemas export      # regenerate schemas/, docs/schemas.md, do
 The desktop, `rc` and benchmark/test clients share [these contracts](../docs/contracts.md).
 `rc target add`/`edit` send `expected` exactly as typed, so printed precision is kept, e.g.
 `rc target add phacking -f type=number -f description="Mean RT" -f expected=512.40 --ref ex-europepmc-jats:sec3.p1.s2`.
-The dev-only paper harness is documented there.
+Dev-only paper and provider harness commands are documented there.

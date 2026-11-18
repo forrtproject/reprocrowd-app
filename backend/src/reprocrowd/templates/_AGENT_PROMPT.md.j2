@@ -21,6 +21,7 @@ Read first:
 
 Do not open inputs whose role is code (the original authors' code). Rebuild the analysis from the article and data.
 Author code was excluded from this prompt, not isolated from the package folder.
+The saved AGENT_PROMPT.md is the default with execution allowed; jobs/<id>/stdin.txt records the prompt actually sent.
 
 Rules:
 1. {{ tpl.agent_rule }}
@@ -30,4 +31,6 @@ Rules:
 5. Write values at full precision; never round reproduced values. outputs/results.json: {"results": [{"id": "<target id>", "value": <unrounded number or string>, "step": "<step id>"}, ...]}. Use "table" (array of rows, same layout as expected, header row included) for table targets, and "file" for figure targets (save figures as outputs/figures/<target id>.png). If a result cannot be computed, emit it with "value": null and a "note" explaining why.
 6. List required packages in {{ "install.R (install.packages(...) calls)" if tpl.language == "R" else "requirements.txt" }}.
 7. If something in the paper is ambiguous, pick the most plausible reading and document it in a comment starting with "# ASSUMPTION:".
-8. When finished, run the pipeline once if you can and fix errors.
+{% if allow_exec %}8. When finished, run the pipeline once if you can and fix errors.
+{% else %}8. Do not run the analysis; the user runs it in step 6.
+{% endif %}
