@@ -119,3 +119,18 @@ def test_symlinks_never_reach_the_archive(client, pkg, tmp_path):
     os.mkfifo(root / "outputs" / "log.txt")
     report = client.get(P + "/validation").json()
     assert any("not a regular file" in e["message"] for e in report["errors"]), report
+
+    # the same for the JSON Schema a resource names
+    (root / "outputs" / "log.txt").unlink()
+    with Registry().get(pkg).edit() as m:
+        m.resources = [r for r in m.resources if r.name != "out-log"]
+        schema_of = next(r for r in m.resources if r.jsonSchema)
+        schema_of.jsonSchema = "outputs/schema.json"
+    name = schema_of.name
+    os.symlink(secret, root / "outputs" / "schema.json")
+    report = client.get(P + "/validation").json()
+    assert any(e["resource"] == name and "outputs/schema.json is a symbolic link" in e["message"] for e in report["errors"]), report
+    (root / "outputs" / "schema.json").unlink()
+    os.mkfifo(root / "outputs" / "schema.json")
+    report = client.get(P + "/validation").json()
+    assert any(e["resource"] == name and "outputs/schema.json is not a regular file" in e["message"] for e in report["errors"]), report

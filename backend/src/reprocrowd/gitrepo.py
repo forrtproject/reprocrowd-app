@@ -26,7 +26,8 @@ ATTRIBUTES = "# written by ReproCrowd: no filter commands\n* -filter\n"
 
 def _git(pkg: Package, *args: str, env: dict | None = None) -> subprocess.CompletedProcess:
     # --git-dir/--work-tree: core.worktree (or core.bare) in .git/config can't point git at files outside the package.
-    where = [f"--git-dir={pkg.root / '.git'}", f"--work-tree={pkg.root}"]
+    root = pkg.root.resolve()  # (relative to cwd=pkg.root, a relative root would be doubled)
+    where = [f"--git-dir={root / '.git'}", f"--work-tree={root}"]
     return subprocess.run(["git", *where, *SAFE_CONFIG, *args], cwd=pkg.root, capture_output=True, text=True, env=env, timeout=120)
 
 

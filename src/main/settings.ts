@@ -50,7 +50,13 @@ export const DEFAULTS: Settings = {
 
 function readJson(file: string): any {
   try {
-    if (process.platform !== "win32" && (fs.statSync(file).mode & 0o077) !== 0) fs.chmodSync(file, 0o600); // written 0644 by older versions
+    if (process.platform !== "win32" && (fs.statSync(file).mode & 0o077) !== 0) {
+      // Written 0644 by older versions. Best effort: a failed chmod must not make the file read as empty (setSecret would
+      // then rewrite secrets.json without the other server's token).
+      try {
+        fs.chmodSync(file, 0o600);
+      } catch {}
+    }
     return JSON.parse(fs.readFileSync(file, "utf8"));
   } catch {
     return {};
