@@ -7633,6 +7633,18 @@
               ],
               "title": "Sandbox"
             }
+          },
+          {
+            "name": "probe",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "false: only the configured server, without contacting it",
+              "default": true,
+              "title": "Probe"
+            },
+            "description": "false: only the configured server, without contacting it"
           }
         ],
         "responses": {
@@ -16188,8 +16200,16 @@
             "title": "Community"
           },
           "reachable": {
-            "type": "boolean",
-            "title": "Reachable"
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reachable",
+            "description": "null when not checked (probe=false)"
           },
           "error": {
             "anyOf": [

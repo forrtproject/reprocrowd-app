@@ -601,7 +601,7 @@ def test_script_headers_keep_package_text_in_comments():
 
     from reprocrowd.scripts import _env
 
-    evil = 'x\rimport os; os.system("touch pwned")\n print(1)\x0bq\x85r'
+    evil = 'x\rimport os; os.system("touch pwned")\n\u2028print(1)\x0bq\x85r\x0cs\x1ct\x1du\x1ev\u2029w\r\nz\x00'
     step = SimpleNamespace(id="A01", kind="analysis", summary=evil, refs=[SimpleNamespace(id="s1")], note=evil,
                            inputs=[f"inputs/{evil}.csv"], depends_on=["L01"], produces=["T001"])
     paper = SimpleNamespace(title=evil, identifiers={"doi": evil})

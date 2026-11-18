@@ -600,7 +600,7 @@ def _fulltext_text(pkg: Package, r: Resource) -> str:
     p = pkg.path(r.path)
     if flavor in ("jats", "tei"):
         from .formats.xmlmap import PARSER
-        root = etree.parse(str(p), PARSER).getroot()
+        root = etree.parse(str(p), PARSER.copy()).getroot()  # (a shared parser serializes threads)
         return " ".join(t for t in root.itertext() if t and t.strip())
     if flavor == "docling":
         import json

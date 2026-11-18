@@ -238,7 +238,14 @@ export function makeApi(wc: WebContents) {
     const scope = base(), target = new URL(scope + sub, "http://backend").pathname;
     if (target !== scope && !target.startsWith(scope + "/") && !target.startsWith(scope + ":")) throw new Error(`invalid package path ${sub}`);
     if (!["GET", "POST", "PUT", "PATCH", "DELETE"].includes(method)) throw new Error(`invalid method ${method}`);
-    if (method !== "GET" && /^\/(fulltexts|extractions)\b/.test(sub)) throw new Error("The paper's text is its JATS XML, retrieved by the app.");
+    // On the path as the backend sees it: /%66ulltexts or /a/%2e%2e/fulltexts are /fulltexts too.
+    let rest: string;
+    try {
+      rest = decodeURIComponent(target.slice(scope.length));
+    } catch {
+      throw new Error(`invalid package path ${sub}`);
+    }
+    if (method !== "GET" && /^\/(fulltexts|extractions)\b/.test(rest)) throw new Error("The paper's text is its JATS XML, retrieved by the app.");
     return request(method, base() + sub, { json, query, responseType, timeout: method === "GET" ? 120_000 : LONG });
   }
 
@@ -559,7 +566,7 @@ export function makeApi(wc: WebContents) {
     openDeposit: async (dep: string) => {
       if (!/^zen-[0-9a-f]+$/.test(dep)) throw new Error("invalid deposit");
       const d = await get<any>(`${base()}/deposits/${dep}`);
-      const { url: server } = await get<any>("/v1/zenodo", { sandbox: !!d.sandbox }, 10_000);
+      const { url: server } = await get<any>("/v1/zenodo", { sandbox: !!d.sandbox, probe: false }, 10_000);
       let page: URL;
       try {
         page = new URL(d.url);

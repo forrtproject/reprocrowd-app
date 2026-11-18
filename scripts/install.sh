@@ -28,11 +28,15 @@ if [ "${1:-}" = "--uninstall" ]; then
   PROFILE=/etc/apparmor.d/reprocrowd
   if [ -f "$PROFILE" ]; then
     say "Removing its AppArmor profile $PROFILE (needs sudo)…"
-    if command -v apparmor_parser >/dev/null; then sudo apparmor_parser -R "$PROFILE" 2>/dev/null || true; fi # unload
+    # Unload it first; "not loaded" is fine, but while it is still loaded its file stays, so it can be removed later.
+    if command -v apparmor_parser >/dev/null && ! sudo apparmor_parser -R "$PROFILE" 2>/dev/null &&
+      sudo grep -qs '^reprocrowd ' /sys/kernel/security/apparmor/profiles; then
+      die "Could not unload the AppArmor profile; remove it with:  sudo apparmor_parser -R $PROFILE && sudo rm $PROFILE"
+    fi
     if sudo rm -f "$PROFILE"; then
       say "AppArmor profile removed."
     else
-      warn "Could not remove the AppArmor profile; remove it with:  sudo apparmor_parser -R $PROFILE && sudo rm $PROFILE"
+      warn "Could not remove the AppArmor profile; remove it with:  sudo rm $PROFILE"
     fi
   fi
   exit 0

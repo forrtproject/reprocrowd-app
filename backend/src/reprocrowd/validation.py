@@ -60,13 +60,16 @@ def validate_package(pkg: Package) -> ValidationReport:
     # Every file must be a regular file inside the package: a symlink would put its target (an SSH key, say) into the archive.
     root = pkg.root.resolve()
     for r in m.resources:
-        try:
-            p = pkg.path(r.path)
-        except ApiError as e:
-            err("manifest", e.message, r.name)
-            continue
-        if p.is_symlink() or (p.exists() and not p.resolve().is_relative_to(root)):
-            err("manifest", f"{r.path} is a symbolic link or lies outside the package; replace it with the file itself", r.name)
+        for rel in filter(None, (r.path, r.jsonSchema)):
+            try:
+                p = pkg.path(rel)
+            except ApiError as e:
+                err("manifest", e.message, r.name)
+                continue
+            if p.is_symlink() or (p.exists() and not p.resolve().is_relative_to(root)):
+                err("manifest", f"{rel} is a symbolic link or lies outside the package; replace it with the file itself", r.name)
+            elif p.exists() and not p.is_file():  # a folder, or a FIFO that would hang the integrity check
+                err("manifest", f"{rel} is not a regular file", r.name)
     if errors:
         return ValidationReport(valid=False, errors=errors, warnings=warnings)
 

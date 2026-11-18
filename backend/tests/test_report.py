@@ -103,7 +103,7 @@ def test_symlinks_never_reach_the_archive(client, pkg, tmp_path):
     secret = tmp_path / "id_ed25519"
     secret.write_text("PRIVATE KEY")
     os.symlink(secret, root / "outputs" / "log.txt")
-    client.post(f"{P}:sync")
+    assert client.post(f"{P}:sync").status_code == 200
     assert "outputs/log.txt" not in {r["path"] for r in client.get(P + "/manifest").json()["resources"]}
 
     # registered by hand (or by an older version): validation fails, so no archive
@@ -113,3 +113,9 @@ def test_symlinks_never_reach_the_archive(client, pkg, tmp_path):
     report = client.get(P + "/validation").json()
     assert not report["valid"] and any("symbolic link" in e["message"] for e in report["errors"]), report
     problem(client.put(P + "/archive"), 409, "package_invalid")
+
+    # nor a FIFO, which would hang the integrity check
+    (root / "outputs" / "log.txt").unlink()
+    os.mkfifo(root / "outputs" / "log.txt")
+    report = client.get(P + "/validation").json()
+    assert any("not a regular file" in e["message"] for e in report["errors"]), report

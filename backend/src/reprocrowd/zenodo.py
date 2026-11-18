@@ -97,10 +97,12 @@ def _request(method: str, url: str, token: str | None = None, ok: Iterable[int] 
 # ---------- service-level ----------
 
 
-def status(sandbox: bool | None = None) -> dict[str, Any]:
+def status(sandbox: bool | None = None, probe: bool = True) -> dict[str, Any]:
     url, sb = server(sandbox)
     out: dict[str, Any] = {"url": url, "sandbox": sb, "token_configured": bool(settings().zenodo_token),
-                           "community": settings().zenodo_community or None, "reachable": False, "error": None}
+                           "community": settings().zenodo_community or None, "reachable": False if probe else None, "error": None}
+    if not probe:
+        return out
     try:
         r = httpx.get(f"{url}/api/records", params={"size": 1}, timeout=5)
         out["reachable"] = r.status_code == 200

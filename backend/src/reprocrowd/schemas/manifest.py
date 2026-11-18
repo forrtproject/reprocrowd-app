@@ -6,10 +6,12 @@ Standard Data Package properties (name, path, format, mediatype, bytes, hash) st
 """
 from __future__ import annotations
 
+import re
 from datetime import datetime
+from pathlib import PureWindowsPath
 from typing import Annotated, Literal, Union
 
-from pydantic import AliasChoices, ConfigDict, Field, model_validator
+from pydantic import AliasChoices, ConfigDict, Field, field_validator, model_validator
 
 from .common import Identifier, Model
 
@@ -18,6 +20,12 @@ RESOURCE_NAME = r"^[a-z0-9][a-z0-9._-]*$"
 #: line break in a comment would start a line of code) and in commands.
 CONTROL_CHARS = r"\x00-\x1f\x7f\x85\u2028\u2029"
 RESOURCE_PATH = rf"^[^{CONTROL_CHARS}]+$"
+_CONTROL = re.compile(f"[{CONTROL_CHARS}]")
+
+
+def unsafe_parts(parts: list[str]) -> bool:
+    """Path components that leave the package or misbehave: .., backslashes, control characters, Windows drive prefixes."""
+    return any(p == ".." or "\\" in p or _CONTROL.search(p) or PureWindowsPath(p).drive for p in parts)
 
 Flavor = Literal["pdf", "tei", "jats", "docling", "docx", "md"]
 Role = Literal["data", "code", "other"]
@@ -126,6 +134,14 @@ class Resource(Model):
     jsonSchema: str | None = Field(default=None, description="package-relative path of the JSON Schema the file must satisfy")
     # Packages made before the rename call it "metareader"; they load, and are saved under the new name.
     reprocrowd: ResourceMeta = Field(validation_alias=AliasChoices("reprocrowd", "metareader"))
+
+    @field_validator("path", "jsonSchema")
+    @classmethod
+    def _package_relative(cls, v: str | None) -> str | None:
+        # The plan and the master script take r.path as it is: the same rules as Package.path, and no leading /.
+        if v is not None and (v.startswith("/") or unsafe_parts([p for p in v.split("/") if p not in ("", ".")])):
+            raise ValueError(f"not a safe package-relative path: {v!r}")
+        return v
 
 
 class ArchiveInfo(Model):

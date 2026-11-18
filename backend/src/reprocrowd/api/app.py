@@ -970,8 +970,8 @@ def _tok(body: M.ZenodoAuth) -> str | None:
 
 
 @api.get("/zenodo", tags=["zenodo"], response_model=M.ZenodoStatus, summary="The Zenodo server deposits go to, and whether it is reachable")
-def zenodo_status(sandbox: bool | None = None):
-    return zenodo.status(sandbox)
+def zenodo_status(sandbox: bool | None = None, probe: bool = Query(True, description="false: only the configured server, without contacting it")):
+    return zenodo.status(sandbox, probe)
 
 
 @api.post("/zenodo:verify-token", tags=["zenodo"], response_model=M.ZenodoTokenResult, summary="Check a Zenodo access token",

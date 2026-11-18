@@ -50,18 +50,20 @@ export const DEFAULTS: Settings = {
 
 function readJson(file: string): any {
   try {
+    if (process.platform !== "win32" && (fs.statSync(file).mode & 0o077) !== 0) fs.chmodSync(file, 0o600); // written 0644 by older versions
     return JSON.parse(fs.readFileSync(file, "utf8"));
   } catch {
     return {};
   }
 }
 
-/** Only the user may read the app's settings (commands it runs, the GitHub repo) and secrets, whatever the umask. */
+/** On macOS and Linux only the user may read the app's settings (commands it runs, the GitHub repo) and secrets, whatever
+ *  the umask. (On Windows the mode is ignored; the files are in the user's own AppData, which other users can't read.) */
 function writeJson(file: string, data: unknown, mode = 0o600) {
   fs.mkdirSync(path.dirname(file), { recursive: true });
   const tmp = `${file}.tmp`;
-  fs.writeFileSync(tmp, JSON.stringify(data, null, 2), { mode });
-  fs.chmodSync(tmp, mode); // (mode applies only when the file is created; a stale .tmp keeps its own)
+  fs.rmSync(tmp, { force: true }); // a stale .tmp would keep its own mode: create it afresh
+  fs.writeFileSync(tmp, JSON.stringify(data, null, 2), { mode, flag: "wx" });
   fs.renameSync(tmp, file);
 }
 
