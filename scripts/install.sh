@@ -24,7 +24,17 @@ die() { printf '\033[1;31m✗\033[0m %s\n' "$*" >&2; exit 1; }
 if [ "${1:-}" = "--uninstall" ]; then
   rm -rf "$LINUX_DIR" "$DESKTOP" "$BIN" "$MAC_APP"
   say "ReproCrowd removed. Your reproductions and settings were kept."
-  [ -f /etc/apparmor.d/reprocrowd ] && say "Its AppArmor profile stays; remove it with:  sudo rm /etc/apparmor.d/reprocrowd"
+  # The profile allows user namespaces to whatever binary sits at the old install path, so it goes too.
+  PROFILE=/etc/apparmor.d/reprocrowd
+  if [ -f "$PROFILE" ]; then
+    say "Removing its AppArmor profile $PROFILE (needs sudo)…"
+    if command -v apparmor_parser >/dev/null; then sudo apparmor_parser -R "$PROFILE" 2>/dev/null || true; fi # unload
+    if sudo rm -f "$PROFILE"; then
+      say "AppArmor profile removed."
+    else
+      warn "Could not remove the AppArmor profile; remove it with:  sudo apparmor_parser -R $PROFILE && sudo rm $PROFILE"
+    fi
+  fi
   exit 0
 fi
 
