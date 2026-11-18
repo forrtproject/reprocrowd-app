@@ -254,13 +254,16 @@ class Curation:
             f = self.load()
             item, run, entry = self._locate(f, item_id)
             # The operator typed with a number's value ("< .05") replaces the stored comparator. Only for number
-            # targets (the type in this edit, else the stored one): other types' text stays text.
-            if (self.spec.kind == "targets" and "expected" in changes and "comparator" not in changes
-                    and changes.get("type", getattr(item, "type", None)) == "number"):
-                try:
-                    typed = parse_printed(changes["expected"]).comparator
-                except ValueError:
-                    typed = None  # validation reports the unparsable value
+            # targets (the type in this edit, else the stored one: a manual item's, or an LLM entry's base plus edit,
+            # since _locate returns no item for those): other types' text stays text.
+            if self.spec.kind == "targets" and "expected" in changes and "comparator" not in changes:
+                stored_type = item.type if run is None else (entry.edit or {}).get("type", entry.base.type)
+                typed = None
+                if changes.get("type", stored_type) == "number":
+                    try:
+                        typed = parse_printed(changes["expected"]).comparator
+                    except ValueError:
+                        pass  # validation reports the unparsable value
                 if typed is not None:
                     changes["comparator"] = typed
             try:

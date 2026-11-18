@@ -577,3 +577,18 @@ def test_acquire_preview_and_selection(client, pkg, monkeypatch):
     assert r.status_code == 200, r.text
     assert [x["name"] for x in r.json()["resources"]] == ["in-data.csv"]
     assert data.called and not big.called
+
+
+def test_typed_operator_on_llm_target(client, pkg):
+    """An LLM entry has no manual item: its type comes from the run (base plus edit), so a typed bound still applies."""
+    setup_paper(client, pkg)
+    T = f"/v1/packages/{pkg}/targets"
+    run = client.post(T + "/runs", json={"extraction": "ex-paper-tei", "scope": {"sections": ["sec3"]}}).json()
+    p_value = next(e["base"] for e in run["entries"] if e["base"]["description"] == "p value")
+    # A stored bound, as when the LLM read "p < .001" ...
+    r = client.patch(f"{T}/{p_value['id']}", json={"expected": "< .001", "comparator": "<"})
+    assert r.status_code == 200 and r.json()["item"]["comparator"] == "<", r.text
+    # ... then corrected by typing another operator with the value: it replaces the stored one.
+    r = client.patch(f"{T}/{p_value['id']}", json={"expected": "> .05"})
+    assert r.status_code == 200, r.text
+    assert (r.json()["item"]["comparator"], r.json()["item"]["printed"]) == (">", ".05")
