@@ -200,6 +200,12 @@ export class ReportStep implements Step {
         host.openUrl(el.dataset.open!).catch((err) => showError("Open", err));
       }),
     );
+    body.querySelectorAll<HTMLElement>("[data-open-deposit]").forEach((el) =>
+      el.addEventListener("click", (e) => {
+        e.preventDefault();
+        host.openDeposit(el.dataset.openDeposit!).catch((err) => showError("Open", err));
+      }),
+    );
     body.querySelectorAll<HTMLButtonElement>("[data-dep]").forEach((b) => b.addEventListener("click", () => this.action(b.dataset.dep!, b.dataset.action as "refresh" | "publish" | "discard")));
   }
 
@@ -276,7 +282,7 @@ export class ReportStep implements Step {
       <div><span class="badge st-${d.status}">${DEPOSIT_STATUS[d.status]}</span>${d.sandbox ? ` <span class="badge sandbox">Sandbox</span>` : ""} ${esc(when(d.published_at ?? d.created_at))}
         ${d.doi ? ` · DOI <code>${esc(d.doi)}</code>${d.status === "draft" ? ` <span class="muted small">(reserved)</span>` : ""}` : ""}</div>
       <div class="small muted">${esc(d.file)}${d.exclude.length ? ` · without ${esc(d.exclude.join(", "))}` : ""}${d.note ? ` · “${esc(d.note)}”` : ""}</div>
-      <div class="actions">${d.status !== "discarded" && d.status !== "gone" ? `<a href="#" data-open="${esc(d.url)}">${d.status === "draft" ? "Review the draft on Zenodo" : "Open the record"}</a>` : ""}
+      <div class="actions">${d.status !== "discarded" && d.status !== "gone" ? `<a href="#" data-open-deposit="${esc(d.id)}">${d.status === "draft" ? "Review the draft on Zenodo" : "Open the record"}</a>` : ""}
         ${d.status === "draft" ? `<button data-dep="${esc(d.id)}" data-action="publish" class="primary" ${busy}>Publish…</button><button data-dep="${esc(d.id)}" data-action="discard" ${busy}>Discard draft</button>` : ""}
         ${d.status === "draft" || d.status === "published" ? `<button data-dep="${esc(d.id)}" data-action="refresh" ${busy}>Check status</button>` : ""}</div>
     </li>`;

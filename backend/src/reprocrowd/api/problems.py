@@ -101,6 +101,7 @@ CATALOG: dict[str, tuple[int, str]] = {
     "zenodo_unreachable": (502, "Zenodo could not be reached"),
     "zenodo_error": (502, "Zenodo returned an unexpected answer"),
     "deposit_not_draft": (409, "Only a draft deposit can be published or discarded"),
+    "deposit_server_unknown": (409, "The deposit is recorded on a server other than the configured Zenodo server"),
     # GitHub pilots
     "github_token_missing": (400, "A GitHub token is needed"),
     "github_token_invalid": (403, "GitHub didn't accept the token"),

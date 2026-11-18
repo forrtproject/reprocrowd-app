@@ -1019,21 +1019,23 @@ def get_deposit(pkg: Pkg, dep: str):
 
 @api.post("/packages/{pkg}/deposits/{dep}:refresh", tags=["zenodo"], response_model=ZenodoDeposit, summary="Update a deposit's status from Zenodo",
           description="A draft may have been published or deleted on the website.",
-          responses=errors("not_found", "zenodo_token_missing", "zenodo_token_invalid", "zenodo_unreachable", "zenodo_error"))
+          responses=errors("not_found", "deposit_server_unknown", "zenodo_token_missing", "zenodo_token_invalid", "zenodo_unreachable",
+                           "zenodo_error"))
 def refresh_deposit(pkg: Pkg, dep: str, body: M.ZenodoAuth = Body(default_factory=M.ZenodoAuth)):
     return zenodo.refresh(pkg, dep, _tok(body))
 
 
 @api.post("/packages/{pkg}/deposits/{dep}:publish", tags=["zenodo"], response_model=ZenodoDeposit, summary="Publish a draft deposit",
           description="Registers the DOI. A published record can't be deleted, only versioned.",
-          responses=errors("not_found", "deposit_not_draft", "zenodo_token_missing", "zenodo_token_invalid", "zenodo_rejected",
-                           "zenodo_unreachable", "zenodo_error"))
+          responses=errors("not_found", "deposit_not_draft", "deposit_server_unknown", "zenodo_token_missing", "zenodo_token_invalid",
+                           "zenodo_rejected", "zenodo_unreachable", "zenodo_error"))
 def publish_deposit(pkg: Pkg, dep: str, body: M.ZenodoAuth = Body(default_factory=M.ZenodoAuth)):
     return zenodo.publish_deposit(pkg, dep, _tok(body))
 
 
 @api.post("/packages/{pkg}/deposits/{dep}:discard", tags=["zenodo"], response_model=ZenodoDeposit, summary="Delete a draft deposit on Zenodo",
-          responses=errors("not_found", "deposit_not_draft", "zenodo_token_missing", "zenodo_token_invalid", "zenodo_unreachable", "zenodo_error"))
+          responses=errors("not_found", "deposit_not_draft", "deposit_server_unknown", "zenodo_token_missing", "zenodo_token_invalid",
+                           "zenodo_unreachable", "zenodo_error"))
 def discard_deposit(pkg: Pkg, dep: str, body: M.ZenodoAuth = Body(default_factory=M.ZenodoAuth)):
     return zenodo.discard(pkg, dep, _tok(body))
 
