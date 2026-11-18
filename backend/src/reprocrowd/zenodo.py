@@ -34,7 +34,7 @@ from typing import Any, Iterable, Literal
 
 import httpx
 
-from . import __version__
+from . import __version__, identifiers
 from .config import settings
 from .database import Prepared
 from .errors import ApiError, conflict, invalid, not_found
@@ -120,7 +120,7 @@ def verify_token(token: str | None, sandbox: bool | None = None) -> dict[str, An
 def find(doi: str, sandbox: bool | None = None) -> list[dict[str, Any]]:
     """Published ReproCrowd records that relate to the paper with this DOI (public search, no token)."""
     url, _ = server(sandbox)
-    doi = doi.lower().removeprefix("https://doi.org/")
+    doi = identifiers.doi(doi)
     q = f'metadata.related_identifiers.identifier:"{doi}" AND keywords:"ReproCrowd"'
     r = _request("GET", f"{url}/api/records", params={"q": q, "size": 50, "sort": "mostrecent"}, timeout=15)
     out = []
@@ -254,6 +254,9 @@ def metadata(p: Prepared, creators: list[ZenodoCreator], note: str, excluded: li
         "<p>The ZIP is a Frictionless data package (<code>datapackage.json</code>) made with ReproCrowd: the targets taken "
         "from the paper, the analysis plan, the master script and its outputs, the comparison, and <code>report.html</code> "
         "with the provenance of every target.</p>",
+        "<p><b>Licences:</b> Zenodo shows one licence per record; it applies to the report and analysis outputs. Each file's "
+        "licence is listed in <code>licenses.json</code> and takes precedence: metadata CC0-1.0, new analysis code as listed "
+        "there (MIT by default), and the article's material and the input data and code keep their original licences.</p>",
         f"<p>Left out of this upload: {escape('; '.join(GROUPS[g] for g in excluded))}. <code>excluded-files.json</code> lists "
         "them with their hashes.</p>" if excluded else "",
     ]

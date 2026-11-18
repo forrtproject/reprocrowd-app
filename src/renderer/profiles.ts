@@ -1,5 +1,5 @@
 import { CLI_LABELS, cliModel, cliOf, execRestriction, host, modelCompatible, type ConfiguredProfile, type LlmModels } from "./api";
-import { confirmDialog, esc, modal, showError } from "./util";
+import { confirmDialog, esc, modal, showAllSuggestions, showError } from "./util";
 
 type Kind = "llm" | "agent";
 /** Codex without its shell and sub-agents, reading through ReproCrowd's read-only file server ({python}: the backend's Python). */
@@ -36,6 +36,7 @@ export async function profileEditor(saved: (text: string) => void) {
     <menu><button type="button" class="cancel">Cancel</button><button value="save" class="primary">Save profile</button></menu>
   </form>`);
   const form = dlg.querySelector("form")!;
+  showAllSuggestions(form.querySelector<HTMLInputElement>("[name=model]")!); // all of this CLI's models, not only the current one
   // Cancel is not a submit button, so Enter in a field saves instead of closing the dialog.
   dlg.querySelector<HTMLButtonElement>("button.cancel")!.addEventListener("click", () => dlg.close());
   const el = (name: string) => form.elements.namedItem(name) as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
@@ -112,7 +113,7 @@ export async function profileEditor(saved: (text: string) => void) {
     try {
       // A backend that is down has no jobs to interrupt; the form must still be able to repair its profiles.
       if ((await host.runningJobs().catch(() => [])).length && !(await confirmDialog("Restart the backend?", "<p>Running jobs will stop and be recorded as interrupted.</p>", "Stop jobs and save"))) return;
-      const p: ConfiguredProfile = { argv: [value("command"), ...lines("args")], model: value("model"), effort: value("effort"), timeout_s: Number(value("timeout")),
+      const p: ConfiguredProfile = { argv: [value("command").trim(), ...lines("args")], model: value("model"), effort: value("effort"), timeout_s: Number(value("timeout")),
         ...(kind() === "agent" ? { events: value("protocol"), tools: lines("tools"), exec_tools: lines("exec"), no_exec_argv: lines("noexec"), no_exec_env: env() } : { output: value("protocol"), read_files_argv: lines("read"), json_schema_argv: lines("schema") }) };
       const text = await host.saveProfile(kind(), value("name"), p);
       saved(text); dlg.close();

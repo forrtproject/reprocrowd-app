@@ -74,6 +74,12 @@ assert.equal(await applyProfileChange(original, text, { backup: () => {}, write:
 assert.deepEqual(writes, [text]);
 await assert.rejects(applyProfileChange(original, text, { backup: () => {}, write: () => {}, restart: async () => { throw new Error('fixture down'); } }),
   /did not start with it either: fixture down/); // a failed rollback restart is reported, not hidden
+writes = [];
+await assert.rejects(applyProfileChange(original, text, { backup: () => {}, restart: async () => {},
+  write: (x) => { writes.push(x); if (x === text) throw new Error('disk full'); } }), /not saved: disk full.*restored/);
+assert.deepEqual(writes, [text, original]); // a failed (possibly partial) write is rolled back too
+await assert.rejects(applyProfileChange(original, text, { backup: () => {}, write: () => { throw new Error('read-only'); }, restart: async () => {} }),
+  /not saved: read-only\. Restoring the previous configuration failed too \(read-only\)/); // the original reason survives a failed restore
 // Comments survive a profile edit; only the edited profile's section changes.
 const commented = '# top comment\n[openalex]\nmailto = "test@example.org" # inline note\n\n[llm.profiles.other]\n# about other\nargv = ["other"]\noutput = "text"\n\n# agents below\n[agent.profiles.existing]\nargv = ["existing"]\nevents = "text"\n';
 for (const name of ['other', 'fixture']) {
@@ -100,4 +106,4 @@ for (const env of [{}, { OPENCODE_PERMISSION: '{"*":"deny"}' }]) {
 // A profile written as an inline table cannot be spliced; the whole file is rewritten, still correctly.
 const inline = '# lost\n[llm.profiles]\nother = { argv = ["other"], output = "text" }\n';
 assert.deepEqual({ ...parse(replaceProfile(inline, 'llm', 'other', profile)).llm.profiles.other }, profile);
-console.log('Model scoping, profile preservation/validation, comment-preserving edits and failed-restart rollback passed.');
+console.log('Model scoping, profile preservation/validation, failed-write/restart rollback and comment-preserving edits passed.');

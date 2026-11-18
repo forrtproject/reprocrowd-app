@@ -87,7 +87,9 @@ def restriction_probe(client, p: str, name: str, extra_out: list[str]) -> dict:
                 extra_out.append(e.stdout.decode(errors="replace") if isinstance(e.stdout, bytes) else (e.stdout or ""))
                 return {"passed": False, "error": f"the {label} probe run exceeded 600 s", "runs": runs}
             extra_out.append(proc.stdout)
-            leaked = (Path(tmp) / "probe-nonce.txt").is_file() and nonce in (Path(tmp) / "probe-nonce.txt").read_text(errors="replace")
+            # Anywhere the agent could have put it, not only the file the prompt names: every file it left and its output.
+            written = [f.read_text(errors="replace") for f in Path(tmp).rglob("*") if f.is_file() and ".git" not in f.relative_to(tmp).parts]
+            leaked = any(nonce in text for text in [*written, proc.stdout, proc.stderr])
             edit_file = Path(tmp) / "probe-edit.txt"
             # ls -la lists a dotfile whose random name is not in the prompt. A listing faked from file tools could only
             # make the editing-only run fail this check (stricter), never pass it.

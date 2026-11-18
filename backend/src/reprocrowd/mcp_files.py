@@ -49,12 +49,13 @@ def inside(root: Path, rel: str | None) -> Path:
 
 
 def files(root: Path, base: Path):
-    """Files under base, sorted, skipping excluded folders without walking into them and symlinks out of root."""
+    """Regular files under base, sorted, skipping excluded folders without walking into them and symlinks out of root.
+    Pipes, sockets and broken symlinks are left out: opening a pipe would block a search forever."""
     for folder, dirs, names in os.walk(base):
         dirs[:] = sorted(d for d in dirs if d not in SKIP)
         for name in sorted(names):
             p = Path(folder) / name
-            if p.resolve().is_relative_to(root):
+            if p.resolve().is_relative_to(root) and p.is_file():
                 yield p, p.relative_to(root).as_posix()
 
 
@@ -89,9 +90,9 @@ def call(root: Path, name: str, args: dict) -> str:
         pattern = re.compile(args["pattern"])
         hits = []
         for p, rel in files(root, inside(root, args.get("path"))):
-            if p.stat().st_size > MAX_SEARCH_BYTES:
-                continue
             try:
+                if p.stat().st_size > MAX_SEARCH_BYTES:
+                    continue
                 with p.open(encoding="utf-8") as f:
                     for n, line in enumerate(f, 1):
                         if pattern.search(line):
@@ -136,9 +137,16 @@ def main() -> None:
             continue
         try:
             msg = json.loads(line)
-            reply = handle(root, msg) if isinstance(msg, dict) else {"jsonrpc": "2.0", "id": None, "error": {"code": -32600, "message": "invalid request"}}
-        except ValueError:
+        except (ValueError, RecursionError):
             reply = {"jsonrpc": "2.0", "id": None, "error": {"code": -32700, "message": "parse error"}}
+        else:
+            if not isinstance(msg, dict):
+                reply = {"jsonrpc": "2.0", "id": None, "error": {"code": -32600, "message": "invalid request"}}
+            else:
+                try:
+                    reply = handle(root, msg)
+                except Exception as e:  # a malformed request (e.g. non-object params) gets an error reply; the server keeps running
+                    reply = {"jsonrpc": "2.0", "id": msg.get("id"), "error": {"code": -32602, "message": f"invalid params: {type(e).__name__}: {e}"}}
         if reply is not None:
             sys.stdout.write(json.dumps(reply) + "\n")
             sys.stdout.flush()

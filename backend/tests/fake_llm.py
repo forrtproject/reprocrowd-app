@@ -29,7 +29,7 @@ if "reconciling" in prompt:
         out = {"sections": [{"title": "x", "paragraphs": [{"sentences": []}]}]}
 elif "RESULTS" in prompt:
     out = {"targets": [
-        {"type": "number", "description": "t statistic", "quote": "t(38) = 2.31", "expected": "2.31", "refs": ["sec3.p1.s1"]},
+        {"type": "number", "description": "t statistic", "expected": "2.31", "refs": ["sec3.p1.s1"]},
         {"type": "number", "description": "p value", "expected": 0.026, "comparator": "=", "refs": ["sec3.p1.s1"]},
         {"type": "number", "description": "bogus", "expected": 1, "refs": ["sec9.p1.s1"]},
         {"type": "table", "description": "Descriptives", "expected": [["Group", "M"], ["A", "512.4"]], "refs": ["tab1"]},

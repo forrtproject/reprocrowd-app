@@ -197,6 +197,17 @@ class InputPatch(Req):
     used: bool | None = None
 
 
+class InputsDelete(Req):
+    """Delete several inputs at once, all or nothing."""
+
+    which: Literal["all", "unused"] = Field(description="all: every input. unused: the files marked unused (used: false), and the "
+                                                        "archives none of whose members is used; partly used archives stay")
+
+
+class InputsDeleted(BaseModel):
+    deleted: list[str] = Field(description="names of the resources deleted (archives with their members)")
+
+
 class AcquireCreate(Req):
     """Detect data/code repository links in a manuscript and fetch them as inputs."""
 
@@ -218,14 +229,17 @@ class AcquireFile(BaseModel):
     size: int = Field(description="bytes, from the repository's metadata; 0 when the repository doesn't say")
     key: str = Field(description="stable selection key: repo:id:path")
     download_url: str
+    present: bool = Field(default=False, description="already in the package: fetched before from the same repository record and "
+                                                     "download URL, so acquire skips it (it is listed in `existing`)")
 
 
 class AcquirePreview(BaseModel):
     """What an acquire would download: the detected links, their files with sizes, and the total."""
 
     links: list[dict[str, Any]] = Field(description="detected repository links, with their repo, id, kind and label")
-    files: list[AcquireFile] = Field(description="files that would be downloaded, with their sizes")
-    total_bytes: int = Field(description="sum of the sizes of every file that would be downloaded (files of unknown size count as 0)")
+    files: list[AcquireFile] = Field(description="the links' files, with their sizes; those already in the package have `present` set")
+    total_bytes: int = Field(description="sum of the sizes of every file that would be downloaded, i.e. not `present` (files of unknown size count as 0)")
+    present_bytes: int = Field(default=0, description="sum of the sizes of the files already in the package, which acquire skips")
     limit_bytes: int = Field(description="the download limit, which applies to each link separately; files beyond it are skipped")
     failures: list[dict[str, Any]] = Field(default_factory=list, description="per-repository failures: repo, id, url, error")
 
@@ -468,6 +482,73 @@ class DepositPreview(BaseModel):
     metadata: dict[str, Any] = Field(description="the Zenodo metadata that would be sent")
     contents: dict[str, Any] = Field(description="groups of files that can be left out, the paper's license and the default")
     exclude: list[str]
+
+
+# ---------- GitHub pilots ----------
+
+
+class GithubAuth(Req):
+    github_token: SecretStr | None = Field(default=None, description="the user's GitHub token (`gh auth token`, or classic with public_repo: it "
+                                                                     "must be able to create a fork); passed on, never stored. Default: [github] token")
+    repo: str | None = Field(default=None, pattern=r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$", description="owner/name; default: [github] pilots_repo")
+
+
+class PilotOptions(Req):
+    repo: str | None = Field(default=None, pattern=r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$", description="owner/name; default: [github] pilots_repo")
+    note: str = Field(default="", max_length=2000, description="shown in the run's comment")
+    exclude: list[Literal["paper", "inputs"]] | None = Field(default=None, description="groups of files to leave out of the ZIP, as for Zenodo. "
+                                                                                       "Default: paper, unless OpenAlex reports an open license for it")
+    synthetic: bool = Field(default=False, description="label the issue and files as a synthetic test fixture")
+
+
+class PilotCreate(PilotOptions, GithubAuth):
+    pass
+
+
+class GithubPilotStatus(BaseModel):
+    repo: str
+    api_url: str
+    token_configured: bool = Field(description="the service has a fallback token ([github] token)")
+    licenses: dict[str, str]
+
+
+class GithubCheck(BaseModel):
+    repo: str
+    url: str | None
+    login: str
+    private: bool | None
+    can_submit: bool = Field(description="the repository is public and this account can fork it (or owns it)")
+    files_in: str = Field(description="where this account's run files go: its fork, or the repository itself for its owner")
+
+
+class PilotRecord(BaseModel):
+    number: int = Field(description="the issue number in the pilots repository")
+    title: str
+    url: str
+    state: str | None
+    author: str | None = Field(description="the GitHub login that opened the issue")
+    created_at: str | None
+    reproduction_id: str
+    runs: int = Field(description="runs copied into the pilots repository for this issue, read from its releases; 0 while none has been")
+    latest_version: int | None = Field(description="the latest copied run's version (v1, v2, …)")
+    latest_date: str | None
+    latest_summary: str | None = Field(description="the comparison summary of the latest copied run")
+    synthetic: bool
+
+
+class PilotPreview(BaseModel):
+    repo: str
+    reproduction_id: str
+    run_key: str
+    tag: str
+    issue_title: str
+    summary: str
+    assets: list[dict[str, Any]]
+    exclude: list[str]
+    excluded: list[str]
+    contents: dict[str, Any]
+    licenses: dict[str, Any] = Field(description="as recorded in the archive's licenses.json")
+    existing: dict[str, Any] | None = Field(description="the local record if this run key was submitted before")
 
 
 # ---------- figure crops ----------

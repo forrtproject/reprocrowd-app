@@ -1,5 +1,5 @@
 // Small DOM and formatting helpers shared by the views and dialogs.
-import { ApiError, isBackendDown, RESTRICTION_LABELS } from "./api";
+import { ApiError, isBackendDown, RESTRICTION_LABELS, type PilotRecord } from "./api";
 import type { PromptPreview } from "./types";
 
 export const $ = <T extends HTMLElement = HTMLElement>(sel: string, root: ParentNode = document) => root.querySelector<T>(sel)!;
@@ -9,6 +9,32 @@ export const sizeText = (n: number) => (n < 1024 ? `${n} B` : n < 1024 ** 2 ? `$
 export const when = (iso: string | number | null | undefined) => (iso ? new Date(iso).toLocaleString() : "");
 export const seconds = (ms?: number | null) => (ms == null ? "" : ms < 10_000 ? `${(ms / 1000).toFixed(1)} s` : ms < 3_600_000 ? `${Math.round(ms / 1000)} s` : `${(ms / 3_600_000).toFixed(1)} h`);
 export const nearEnd = (el: Element) => el.scrollHeight - el.scrollTop - el.clientHeight < 8;
+/** An argv vector as one shell-style line: arguments with spaces or shell characters are single-quoted, so each stays one argument. */
+export const commandLine = (argv: string[]) => argv.map((a) => (/^[\w@%+=:,./-]+$/.test(a) ? a : `'${a.replace(/'/g, `'\\''`)}'`)).join(" ");
+/** A text input with a <datalist>: Chromium filters the suggestions by the text already in the field, so once a value
+ * is set only that value is offered. On focus the value moves into the placeholder and every suggestion is shown;
+ * typing filters as usual. Leaving (or submitting) without typing or picking puts the previous value back;
+ * Backspace/Delete in the emptied field clears it instead. */
+export function showAllSuggestions(input: HTMLInputElement) {
+  const placeholder = input.placeholder;
+  let kept: string | null = null; // the value moved aside on focus, until something is typed or picked
+  const restore = () => {
+    if (kept !== null && input.value === "") input.value = kept;
+    kept = null;
+    input.placeholder = placeholder;
+  };
+  input.addEventListener("focus", () => {
+    if (!input.value) return;
+    kept = input.value;
+    input.placeholder = kept;
+    input.value = "";
+  });
+  input.addEventListener("input", () => { kept = null; input.placeholder = placeholder; });
+  // Backspace/Delete in the emptied field clears the value on purpose (e.g. back to the CLI's default).
+  input.addEventListener("keydown", (e) => { if (!input.value && (e.key === "Backspace" || e.key === "Delete")) { kept = null; input.placeholder = placeholder; } });
+  input.addEventListener("blur", restore);
+  input.form?.addEventListener("submit", restore, true); // Enter while the field has focus: save the shown value
+}
 export const list = (s: string) => s.split(/[,\s]+/).map((x) => x.trim()).filter(Boolean);
 
 export function modal(cls: string, html: string): HTMLDialogElement {
@@ -39,16 +65,29 @@ export const confirmDialog = async (title: string, messageHtml: string, ok = "OK
 export function showError(label: string, e: unknown) {
   if (isBackendDown(e)) return;
   const p = e instanceof ApiError ? e.problem : undefined;
+  const html = e instanceof ApiError ? e.html : undefined;
   const msg = (e as Error)?.message ?? String(e);
   const extra = p ? Object.entries(p).filter(([k]) => !["type", "title", "status", "detail", "code", "instance", "request_id"].includes(k)) : [];
-  const details = extra.map(([k, v]) => {
-    if (Array.isArray(v) && v.every((x) => typeof x === "string")) return `<h4>${esc(k)}</h4><ul>${v.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>`;
-    return `<h4>${esc(k)}</h4><pre>${esc(typeof v === "string" ? v : JSON.stringify(v, null, 2))}</pre>`;
-  });
+  // Lists of names (e.g. used_by) and validation messages are for the user; dumps (a response body, stderr, argv, …)
+  // help with a bug report, like the problem code, HTTP status and request id: those are folded away.
+  const shown: string[] = [];
+  const folded: string[] = [];
+  for (const [k, v] of extra) {
+    const list = (items: string[]) => `<h4>${esc(k)}</h4><ul>${items.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>`;
+    if (Array.isArray(v) && v.every((x) => typeof x === "string")) shown.push(list(v));
+    else if (k === "errors" && Array.isArray(v) && v.every((x) => typeof x?.msg === "string"))
+      shown.push(list(v.map((x) => `${Array.isArray(x.loc) ? `${x.loc.filter((l: unknown) => l !== "body").join(".")}: ` : ""}${x.msg}`)));
+    else folded.push(`<h4>${esc(k)}</h4><pre>${esc(typeof v === "string" ? v : JSON.stringify(v, null, 2))}</pre>`);
+  }
+  // With an html explanation, it says what the extras would have: they are left out.
+  const tech = p
+    ? `<details class="err-tech"><summary>Technical details</summary>
+        <p class="muted small">${esc(p.title ?? "")} · <code>${esc(p.code)}</code>${p.status ? ` · HTTP ${p.status}` : ""}${p.request_id ? ` · request ${esc(p.request_id)}` : ""}</p>
+        ${html ? "" : folded.join("")}</details>`
+    : "";
+  // Title and Close stay in place; only the body scrolls.
   modal("dlg-error", `<h3>${esc(label)} failed</h3>
-    <p>${esc(msg)}</p>
-    ${p ? `<p class="muted small">${esc(p.title ?? "")} · <code>${esc(p.code)}</code>${p.status ? ` · HTTP ${p.status}` : ""}${p.request_id ? ` · request ${esc(p.request_id)}` : ""}</p>` : ""}
-    ${details.join("")}
+    <div class="err-body">${html ?? `<p>${esc(msg)}</p>${shown.join("")}`}${tech}</div>
     <form method="dialog"><menu><button class="primary">Close</button></menu></form>`);
 }
 
@@ -64,7 +103,7 @@ export async function showPrompt(title: string, preview: () => Promise<PromptPre
     <p class="hint">This is what would be sent now. Nothing has been run.</p>
     <div class="kv">
       <span>Profile</span><span>${esc(p.profile)} · model ${esc(p.model || "default")} · effort ${esc(p.effort || "default")}${p.output_schema ? ` · structured output (${esc(p.output_schema)})` : ""}</span>
-      <span>Command</span><code>${esc(p.argv.join(" "))}</code>
+      <span>Command</span><code>${esc(commandLine(p.argv))}</code>
       <span>Availability</span><span>${p.available ? "Executable found" : "Executable not found"} · ${esc(p.output_protocol)} · timeout ${p.timeout_s}s</span>
       ${p.env && Object.keys(p.env).length ? `<span>Environment</span><code>${esc(Object.entries(p.env).map(([k, v]) => `${k}=${v}`).join(" "))}</code>` : ""}
       ${RESTRICTION_LABELS[p.exec_restriction] ? `<span>Execution restriction</span><span>${esc(executionAllowed ? "none: the agent may run the analysis" : RESTRICTION_LABELS[p.exec_restriction])}</span>` : ""}
@@ -84,4 +123,10 @@ export function dataUrl(data: ArrayBuffer, type: string) {
     r.onerror = () => reject(r.error);
     r.readAsDataURL(new Blob([data], { type }));
   });
+}
+
+/** One pilot issue in a list: number, who opened it, how far it got. Shown in New from DOI and in step 8. */
+export function pilotLabel(p: PilotRecord) {
+  const state = p.latest_version ? `v${p.latest_version}${p.latest_date ? `, ${p.latest_date}` : ""}` : "no run copied yet";
+  return `#${p.number} by ${esc(p.author ?? "unknown")} (${esc(state)}${p.state === "closed" ? ", closed" : ""}${p.synthetic ? ", synthetic" : ""})`;
 }

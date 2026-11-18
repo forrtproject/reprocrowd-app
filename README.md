@@ -30,7 +30,11 @@ For the AI steps, install one of the supported coding CLIs and sign in once in a
 terminal: [Claude Code](https://claude.com/claude-code) (`claude`, then sign in),
 [Codex CLI](https://developers.openai.com/codex) (`codex login`) or
 [OpenCode](https://opencode.ai) (`opencode auth login`, e.g. for DeepSeek). The app
-uses that sign-in; it never asks for API keys. To run reproductions you also need
+uses that sign-in; it never asks for API keys. Claude Code and Codex then run on your
+subscription, unless `ANTHROPIC_API_KEY`, `OPENAI_API_KEY` or `CODEX_API_KEY` is set
+in the environment the app starts from (the CLIs then bill that API key per use). An
+OpenCode provider you add with an API key (such as DeepSeek) is billed per use to that
+account. To run reproductions you also need
 what the paper's analysis uses (R, Python, …).
 
 ### Choosing an AI tool
@@ -105,6 +109,16 @@ Apple silicon Macs runs ARM64 Linux, which works like any other Linux.
   extractions, original figures) is included by default only when OpenAlex
   reports an open (CC/public-domain) license; the input files are included by
   default. Left-out files are listed with their hashes in the ZIP.
+- **Pilot on GitHub** (same step): a lighter, public, **unreviewed** record before
+  Zenodo, in [forrtproject/reprocrowd-pilots](https://github.com/forrtproject/reprocrowd-pilots)
+  by default. Each reproduction gets one issue. Each run gets a pre-release with the ZIP, `report.html`,
+  `comparison.json`, `execution.json`, `licenses.json` and `pilot.json`, verified by SHA-256, plus a comment on
+  the issue. Submitting the same ZIP again creates nothing new, and an interrupted
+  submission resumes. A new run becomes v2 on the same issue. Any GitHub account can
+  submit: the files go to your fork of the repository (its owner, who can't fork it, uploads a
+  draft release there instead), and its Action copies them into its own immutable release. The app uses the GitHub CLI login (`gh auth login`). New from DOI and this
+  step list the pilots others have opened for the same paper, as they do for Zenodo records. A numeric match is
+  not a scientific certificate. See [the contract](docs/contracts.md#github-pilots-and-output-licences).
 - **⚙ Settings**: your name / ORCID / affiliation for records; Zenodo server
   (**sandbox by default**, for testing) and a personal access token for each
   server (scopes `deposit:write`, `deposit:actions`; kept encrypted with the
@@ -188,4 +202,9 @@ git subtree push --prefix=backend ../reprocrowd-cli app-sync # offer this repo's
 
 ## License
 
-MIT, see [LICENSE](LICENSE).
+The app's source code is MIT, see [LICENSE](LICENSE). What a reproduction produces is licensed separately and
+recorded per file in its archive's `licenses.json`. Metadata is CC0-1.0. Reports, figures and outputs are CC-BY-4.0,
+except quoted passages and original figures from the article, which keep the article's terms; outputs computed from
+third-party data are also subject to that data's terms. New analysis code follows `[licensing] code` (MIT by default).
+Third-party articles, data and code keep their own licences.
+See [the contract](docs/contracts.md#github-pilots-and-output-licences).

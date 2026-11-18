@@ -15,6 +15,7 @@ export function searchPath(): string {
         path.join(home, "AppData", "Local", "Programs", "Git", "bin"),
         path.join(home, "AppData", "Local", "Programs", "Git", "cmd"),
         "C:\\Program Files\\Git\\bin", "C:\\Program Files\\Git\\cmd",
+        "C:\\Program Files\\GitHub CLI",
         "C:\\rtools43\\usr\\bin", "C:\\RBuildTools\\4.4\\usr\\bin",
       ]
     : [`${home}/.local/bin`, `${home}/bin`, `${home}/.cargo/bin`, "/usr/local/bin", "/opt/homebrew/bin", "/usr/bin", "/bin", "/snap/bin"];

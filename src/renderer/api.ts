@@ -1,12 +1,14 @@
 // The UI runs in a sandboxed window; every call goes to the main process (src/main/api.ts) through the preload's
 // bridge. Errors keep the backend's problem details (code, detail, extra members) so callers can react to specific
 // problems.
-import type { AcquirePreview, AcquireResult, PackageSummary, ZenodoDeposit } from "./types";
+import type { AcquirePreview, AcquireResult, GithubPilot, PackageSummary, ZenodoDeposit } from "./types";
 
 export interface Problem { status: number; code: string; title?: string; detail?: string; [k: string]: unknown }
 
 export class ApiError extends Error {
-  constructor(message: string, public problem?: Problem) {
+  /** `html`: a richer explanation for the error pop-up than the plain message; it replaces the problem's own details,
+   *  which it should say in words. */
+  constructor(message: string, public problem?: Problem, public html?: string) {
     super(message);
   }
   get code() {
@@ -69,10 +71,13 @@ export interface Config {
   packagesRoot: string;
   editorCmd: string;
   zenodo: { sandbox: boolean; community: string; creator: Creator };
+  github: { repo: string };
   backendCmd: string;
   checkUpdates: boolean;
   autoUpdate: boolean;
   tokens: { zenodo: boolean; sandbox: boolean };
+  /** The GitHub CLI, whose login submits pilots: logged in, logged out, or not installed. */
+  ghLogin: "ok" | "logged-out" | "missing";
   secretStorage: "secure" | "weak" | "none";
   backend: BackendStatus;
   backendConfig: string;
@@ -101,6 +106,18 @@ export interface DepositPreview {
   metadata: Record<string, any>;
   contents: { groups: Record<string, { description: string; resources: string[]; bytes: number }>; paper_license: string | null; default_exclude: string[] };
   exclude: string[];
+}
+/** A pilot issue for a paper in the pilots repository (anyone's reproduction of it). */
+export interface PilotRecord {
+  number: number; title: string; url: string; state: string | null; author: string | null; created_at: string | null;
+  reproduction_id: string; runs: number; latest_version: number | null; latest_date: string | null; latest_summary: string | null; synthetic: boolean;
+}
+export interface PilotAccount { repo: string; hasToken: boolean }
+export interface GithubCheck { repo: string; url: string | null; login: string; private: boolean | null; can_submit: boolean; files_in: string }
+export interface PilotPreview {
+  repo: string; reproduction_id: string; run_key: string; tag: string; issue_title: string; summary: string;
+  assets: { name: string; bytes: number | null; sha256: string | null }[]; exclude: string[]; excluded: string[];
+  licenses: Record<string, string>; existing: GithubPilot | null;
 }
 export type LibraryEntry = PackageSummary & { missing: boolean; example?: boolean };
 
@@ -139,6 +156,7 @@ export const host = {
   packageDeposits: (id: string) => call<ZenodoDeposit[]>("packageDeposits", id),
   lookupDoi: (doi: string) => call<Work>("lookupDoi", doi),
   zenodoRecords: (doi: string) => call<ZenodoRecord[]>("zenodoRecords", doi),
+  pilotRecords: (doi: string) => call<PilotRecord[]>("pilotRecords", doi),
   suggestFolder: (name: string) => call<string>("suggestFolder", name),
   chooseFolder: (defaultPath?: string) => call<string | null>("chooseFolder", defaultPath),
   jatsAvailability: (doi: string) => call<JatsAvailability>("jatsAvailability", doi),
@@ -155,7 +173,7 @@ export const host = {
   openUrl: (url: string) => call<void>("openUrl", url),
   // settings and backend
   getConfig: () => call<Config>("getConfig"),
-    setConfig: (patch: { packagesRoot?: string; editorCmd?: string; backendCmd?: string; checkUpdates?: boolean; autoUpdate?: boolean; zenodo?: { sandbox?: boolean; community?: string; creator?: Partial<Creator> } }) => call<void>("setConfig", patch),
+    setConfig: (patch: { packagesRoot?: string; editorCmd?: string; backendCmd?: string; checkUpdates?: boolean; autoUpdate?: boolean; zenodo?: { sandbox?: boolean; community?: string; creator?: Partial<Creator> }; github?: { repo?: string } }) => call<void>("setConfig", patch),
     llmModels: (refresh?: boolean) => call<LlmModels>("llmModels", refresh),
     setLlmModels: (disabled: string[]) => call<void>("setLlmModels", disabled),
     claudeLogin: () => call<string>("claudeLogin"),
@@ -166,6 +184,8 @@ export const host = {
   saveProfile: (kind: "llm" | "agent", name: string, profile: ConfiguredProfile) => call<string>("saveProfile", kind, name, profile),
   runningJobs: () => call<unknown[]>("runningJobs"),
   commandFound: (command: string) => call<boolean>("commandFound", command),
+  checkGithubToken: (repo?: string) => call<GithubCheck>("checkGithubToken", repo),
+  githubLogin: () => call<string>("githubLogin"),
   saveBackendConfig: (text: string) => call<void>("saveBackendConfig", text),
   backendStatus: () => call<BackendStatus>("backendStatus"),
   backendLog: () => call<string>("backendLog"),
@@ -186,6 +206,10 @@ export const host = {
   depositPreview: (opts: { note: string; exclude?: string[] }) => call<DepositPreview>("depositPreview", opts),
   deposit: (opts: { note: string; exclude?: string[]; publish: boolean }) => call<ZenodoDeposit>("deposit", opts),
   depositAction: (id: string, action: "refresh" | "publish" | "discard") => call<ZenodoDeposit>("depositAction", id, action),
+  // GitHub pilots
+  pilotAccount: () => call<PilotAccount>("pilotAccount"),
+  pilotPreview: (opts: { note: string; exclude?: string[] }) => call<PilotPreview>("pilotPreview", opts),
+  pilotSubmit: (opts: { note: string; exclude?: string[] }) => call<GithubPilot>("pilotSubmit", opts),
 };
 
 /** OpenAlex stores abstracts as an inverted index { word: [positions] }. */

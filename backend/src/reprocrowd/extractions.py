@@ -90,6 +90,44 @@ def get(pkg: Package, name: str) -> tuple[Resource, Document]:
     return r, Document.model_validate(pkg.read_json(r.path))
 
 
+def item_text(item: object) -> str:
+    """Text of an indexed item: a sentence's text, or a figure's or table's label and caption."""
+    if item is None:
+        return ""
+    text = getattr(item, "text", None)
+    return text if text is not None else f"{item.label}: " + " ".join(s.text for s in item.caption)
+
+
+class Passages:
+    """The sentences, figures and tables that refs point at. Each extraction is loaded and indexed at most once,
+    so resolving a ref is a dict lookup."""
+
+    def __init__(self, pkg: Package, docs: dict[str, Document | None] | None = None):
+        self.pkg = pkg
+        self._docs: dict[str, Document | None] = dict(docs or {})
+        self._index: dict[str, dict[str, tuple[str, object]]] = {}
+
+    def doc(self, name: str) -> Document | None:
+        if name not in self._docs:
+            r = self.pkg.load().get(name)
+            self._docs[name] = get(self.pkg, name)[1] if r and r.reprocrowd.kind == "extraction" else None
+        return self._docs[name]
+
+    def index(self, name: str) -> dict[str, tuple[str, object]]:
+        if name not in self._index:
+            doc = self.doc(name)
+            self._index[name] = doc.index() if doc else {}
+        return self._index[name]
+
+    def item(self, extraction: str, item_id: str) -> object | None:
+        found = self.index(extraction).get(item_id)
+        return found[1] if found else None
+
+    def text(self, ref) -> str:
+        """Text of a ref (anything with .extraction and .id); "" if it doesn't resolve."""
+        return item_text(self.item(ref.extraction, ref.id))
+
+
 def delete(pkg: Package, name: str) -> None:
     from .curation import CURATIONS, Curation  # avoid import cycle
 

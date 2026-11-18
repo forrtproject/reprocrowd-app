@@ -121,6 +121,38 @@ The last ZIP of the package (PUT …/archive).
 | `origin` | [LocalOrigin](#localorigin) \| [UrlOrigin](#urlorigin) \| [ConvertedOrigin](#convertedorigin) \| [UploadOrigin](#uploadorigin) | yes |  |
 | `check` | [CheckResult](#checkresult) | yes |  |
 
+### GithubPilot
+
+One run of this reproduction submitted as a GitHub pilot: a release with the files in the submitter's fork, a
+comment on the reproduction's issue, and the copy the pilots repository's Action makes. Keyed by run_key (archive
+hash + left-out groups); a retry resumes the same record.
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `id` | string | yes | pattern `^pil-[0-9a-f]+$` |
+| `repo` | string | yes | owner/name |
+| `reproduction_id` | string | yes | pattern `^repro-[0-9a-f]{10}$` |
+| `run_key` | string | yes | pattern `^[0-9a-f]{12}$` |
+| `version` | integer \| null |  | run number within the reproduction, assigned by the pilots repository when it copies the run |
+| `status` | `"partial"` \| `"submitted"` \| `"published"` | yes | partial: a step failed, submitting again resumes; submitted: files and comment are up, the pilots repository hasn't copied them yet; published: the copy exists |
+| `tag` | string | yes |  |
+| `issue_number` | integer \| null |  |  |
+| `issue_url` | string \| null |  |  |
+| `files_repo` | string |  | owner/name of the repository holding the submitted files (the submitter's fork); default `` |
+| `files_url` | string \| null |  | the submitted release |
+| `release_url` | string \| null |  | the pilots repository's copy, once made |
+| `comment_url` | string \| null |  |  |
+| `archive_sha256` | string | yes | hash of the package archive it was made from |
+| `exclude` | list of `"paper"` \| `"inputs"` |  |  |
+| `excluded` | list of string |  |  |
+| `assets` | list of [PilotAsset](#pilotasset) |  |  |
+| `synthetic` | boolean |  | default `False` |
+| `note` | string |  | default `` |
+| `error` | string \| null |  | why the last attempt stopped, or why the pilots repository refused the run |
+| `created_at` | string (date-time) | yes |  |
+| `published_at` | string (date-time) \| null |  |  |
+| `checked_at` | string (date-time) \| null |  | when the pilots repository was last asked about this run |
+
 ### Identifier
 
 A work identifier that OpenAlex can resolve.
@@ -176,6 +208,17 @@ report: report.html and comparison.json · figure: originals of figure targets (
 | `archive` | [ArchiveInfo](#archiveinfo) \| null |  |  |
 | `submissions` | list of [Submission](#submission) |  |  |
 | `deposits` | list of [ZenodoDeposit](#zenododeposit) |  | Zenodo deposits |
+| `reproduction_id` | string \| null |  | identity of this reproduction on pilot destinations (one GitHub issue); set on the first pilot submission |
+| `pilots` | list of [GithubPilot](#githubpilot) |  | GitHub pilot submissions, one per run key |
+
+### PilotAsset
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `name` | string | yes |  |
+| `bytes` | integer | yes |  |
+| `sha256` | string | yes | pattern `^[0-9a-f]{64}$` |
+| `url` | string \| null |  | download URL once the release is published |
 
 ### Resource
 
@@ -489,7 +532,6 @@ Everything needed to understand (and repeat) one LLM call.
 | `type` | `"number"` \| `"categorical"` \| `"table"` \| `"figure"` | yes |  |
 | `printed` | string \| null |  | exact numeric token, without unit or comparator; preserves printed precision |
 | `description` | string | yes | self-contained: variable, model/test, subgroup |
-| `quote` | string |  | verbatim text from the paper that states the result; default `` |
 | `expected` | number \| integer \| string \| list of list of string \| null |  | number for number, string for categorical, rows of cell strings for table, null for figure |
 | `comparator` | `"="` \| `"<"` \| `"<="` \| `">"` \| `">="` \| `"~"` \| null |  | for numbers: how the paper states it ("p < .001" -> "<"); null means "=" |
 | `decimals` | integer \| null |  | decimals as printed |
@@ -522,7 +564,6 @@ actions.json
 | `note` | string \| null |  |  |
 | `kind` | `"transform"` \| `"analysis"` | yes |  |
 | `summary` | string | yes | imperative description, specific enough to code |
-| `quote` | string |  | verbatim text from the paper this action implements; default `` |
 | `inputs` | list of string |  | input resource names (in-…) used directly |
 | `depends_on` | list of string |  | ids of actions that must run first |
 | `produces` | list of string |  | ids of targets this action computes |
@@ -565,7 +606,6 @@ Output format of the target-extraction prompt.
 |---|---|---|---|
 | `type` | `"number"` \| `"categorical"` \| `"table"` \| `"figure"` | yes |  |
 | `description` | string | yes |  |
-| `quote` | string |  | default `` |
 | `expected` | number \| integer \| string \| list of list of string \| null |  |  |
 | `comparator` | `"="` \| `"<"` \| `"<="` \| `">"` \| `">="` \| `"~"` \| null |  |  |
 | `decimals` | integer \| null |  |  |
@@ -591,7 +631,6 @@ Output format of the action-extraction prompt.
 | `key` | string | yes | A1, A2, … in order; used by depends_on |
 | `kind` | `"transform"` \| `"analysis"` | yes |  |
 | `summary` | string | yes |  |
-| `quote` | string |  | default `` |
 | `refs` | list of string | yes |  |
 | `inputs` | list of string |  | input names (in-…) used directly |
 | `depends_on` | list of string |  | keys of earlier actions |
@@ -641,8 +680,8 @@ analysis_plan.json: load steps (one per used data input), the enabled actions, t
 | `id` | string | yes | L01… load steps, A… actions, OUT the results step |
 | `kind` | `"load"` \| `"transform"` \| `"analysis"` \| `"results"` | yes |  |
 | `summary` | string | yes |  |
-| `quote` | string |  | default `` |
 | `refs` | list of [Ref](#ref) |  |  |
+| `note` | string \| null |  | the action's note: anything beyond the referenced text, or where an unreferenced action comes from |
 | `inputs` | list of string |  | package-relative paths of input files |
 | `depends_on` | list of string |  |  |
 | `produces` | list of string |  | target ids |
@@ -668,6 +707,34 @@ inputs.json: the input files (also in datapackage.json), in the package database
 | `note` | string |  | default `` |
 | `used` | boolean |  | default `True` |
 | `archive` | string \| null |  | path of the zip archive it was unpacked from |
+
+## `licenses`: licenses.json (written with the archive)
+
+File: `schemas/licenses.schema.json`
+
+### Root
+
+licenses.json (written with the archive): which licence applies to which file. Our licence covers only our own
+contribution; third-party articles, data and code keep their original terms.
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `policy` | `"reprocrowd-licensing/1"` | yes | version of the licence policy |
+| `rules` | map of string | yes | the policy in words, by category |
+| `paper_license` | string \| null |  | the article's licence as reported by OpenAlex; null = unknown |
+| `files` | list of [LicenseEntry](#licenseentry) | yes |  |
+
+### LicenseEntry
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `path` | string | yes | archive-relative path |
+| `kind` | string | yes | resource kind (fulltext, input, script, output, report, …) |
+| `rights` | `"ours"` \| `"third-party"` | yes | ours: authored for this reproduction; third-party: the article's or the source's |
+| `license` | string \| null |  | SPDX id of the licence we grant; null for third-party material (see source_license) |
+| `source_license` | string \| null |  | third-party: the licence reported by the source (e.g. OpenAlex for the article); null = unknown |
+| `source` | string \| null |  | third-party: where it came from (DOI, URL or repository id) |
+| `note` | string |  | default `` |
 
 ## `results-output`: outputs/results.json
 

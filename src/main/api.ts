@@ -4,12 +4,13 @@
 // Package requests are restricted to that package and a few read-only backend endpoints. The Zenodo token is added
 // here, never handed to the renderer.
 import { app, BrowserWindow, dialog, shell, WebContents } from "electron";
+import { execFile } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import * as backend from "./backend";
 import { detectLlmModels, LlmModel } from "./models";
-import { openInTerminal, spawnDetached, splitCommand, which } from "./processes";
+import { openInTerminal, searchPath, spawnDetached, splitCommand, which } from "./processes";
 import { get, post, request, ResponseType, ServiceError } from "./service";
 import { loadSettings, saveSettings, secretStorageKind, serverOf, setSecret, getSecret, userData, zenodoKey, ZenodoServer } from "./settings";
 import * as updater from "./updater";
@@ -53,6 +54,22 @@ export function normalizeDoi(raw: string): string {
 function zenodoToken(sandbox: boolean) {
   return getSecret(zenodoKey(serverOf(sandbox)));
 }
+
+export type GhLogin = "ok" | "logged-out" | "missing";
+
+/** The GitHub CLI's login (`gh auth token`), if gh is installed and logged in. Never shown to the renderer. */
+function ghToken(): Promise<{ token?: string; gh: GhLogin }> {
+  const gh = which("gh");
+  if (!gh) return Promise.resolve({ gh: "missing" });
+  return new Promise((resolve) =>
+    execFile(gh, ["auth", "token", "--hostname", "github.com"], { timeout: 10_000, env: { ...process.env, PATH: searchPath() } }, (err, stdout) => {
+      const token = stdout?.trim();
+      resolve(!err && token ? { token, gh: "ok" } : { gh: "logged-out" });
+    }),
+  );
+}
+
+const NO_GITHUB_TOKEN = "No GitHub login: run “gh auth login” in a terminal (Settings → GitHub pilots → Log in with gh). If gh isn’t installed, get it from https://cli.github.com first.";
 
 function creators() {
   const c = loadSettings().zenodo.creator;
@@ -278,6 +295,7 @@ export function makeApi(wc: WebContents) {
     lookupDoi,
     jatsAvailability: async (doi: string) => get<any>("/v1/jats", { doi }, 60_000),
     zenodoRecords: async (doi: string) => get<any[]>("/v1/zenodo/records", { doi, sandbox: loadSettings().zenodo.sandbox }, 20_000),
+    pilotRecords: async (doi: string) => get<any[]>("/v1/github-pilots/records", { doi, repo: loadSettings().github.repo }, 20_000),
     suggestFolder: async (name: string) => suggestFolder(name),
     chooseFolder: async (defaultPath?: string) => {
       const r = await dialog.showOpenDialog(win(), { title: "Folder for the package", defaultPath, properties: ["openDirectory", "createDirectory"] });
@@ -374,6 +392,7 @@ export function makeApi(wc: WebContents) {
       return {
         ...s,
         tokens: { zenodo: !!(await getSecret(zenodoKey("zenodo"))), sandbox: !!(await getSecret(zenodoKey("sandbox"))) },
+        ghLogin: (await ghToken()).gh,
         secretStorage: await secretStorageKind(),
         backend: backend.status(),
         backendConfig: backend.readUserConfig(),
@@ -404,6 +423,21 @@ export function makeApi(wc: WebContents) {
     commandFound: async (command: string) => !!which(String(command ?? "").trim()),
     saveProfile: (kind: Parameters<typeof backend.saveProfile>[0], name: string, profile: Parameters<typeof backend.saveProfile>[2]) => backend.saveProfile(kind, name, profile),
     runningJobs: async () => get<any[]>("/v1/jobs"),
+    /** `repo` as typed in Settings ("" = the default pilots repository, as Save would store it); omitted = the saved one. */
+    checkGithubToken: async (repo?: string) => {
+      const t = (await ghToken()).token;
+      if (!t) throw new ServiceError(NO_GITHUB_TOKEN, { status: 400, code: "github_token_missing" });
+      const r = ((repo === undefined ? loadSettings().github.repo : repo) ?? "").trim();
+      return post("/v1/github-pilots:check", { github_token: t, repo: r || null }, 20_000);
+    },
+    githubLogin: async () => {
+      const gh = which("gh");
+      if (!gh) throw new Error("The GitHub CLI (gh) isn't installed. Install it from https://cli.github.com, then click “Log in with gh” again.");
+      if (!openInTerminal([gh, "auth", "login", "--hostname", "github.com", "--web"], os.homedir())) {
+        throw new Error("No terminal app was found. Run “gh auth login” in a terminal, then click Check.");
+      }
+      return "GitHub's login opened in a terminal window. Finish it there (it opens your browser), then click Check.";
+    },
     saveBackendConfig: async (text: string) => {
       backend.writeUserConfig(text);
       await backend.restart();
@@ -523,6 +557,19 @@ export function makeApi(wc: WebContents) {
       const token = await zenodoToken(d.sandbox);
       if (!token) throw new ServiceError(`No Zenodo token for ${d.sandbox ? "the sandbox" : "zenodo.org"}; add one in Settings.`, { status: 400, code: "zenodo_token_missing" });
       return post(`${base()}/deposits/${dep}:${action}`, { zenodo_token: token }, 600_000);
+    },
+
+    // ---------- GitHub pilots, for the window's package (the token is added here) ----------
+    pilotAccount: async () => {
+      return { repo: loadSettings().github.repo, hasToken: !!(await ghToken()).token };
+    },
+    pilotPreview: async (opts: { note: string; exclude?: string[] }) =>
+      post("/v1/packages/" + enc(pkgId(wc)) + "/pilots:preview", { note: opts.note, exclude: opts.exclude, repo: loadSettings().github.repo }, 60_000),
+    pilotSubmit: async (opts: { note: string; exclude?: string[] }) => {
+      const { token } = await ghToken();
+      if (!token) throw new ServiceError(NO_GITHUB_TOKEN, { status: 400, code: "github_token_missing" });
+      const r = await request("POST", `${base()}/pilots`, { json: { github_token: token, repo: loadSettings().github.repo, note: opts.note, exclude: opts.exclude }, timeout: LONG });
+      return r.data;
     },
   };
 }

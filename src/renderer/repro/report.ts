@@ -1,10 +1,11 @@
 // Step 8: the report, the package archive, and the deposit on Zenodo. A deposit is uploaded as a draft (with a
 // reserved DOI) that you can look at on Zenodo; publishing registers the DOI for good and is a separate step here or
 // on Zenodo. What goes into the upload can be chosen: the paper's own material only when its license allows.
-import { ApiError, DepositPreview, host, pkg, ZenodoAccount, ZenodoRecord } from "../api";
+// A GitHub pilot is the lighter, unreviewed alternative: an issue per reproduction, the files of each run in a release.
+import { ApiError, DepositPreview, host, PilotAccount, PilotPreview, PilotRecord, pkg, ZenodoAccount, ZenodoRecord } from "../api";
 import { settingsDialog } from "../settings";
-import type { ArchiveInfo, Job, PackageSummary, ReportResult, ValidationReport, ZenodoDeposit } from "../types";
-import { confirmDialog, dataUrl, esc, modal, showError, sizeText, when } from "../util";
+import type { ArchiveInfo, GithubPilot, Job, PackageSummary, ReportResult, ValidationReport, ZenodoDeposit } from "../types";
+import { confirmDialog, dataUrl, esc, modal, pilotLabel, showError, sizeText, when } from "../util";
 import { STATUS_LABEL } from "./run";
 import type { Step, Wizard } from "./wizard";
 
@@ -48,13 +49,19 @@ export class ReportStep implements Step {
   title = "Report & deposit";
   private report?: string;
   private reportResult?: ReportResult;
-  private manifest?: { resources?: any[]; reprocrowd: { archive?: ArchiveInfo | null; identifiers?: Record<string, string> } };
+  private manifest?: { resources?: any[]; reprocrowd: { archive?: ArchiveInfo | null; identifiers?: Record<string, string>; reproduction_id?: string | null } };
   private validation?: ValidationReport;
   private deposits: ZenodoDeposit[] = [];
   private lastRun?: Job;
   private account?: ZenodoAccount;
   private preview?: DepositPreview | Error;
   private records?: ZenodoRecord[] | Error;
+  private pilots: GithubPilot[] = [];
+  private pilotsError?: Error;
+  private pilotAccount?: PilotAccount;
+  private pilotPreview?: PilotPreview | Error;
+  /** Pilot issues for this paper in the pilots repository, this reproduction's own included. */
+  private paperPilots?: PilotRecord[] | Error;
   /** Groups left out, as chosen here (undefined: the default from the preview). */
   private exclude?: Set<string>;
   private note = "";
@@ -62,24 +69,29 @@ export class ReportStep implements Step {
   constructor(private w: Wizard) {}
 
   async load() {
-    const [manifest, deposits, jobs, validation, report] = await Promise.all([
+    const [manifest, deposits, pilots, jobs, validation, report] = await Promise.all([
       pkg.get<any>("/manifest"),
       pkg.get<ZenodoDeposit[]>("/deposits"),
+      pkg.get<GithubPilot[]>("/pilots").catch((e) => e as Error),
       pkg.get<Job[]>("/jobs"),
       pkg.get<ValidationReport>("/validation").catch(() => undefined),
       pkg.text("/report").catch(() => undefined),
     ]);
     this.manifest = manifest;
     this.deposits = deposits;
+    [this.pilots, this.pilotsError] = pilots instanceof Error ? [[], pilots] : [pilots, undefined];
     this.lastRun = jobs.filter((j) => j.type === "run").pop();
     this.validation = validation;
     this.report = report && (await inlineImages(report));
     const doi = this.doi();
     // Account, preview and existing records are shown, but never block the step.
-    [this.account, this.preview, this.records] = await Promise.all([
+    [this.account, this.preview, this.records, this.pilotAccount, this.pilotPreview, this.paperPilots] = await Promise.all([
       host.zenodoAccount().catch(() => undefined),
       this.manifest?.reprocrowd.archive ? host.depositPreview({ note: "" }).catch((e) => e as Error) : Promise.resolve(undefined),
       doi ? host.zenodoRecords(doi).catch((e) => e as Error) : Promise.resolve([]),
+      host.pilotAccount().catch(() => undefined),
+      this.manifest?.reprocrowd.archive ? host.pilotPreview({ note: "" }).catch((e) => e as Error) : Promise.resolve(undefined),
+      doi ? host.pilotRecords(doi).catch((e) => e as Error) : Promise.resolve([]),
     ]);
     if (!this.exclude && this.preview && !(this.preview instanceof Error)) this.exclude = new Set(this.preview.exclude);
   }
@@ -149,6 +161,7 @@ export class ReportStep implements Step {
           ${this.deposits.length ? `<h4>Deposits of this package</h4><ul class="deposits">${this.deposits.map((d) => this.depositRow(d)).join("")}</ul>` : ""}
           ${others.length ? `<h4>Other ReproCrowd records for this paper</h4><ul class="small">${others.map((r) => `<li><a href="#" data-open="${esc(r.url)}">${esc(r.creators.join("; ") || "unknown")}, ${esc(r.published ?? "")}</a>${r.doi ? ` · <code>${esc(r.doi)}</code>` : ""}</li>`).join("")}</ul>` : this.records instanceof Error ? `<p class="warn-soft small">Couldn't search ${server} for other records of this paper.</p>` : ""}
         </section>
+        ${this.pilotCard(checks.slice(0, 4), exNow)}
       </div>
       <iframe id="rp-preview" class="preview" sandbox="" title="Report preview"></iframe>
     </div>`;
@@ -177,9 +190,10 @@ export class ReportStep implements Step {
     body.querySelectorAll<HTMLElement>("[data-settings]").forEach((el) =>
       el.addEventListener("click", (e) => {
         e.preventDefault();
-        settingsDialog(() => this.w.render(), "zenodo");
+        settingsDialog(() => this.w.render(), el.dataset.settings === "github" ? "github" : "zenodo");
       }),
     );
+    body.querySelector("#rp-pilot")?.addEventListener("click", () => this.submitPilot());
     body.querySelectorAll<HTMLElement>("[data-open]").forEach((el) =>
       el.addEventListener("click", (e) => {
         e.preventDefault();
@@ -187,6 +201,73 @@ export class ReportStep implements Step {
       }),
     );
     body.querySelectorAll<HTMLButtonElement>("[data-dep]").forEach((b) => b.addEventListener("click", () => this.action(b.dataset.dep!, b.dataset.action as "refresh" | "publish" | "discard")));
+  }
+
+  /** GitHub pilot: the same preconditions as a deposit (minus the Zenodo account), the same choice of files. */
+  private pilotCard(base: [boolean, string, string?][], exNow: string) {
+    const acct = this.pilotAccount;
+    const archive = this.manifest?.reprocrowd.archive;
+    const pv = this.pilotPreview instanceof Error ? undefined : this.pilotPreview;
+    const checks: [boolean, string, string?][] = [...base, [!!acct?.hasToken, acct?.hasToken ? `GitHub CLI login (submits to ${acct.repo})` : "A GitHub login: run “gh auth login” (Settings)", "github"]];
+    const same = archive && this.pilots.find((p) => p.repo === acct?.repo && p.archive_sha256 === archive.sha256 && [...p.exclude].sort().join() === exNow);
+    const busy = this.w.running.has("pilot");
+    const ready = checks.every(([ok]) => ok) && !!pv && (!same || same.status === "partial") && !this.pilotsError && !busy;
+    const refused = (p?: GithubPilot | false | null) => !!p && p.status === "submitted" && !!p.error?.startsWith("the pilots repository refused");
+    const label = busy ? "Submitting…" : same?.status === "partial" ? "Resume the submission" : "Submit this run as a GitHub pilot";
+    return `<section class="card submit-card">
+      <h3>Pilot on GitHub <span class="badge sandbox" title="public, unreviewed; not a certificate">Unreviewed</span></h3>
+      <p class="hint">A public record to discuss before anything goes to Zenodo: one issue per reproduction in <code>${esc(acct?.repo ?? "")}</code>, and for each run a release with the ZIP, report, comparison, evidence, licences and their SHA-256 hashes. A numeric match is not a scientific certificate. The files left out above are left out here too.</p>
+      <ul class="checklist">${checks.map(([ok, l, fix]) => `<li class="${ok ? "ok" : "no"}">${ok ? "✓" : "✗"} ${esc(l)}${!ok && fix ? ` <a href="#" data-settings="${fix}">Settings…</a>` : ""}</li>`).join("")}</ul>
+      ${pv ? `<p class="small">${esc(pv.summary)}. Licences: metadata ${esc(pv.licenses.metadata)}, report and outputs ${esc(pv.licenses.outputs)}, new code ${esc(pv.licenses.code)}; third-party material keeps its own (<code>licenses.json</code>).</p>` : this.pilotPreview instanceof Error ? `<p class="hint">${esc(this.pilotPreview.message)}</p>` : ""}
+      ${this.pilotsError ? `<p class="warn-inline small">Couldn't read this package's pilot records: ${esc(this.pilotsError.message)}</p>` : ""}
+      <div class="actions"><button id="rp-pilot" class="primary" ${ready ? "" : "disabled"}>${label}</button></div>
+      ${same?.status === "published" ? `<p class="hint">This ZIP is pilot run v${same.version}. A new run (then report and ZIP) becomes the next version on the same issue.</p>` : ""}
+      ${refused(same) ? `<p class="warn-inline small">${esc(same!.error!)}. The run stays as it is; fix the cause, then create the ZIP again to submit a new run.</p>` : ""}
+      ${same?.status === "submitted" && !refused(same) ? `<p class="hint">This ZIP is submitted. The pilots repository checks it, copies the files into its own release and numbers the run, usually within minutes; the issue shows its reply.</p>` : ""}
+      ${same?.status === "partial" && same.error ? `<p class="warn-inline small">The last attempt stopped: ${esc(same.error)}. Submitting again resumes it without duplicates.</p>` : ""}
+      ${this.pilots.length ? `<h4>Pilot runs of this package</h4><ul class="deposits">${[...this.pilots].reverse().map((p) => `<li class="deposit ${p.status}">
+        <div><span class="badge st-${p.status === "published" ? "published" : "draft"}">${p.status === "published" ? `v${p.version}` : p.status === "submitted" ? (refused(p) ? "Refused" : "Waiting for the copy") : "Incomplete"}</span> ${esc(when(p.published_at ?? p.created_at))} · <code>${esc(p.run_key)}</code>${p.synthetic ? ` <span class="badge sandbox">Synthetic</span>` : ""}</div>
+        <div class="actions">${p.issue_url ? `<a href="#" data-open="${esc(p.issue_url)}">Issue</a>` : ""}${p.release_url ?? p.files_url ? ` · <a href="#" data-open="${esc((p.release_url ?? p.files_url)!)}">Files</a>` : ""}${p.comment_url ? ` · <a href="#" data-open="${esc(p.comment_url)}">Run comment</a>` : ""}</div></li>`).join("")}</ul>` : ""}
+      ${this.otherPilots()}
+    </section>`;
+  }
+
+  /** Other people's (or your other) pilot issues for this paper: each reproduction has its own issue, so these are separate. */
+  private otherPilots() {
+    if (this.paperPilots instanceof Error) return `<p class="warn-soft small">Couldn't search GitHub for other pilots of this paper.</p>`;
+    const own = this.manifest?.reprocrowd.reproduction_id;
+    const others = (this.paperPilots ?? []).filter((p) => p.reproduction_id !== own);
+    if (!others.length) return "";
+    return `<h4>Other pilots of this paper</h4><ul class="small">${others.map((p) => `<li><a href="#" data-open="${esc(p.url)}">${pilotLabel(p)}</a>${p.latest_summary ? ` · ${esc(p.latest_summary)}` : ""}</li>`).join("")}</ul>`;
+  }
+
+  private async submitPilot() {
+    const acct = this.pilotAccount!;
+    const ok = await confirmDialog(
+      "Submit a GitHub pilot",
+      `<p>The issue for this reproduction in <b>${esc(acct.repo)}</b> gets a comment for this run${this.note.trim() ? ", with your note" : ""}, and the run's files are published as a release in your fork of that repository (created if needed; if you own the repository, a draft there instead), from which it copies them. <b>All of it is public.</b></p>
+       <p class="hint">Copied releases are kept unchanged; later runs are added as new versions. The record says “pilot, unreviewed”.</p>`,
+      "Submit",
+    );
+    if (!ok) return;
+    this.w.running.add("pilot");
+    this.w.setStatus("⏳ Submitting to GitHub…");
+    this.w.draw();
+    try {
+      const p = await host.pilotSubmit({ note: this.note.trim(), exclude: this.excludeList() });
+      const title = p.status === "published" ? `Pilot run v${p.version}` : "Pilot run submitted";
+      this.w.setStatus(`${title} on GitHub`);
+      modal("dlg-confirm", `<form method="dialog"><h3>${title}</h3><p>${p.status === "published" ? "The files are in the pilots repository." : "The files and the run's comment are up. The pilots repository checks them and copies the files into its own release, usually within minutes; its reply appears on the issue."}</p>
+        <menu><button value="close">Close</button><button value="view" class="primary">Open the issue</button></menu></form>`).addEventListener("close", function (this: HTMLDialogElement) {
+        if (this.returnValue === "view" && p.issue_url) host.openUrl(p.issue_url);
+      });
+    } catch (e) {
+      this.w.setStatus("Not submitted", "error");
+      showError("Submitting to GitHub", e);
+    } finally {
+      this.w.running.delete("pilot");
+      await this.w.render();
+    }
   }
 
   private depositRow(d: ZenodoDeposit) {

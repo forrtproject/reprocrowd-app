@@ -62,3 +62,22 @@ def test_bounded_reads_and_errors(tmp_path, monkeypatch):
     monkeypatch.setattr(m, "call", lambda *a: (_ for _ in ()).throw(RuntimeError("boom")))
     text, error = call(root, "list_files")
     assert error and "RuntimeError" in text  # any failure is a tool error, not the end of the server
+
+
+def test_special_files_and_malformed_requests(tmp_path):
+    import os
+    root = tmp_path.resolve()
+    (root / "a.txt").write_text("hello\n")
+    (root / "dangling").symlink_to(root / "missing.txt")  # a broken link must not fail every search
+    if hasattr(os, "mkfifo"):
+        os.mkfifo(root / "pipe")  # opening a pipe would block the search forever
+    assert call(root, "list_files")[0] == "a.txt"
+    assert call(root, "search", pattern="hello") == ("a.txt:1: hello", False)
+    msgs = ['{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": [1]}',  # non-object params
+            '{"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": "x"}', "null", "{",
+            '{"jsonrpc": "2.0", "id": 3, "method": "ping"}']
+    out = subprocess.run([sys.executable, "-I", "-m", "reprocrowd.mcp_files"], cwd=root, capture_output=True, text=True, timeout=30,
+                         input="".join(m + "\n" for m in msgs)).stdout.splitlines()
+    replies = [json.loads(line) for line in out]
+    assert [(r["id"], r.get("error", {}).get("code")) for r in replies] == [(1, -32602), (2, None), (None, -32600), (None, -32700), (3, None)]
+    assert replies[1]["result"]["isError"] and replies[4]["result"] == {}  # a tool error, then the server still answers

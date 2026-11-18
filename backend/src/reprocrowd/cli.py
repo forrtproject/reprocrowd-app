@@ -296,8 +296,16 @@ def input_edit(pkg: str, name: str, role: Optional[str] = None, note: Optional[s
 
 
 @inp.command("rm")
-def input_rm(pkg: str, name: str):
-    out(call("DELETE", f"/packages/{pkg}/inputs/{name}"))
+def input_rm(pkg: str, name: Optional[str] = typer.Argument(None),
+             all_: bool = typer.Option(False, "--all", help="delete every input"),
+             unused: bool = typer.Option(False, "--unused", help="delete the inputs marked unused (and archives with no used member)")):
+    """Delete an input (an archive with its members), or several with --all / --unused (all or nothing)."""
+    if sum((name is not None, all_, unused)) != 1:
+        raise typer.BadParameter("give a NAME, --all or --unused")
+    if name is not None:
+        out(call("DELETE", f"/packages/{pkg}/inputs/{name}"))
+    else:
+        out(call("POST", f"/packages/{pkg}/inputs:delete", {"which": "all" if all_ else "unused"}))
 
 
 # ---------- targets and actions ----------
@@ -696,6 +704,92 @@ def zen_publish(pkg: str, dep: str, yes: bool = typer.Option(False, "--yes", hel
 def zen_discard(pkg: str, dep: str):
     """Delete a draft deposit on Zenodo."""
     out(call("POST", f"/packages/{pkg}/deposits/{dep}:discard", _zauth()))
+
+
+pilot = typer.Typer(help="GitHub pilot submissions (an issue per reproduction, a pre-release per run; unreviewed; any GitHub account). The token comes "
+                         "from $REPROCROWD_GITHUB_TOKEN, else `gh auth token` (after `gh auth login`), else the service's [github] token.",
+                    no_args_is_help=True)
+app.add_typer(pilot, name="pilot")
+
+
+def _github_token() -> str | None:
+    """Read client-side and sent with the request; never printed or stored."""
+    if os.environ.get("REPROCROWD_GITHUB_TOKEN"):
+        return os.environ["REPROCROWD_GITHUB_TOKEN"]
+    import shutil
+    import subprocess
+
+    if shutil.which("gh"):
+        try:
+            r = subprocess.run(["gh", "auth", "token", "--hostname", "github.com"], capture_output=True, text=True, timeout=10)
+        except subprocess.TimeoutExpired:
+            return None
+        if r.returncode == 0 and r.stdout.strip():
+            return r.stdout.strip()
+    return None
+
+
+def _pilot_body(repo: Optional[str], note: str = "", exclude: Optional[list[str]] = None, include_all: bool = False,
+                synthetic: bool = False, token: bool = False) -> dict:
+    body: dict[str, Any] = {"note": note, "synthetic": synthetic}
+    if repo:
+        body["repo"] = repo
+    if include_all:
+        body["exclude"] = []
+    elif exclude:
+        body["exclude"] = exclude
+    if token and (t := _github_token()):
+        body["github_token"] = t
+    return body
+
+
+_REPO = typer.Option(None, "--repo", help="owner/name; default: the service's [github] pilots_repo")
+_SYNTH = typer.Option(False, "--synthetic", help="label it as a synthetic test fixture")
+
+
+@pilot.command("status")
+def pilot_status():
+    """Where pilot submissions go, and the licence policy."""
+    out(call("GET", "/github-pilots"))
+
+
+@pilot.command("check")
+def pilot_check(repo: Optional[str] = _REPO):
+    """Check that your GitHub login can submit to the pilots repository, and where your files would go (writes nothing)."""
+    body = {k: v for k, v in _pilot_body(repo, token=True).items() if k in ("repo", "github_token")}
+    r = call("POST", "/github-pilots:check", body)
+    out(r)
+    if not r.get("can_submit"):
+        raise typer.Exit(1)
+
+
+@pilot.command("preview")
+def pilot_preview(pkg: str, note: str = "", exclude: Optional[list[str]] = _EXCLUDE, include_all: bool = _ALL, repo: Optional[str] = _REPO,
+                  synthetic: bool = _SYNTH):
+    """Show what a submission would send (issue title, labels, files with hashes, licences); contacts no GitHub endpoint."""
+    out(call("POST", f"/packages/{pkg}/pilots:preview", _pilot_body(repo, note, exclude, include_all, synthetic), timeout=None))
+
+
+@pilot.command("submit")
+def pilot_submit(pkg: str, note: str = "", exclude: Optional[list[str]] = _EXCLUDE, include_all: bool = _ALL, repo: Optional[str] = _REPO,
+                 synthetic: bool = _SYNTH):
+    """Submit the current archive as a pilot run. Safe to repeat: a retry resumes and creates nothing twice."""
+    p = call("POST", f"/packages/{pkg}/pilots", _pilot_body(repo, note, exclude, include_all, synthetic, token=True), timeout=None)
+    out(p)
+    where = f"run v{p['version']}, {p['release_url']}" if p["status"] == "published" else f"files {p['files_url']}; the pilots repository copies them shortly"
+    typer.echo(f"{p['reproduction_id']}: issue {p['issue_url']} · {where}", err=True)
+
+
+@pilot.command("records")
+def pilot_records(doi: str, repo: Optional[str] = _REPO):
+    """Pilot issues for a paper in the pilots repository, by anyone (public search, no login)."""
+    out(call("GET", "/github-pilots/records", params={"doi": doi, **({"repo": repo} if repo else {})}))
+
+
+@pilot.command("list")
+def pilot_list(pkg: str):
+    """Pilot submissions of a package."""
+    out(call("GET", f"/packages/{pkg}/pilots"))
 
 
 job_app = typer.Typer(help="Jobs (code generation): status, progress, cancel.", no_args_is_help=True)
