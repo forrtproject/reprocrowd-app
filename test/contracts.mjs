@@ -80,4 +80,30 @@ await assert.rejects(applyProfileChange(original, text, { backup: () => {}, rest
 assert.deepEqual(writes, [text, original]); // a failed (possibly partial) write is rolled back too
 await assert.rejects(applyProfileChange(original, text, { backup: () => {}, write: () => { throw new Error('read-only'); }, restart: async () => {} }),
   /not saved: read-only\. Restoring the previous configuration failed too \(read-only\)/); // the original reason survives a failed restore
-console.log('Model scoping, profile preservation/validation, and failed-write/restart rollback passed.');
+// Comments survive a profile edit; only the edited profile's section changes.
+const commented = '# top comment\n[openalex]\nmailto = "test@example.org" # inline note\n\n[llm.profiles.other]\n# about other\nargv = ["other"]\noutput = "text"\n\n# agents below\n[agent.profiles.existing]\nargv = ["existing"]\nevents = "text"\n';
+for (const name of ['other', 'fixture']) {
+  const edited = replaceProfile(commented, 'llm', name, profile);
+  for (const comment of ['# top comment', '# inline note', '# agents below']) assert(edited.includes(comment), `${name}: lost ${comment}`);
+  assert.equal(edited.includes('# about other'), true);
+  const expected = parse(commented); expected.llm.profiles[name] = profile;
+  assert.deepEqual(JSON.parse(JSON.stringify(parse(edited))), JSON.parse(JSON.stringify(expected)));
+}
+// Whitespace inside a table header is valid TOML and still edits that section in place.
+const spaced = replaceProfile('# keep\n[ llm . profiles . other ]\nargv = ["other"]\noutput = "text"\n', 'llm', 'other', profile);
+assert(spaced.includes('# keep') && !spaced.includes('[llm.profiles.other]'));
+// Agent profiles carry a nested table (no_exec_env); it is spliced with the profile, replacing the old sub-table.
+const agentText = '# keep me\n[agent.profiles.oc]\nargv = ["opencode"]\nevents = "opencode-json"\n[agent.profiles.oc.no_exec_env]\nOLD = "1"\n\n# next\n[llm]\ndefault_profile = "x"\n';
+for (const env of [{}, { OPENCODE_PERMISSION: '{"*":"deny"}' }]) {
+  const agent = { argv: ['opencode'], model: '', effort: '', timeout_s: 10, events: 'opencode-json', tools: [], exec_tools: ['x'], no_exec_argv: [], no_exec_env: env };
+  for (const name of ['oc', 'fresh']) {
+    const edited = replaceProfile(agentText, 'agent', name, agent);
+    assert(edited.includes('# keep me') && edited.includes('# next'), `agent ${name}: comments lost`);
+    const want = parse(agentText); want.agent.profiles[name] = agent;
+    assert.deepEqual(JSON.parse(JSON.stringify(parse(edited))), JSON.parse(JSON.stringify(want)));
+  }
+}
+// A profile written as an inline table cannot be spliced; the whole file is rewritten, still correctly.
+const inline = '# lost\n[llm.profiles]\nother = { argv = ["other"], output = "text" }\n';
+assert.deepEqual({ ...parse(replaceProfile(inline, 'llm', 'other', profile)).llm.profiles.other }, profile);
+console.log('Model scoping, profile preservation/validation, failed-write/restart rollback and comment-preserving edits passed.');

@@ -1,4 +1,5 @@
 // Pure validation/serialization for the trusted local profile editor. No IPC or process access here.
+import { isDeepStrictEqual } from "node:util";
 import { parse, stringify } from "smol-toml";
 
 export type ProfileKind = "llm" | "agent";
@@ -33,7 +34,43 @@ export function replaceProfile(text: string, kind: ProfileKind, name: string, pr
   data[kind] ??= {};
   data[kind].profiles ??= {};
   data[kind].profiles[name] = profile;
+  // Edit only this profile's [kind.profiles.name] table (and its sub-tables, e.g. no_exec_env) so
+  // comments elsewhere survive. Keep the splice only if it parses to exactly the intended
+  // configuration; otherwise rewrite the whole file.
+  const path = `${kind}.profiles.${name}`;
+  const spliced = spliceProfile(text, path, stringify({ [kind]: { profiles: { [name]: profile } } }));
+  try {
+    if (spliced !== null && isDeepStrictEqual(parse(spliced), parse(stringify(data)))) return spliced;
+  } catch { /* fall back */ }
   return stringify(data);
+}
+
+const isComment = (line: string) => /^\s*(#.*)?$/.test(line);
+/** The dotted key of a [table] header line, without whitespace (TOML allows [ a . b ]); null otherwise. */
+const tableKey = (line: string) => /^\s*\[[^\[]/.test(line) ? line.replace(/#.*$/, "").replace(/\s+/g, "").slice(1, -1) : /^\s*\[/.test(line) ? "" : null;
+
+/** Replace one table and its sub-tables with `block` (which starts with that table's header),
+ * keeping the comments just after the old header and before the next unrelated table. */
+function spliceProfile(text: string, path: string, block: string): string | null {
+  const eol = text.includes("\r\n") ? "\r\n" : "\n";
+  const lines = text.split(/\r?\n/);
+  const blockLines = block.trimEnd().split("\n");
+  const own = blockLines.findIndex((line) => tableKey(line) === path);
+  if (own < 0) return null;
+  const [header, ...content] = blockLines.slice(own);
+  const start = lines.findIndex((line) => tableKey(line) === path);
+  if (start < 0) {
+    const kept = text.replace(/\s*$/, "");
+    return `${kept}${kept ? eol + eol : ""}${[header, ...content].join(eol)}${eol}`;
+  }
+  const inside = (key: string | null) => key !== null && key.startsWith(path + ".");
+  let end = lines.findIndex((line, i) => i > start && tableKey(line) !== null && !inside(tableKey(line)));
+  if (end < 0) end = lines.length;
+  let first = start + 1;
+  while (first < end && isComment(lines[first]) && lines[first].trim()) first++;
+  let last = end;
+  while (last > first && isComment(lines[last - 1])) last--;
+  return [...lines.slice(0, first), ...content, ...lines.slice(last)].join(eol);
 }
 
 export function configuredProfiles(text: string): Record<ProfileKind, Record<string, Profile>> {
