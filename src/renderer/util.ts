@@ -11,6 +11,30 @@ export const seconds = (ms?: number | null) => (ms == null ? "" : ms < 10_000 ? 
 export const nearEnd = (el: Element) => el.scrollHeight - el.scrollTop - el.clientHeight < 8;
 /** An argv vector as one shell-style line: arguments with spaces or shell characters are single-quoted, so each stays one argument. */
 export const commandLine = (argv: string[]) => argv.map((a) => (/^[\w@%+=:,./-]+$/.test(a) ? a : `'${a.replace(/'/g, `'\\''`)}'`)).join(" ");
+/** A text input with a <datalist>: Chromium filters the suggestions by the text already in the field, so once a value
+ * is set only that value is offered. On focus the value moves into the placeholder and every suggestion is shown;
+ * typing filters as usual. Leaving (or submitting) without typing or picking puts the previous value back;
+ * Backspace/Delete in the emptied field clears it instead. */
+export function showAllSuggestions(input: HTMLInputElement) {
+  const placeholder = input.placeholder;
+  let kept: string | null = null; // the value moved aside on focus, until something is typed or picked
+  const restore = () => {
+    if (kept !== null && input.value === "") input.value = kept;
+    kept = null;
+    input.placeholder = placeholder;
+  };
+  input.addEventListener("focus", () => {
+    if (!input.value) return;
+    kept = input.value;
+    input.placeholder = kept;
+    input.value = "";
+  });
+  input.addEventListener("input", () => { kept = null; input.placeholder = placeholder; });
+  // Backspace/Delete in the emptied field clears the value on purpose (e.g. back to the CLI's default).
+  input.addEventListener("keydown", (e) => { if (!input.value && (e.key === "Backspace" || e.key === "Delete")) { kept = null; input.placeholder = placeholder; } });
+  input.addEventListener("blur", restore);
+  input.form?.addEventListener("submit", restore, true); // Enter while the field has focus: save the shown value
+}
 export const list = (s: string) => s.split(/[,\s]+/).map((x) => x.trim()).filter(Boolean);
 
 export function modal(cls: string, html: string): HTMLDialogElement {

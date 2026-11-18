@@ -1,5 +1,5 @@
 import { CLI_LABELS, cliModel, cliOf, execRestriction, host, modelCompatible, type ConfiguredProfile, type LlmModels } from "./api";
-import { confirmDialog, esc, modal, showError } from "./util";
+import { confirmDialog, esc, modal, showAllSuggestions, showError } from "./util";
 
 type Kind = "llm" | "agent";
 /** Codex without its shell and sub-agents, reading through ReproCrowd's read-only file server ({python}: the backend's Python). */
@@ -36,6 +36,7 @@ export async function profileEditor(saved: (text: string) => void) {
     <menu><button type="button" class="cancel">Cancel</button><button value="save" class="primary">Save profile</button></menu>
   </form>`);
   const form = dlg.querySelector("form")!;
+  showAllSuggestions(form.querySelector<HTMLInputElement>("[name=model]")!); // all of this CLI's models, not only the current one
   // Cancel is not a submit button, so Enter in a field saves instead of closing the dialog.
   dlg.querySelector<HTMLButtonElement>("button.cancel")!.addEventListener("click", () => dlg.close());
   const el = (name: string) => form.elements.namedItem(name) as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
