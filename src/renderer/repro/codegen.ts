@@ -4,7 +4,7 @@
 import { CLI_LABELS, cliModel, cliOf, host, pkg, modelCompatible, RESTRICTION_LABELS } from "../api";
 import type { LlmModel, LlmModels } from "../api";
 import type { AgentProfile, FileEntry, PromptPreview, ScriptState } from "../types";
-import { esc, modal, showError, showPrompt, sizeText, when } from "../util";
+import { commandLine, esc, modal, showError, showPrompt, sizeText, when } from "../util";
 import { appendEvents, JobFollower, statusBadge } from "./jobs";
 import type { Step, Wizard } from "./wizard";
 
@@ -179,31 +179,45 @@ export class CodegenStep implements Step {
     }
   }
 
+  private starting = false;
+
   private async start() {
+    if (this.starting) return; // a second click while the preview or confirmation is open
+    this.starting = true;
+    try {
+      await this.confirmAndStart();
+    } finally {
+      this.starting = false;
+    }
+  }
+
+  private async confirmAndStart() {
     const st = this.w.app.state;
     const profile = this.profiles.find((p) => p.name === (document.querySelector<HTMLSelectElement>("#rp-profile")?.value ?? ""));
     const model = document.querySelector<HTMLSelectElement>("#rp-model")?.value || "";
     st.agentModel = model;
     const cli = model ? cliModel(model) : "";
     st.agentInstructions = document.querySelector<HTMLTextAreaElement>("#rp-instr")?.value.trim() ?? "";
+    // One snapshot for the preview, the confirmation and the start, so a toggle meanwhile can't change what runs.
+    const allowExec = st.allowExec;
     // The exact command, added environment and restriction come from the backend's preview (the same as Show prompt).
-    const body = { type: "codegen", profile: profile?.name, allow_exec: st.allowExec, instructions: st.agentInstructions, model: cli || undefined };
+    const request = { profile: profile?.name, allow_exec: allowExec, instructions: st.agentInstructions, model: cli || undefined };
     let pv: PromptPreview;
-    try { pv = await pkg.post<PromptPreview>("/jobs:preview", body); } catch (e) { return showError("Preparing the coding agent", e); }
+    try { pv = await pkg.post<PromptPreview>("/jobs:preview", { type: "codegen", ...request }); } catch (e) { return showError("Preparing the coding agent", e); }
     const env = Object.entries(pv.env ?? {}).map(([k, v]) => `${k}=${v}`).join(" ");
     const ok = await new Promise<boolean>((resolve) => {
       const dlg = modal("dlg-wide", `<h3>Run the coding agent?</h3>
-        <p>The agent works in <code>${esc(this.w.app.summary().path)}</code> and may take minutes to hours. It can read and write files there${st.allowExec ? " and run the analysis" : ""}.</p>
+        <p>The agent works in <code>${esc(this.w.app.summary().path)}</code> and may take minutes to hours. It can read and write files there${allowExec ? " and run the analysis" : ""}.</p>
         <div class="kv"><span>Profile</span><span>${esc(pv.profile)} · model ${esc(pv.model || "default")} · effort ${esc(pv.effort || "default")} · timeout ${Math.round(pv.timeout_s / 60)} min</span>
-          <span>Command</span><code>${esc(pv.argv.join(" "))}</code>
+          <span>Command</span><code>${esc(commandLine(pv.argv))}</code>
           ${env ? `<span>Environment</span><code>${esc(env)}</code>` : ""}
-          <span>Execution restriction</span><span>${esc(st.allowExec ? "none: the agent may run the analysis" : RESTRICTION_LABELS[pv.exec_restriction] ?? pv.exec_restriction)}</span></div>
+          <span>Execution restriction</span><span>${esc(allowExec ? "none: the agent may run the analysis" : RESTRICTION_LABELS[pv.exec_restriction] ?? pv.exec_restriction)}</span></div>
         <form method="dialog"><menu><button value="cancel" formnovalidate>Cancel</button><button value="ok" class="primary">Run</button></menu></form>`);
       dlg.addEventListener("close", () => resolve(dlg.returnValue === "ok"));
     });
     if (!ok) return;
     this.w.app.save();
-    await this.w.busy("codegen-start", "Starting the coding agent", () => this.job.start({ profile: profile?.name, allow_exec: st.allowExec, instructions: st.agentInstructions, model: cli || undefined }));
+    await this.w.busy("codegen-start", "Starting the coding agent", () => this.job.start(request));
     this.w.repoll();
   }
 }

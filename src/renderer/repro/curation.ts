@@ -5,7 +5,7 @@
 import { ApiError, CLI_LABELS, cliModel, cliOf, modelCompatible, host, LlmModel, LlmModels, pkg } from "../api";
 import { refText } from "../doc";
 import { COMPARATORS, type Action, type CurationFile, type Document, type Item, type LlmEntry, type LlmProfile, type LlmRun, type PromptPreview, type Resource, type Target } from "../types";
-import { choose, confirmDialog, esc, list, modal, seconds, showError, showPrompt, trunc, when } from "../util";
+import { choose, commandLine, confirmDialog, esc, list, modal, seconds, showError, showPrompt, trunc, when } from "../util";
 import { ACTION_PRESETS, Preset, ScopeTree, TARGET_PRESETS } from "./scope";
 import { AlignedItem, AlignedView } from "./aligned";
 import type { Step, Wizard } from "./wizard";
@@ -479,7 +479,7 @@ export class CurationStep implements Step {
     const claudeLogin = form.querySelector<HTMLElement>(".claude-login")!;
     const showArgv = () => {
       const profile = this.profiles.find((p) => p.name === profileSel.value);
-      form.querySelector(".argv")!.textContent = profile?.argv.join(" ") ?? "";
+      form.querySelector(".argv")!.textContent = profile ? commandLine(profile.argv) : "";
       form.querySelector(".availability")!.textContent = profile?.available === false ? "Executable not found. Install and sign into the CLI, or update its command in Settings." : "";
     };
     let models: LlmModels | undefined;
@@ -568,7 +568,7 @@ function callDetails(run: LlmRun<Item>, kind: Kind) {
     <div class="kv">
       <span>Text source</span><span><code>${esc(run.request.extraction ?? "")}</code> · scope: ${esc(!scope || (!scope.sections?.length && !scope.items?.length) ? "whole document" : [...(scope.sections ?? []), ...(scope.items ?? [])].join(", "))}</span>
       <span>Profile</span><span>${esc(c.profile)} · model ${esc(c.model || "default")} · effort ${esc(c.effort || "default")}</span>
-      <span>Command</span><code>${esc(c.argv.join(" "))}</code>
+      <span>Command</span><code>${esc(commandLine(c.argv))}</code>
       <span>When</span><span>${esc(when(c.started_at))} · ${seconds(c.duration_ms)} · exit ${c.exit_code ?? "?"}</span>
       <span>Prompt</span><span>${c.template} template${c.instructions ? ` + instructions: ${esc(c.instructions)}` : ""}${c.output_schema ? ` · structured output (${esc(c.output_schema)})` : ""}</span>
     </div>

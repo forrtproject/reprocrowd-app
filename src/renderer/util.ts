@@ -9,6 +9,8 @@ export const sizeText = (n: number) => (n < 1024 ? `${n} B` : n < 1024 ** 2 ? `$
 export const when = (iso: string | number | null | undefined) => (iso ? new Date(iso).toLocaleString() : "");
 export const seconds = (ms?: number | null) => (ms == null ? "" : ms < 10_000 ? `${(ms / 1000).toFixed(1)} s` : ms < 3_600_000 ? `${Math.round(ms / 1000)} s` : `${(ms / 3_600_000).toFixed(1)} h`);
 export const nearEnd = (el: Element) => el.scrollHeight - el.scrollTop - el.clientHeight < 8;
+/** An argv vector as one shell-style line: arguments with spaces or shell characters are single-quoted, so each stays one argument. */
+export const commandLine = (argv: string[]) => argv.map((a) => (/^[\w@%+=:,./-]+$/.test(a) ? a : `'${a.replace(/'/g, `'\\''`)}'`)).join(" ");
 export const list = (s: string) => s.split(/[,\s]+/).map((x) => x.trim()).filter(Boolean);
 
 export function modal(cls: string, html: string): HTMLDialogElement {
@@ -77,7 +79,7 @@ export async function showPrompt(title: string, preview: () => Promise<PromptPre
     <p class="hint">This is what would be sent now. Nothing has been run.</p>
     <div class="kv">
       <span>Profile</span><span>${esc(p.profile)} · model ${esc(p.model || "default")} · effort ${esc(p.effort || "default")}${p.output_schema ? ` · structured output (${esc(p.output_schema)})` : ""}</span>
-      <span>Command</span><code>${esc(p.argv.join(" "))}</code>
+      <span>Command</span><code>${esc(commandLine(p.argv))}</code>
       <span>Availability</span><span>${p.available ? "Executable found" : "Executable not found"} · ${esc(p.output_protocol)} · timeout ${p.timeout_s}s</span>
       ${p.env && Object.keys(p.env).length ? `<span>Environment</span><code>${esc(Object.entries(p.env).map(([k, v]) => `${k}=${v}`).join(" "))}</code>` : ""}
       ${RESTRICTION_LABELS[p.exec_restriction] ? `<span>Execution restriction</span><span>${esc(executionAllowed ? "none: the agent may run the analysis" : RESTRICTION_LABELS[p.exec_restriction])}</span>` : ""}
