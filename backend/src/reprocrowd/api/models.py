@@ -482,7 +482,8 @@ class DepositPreview(BaseModel):
     metadata: dict[str, Any] = Field(description="the Zenodo metadata that would be sent")
     contents: dict[str, Any] = Field(description="groups of files that can be left out, the paper's license and the default; files: every "
                                                 "file of the package {path, bytes, group (null: always uploaded), flags: reasons it may not "
-                                                "belong in a public record, e.g. a hidden file or what looks like a key}")
+                                                "belong in a public record, e.g. a hidden file or what looks like a key in its first 2 MB, checked: false when its "
+                                                "contents weren't looked at (past the per-preview limit)}")
     exclude: list[str]
 
 

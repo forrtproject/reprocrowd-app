@@ -296,12 +296,15 @@ export async function settingsDialog(onSaved: (changed: boolean) => void, focus?
       const repo = q<HTMLInputElement>("[name=ghrepo]").value.trim();
       if (repo && !/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repo)) throw new Error(`“${repo}” isn't a GitHub repository (owner/name).`);
       const token = q<HTMLInputElement>("[name=ztoken]").value.trim();
+      const becfg = q<HTMLTextAreaElement>("[name=becfg]").value;
+      const commands = { editorCmd: q<HTMLInputElement>("[name=editor]").value.trim(), backendCmd: q<HTMLInputElement>("[name=becmd]").value.trim() };
+      // New commands are confirmed for the whole save first: declining changes nothing.
+      await host.confirmSettings(commands, becfg !== cfg.backendConfig ? becfg : undefined);
       if (token) await host.setZenodoToken(server(), token);
-      if (q<HTMLTextAreaElement>("[name=becfg]").value !== cfg.backendConfig) await host.saveBackendConfig(q<HTMLTextAreaElement>("[name=becfg]").value);
+      if (becfg !== cfg.backendConfig) await host.saveBackendConfig(becfg);
       await host.setConfig({
         packagesRoot: q<HTMLInputElement>("[name=root]").value.trim(),
-        editorCmd: q<HTMLInputElement>("[name=editor]").value.trim(),
-        backendCmd: q<HTMLInputElement>("[name=becmd]").value.trim(),
+        ...commands,
         checkUpdates: q<HTMLInputElement>("[name=checkupd]").checked,
         autoUpdate: q<HTMLInputElement>("[name=autoupd]").checked,
         github: { repo },

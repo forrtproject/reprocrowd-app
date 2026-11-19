@@ -33,6 +33,8 @@ electronFuses:
   enableEmbeddedAsarIntegrityValidation: true
   onlyLoadAppFromAsar: true
   grantFileProtocolExtraPrivileges: false
+  # Setting fuses changes the binary; unsigned macOS builds need their ad-hoc signature redone or Apple Silicon kills them.
+  resetAdHocDarwinSignature: true
 linux:
   syncDesktopName: true
   target: [AppImage, dir]

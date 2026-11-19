@@ -66,7 +66,7 @@ The installer checks these and tells you what to do:
   `sudo apt install libgtk-3-0 libnss3 libgbm1 libasound2` (`libasound2t64` on
   Ubuntu 24.04 and Debian 13).
 - **Ubuntu 23.10 and later** only allow the app's (Chromium's) sandbox with an
-  AppArmor profile. There the installer asks for your password once, before
+  AppArmor profile. There the installer asks for your password once, after
   building, installs the app to `/opt/reprocrowd` (owned by root, so no other
   program can take the place of the binary the profile trusts) and adds
   `/etc/apparmor.d/reprocrowd`. Without the profile the app stops at start with

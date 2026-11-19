@@ -9,7 +9,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import * as backend from "./backend";
-import { changedCommands, confirmCommands, confirmToolSettings } from "./confirm";
+import { changedCommands, confirmCommands, confirmToolSettings, preconfirmCommands } from "./confirm";
 import { detectLlmModels, LlmModel } from "./models";
 import { openInTerminal, searchPath, spawnDetached, splitCommand, which } from "./processes";
 import { get, post, request, ResponseType, ServiceError } from "./service";
@@ -218,6 +218,14 @@ export async function ensureText(id: string, progress?: Progress): Promise<strin
   }
 }
 
+/** New editor/backend commands in a settings patch, as the confirmation lists them. Clearing one goes back to the
+ * built-in default and needs no confirmation. */
+function settingsCommands(before: ReturnType<typeof loadSettings>, patch: Parameters<typeof saveSettings>[0]): string[] {
+  return (["editorCmd", "backendCmd"] as const)
+    .filter((k) => typeof patch[k] === "string" && patch[k]!.trim() && patch[k]!.trim() !== before[k].trim())
+    .map((k) => `${k === "editorCmd" ? "Code editor" : "Backend"}: ${patch[k]!.trim()}`);
+}
+
 export function makeApi(wc: WebContents) {
   const win = () => BrowserWindow.fromWebContents(wc)!;
   const base = () => `/v1/packages/${enc(pkgId(wc))}`;
@@ -413,11 +421,7 @@ export function makeApi(wc: WebContents) {
     },
     setConfig: async (patch: Parameters<typeof saveSettings>[0]) => {
       const before = loadSettings();
-      // A new command is confirmed in a native dialog; clearing one goes back to the built-in default.
-      const commands = (["editorCmd", "backendCmd"] as const)
-        .filter((k) => typeof patch[k] === "string" && patch[k]!.trim() && patch[k]!.trim() !== before[k].trim())
-        .map((k) => `${k === "editorCmd" ? "Code editor" : "Backend"}: ${patch[k]!.trim()}`);
-      await confirmCommands(win(), commands);
+      await confirmCommands(win(), settingsCommands(before, patch));
       const after = saveSettings(patch);
       if (before.autoUpdate !== after.autoUpdate) updater.applyUpdateSettings();
       // The backend gets the Zenodo choices and its start command at start.
@@ -474,6 +478,9 @@ export function makeApi(wc: WebContents) {
       }
       return "GitHub's login opened in a terminal window. Finish it there (it opens your browser), then click Check.";
     },
+    /** Before a Settings save: one confirmation for its new commands, in the settings and the backend configuration. */
+    confirmSettings: async (patch: Parameters<typeof saveSettings>[0], backendConfig?: string) =>
+      preconfirmCommands(win(), [...settingsCommands(loadSettings(), patch), ...(backendConfig === undefined ? [] : changedCommands(backend.readUserConfig(), backendConfig))]),
     saveBackendConfig: async (text: string) => {
       await confirmCommands(win(), changedCommands(backend.readUserConfig(), text));
       backend.writeUserConfig(text);

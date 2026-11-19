@@ -215,10 +215,12 @@ export class ReportStep implements Step {
     const sent = (pv.contents.files ?? []).filter((f) => !f.group || !this.exclude?.has(f.group));
     if (!sent.length) return "";
     const flagged = sent.filter((f) => f.flags.length);
+    const unchecked = sent.filter((f) => !f.checked).length;
     const row = (f: (typeof sent)[number]) =>
       `<li${f.flags.length ? ` class="warn-inline"` : ""}><code>${esc(f.path)}</code> <span class="muted small">${sizeText(f.bytes)}</span>${f.flags.length ? ` <span class="small">⚠ ${esc(f.flags.join("; "))}</span>` : ""}</li>`;
     return `${flagged.length ? `<p class="warn-inline small">${flagged.length === 1 ? "One file" : `${flagged.length} files`} may not belong in a public record; check ${flagged.length === 1 ? "it" : "them"} in the list below. To leave one out, delete it (an input in the Inputs step, any other file in the package folder) and create the ZIP again.</p>` : ""}
-      <details class="small"${flagged.length ? " open" : ""}><summary>All ${sent.length} files in the upload (${sizeText(sent.reduce((n, f) => n + (f.bytes || 0), 0))}), with <code>datapackage.json</code></summary>
+      <details class="small"${flagged.length ? " open" : ""}><summary>All ${sent.length} files in the upload (${sizeText(sent.reduce((n, f) => n + (f.bytes || 0), 0))})</summary>
+        <p class="hint">Names are checked, and the first 2 MB of each file for private keys and common token formats${unchecked ? `; ${unchecked} large file${unchecked === 1 ? "" : "s"} past the reading limit only by name` : ""}.</p>
         <ul class="rp-del-list">${[...flagged, ...sent.filter((f) => !f.flags.length)].map(row).join("")}</ul></details>`;
   }
 

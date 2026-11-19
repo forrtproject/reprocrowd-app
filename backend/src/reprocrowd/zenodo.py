@@ -196,38 +196,54 @@ _SECRET_NAME = re.compile(r"""(^\.env(\..*)?$|\.env$|^\.netrc$|^\.npmrc$|^\.pypi
     |credential|secret|password|passwd|(access|auth|api|bearer)[_-]?token|apikey|api_key)""", re.I | re.X)
 _SECRET_TEXT = re.compile(rb"-----BEGIN [A-Z ]*PRIVATE KEY-----|\bAKIA[0-9A-Z]{16}\b|\bgh[pousr]_[A-Za-z0-9]{36}\b|\bgithub_pat_\w{40,}"
                           rb"|\bsk-ant-[\w-]{20,}|\bsk-(proj-)?[A-Za-z0-9_-]{32,}|\bxox[abpr]-[\w-]{10,}|\bAIza[\w-]{35}\b")
-_SCAN_BYTES = 2 * 1024**2
+_SCAN_BYTES = 2 * 1024**2  # per file: the start of it
+_SCAN_TOTAL = 256 * 1024**2  # per preview: small files first; the rest is reported as not checked
+_KEY_SECRET = "contains what looks like a private key or access token"
+_scanned: dict[str, bool] = {}  # file hash → whether its start looks like a secret (a file with the same hash is the same file)
+
+
+def _name_flags(path: str) -> list[str]:
+    parts = path.split("/")
+    return (["hidden file"] if any(p.startswith(".") for p in parts) else []) + \
+        (["the name suggests keys or credentials"] if _SECRET_NAME.search(parts[-1]) else [])
+
+
+def _looks_secret(pkg: Package, r: Resource) -> bool:
+    if r.hash in _scanned:
+        return _scanned[r.hash]
+    try:
+        with pkg.path(r.path).open("rb") as f:
+            found = bool(_SECRET_TEXT.search(f.read(_SCAN_BYTES)))
+    except OSError:
+        return False
+    _scanned[r.hash] = found
+    return found
 
 
 def file_flags(pkg: Package, r: Resource) -> list[str]:
     """Why a file of the package may not belong in a public record: its name, or what looks like a key or token in it."""
-    flags = []
-    parts = r.path.split("/")
-    if any(p.startswith(".") for p in parts):
-        flags.append("hidden file")
-    if _SECRET_NAME.search(parts[-1]):
-        flags.append("the name suggests keys or credentials")
-    try:
-        with pkg.path(r.path).open("rb") as f:
-            if _SECRET_TEXT.search(f.read(_SCAN_BYTES)):
-                flags.append("contains what looks like a private key or access token")
-    except OSError:
-        pass
-    return flags
+    return _name_flags(r.path) + ([_KEY_SECRET] if _looks_secret(pkg, r) else [])
 
 
 def contents(pkg: Package, work: dict[str, Any] | None = None) -> dict[str, Any]:
-    """The groups that can be left out, their files, which are left out by default, and every file of the package
-    (group null: always uploaded) with the reasons it may not belong in a public record."""
+    """The groups that can be left out, their files, which are left out by default, and every file of the upload
+    (group null: always uploaded) with the reasons it may not belong in a public record. ``checked`` is false for a file
+    whose contents weren't looked at (past the per-preview limit); a file is only ever checked for its first 2 MB."""
     m = pkg.load()
     groups: dict[str, dict[str, Any]] = {g: {"description": d, "resources": [], "bytes": 0} for g, d in GROUPS.items()}
-    files = []
+    budget = _SCAN_TOTAL
+    checked: dict[str, list[str]] = {}
+    for r in sorted(m.resources, key=lambda r: r.bytes or 0):
+        if r.hash in _scanned or budget > 0:
+            budget -= 0 if r.hash in _scanned else min(r.bytes or 0, _SCAN_BYTES)
+            checked[r.name] = [_KEY_SECRET] if _looks_secret(pkg, r) else []
+    files = [{"path": MANIFEST, "bytes": pkg.path(MANIFEST).stat().st_size, "group": None, "flags": [], "checked": True}]
     for r in sorted(m.resources, key=lambda r: r.path):
         g = _group(r)
         if g:
             groups[g]["resources"].append(r.name)
             groups[g]["bytes"] += r.bytes or 0
-        files.append({"path": r.path, "bytes": r.bytes, "group": g, "flags": file_flags(pkg, r)})
+        files.append({"path": r.path, "bytes": r.bytes, "group": g, "flags": _name_flags(r.path) + checked.get(r.name, []), "checked": r.name in checked})
     lic = paper_license(work) if work else None
     default = [] if lic in OPEN_LICENSES else ["paper"]
     return {"groups": groups, "paper_license": lic, "default_exclude": [g for g in default if groups[g]["resources"]], "files": files}

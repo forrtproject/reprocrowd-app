@@ -15,6 +15,8 @@ mailto = ""
 [downloads]
 max_download_mb = 200
 max_upload_mb = 500         # multipart uploads
+max_unpack_mb = 20000       # a zip archive that unpacks to more is refused (zip bombs)
+max_unpack_files = 20000    # likewise for its number of files
 
 # PDF converters (POST …/fulltexts {source, converter}).
 [converters.grobid]

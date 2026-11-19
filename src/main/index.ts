@@ -61,7 +61,8 @@ export function createWindow(hash = "") {
     },
   });
   // No menu bar in the window (Windows/Linux): everything it offered is in the UI. The application menu stays set,
-  // so its shortcuts (reload, dev tools, zoom, new window) still work; on macOS the menu lives in the system bar.
+  // so its shortcuts (reload, zoom, new window, and dev tools where they are enabled) still work; on macOS the menu
+  // lives in the system bar.
   win.setMenuBarVisibility(false);
   win.once("ready-to-show", () => win.show());
   const wc = win.webContents;

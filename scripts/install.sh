@@ -7,7 +7,7 @@
 # Needs: Node.js >= 20 (with npm) and uv. Linux and macOS; on Windows, use WSL.
 # Installs to:  Linux  ~/.local/share/reprocrowd/app, a menu entry, and ~/.local/bin/reprocrowd; on systems that
 #                      need an AppArmor profile for the app's sandbox (Ubuntu 23.10+), /opt/reprocrowd/app instead,
-#                      owned by root (asks for your password once, before building)
+#                      owned by root (asks for your password once, after building)
 #               macOS  ~/Applications/ReproCrowd.app
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -17,7 +17,7 @@ LINUX_DIR="$DATA/reprocrowd/app"
 USER_DIR="$LINUX_DIR"
 # Where the app goes when it needs the AppArmor profile: the profile trusts the binary at a path, so only root may
 # write there (#91). Updates come from running this script again, as for the user install.
-SYSTEM_DIR="${REPROCROWD_SYSTEM_DIR:-/opt/reprocrowd}"
+SYSTEM_DIR=/opt/reprocrowd # fixed: every folder above it must be root-owned too
 DESKTOP="$DATA/applications/reprocrowd.desktop"
 BIN="${REPROCROWD_BIN_DIR:-$HOME/.local/bin}/reprocrowd"
 MAC_APP="${REPROCROWD_MAC_APPS:-$HOME/Applications}/ReproCrowd.app"
@@ -68,29 +68,7 @@ if [ "$OS" = Linux ] && [ ! -f /.dockerenv ] && [ ! -f /run/.containerenv ] &&
   NEED_PROFILE=1
   LINUX_DIR="$SYSTEM_DIR/app"
   say "This system lets ReproCrowd use its sandbox only with an AppArmor profile, so it is installed to $SYSTEM_DIR,"
-  say "owned by root. That needs your password once, now, before the build starts."
-  # A password dialog when there is a desktop and a dialog tool; sudo's own prompt in the terminal otherwise.
-  ASKPASS=""
-  if [ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]; then
-    MSG="The ReproCrowd installer needs your password to install the app to $SYSTEM_DIR and add its AppArmor profile."
-    if command -v zenity >/dev/null; then
-      ASKPASS="$(mktemp)"
-      printf '#!/bin/sh\nexec zenity --password --title="%s"\n' "ReproCrowd installer" >"$ASKPASS"
-    elif command -v kdialog >/dev/null; then
-      ASKPASS="$(mktemp)"
-      printf '#!/bin/sh\nexec kdialog --title "ReproCrowd installer" --password "%s"\n' "$MSG" >"$ASKPASS"
-    fi
-  fi
-  if [ -n "$ASKPASS" ]; then
-    chmod 700 "$ASKPASS"
-    SUDO_ASKPASS="$ASKPASS" sudo -A -v 2>/dev/null || sudo -v || GOT_SUDO=no
-    rm -f "$ASKPASS"
-  else
-    sudo -v || GOT_SUDO=no
-  fi
-  [ "${GOT_SUDO:-}" = no ] && die "ReproCrowd needs administrator rights on this system. Run the installer again and enter your password, or ask an administrator to run it."
-  # Keep the sudo session alive while building (it can take longer than sudo's 15 minutes).
-  (while kill -0 $$ 2>/dev/null; do sudo -n true 2>/dev/null; sleep 60; done) >/dev/null 2>&1 &
+  say "owned by root. You'll be asked for your password once, after the build."
 fi
 
 # ---------- build ----------
@@ -132,6 +110,33 @@ LOG="$(mktemp)"
 npx electron-builder "$TARGET" dir --publish never -c.electronDist="$EZIP" >"$LOG" 2>&1 ||
   { tail -20 "$LOG" >&2; die "Packaging failed (full log: $LOG)."; }
 rm -f "$LOG"
+
+# ---------- administrator rights ----------
+# Only now, after the build: npm runs the install scripts of every dependency, and none of them may find a sudo
+# session open.
+if [ -n "$NEED_PROFILE" ]; then
+  say "Installing to $SYSTEM_DIR and adding the AppArmor profile needs your password."
+  # A password dialog when there is a desktop and a dialog tool; sudo's own prompt in the terminal otherwise.
+  ASKPASS=""
+  if [ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]; then
+    MSG="The ReproCrowd installer needs your password to install the app to $SYSTEM_DIR and add its AppArmor profile."
+    if command -v zenity >/dev/null; then
+      ASKPASS="$(mktemp)"
+      printf '#!/bin/sh\nexec zenity --password --title="%s"\n' "ReproCrowd installer" >"$ASKPASS"
+    elif command -v kdialog >/dev/null; then
+      ASKPASS="$(mktemp)"
+      printf '#!/bin/sh\nexec kdialog --title "ReproCrowd installer" --password "%s"\n' "$MSG" >"$ASKPASS"
+    fi
+  fi
+  if [ -n "$ASKPASS" ]; then
+    chmod 700 "$ASKPASS"
+    SUDO_ASKPASS="$ASKPASS" sudo -A -v 2>/dev/null || sudo -v || GOT_SUDO=no
+    rm -f "$ASKPASS"
+  else
+    sudo -v || GOT_SUDO=no
+  fi
+  [ "${GOT_SUDO:-}" = no ] && die "ReproCrowd needs administrator rights on this system. Run the installer again and enter your password, or ask an administrator to run it."
+fi
 
 # ---------- install ----------
 if [ "$OS" = Linux ]; then

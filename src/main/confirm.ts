@@ -8,6 +8,8 @@ import { parse } from "smol-toml";
 
 /** Keys of the backend configuration that decide what runs, or with which tools and environment. */
 const COMMAND_KEY = /(^|_)(argv|env)$|^(exec_)?tools$|^env_pass$/;
+/** Servers the backend sends the user's tokens to: another address there would receive them. */
+const TOKEN_SERVERS = new Set(["zenodo.url", "zenodo.sandbox_url", "github.api_url"]);
 
 /** Every command-bearing value of a TOML text, by its dotted key (unparseable text has none). */
 export function commandEntries(text: string): Map<string, string> {
@@ -21,7 +23,8 @@ export function commandEntries(text: string): Map<string, string> {
   const walk = (v: unknown, at: string[]) => {
     if (!v || typeof v !== "object" || Array.isArray(v)) return;
     for (const [k, x] of Object.entries(v as Record<string, unknown>)) {
-      if (COMMAND_KEY.test(k)) out.set([...at, k].join("."), JSON.stringify(x));
+      const key = [...at, k].join(".");
+      if (COMMAND_KEY.test(k) || TOKEN_SERVERS.has(key)) out.set(key, JSON.stringify(x));
       else walk(x, [...at, k]);
     }
   };
@@ -42,13 +45,18 @@ export class NotConfirmed extends Error {
   }
 }
 
+// Changes confirmed for a whole Settings save (preflight), so its separate writes don't ask again or stop half-way.
+// Only this module adds to it, after the user confirmed in the dialog.
+let approved = { changes: new Set<string>(), until: 0 };
+
 /** Ask before saving new commands; throws NotConfirmed when the user declines. No changes, no dialog. */
 export async function confirmCommands(win: BrowserWindow | null, changes: string[]): Promise<void> {
+  if (Date.now() < approved.until) changes = changes.filter((c) => !approved.changes.has(c));
   if (!changes.length) return;
   const opts = {
     type: "warning" as const,
     title: "Confirm new commands",
-    message: changes.length === 1 ? "ReproCrowd will run this command from now on:" : "ReproCrowd will run these commands from now on:",
+    message: changes.length === 1 ? "ReproCrowd will use this command or server from now on:" : "ReproCrowd will use these commands and servers from now on:",
     detail: `${changes.join("\n\n")}\n\nOnly confirm a change you made yourself in Settings.`,
     buttons: ["Cancel", "Use the new command"],
     defaultId: 0,
@@ -57,6 +65,12 @@ export async function confirmCommands(win: BrowserWindow | null, changes: string
   };
   const { response } = await (win ? dialog.showMessageBox(win, opts) : dialog.showMessageBox(opts));
   if (response !== 1) throw new NotConfirmed();
+}
+
+/** One confirmation for every change of a save that writes in several steps; the steps then pass without asking. */
+export async function preconfirmCommands(win: BrowserWindow | null, changes: string[]): Promise<void> {
+  await confirmCommands(win, changes);
+  approved = { changes: new Set(changes), until: Date.now() + 60_000 };
 }
 
 // Project settings of coding tools that a package folder from someone else may carry (#91). The agents ReproCrowd

@@ -262,8 +262,9 @@ class _Job:
                 and r.reprocrowd.origin.repo == self.link.repo
                 and r.reprocrowd.origin.id == self.link.id
                 and (r.reprocrowd.origin.url == download_url
-                     # git repositories: the URL names the commit, so the same file at a newer commit is matched by path
-                     or (path is not None and r.reprocrowd.origin.path == path)
+                     # git repositories: the URL names the commit, so the same file at a newer commit is matched by path;
+                     # elsewhere a new URL for the same name is a new file (e.g. a new Figshare version)
+                     or (path is not None and self.commit is not None and r.reprocrowd.origin.path == path)
                      # fetched before paths were recorded: the URL ended in the branch and the path
                      or (path is not None and self.commit is not None and r.reprocrowd.origin.path is None
                          and r.reprocrowd.origin.url.endswith("/" + quote(path))))]

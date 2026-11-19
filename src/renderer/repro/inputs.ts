@@ -132,7 +132,7 @@ export class InputsStep implements Step {
     if (choice !== "off") return;
     st.allowExec = false;
     this.w.app.save();
-    this.w.setStatus("The coding agent won't run code; you can turn it back on in Code generation.");
+    this.w.setStatus("From its next run, the coding agent won't run code (an agent already running keeps its setting); turn it back on in Code generation.");
   }
   private inputs: InputRes[] = [];
   private docs = new Map<string, Document | Error>();

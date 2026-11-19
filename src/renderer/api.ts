@@ -107,7 +107,7 @@ export interface DepositPreview {
   contents: {
     groups: Record<string, { description: string; resources: string[]; bytes: number }>; paper_license: string | null; default_exclude: string[];
     /** Every file of the package; group null: always uploaded. flags: why it may not belong in a public record. */
-    files: { path: string; bytes: number; group: string | null; flags: string[] }[];
+    files: { path: string; bytes: number; group: string | null; flags: string[]; checked: boolean }[];
   };
   exclude: string[];
 }
@@ -177,6 +177,7 @@ export const host = {
   openUrl: (url: string) => call<void>("openUrl", url),
   // settings and backend
   getConfig: () => call<Config>("getConfig"),
+    confirmSettings: (patch: { editorCmd?: string; backendCmd?: string }, backendConfig?: string) => call<void>("confirmSettings", patch, backendConfig),
     setConfig: (patch: { packagesRoot?: string; editorCmd?: string; backendCmd?: string; checkUpdates?: boolean; autoUpdate?: boolean; zenodo?: { sandbox?: boolean; community?: string; creator?: Partial<Creator> }; github?: { repo?: string } }) => call<void>("setConfig", patch),
     llmModels: (refresh?: boolean) => call<LlmModels>("llmModels", refresh),
     setLlmModels: (disabled: string[]) => call<void>("setLlmModels", disabled),

@@ -107,6 +107,8 @@ def test_fetch_gitlab(tmp_path):
                         label="GitLab repository owner/repo")
     res = acquire.fetch(pkg, link)
     assert [r.name for r in res] == ["in-analysis.py"]
+    origin = pkg.load().get("in-analysis.py").reprocrowd.origin
+    assert origin.commit == SHA and origin.path == "analysis.py"  # pinned (#91)
 
 
 @respx.mock
@@ -601,3 +603,17 @@ def test_github_refetch_at_a_new_commit_skips_known_files(tmp_path):
         o.url, o.path, o.commit = "https://raw.githubusercontent.com/owner/repo/main/analysis.R", None, None
     assert acquire.fetch(pkg, link) == []
     assert len(pkg.load().by_kind("input")) == 1
+
+
+@respx.mock
+def test_new_url_for_a_name_outside_git_is_a_new_file(tmp_path):
+    """Matching by path is for commit-pinned git fetches only: a record whose file got a new URL is fetched again."""
+    record = respx.get("https://zenodo.org/api/records/123456")
+    pkg = _make_pkg(tmp_path)
+    link = acquire.Link(repo="zenodo", url="https://zenodo.org/records/123456", id="123456", kind="data", label="Zenodo record 123456")
+    for n in (1, 2):
+        record.mock(return_value=httpx.Response(200, json={"metadata": {"title": "t"}, "files": [
+            {"key": "data.csv", "size": 4, "links": {"self": f"https://zenodo.org/api/files/{n}/data.csv"}}]}))
+        respx.get(f"https://zenodo.org/api/files/{n}/data.csv").mock(return_value=httpx.Response(200, content=f"v{n}\n".encode()))
+        assert len(acquire.fetch(pkg, link)) == 1
+    assert len(pkg.load().by_kind("input")) == 2

@@ -67,7 +67,8 @@ def test_deposit_draft_then_publish(client, pkg):
     pv = client.post(P + "/deposits:preview", json={"creators": ME, "note": "all fine"}).json()
     assert pv["exclude"] == ["paper"] and pv["contents"]["paper_license"] is None
     assert set(pv["contents"]["groups"]["paper"]["resources"]) == {"ft-paper-tei", "ex-paper-tei"}
-    files = pv["contents"]["files"]  # every file, for the dialog's full list (#91)
+    files = pv["contents"]["files"]  # every file, for the dialog's full list (#91), datapackage.json included
+    assert {f["path"] for f in files} == {r["path"] for r in client.get(P + "/manifest").json()["resources"]} | {"datapackage.json"}
     assert {f["group"] for f in files} >= {None, "paper"} and all(f["flags"] == [] for f in files)
     assert not z["create"].called
 
@@ -264,7 +265,7 @@ def test_file_flags(tmp_path):
     (tmp_path / "outputs" / "log.txt").write_text("run 1\n-----BEGIN OPENSSH PRIVATE KEY-----\nabc\n")
     (tmp_path / "outputs" / "result.csv").write_text("a,b\n1,2\n")
     (tmp_path / ".env").write_text("X=1\n")
-    flags = lambda p: file_flags(pkg, SimpleNamespace(path=p))  # noqa: E731
+    flags = lambda p: file_flags(pkg, SimpleNamespace(path=p, hash="sha256:" + p))  # noqa: E731
     assert flags("outputs/log.txt") == ["contains what looks like a private key or access token"]
     assert flags("outputs/result.csv") == []
     assert flags(".env") == ["hidden file", "the name suggests keys or credentials"]
