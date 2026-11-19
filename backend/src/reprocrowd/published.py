@@ -65,6 +65,7 @@ class Gallery:
         self._folder: tempfile.TemporaryDirectory | None = None
         self._archive: zipfile.ZipFile | None = None
         self._failed: str | None = None
+        self._plos_images: dict[str, tuple[Any, str] | Unavailable] = {}  # by figure DOI: each is fetched at most once
 
     def __enter__(self) -> Gallery:
         return self
@@ -129,7 +130,19 @@ class Gallery:
         return best
 
     def _plos(self, doi: str) -> tuple[Any, str]:
-        """The figure PLOS serves for its DOI, and its URL."""
+        """The figure PLOS serves for its DOI, and its URL. Fetched once: another target on the same figure, or a
+        figure that couldn't be had, doesn't ask PLOS again."""
+        if doi not in self._plos_images:
+            try:
+                self._plos_images[doi] = self._fetch_plos(doi)
+            except Unavailable as e:
+                self._plos_images[doi] = e
+        found = self._plos_images[doi]
+        if isinstance(found, Unavailable):
+            raise Unavailable(str(found))
+        return found
+
+    def _fetch_plos(self, doi: str) -> tuple[Any, str]:
         if self._folder is None:
             self._folder = tempfile.TemporaryDirectory(prefix="reprocrowd-figures-")
         problems = []

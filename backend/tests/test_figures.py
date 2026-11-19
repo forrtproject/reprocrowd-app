@@ -388,6 +388,23 @@ def test_a_plos_figure_comes_from_plos(client, pkg, tmp_path):
     assert out["method"] == "published" and out["size"] == [90, 60] and original.called
     assert out["source"] == f"{PLOS_IMAGE}?size=original&id=10.1371%2Fjournal.pbio.1234567.g001"
     assert client.get(f"{P}/figures/{t}").headers["content-type"] == "image/png"
+    # all figures at once: another target on the same figure doesn't fetch it again
+    client.post(P + "/targets", json={"type": "figure", "description": "the same", "refs": [{"extraction": "ex-pub-jats", "id": "fig1"}]})
+    calls = original.call_count
+    assert [o["method"] for o in client.put(P + "/figures", json={}).json()] == ["published", "published"]
+    assert original.call_count == calls + 1
+
+
+@respx.mock
+def test_a_plos_figure_that_cant_be_had_is_asked_for_once(client, pkg, tmp_path):
+    P = f"/v1/packages/{pkg}"
+    published(client, P, tmp_path, graphics=PLOS_REF, pmcid=None, caption=CAPTION)
+    client.post(P + "/targets", json={"type": "figure", "description": "the same", "refs": [{"extraction": "ex-pub-jats", "id": "fig1"}]})
+    add(client, P, tmp_path, "paper.pdf", pdf_with("no figure here", CAPTION))
+    original, large = plos("original").mock(return_value=httpx.Response(404)), plos("large").mock(return_value=httpx.Response(404))
+    outcomes = client.put(P + "/figures", json={}).json()
+    assert [o["method"] for o in outcomes] == ["page", "page"] and all("HTTP 404" in o["note"] for o in outcomes)
+    assert (original.call_count, large.call_count) == (1, 1)
 
 
 @respx.mock
