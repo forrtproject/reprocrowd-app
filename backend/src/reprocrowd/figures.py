@@ -1,6 +1,6 @@
 """Originals of figure targets, for comparing with the reproduced ones (targets/figures/<target id>.png).
 
-Best first: the image as published, when a JATS full text names it and Europe PMC has it (published.py). Then an exact crop,
+Best first: the image as published, when a JATS full text names it and Europe PMC (or PLOS) has it (published.py). Then an exact crop,
 from a full text that locates the figure (coordinates.py). A target usually refers to an extraction without usable boxes
 (JATS, reconciled), so the figure is looked up there by its caption. Otherwise the whole page is rendered, found by the
 caption's text in the PDF. Which of the three a file is, is recorded with its resource.

@@ -1,4 +1,5 @@
-"""Figures as published: the image file a JATS full text names, from Europe PMC's archive of the article's files.
+"""Figures as published: the image file a JATS full text names, from Europe PMC's archive of the article's files, or
+for PLOS's own JATS, whose <graphic> names the figure by its DOI, the image PLOS serves for that DOI.
 
 JATS has no coordinates, but its <graphic> names the figure's file, so no PDF or crop is needed. A figure is connected to
 its <fig> by caption and by label; they must not disagree. The archive is untrusted input: only the named image is read
@@ -7,10 +8,12 @@ from it, nothing is unpacked, and anything that goes wrong means "not available"
 from __future__ import annotations
 
 import io
+import re
 import tempfile
 import zipfile
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlencode
 
 from PIL import Image, UnidentifiedImageError
 
@@ -26,6 +29,10 @@ ORDER = (".tif", ".tiff", ".png", ".jpg", ".jpeg", ".webp")  # the same image in
 THUMBNAIL = ".gif"  # archives hold small GIFs next to the real images; only used if the full text names one
 MAX_IMAGE_MB = 64
 PNG_MODES = {"1", "L", "LA", "I", "I;16", "P", "RGB", "RGBA"}
+# How PLOS's JATS names a figure (its DOI), and where PLOS serves it: the original (often TIFF) first, then a large PNG.
+PLOS_FIGURE = re.compile(r"info:doi/(10\.1371/journal\.[a-z]+\.\d{7}\.g\d{3})")
+PLOS_IMAGE = "https://journals.plos.org/plosone/article/figure/image"
+PLOS_SIZES = ("original", "large")
 
 
 class Unavailable(Exception):
@@ -58,6 +65,7 @@ class Gallery:
         self._folder: tempfile.TemporaryDirectory | None = None
         self._archive: zipfile.ZipFile | None = None
         self._failed: str | None = None
+        self._plos_images: dict[str, tuple[Any, str] | Unavailable] = {}  # by figure DOI: each is fetched at most once
 
     def __enter__(self) -> Gallery:
         return self
@@ -121,11 +129,47 @@ class Gallery:
             raise Unavailable(f"{best.filename} is larger than {MAX_IMAGE_MB} MB")
         return best
 
+    def _plos(self, doi: str) -> tuple[Any, str]:
+        """The figure PLOS serves for its DOI, and its URL. Fetched once: another target on the same figure, or a
+        figure that couldn't be had, doesn't ask PLOS again."""
+        if doi not in self._plos_images:
+            try:
+                self._plos_images[doi] = self._fetch_plos(doi)
+            except Unavailable as e:
+                self._plos_images[doi] = e
+        found = self._plos_images[doi]
+        if isinstance(found, Unavailable):
+            raise Unavailable(str(found))
+        return found
+
+    def _fetch_plos(self, doi: str) -> tuple[Any, str]:
+        if self._folder is None:
+            self._folder = tempfile.TemporaryDirectory(prefix="reprocrowd-figures-")
+        problems = []
+        for size in PLOS_SIZES:
+            url = f"{PLOS_IMAGE}?{urlencode({'size': size, 'id': doi})}"
+            dest = Path(self._folder.name) / f"plos-{size}"
+            try:
+                openalex.download(openalex.Candidate("published", f"PLOS figure {doi}", url, "image", dest.name), dest, MAX_IMAGE_MB * 2**20)
+                image = Image.open(io.BytesIO(dest.read_bytes()))  # not the file: it is deleted next, even on Windows
+                image.load()
+                return image, url
+            except ApiError as e:
+                problems.append(e.message)
+            except (UnidentifiedImageError, OSError, Image.DecompressionBombError) as e:
+                problems.append(f"PLOS's {size} image of {doi} can't be read: {e}")
+            finally:
+                dest.unlink(missing_ok=True)
+        raise Unavailable("; ".join(problems))
+
     def image(self, fig: Figure) -> tuple[Any, str] | None:
         """(the image, where it came from); None if no <fig> corresponds; raises Unavailable if one does but can't be had."""
         graphic = self.find(fig)
         if graphic is None:
             return None
+        if m := PLOS_FIGURE.fullmatch(graphic.file):
+            image, url = self._plos(m[1])
+            return (image if image.mode in PNG_MODES else image.convert("RGB")), url
         archive = self._open()
         member = self._member(archive, graphic.file)
         try:

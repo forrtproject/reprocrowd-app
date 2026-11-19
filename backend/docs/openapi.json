@@ -6560,7 +6560,7 @@
           "report"
         ],
         "summary": "Get the original figure of a figure target",
-        "description": "Writes `targets/figures/<target>.png`, best first: the image as published, when a JATS full text names it and Europe PMC has it; the figure's area, from a full text that locates it (matched by caption when the target refers to an extraction without coordinates, such as JATS or a reconciled one); the whole page with the figure's caption. `method` says which, and `note` why the published image wasn't available if that failed. Naming a `pdf` skips the published image. The report shows the original next to the reproduced figure. 201 the first time, 200 when replacing.",
+        "description": "Writes `targets/figures/<target>.png`, best first: the image as published, when a JATS full text names it and Europe PMC (or PLOS, for its own JATS) has it; the figure's area, from a full text that locates it (matched by caption when the target refers to an extraction without coordinates, such as JATS or a reconciled one); the whole page with the figure's caption. `method` says which, and `note` why the published image wasn't available if that failed. Naming a `pdf` skips the published image. The report shows the original next to the reproduced figure. 201 the first time, 200 when replacing.",
         "operationId": "put_figure_v1_packages__pkg__figures__target__put",
         "security": [
           {
