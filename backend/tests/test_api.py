@@ -586,12 +586,20 @@ def test_jats_unavailable(client):
 @respx.mock
 def test_jats_from_plos(client):
     """A PLOS article Europe PMC has no JATS XML for (issue 75): PLOS's own is used."""
-    respx.get(JATS_URL).mock(return_value=httpx.Response(404))
+    epmc = respx.get(JATS_URL).mock(return_value=httpx.Response(404))
     plos = respx.get(PLOS_URL).mock(return_value=httpx.Response(200, content=(FIXTURES / "paper.jats.xml").read_bytes()))
     mock_openalex()
     j = client.get("/v1/jats", params={"doi": "10.1371/journal.pbio.1002106"}).json()
     assert j | {"title": None} == {"doi": "10.1371/journal.pbio.1002106", "available": True, "source": "PLOS", "pmcid": None, "url": PLOS_URL,
                                    "title": None, "reason": None}
+    # Europe PMC can't be reached: PLOS is still asked
+    epmc.mock(side_effect=httpx.ConnectError("down"))
+    assert client.get("/v1/jats", params={"doi": "10.1371/journal.pbio.1002106"}).json()["source"] == "PLOS"
+    # neither has it, and one couldn't be asked: not known, so not a refusal
+    plos.mock(return_value=httpx.Response(404))
+    e = problem(client.get("/v1/jats", params={"doi": "10.1371/journal.pbio.1002106"}), 502, "jats_check_failed")
+    assert "could not reach Europe PMC" in e["detail"] and "PLOS has no JATS XML" in e["detail"]
+    plos.mock(return_value=httpx.Response(200, content=(FIXTURES / "paper.jats.xml").read_bytes()))
     # and without a PMCID at all
     work = WORK | {"ids": {"openalex": "https://openalex.org/W3", "doi": "https://doi.org/10.1371/journal.pcsy.0000125"}}
     respx.get(url__regex=r"https://api\.openalex\.org/works/doi:10\.1371/journal\.pcsy\.0000125.*").mock(return_value=httpx.Response(200, json=work))

@@ -142,7 +142,8 @@ def _pmcid_of(c: Candidate) -> str | None:
 
 
 def _jats_head(c: Candidate) -> str | None:
-    """Why the candidate's JATS XML can't be had, from the start of the download; None if it can."""
+    """Why the candidate's JATS XML can't be had, from the start of the download; None if it can. Raises
+    jats_check_failed if its source can't be reached."""
     source = "Europe PMC" if _pmcid_of(c) else "PLOS"
     try:
         with _client() as client, client.stream("GET", c.url, headers={"Accept": "application/xml"}) as r:
@@ -166,7 +167,8 @@ def _jats_head(c: Candidate) -> str | None:
 def jats_availability(doi: str) -> dict[str, Any]:
     """Can the paper's JATS XML be retrieved? Asks OpenAlex and Europe PMC for its PMCID, then fetches the start of
     Europe PMC's fullTextXML: a PMCID alone isn't enough, since only the open-access subset has full-text XML. PLOS
-    articles also have it from PLOS, which is tried if Europe PMC has none."""
+    articles also have it from PLOS, which is tried if Europe PMC has none. A source that can't be reached doesn't stop
+    the others from being tried, but if none has the XML, that is jats_check_failed: the answer isn't known."""
     work = fetch_work(Identifier(scheme="doi", value=doi))
     cands, _ = candidates(work)
     jats = [c for c in cands if c.format == "jats"]
@@ -176,10 +178,17 @@ def jats_availability(doi: str) -> dict[str, Any]:
         out["reason"] = "Europe PMC has no copy of this paper in PubMed Central (no PMCID)."
         return out
     reasons = [] if _pmcid_of(jats[0]) else ["Europe PMC has no copy of this paper in PubMed Central (no PMCID)."]
+    unreachable: list[str] = []
     for c in jats:
-        reason = _jats_head(c)
+        try:
+            reason = _jats_head(c)
+        except ApiError as e:
+            unreachable.append(e.message)
+            continue
         if reason is None:
             return out | {"available": True, "source": "Europe PMC" if _pmcid_of(c) else "PLOS", "pmcid": _pmcid_of(c), "url": c.url}
         reasons.append(reason)
+    if unreachable:
+        raise ApiError(502, "jats_check_failed", "; ".join(unreachable) + (f" ({' '.join(reasons)})" if reasons else ""))
     pmcid = next((_pmcid_of(c) for c in jats if _pmcid_of(c)), None)
     return out | {"pmcid": pmcid, "url": jats[0].url, "reason": " ".join(reasons)}

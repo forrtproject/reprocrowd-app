@@ -1393,7 +1393,7 @@
                 }
               }
             },
-            "description": "`openalex_failed`: OpenAlex could not be reached or returned an error; `jats_check_failed`: Europe PMC could not be reached to check for JATS XML"
+            "description": "`openalex_failed`: OpenAlex could not be reached or returned an error; `jats_check_failed`: A source of JATS XML (Europe PMC, PLOS) could not be reached to check for it"
           }
         }
       }

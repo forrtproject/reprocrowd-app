@@ -207,6 +207,7 @@ export async function ensureText(id: string, progress?: Progress): Promise<strin
   // Europe PMC first (its archive has the published figures), then the publisher's (PLOS).
   const jats = candidates.filter((x) => x.format === "jats");
   if (!jats.length) throw new ServiceError(`${JATS_ONLY} ${notes.find((n) => /PMCID/.test(n)) ?? "There is no JATS XML for this paper."}`, { status: 409, code: "jats_unavailable" });
+  // A source whose file can't be downloaded or parsed is skipped for the next one.
   const failures: string[] = [];
   for (const c of jats) {
     let ftName: string;
@@ -219,10 +220,17 @@ export async function ensureText(id: string, progress?: Progress): Promise<strin
       failures.push((e as Error).message);
       continue;
     }
-    progress?.to("parse");
-    return ((await request("POST", `${P}/extractions`, { json: { method: "parse", fulltext: ftName }, timeout: 300_000 })).data as any).name;
+    try {
+      progress?.to("parse");
+      return ((await request("POST", `${P}/extractions`, { json: { method: "parse", fulltext: ftName }, timeout: 300_000 })).data as any).name;
+    } catch (e) {
+      if ((e as ServiceError).problem?.code !== "parse_failed") throw e;
+      failures.push(`${c.label}: ${(e as Error).message}`);
+      // Not left in the package: opening it again would try to parse this file rather than the next source.
+      await request("DELETE", `${P}/fulltexts/${enc(ftName)}`);
+    }
   }
-  throw new ServiceError(`${JATS_ONLY} No JATS XML could be downloaded for this paper (${failures.join("; ")}).`, { status: 409, code: "jats_unavailable" });
+  throw new ServiceError(`${JATS_ONLY} No JATS XML could be used for this paper (${failures.join("; ")}).`, { status: 409, code: "jats_unavailable" });
 }
 
 /** New editor/backend commands in a settings patch, as the confirmation lists them. Clearing one goes back to the
