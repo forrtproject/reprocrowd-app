@@ -104,7 +104,11 @@ export interface ZenodoRecord { id: number | string | null; doi: string | null; 
 export interface ZenodoAccount { sandbox: boolean; hasToken: boolean; creator: Creator; community: string }
 export interface DepositPreview {
   metadata: Record<string, any>;
-  contents: { groups: Record<string, { description: string; resources: string[]; bytes: number }>; paper_license: string | null; default_exclude: string[] };
+  contents: {
+    groups: Record<string, { description: string; resources: string[]; bytes: number }>; paper_license: string | null; default_exclude: string[];
+    /** Every file of the package; group null: always uploaded. flags: why it may not belong in a public record. */
+    files: { path: string; bytes: number; group: string | null; flags: string[]; checked: boolean }[];
+  };
   exclude: string[];
 }
 /** A pilot issue for a paper in the pilots repository (anyone's reproduction of it). */
@@ -173,6 +177,7 @@ export const host = {
   openUrl: (url: string) => call<void>("openUrl", url),
   // settings and backend
   getConfig: () => call<Config>("getConfig"),
+    confirmSettings: (patch: { editorCmd?: string; backendCmd?: string }, backendConfig?: string) => call<void>("confirmSettings", patch, backendConfig),
     setConfig: (patch: { packagesRoot?: string; editorCmd?: string; backendCmd?: string; checkUpdates?: boolean; autoUpdate?: boolean; zenodo?: { sandbox?: boolean; community?: string; creator?: Partial<Creator> }; github?: { repo?: string } }) => call<void>("setConfig", patch),
     llmModels: (refresh?: boolean) => call<LlmModels>("llmModels", refresh),
     setLlmModels: (disabled: string[]) => call<void>("setLlmModels", disabled),
@@ -226,7 +231,7 @@ export interface ConfiguredProfile {
   argv: string[]; model: string; effort: string; timeout_s: number;
   output?: string; events?: string; tools?: string[]; exec_tools?: string[];
   read_files_argv?: string[]; json_schema_argv?: string[];
-  no_exec_argv?: string[]; no_exec_env?: Record<string, string>;
+  no_exec_argv?: string[]; no_exec_env?: Record<string, string>; env_pass?: string[];
 }
 
 /** How an agent profile honours "don't run the analysis", derived like the backend (providers.exec_restriction). */

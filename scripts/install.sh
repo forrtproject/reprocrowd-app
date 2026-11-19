@@ -5,13 +5,19 @@
 #   scripts/install.sh --uninstall                  remove the app (your packages and settings stay)
 #
 # Needs: Node.js >= 20 (with npm) and uv. Linux and macOS; on Windows, use WSL.
-# Installs to:  Linux  ~/.local/share/reprocrowd/app, a menu entry, and ~/.local/bin/reprocrowd
+# Installs to:  Linux  ~/.local/share/reprocrowd/app, a menu entry, and ~/.local/bin/reprocrowd; on systems that
+#                      need an AppArmor profile for the app's sandbox (Ubuntu 23.10+), /opt/reprocrowd/app instead,
+#                      owned by root (asks for your password once, after building)
 #               macOS  ~/Applications/ReproCrowd.app
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
 DATA="${REPROCROWD_DATA_DIR:-${XDG_DATA_HOME:-$HOME/.local/share}}"
 LINUX_DIR="$DATA/reprocrowd/app"
+USER_DIR="$LINUX_DIR"
+# Where the app goes when it needs the AppArmor profile: the profile trusts the binary at a path, so only root may
+# write there (#91). Updates come from running this script again, as for the user install.
+SYSTEM_DIR=/opt/reprocrowd # fixed: every folder above it must be root-owned too
 DESKTOP="$DATA/applications/reprocrowd.desktop"
 BIN="${REPROCROWD_BIN_DIR:-$HOME/.local/bin}/reprocrowd"
 MAC_APP="${REPROCROWD_MAC_APPS:-$HOME/Applications}/ReproCrowd.app"
@@ -23,6 +29,10 @@ die() { printf '\033[1;31m✗\033[0m %s\n' "$*" >&2; exit 1; }
 
 if [ "${1:-}" = "--uninstall" ]; then
   rm -rf "$LINUX_DIR" "$DESKTOP" "$BIN" "$MAC_APP"
+  if [ -d "$SYSTEM_DIR/app" ]; then
+    say "Removing $SYSTEM_DIR (needs sudo)…"
+    sudo rm -rf "$SYSTEM_DIR" || warn "Could not remove $SYSTEM_DIR; remove it with:  sudo rm -rf $SYSTEM_DIR"
+  fi
   say "ReproCrowd removed. Your reproductions and settings were kept."
   # The profile allows user namespaces to whatever binary sits at the old install path, so it goes too.
   PROFILE=/etc/apparmor.d/reprocrowd
@@ -47,6 +57,19 @@ case "$OS" in Linux | Darwin) ;; *) die "This script is for Linux and macOS. On 
 command -v node >/dev/null && command -v npm >/dev/null || die "Node.js is missing. Install Node.js 20 or newer: https://nodejs.org (macOS: brew install node)."
 [ "$(node -p 'process.versions.node.split(".")[0]')" -ge 20 ] || die "Node.js $(node -v) is too old; ReproCrowd needs 20 or newer: https://nodejs.org"
 command -v uv >/dev/null || die "uv is missing. Install it with:  curl -LsSf https://astral.sh/uv/install.sh | sh   (then open a new terminal)"
+
+# ---------- administrator rights, where the sandbox needs an AppArmor profile ----------
+# Ubuntu 23.10+ lets programs create the user namespaces Chromium's sandbox needs only with an AppArmor profile that
+# allows it; without one the app aborts at start ("The SUID sandbox helper binary was found, but is not configured
+# correctly"). Containers can't use the sandbox at all (see the README: start with --no-sandbox).
+NEED_PROFILE=""
+if [ "$OS" = Linux ] && [ ! -f /.dockerenv ] && [ ! -f /run/.containerenv ] &&
+  [ "$(cat /proc/sys/kernel/apparmor_restrict_unprivileged_userns 2>/dev/null)" = 1 ]; then
+  NEED_PROFILE=1
+  LINUX_DIR="$SYSTEM_DIR/app"
+  say "This system lets ReproCrowd use its sandbox only with an AppArmor profile, so it is installed to $SYSTEM_DIR,"
+  say "owned by root. You'll be asked for your password once, after the build."
+fi
 
 # ---------- build ----------
 say "Installing the build tools (npm)…"
@@ -88,15 +111,50 @@ npx electron-builder "$TARGET" dir --publish never -c.electronDist="$EZIP" >"$LO
   { tail -20 "$LOG" >&2; die "Packaging failed (full log: $LOG)."; }
 rm -f "$LOG"
 
+# ---------- administrator rights ----------
+# Only now, after the build: npm runs the install scripts of every dependency, and none of them may find a sudo
+# session open.
+if [ -n "$NEED_PROFILE" ]; then
+  say "Installing to $SYSTEM_DIR and adding the AppArmor profile needs your password."
+  # A password dialog when there is a desktop and a dialog tool; sudo's own prompt in the terminal otherwise.
+  ASKPASS=""
+  if [ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]; then
+    MSG="The ReproCrowd installer needs your password to install the app to $SYSTEM_DIR and add its AppArmor profile."
+    if command -v zenity >/dev/null; then
+      ASKPASS="$(mktemp)"
+      printf '#!/bin/sh\nexec zenity --password --title="%s"\n' "ReproCrowd installer" >"$ASKPASS"
+    elif command -v kdialog >/dev/null; then
+      ASKPASS="$(mktemp)"
+      printf '#!/bin/sh\nexec kdialog --title "ReproCrowd installer" --password "%s"\n' "$MSG" >"$ASKPASS"
+    fi
+  fi
+  if [ -n "$ASKPASS" ]; then
+    chmod 700 "$ASKPASS"
+    SUDO_ASKPASS="$ASKPASS" sudo -A -v 2>/dev/null || sudo -v || GOT_SUDO=no
+    rm -f "$ASKPASS"
+  else
+    sudo -v || GOT_SUDO=no
+  fi
+  [ "${GOT_SUDO:-}" = no ] && die "ReproCrowd needs administrator rights on this system. Run the installer again and enter your password, or ask an administrator to run it."
+fi
+
 # ---------- install ----------
 if [ "$OS" = Linux ]; then
-  rm -rf "$LINUX_DIR"
-  mkdir -p "$(dirname "$LINUX_DIR")" "$(dirname "$DESKTOP")" "$(dirname "$BIN")"
+  AS="" # the user install needs no sudo
+  [ -n "$NEED_PROFILE" ] && AS=sudo
+  $AS rm -rf "$LINUX_DIR"
+  $AS mkdir -p "$(dirname "$LINUX_DIR")"
+  mkdir -p "$(dirname "$DESKTOP")" "$(dirname "$BIN")"
   # electron-builder names the folder linux-unpacked on x64 and linux-<arch>-unpacked on every other CPU
   UNPACKED=dist/linux-unpacked
   [ "$EARCH" = x64 ] || UNPACKED="dist/linux-$EARCH-unpacked"
   [ -d "$UNPACKED" ] || die "The build produced no $UNPACKED."
-  cp -a "$UNPACKED" "$LINUX_DIR"
+  $AS cp -a "$UNPACKED" "$LINUX_DIR"
+  if [ -n "$NEED_PROFILE" ]; then
+    sudo chown -R root:root "$SYSTEM_DIR"
+    sudo chmod -R go-w "$SYSTEM_DIR"
+    rm -rf "$USER_DIR" # an earlier install to the user's folder, which the profile used to trust
+  fi
   ln -sf "$LINUX_DIR/reprocrowd-app" "$BIN"
   cat > "$DESKTOP" <<EOF
 [Desktop Entry]
@@ -124,12 +182,9 @@ EOF
       warn "Install GTK 3, NSS, libgbm and ALSA with your package manager."
     fi
   fi
-  # Ubuntu 23.10+ lets programs create the user namespaces Chromium's sandbox needs only with an AppArmor profile that
-  # allows it; without one the app aborts at start ("The SUID sandbox helper binary was found, but is not configured
-  # correctly"). Containers can't use the sandbox at all (see the README: start with --no-sandbox).
   if [ -f /.dockerenv ] || [ -f /run/.containerenv ]; then
     warn "In a container, start ReproCrowd with:  reprocrowd --no-sandbox   (the Chromium sandbox can't work there)"
-  elif [ "$(cat /proc/sys/kernel/apparmor_restrict_unprivileged_userns 2>/dev/null)" = 1 ]; then
+  elif [ -n "$NEED_PROFILE" ]; then
     PROFILE=/etc/apparmor.d/reprocrowd
     EXE="$LINUX_DIR/reprocrowd-app"
     case "$EXE" in *" "*) EXE="\"$EXE\"" ;; esac
@@ -144,7 +199,7 @@ profile reprocrowd $EXE flags=(unconfined) {
   include if exists <local/reprocrowd>
 }"
     if [ "$(cat "$PROFILE" 2>/dev/null)" != "$WANT" ]; then
-      say "This system only lets ReproCrowd use its sandbox with an AppArmor profile; adding $PROFILE (needs sudo)…"
+      say "Adding the AppArmor profile $PROFILE for $EXE…"
       if printf '%s\n' "$WANT" | sudo tee "$PROFILE" >/dev/null && sudo apparmor_parser -r "$PROFILE"; then
         say "AppArmor profile loaded."
       else

@@ -110,6 +110,8 @@ The last ZIP of the package (PUT …/archive).
 | `repo` | string | yes | repository type the file came from (zenodo, github, gitlab, osf, figshare, ...) |
 | `id` | string | yes | repository-specific identifier (DOI, owner/repo, record id, ...) |
 | `label` | string | yes | where the link was found, e.g. 'data availability statement' |
+| `path` | string \| null |  | repository-relative path of the file |
+| `commit` | string \| null |  | commit the file was fetched at (git repositories): the files of one fetch all come from the same commit, whatever is pushed meanwhile |
 
 ### FulltextMeta
 
@@ -179,7 +181,7 @@ A work identifier that OpenAlex can resolve.
 | Field | Type | Req. | Description |
 |---|---|---|---|
 | `type` | `"local"` |  | default `local` |
-| `path` | string | yes | absolute path the file was copied from |
+| `path` | string | yes | name of the local file or folder it was copied from. Only the name: a full path would publish the user's folder layout (often their real name) with the package |
 
 ### OtherMeta
 

@@ -7,7 +7,7 @@ export type Profile = {
   argv: string[]; model: string; effort: string; timeout_s: number;
   output?: string; events?: string; tools?: string[]; exec_tools?: string[];
   read_files_argv?: string[]; json_schema_argv?: string[];
-  no_exec_argv?: string[]; no_exec_env?: Record<string, string>;
+  no_exec_argv?: string[]; no_exec_env?: Record<string, string>; env_pass?: string[];
 };
 const strings = (v: unknown): v is string[] => Array.isArray(v) && v.every((x) => typeof x === "string");
 
@@ -15,13 +15,14 @@ export function replaceProfile(text: string, kind: ProfileKind, name: string, pr
   if (!["llm", "agent"].includes(kind) || !/^[\w-]+$/.test(name)) throw new Error("Choose a profile name using letters, numbers, underscores or hyphens.");
   if (!strings(profile.argv) || !profile.argv.length || !profile.argv[0].trim()) throw new Error("A command and an argument list are required.");
   if (typeof profile.model !== "string" || typeof profile.effort !== "string" || !Number.isFinite(profile.timeout_s) || profile.timeout_s <= 0) throw new Error("Model/effort must be text and timeout must be positive.");
-  const allowed = new Set(["argv", "model", "effort", "timeout_s", ...(kind === "llm" ? ["output", "read_files_argv", "json_schema_argv"] : ["events", "tools", "exec_tools", "no_exec_argv", "no_exec_env"])]);
+  const allowed = new Set(["argv", "model", "effort", "timeout_s", "env_pass", ...(kind === "llm" ? ["output", "read_files_argv", "json_schema_argv"] : ["events", "tools", "exec_tools", "no_exec_argv", "no_exec_env"])]);
   if (Object.keys(profile).some((key) => !allowed.has(key))) throw new Error("Unrecognized profile field.");
   const protocols = kind === "llm" ? ["text", "claude-json", "opencode-json", "codex-json"] : ["text", "claude-stream-json", "opencode-json", "codex-json"];
   if (!protocols.includes(kind === "llm" ? profile.output ?? "" : profile.events ?? "")) throw new Error("Choose a supported output protocol.");
-  for (const key of ["tools", "exec_tools", "read_files_argv", "json_schema_argv", "no_exec_argv"] as const) {
+  for (const key of ["tools", "exec_tools", "read_files_argv", "json_schema_argv", "no_exec_argv", "env_pass"] as const) {
     if (profile[key] !== undefined && !strings(profile[key])) throw new Error(`${key} must be a list of text arguments.`);
   }
+  for (const n of profile.env_pass ?? []) if (!/^[A-Za-z_][A-Za-z0-9_]*\*?$/.test(n)) throw new Error(`“${n}” isn't an environment variable name (or a PREFIX_* group).`);
   if (profile.no_exec_env !== undefined) {
     const env = profile.no_exec_env;
     if (typeof env !== "object" || env === null || Array.isArray(env)) throw new Error("The no-analysis environment must be NAME=value lines.");

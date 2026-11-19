@@ -9,6 +9,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import * as backend from "./backend";
+import { changedCommands, confirmCommands, confirmToolSettings, preconfirmCommands } from "./confirm";
 import { detectLlmModels, LlmModel } from "./models";
 import { openInTerminal, searchPath, spawnDetached, splitCommand, which } from "./processes";
 import { get, post, request, ResponseType, ServiceError } from "./service";
@@ -217,6 +218,14 @@ export async function ensureText(id: string, progress?: Progress): Promise<strin
   }
 }
 
+/** New editor/backend commands in a settings patch, as the confirmation lists them. Clearing one goes back to the
+ * built-in default and needs no confirmation. */
+function settingsCommands(before: ReturnType<typeof loadSettings>, patch: Parameters<typeof saveSettings>[0]): string[] {
+  return (["editorCmd", "backendCmd"] as const)
+    .filter((k) => typeof patch[k] === "string" && patch[k]!.trim() && patch[k]!.trim() !== before[k].trim())
+    .map((k) => `${k === "editorCmd" ? "Code editor" : "Backend"}: ${patch[k]!.trim()}`);
+}
+
 export function makeApi(wc: WebContents) {
   const win = () => BrowserWindow.fromWebContents(wc)!;
   const base = () => `/v1/packages/${enc(pkgId(wc))}`;
@@ -379,6 +388,7 @@ export function makeApi(wc: WebContents) {
       if (!fs.existsSync(path.join(dir, "datapackage.json"))) throw new Error(`${dir} has no datapackage.json, so it isn't a ReproCrowd package.`);
       const known = (await get<any[]>("/v1/packages")).find((p) => norm(p.path) === norm(dir));
       if (known) return known.id as string;
+      if (!(await confirmToolSettings(win(), dir))) return null;
       return ((await request("POST", "/v1/packages", { json: { path: dir, adopt: true } })).data as any).id as string;
     },
     removePackage: async (id: string) => {
@@ -411,6 +421,7 @@ export function makeApi(wc: WebContents) {
     },
     setConfig: async (patch: Parameters<typeof saveSettings>[0]) => {
       const before = loadSettings();
+      await confirmCommands(win(), settingsCommands(before, patch));
       const after = saveSettings(patch);
       if (before.autoUpdate !== after.autoUpdate) updater.applyUpdateSettings();
       // The backend gets the Zenodo choices and its start command at start.
@@ -422,7 +433,26 @@ export function makeApi(wc: WebContents) {
     },
     claudeLogin: async () => cliLogin("claude"),
     cliLogin: async (cli: string) => cliLogin(cli),
-    setZenodoToken: async (server: ZenodoServer, token: string | null) => setSecret(zenodoKey(server), token?.trim() || null),
+    setZenodoToken: async (server: ZenodoServer, token: string | null) => {
+      const value = token?.trim() || null;
+      const storage = value ? await secretStorageKind() : "secure";
+      if (storage === "secure") return setSecret(zenodoKey(server), value);
+      // No keyring (#91): saving the token with Electron's fixed key is only obfuscation, so it is the user's choice.
+      const weak = storage === "weak";
+      const { response } = await dialog.showMessageBox(win(), {
+        type: "warning",
+        title: "No keyring",
+        message: weak ? "This system has no keyring, so the token can't be saved securely." : "This system offers no secure storage for the token.",
+        detail: (weak ? "Saved unprotected, the token is only obfuscated, with a key that is the same on every computer: any program running as you can read it. " : "")
+          + "Kept for this session, it works until ReproCrowd quits, and you paste it again next time.",
+        buttons: weak ? ["Cancel", "Keep for this session", "Save unprotected"] : ["Cancel", "Keep for this session"],
+        defaultId: 1,
+        cancelId: 0,
+        noLink: true,
+      });
+      if (response === 0) throw new Error("The token was not saved.");
+      return setSecret(zenodoKey(server), value, { sessionOnly: response === 1 });
+    },
     verifyZenodoToken: async (sandbox: boolean, token?: string) => {
       const t = token?.trim() || (await zenodoToken(sandbox));
       if (!t) throw new ServiceError("No token stored for this server.", { status: 400, code: "zenodo_token_missing" });
@@ -431,7 +461,7 @@ export function makeApi(wc: WebContents) {
     profileConfig: async () => backend.profileConfig(),
     /** Whether a profile's command is installed; no model call. */
     commandFound: async (command: string) => !!which(String(command ?? "").trim()),
-    saveProfile: (kind: Parameters<typeof backend.saveProfile>[0], name: string, profile: Parameters<typeof backend.saveProfile>[2]) => backend.saveProfile(kind, name, profile),
+    saveProfile: (kind: Parameters<typeof backend.saveProfile>[0], name: string, profile: Parameters<typeof backend.saveProfile>[2]) => backend.saveProfile(kind, name, profile, (previous, next) => confirmCommands(win(), changedCommands(previous, next))),
     runningJobs: async () => get<any[]>("/v1/jobs"),
     /** `repo` as typed in Settings ("" = the default pilots repository, as Save would store it); omitted = the saved one. */
     checkGithubToken: async (repo?: string) => {
@@ -448,7 +478,11 @@ export function makeApi(wc: WebContents) {
       }
       return "GitHub's login opened in a terminal window. Finish it there (it opens your browser), then click Check.";
     },
+    /** Before a Settings save: one confirmation for its new commands, in the settings and the backend configuration. */
+    confirmSettings: async (patch: Parameters<typeof saveSettings>[0], backendConfig?: string) =>
+      preconfirmCommands(win(), [...settingsCommands(loadSettings(), patch), ...(backendConfig === undefined ? [] : changedCommands(backend.readUserConfig(), backendConfig))]),
     saveBackendConfig: async (text: string) => {
+      await confirmCommands(win(), changedCommands(backend.readUserConfig(), text));
       backend.writeUserConfig(text);
       await backend.restart();
     },

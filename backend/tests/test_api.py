@@ -211,6 +211,7 @@ def test_parse_and_reconcile(client, pkg):
 def test_inputs(client, pkg):
     r = client.post(f"/v1/packages/{pkg}/inputs", json={"path": str(FIXTURES / "data.csv"), "note": "raw RTs"})
     assert r.status_code == 201 and r.json()[0]["reprocrowd"]["role"] == "data"
+    assert r.json()[0]["reprocrowd"]["origin"] == {"type": "local", "path": "data.csv"}  # not the full path: it would be published
     r = client.post(f"/v1/packages/{pkg}/inputs", json={"path": str(FIXTURES / "replication.zip")})
     rs = r.json()
     assert [x["path"] for x in rs] == ["inputs/replication.zip", "inputs/replication/replication/analysis.R", "inputs/replication/replication/data/raw.csv"]
@@ -226,6 +227,38 @@ def test_inputs(client, pkg):
     assert left == ["inputs/data.csv"]
     root = Path(client.get(f"/v1/packages/{pkg}").json()["path"])
     assert not (root / "inputs" / "replication").exists()
+
+
+def test_zip_limits(client, pkg, tmp_path, monkeypatch):
+    """Zip bombs and huge archives are refused before anything is unpacked, and nothing is left behind."""
+    import zipfile
+    from reprocrowd.config import settings
+    P = f"/v1/packages/{pkg}"
+    bomb = tmp_path / "bomb.zip"
+    with zipfile.ZipFile(bomb, "w", zipfile.ZIP_DEFLATED) as z:
+        z.writestr("zeros.csv", b"0" * 50_000_000)  # 50 MB of one byte compresses about 1000:1
+    body = problem(client.post(P + "/inputs", json={"path": str(bomb)}), 422, "archive_too_large")
+    assert "zip bomb" in body["detail"]
+    many = tmp_path / "many.zip"
+    with zipfile.ZipFile(many, "w") as z:
+        for i in range(4):
+            z.writestr(f"f{i}.csv", "a,b\n1,2\n")
+    monkeypatch.setattr(settings(), "max_unpack_files", 3)
+    problem(client.post(P + "/inputs", json={"path": str(many)}), 422, "archive_too_large")
+    monkeypatch.setattr(settings(), "max_unpack_files", 20000)
+    monkeypatch.setattr(settings(), "max_unpack_mb", 0.000001)
+    problem(client.post(P + "/inputs", json={"path": str(many)}), 422, "archive_too_large")
+    assert client.get(P + "/inputs").json() == []
+    root = Path(client.get(P).json()["path"])
+    assert not any((root / "inputs").iterdir())
+
+
+def test_local_origin_keeps_only_the_name():
+    """Older packages recorded the full source path; it is cut to the name when they are loaded."""
+    from reprocrowd.schemas.manifest import LocalOrigin
+    assert LocalOrigin(path="/home/jane.doe/IRB/participants_raw.csv").path == "participants_raw.csv"
+    assert LocalOrigin(path=r"C:\Users\jane\study\data.xlsx").path == "data.xlsx"
+    assert LocalOrigin(path="data.csv").path == "data.csv"
 
 
 def test_inputs_bulk_delete(client, pkg, tmp_path):

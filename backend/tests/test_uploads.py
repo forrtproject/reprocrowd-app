@@ -146,3 +146,18 @@ def test_package_paths_refuse_control_characters_and_drives(tmp_path):
     for bad in ("inputs/a\nb.csv", "inputs/a\x00b", "D:/x", "inputs/C:x", "inputs/../x", "inputs\\x"):
         with pytest.raises(ApiError):
             p.path(bad)
+
+
+@pytest.mark.parametrize("path", ["http://192.168.1.1/admin", "https://example.org/data.csv", "s3://bucket/x.csv", "file:///etc/passwd"])
+def test_resource_paths_are_not_urls(path):
+    """Issue #91: validation would fetch a URL resource, so a package could make the app request any address."""
+    from pydantic import ValidationError
+    from reprocrowd.schemas.manifest import Resource
+
+    base = {"name": "x", "type": "file", "format": "csv", "mediatype": "text/csv", "bytes": 1, "hash": "sha256:" + "0" * 64,
+            "reprocrowd": {"kind": "output", "added_at": "2026-01-01T00:00:00Z"}}
+    with pytest.raises(ValidationError, match="not a package-relative path"):
+        Resource.model_validate(base | {"path": path})
+    with pytest.raises(ValidationError, match="not a package-relative path"):
+        Resource.model_validate(base | {"path": "outputs/x.csv", "jsonSchema": path})
+    assert Resource.model_validate(base | {"path": "outputs/notes:2.csv"}).path == "outputs/notes:2.csv"

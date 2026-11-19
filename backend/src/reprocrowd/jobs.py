@@ -19,11 +19,13 @@ import threading
 import time
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, Iterable, Mapping
 
 from pydantic import BaseModel
 
 from .errors import ApiError, conflict, not_found
+from . import childenv
+from .config import ISOLATION_ENV
 from .llm import resolve_argv
 from .package import Package, atomic_write, dump_json
 from .schemas.common import now
@@ -93,22 +95,25 @@ def ensure_idle(pkg: Package) -> None:
         raise conflict("job_running", f"{job.id} ({job.type}) is running in this package; wait for it or cancel it", {"job": job.id})
 
 
-def job_env(extra: dict[str, str] | None = None) -> dict[str, str]:
-    """The service's environment minus its own virtualenv: jobs run the user's tools (python3, Rscript, …), not the
-    interpreter ReproCrowd happens to be installed in."""
-    env = dict(os.environ)
+def job_env(extra: dict[str, str] | None = None, base: Mapping[str, str] | None = None) -> dict[str, str]:
+    """``base`` (default: the service's environment; jobs pass their allowlist from childenv) minus the service's own
+    virtualenv: jobs run the user's tools (python3, Rscript, …), not the interpreter ReproCrowd happens to be installed in."""
+    env = dict(os.environ if base is None else base)
     own = Path(sys.prefix)
     if own != Path(sys.base_prefix):  # running inside a virtualenv
         env["PATH"] = os.pathsep.join(p for p in env.get("PATH", "").split(os.pathsep) if p and Path(p).parent != own)
         if Path(env.get("VIRTUAL_ENV", "/nonexistent")) == own:
             env.pop("VIRTUAL_ENV")
-    return env | (extra or {})
+    return env | ISOLATION_ENV | (extra or {})
 
 
 def start(pkg: Package, *, jid: str, type: JobType, argv: list[str], stdin: str, timeout_s: int, events_format: str,
-          profile: str | None, request: dict[str, Any], finish: Callable[[Job], BaseModel | None], merge_stderr: bool = False, env: dict[str, str] | None = None) -> Job:
+          profile: str | None, request: dict[str, Any], finish: Callable[[Job], BaseModel | None], merge_stderr: bool = False, env: dict[str, str] | None = None,
+          env_pass: Iterable[str] = ()) -> Job:
     """merge_stderr: write stderr into stdout too (pipeline runs: errors belong in the log, in order).
     env: extra environment variables."""
+    # Analysis scripts get the scripts' allowlist; agents their CLI's, plus the profile's env_pass (#91).
+    base = childenv.for_script() if type == "run" else childenv.for_cli(argv, env_pass)
     folder = pkg.path(f"jobs/{jid}")
     folder.mkdir(parents=True, exist_ok=True)
     (folder / "stdin.txt").write_text(stdin, encoding="utf-8")
@@ -120,7 +125,7 @@ def start(pkg: Package, *, jid: str, type: JobType, argv: list[str], stdin: str,
         out, err = open(pkg.path(job.stdout), "wb"), open(pkg.path(job.stderr), "wb")
         try:
             proc = subprocess.Popen(resolve_argv(argv), cwd=pkg.root, stdin=subprocess.PIPE, stdout=out, stderr=subprocess.STDOUT if merge_stderr else err,
-                                    start_new_session=True, env=job_env({**(env or {}), "PWD": str(pkg.root)}))  # PWD: some CLIs (OpenCode) resolve relative paths from it
+                                    start_new_session=True, env=job_env({**(env or {}), "PWD": str(pkg.root)}, base))  # PWD: some CLIs (OpenCode) resolve relative paths from it
         except OSError as e:
             out.close(), err.close()
             job.status, job.finished_at, job.error = "failed", now(), f"could not start: {e}"

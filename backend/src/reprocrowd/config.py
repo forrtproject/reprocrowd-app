@@ -10,10 +10,14 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from .childenv import cli_name
+
 
 class LlmProfile(BaseModel):
     argv: list[str] = Field(min_length=1, description="command line; {model} and {effort} are substituted, the prompt goes to stdin")
     read_files_argv: list[str] = Field(default_factory=list, description="appended when the LLM must read package files (cwd = package root)")
+    env_pass: list[str] = Field(default_factory=list, description="environment variables passed on besides the defaults for its CLI (childenv); "
+                                                              "a trailing * matches a prefix, e.g. MY_GATEWAY_*")
     json_schema_argv: list[str] = Field(default_factory=list, description="appended with {schema} = the task's output JSON Schema, for CLIs "
                                                                           "that constrain output to a schema (claude: --json-schema)")
     output: Literal["text", "claude-json", "opencode-json", "codex-json"] = Field(
@@ -39,8 +43,35 @@ class AgentProfile(BaseModel):
     events: Literal["claude-stream-json", "opencode-json", "codex-json", "text"] = Field(default="claude-stream-json", description="how to read the agent's stdout as events")
     no_exec_argv: list[str] = Field(default_factory=list, description="appended when the caller forbids running the analysis (allow_exec=false): "
                                                                     "CLI flags that remove its command-running tools while keeping its read and edit tools")
+    env_pass: list[str] = Field(default_factory=list, description="environment variables passed on besides the defaults for its CLI (childenv); "
+                                                              "a trailing * matches a prefix, e.g. MY_GATEWAY_*")
     no_exec_env: dict[str, str] = Field(default_factory=dict, description="environment added when allow_exec=false, e.g. OpenCode's "
                                                                          "OPENCODE_PERMISSION denying every tool but reading and editing")
+
+
+# The coding CLIs run in the package folder, where a package from someone else can carry their project settings:
+# Claude Code's .claude/settings.json (hooks run commands), .mcp.json (MCP servers start without asking in -p mode)
+# and CLAUDE.md; Codex's AGENTS.md; OpenCode's AGENTS.md and CLAUDE.md (#91). These keep the user's own settings
+# and logins and skip the package's. They are added when a command is built, so configurations written before
+# them get them too. Checked with Claude Code 2.1 and codex-cli 0.152. OpenCode documents no switch for a project
+# opencode.json; adopting a folder that has one warns about it.
+_ISOLATION_ARGS = {"claude": ["--setting-sources", "user", "--strict-mcp-config"], "codex": ["-c", "project_doc_max_bytes=0"]}
+ISOLATION_ENV = {"OPENCODE_DISABLE_PROJECT_CONFIG": "1", "OPENCODE_DISABLE_CLAUDE_CODE": "1"}
+
+
+def isolate_argv(argv: list[str]) -> list[str]:
+    """``argv`` with the flags that keep its CLI from reading the package folder's own settings (see above). A flag
+    the command already sets is left as it is."""
+    if not argv:
+        return argv
+    name = cli_name(argv)
+    if name == "claude":
+        extra = [] if "--setting-sources" in argv else ["--setting-sources", "user"]
+        extra += [] if "--strict-mcp-config" in argv else ["--strict-mcp-config"]
+        return [argv[0], *extra, *argv[1:]]
+    if name == "codex" and not any(a.startswith("project_doc_max_bytes") for a in argv):
+        return [*argv, *_ISOLATION_ARGS["codex"]]
+    return argv
 
 
 def expand_argv(argv: list[str], values: dict[str, str]) -> list[str]:
@@ -138,6 +169,8 @@ class Settings(BaseModel):
     mailto: str = ""
     max_download_mb: int = 200
     max_upload_mb: int = 500
+    max_unpack_mb: int = Field(default=20000, gt=0, description="limit for the unpacked size of one zip archive (zip bombs)")
+    max_unpack_files: int = Field(default=20000, gt=0, description="limit for the number of files in one zip archive")
     llm_default_profile: str = "claude"
     llm_profiles: dict[str, LlmProfile] = Field(default_factory=_default_profiles)
     grobid_url: str = Field(default="", description="GROBID service, e.g. http://localhost:8070; empty = not configured")
@@ -186,7 +219,7 @@ def load_settings(path: Path | None = None) -> Settings:
         data["openalex_api_key"] = openalex["api_key"]
     if "mailto" in openalex:
         data["mailto"] = openalex["mailto"]
-    for k in ("max_download_mb", "max_upload_mb"):
+    for k in ("max_download_mb", "max_upload_mb", "max_unpack_mb", "max_unpack_files"):
         if k in raw.get("downloads", {}):
             data[k] = raw["downloads"][k]
     if "default_profile" in llm:

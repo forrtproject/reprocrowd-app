@@ -8,6 +8,10 @@ import { Api, bindPackage, makeApi } from "./api";
 import { get } from "./service";
 import { initUpdater, promptUpdate } from "./updater";
 
+// DevTools give whoever can type into them the renderer's whole API (#91), so packaged builds have none unless
+// REPROCROWD_DEBUG=1 is set; builds run from source keep them.
+const devTools = !app.isPackaged || process.env.REPROCROWD_DEBUG === "1";
+
 const SCHEME = "app";
 const ORIGIN = `${SCHEME}://ui`;
 const rendererDir = () => path.join(app.getAppPath(), "build", "renderer");
@@ -53,10 +57,12 @@ export function createWindow(hash = "") {
       sandbox: true,
       nodeIntegration: false,
       spellcheck: true,
+      devTools,
     },
   });
   // No menu bar in the window (Windows/Linux): everything it offered is in the UI. The application menu stays set,
-  // so its shortcuts (reload, dev tools, zoom, new window) still work; on macOS the menu lives in the system bar.
+  // so its shortcuts (reload, zoom, new window, and dev tools where they are enabled) still work; on macOS the menu
+  // lives in the system bar.
   win.setMenuBarVisibility(false);
   win.once("ready-to-show", () => win.show());
   const wc = win.webContents;
@@ -107,7 +113,7 @@ function menu() {
       ...(isMac ? [{ role: "appMenu" as const }] : []),
       { label: "File", submenu: [{ label: "New Window", accelerator: "CmdOrCtrl+Shift+N", click: () => createWindow() }, { type: "separator" }, isMac ? { role: "close" } : { role: "quit" }] },
       { role: "editMenu" },
-      { label: "View", submenu: [{ role: "reload" }, { role: "toggleDevTools" }, { type: "separator" }, { role: "resetZoom" }, { role: "zoomIn" }, { role: "zoomOut" }, { type: "separator" }, { role: "togglefullscreen" }] },
+      { label: "View", submenu: [{ role: "reload" }, ...(devTools ? [{ role: "toggleDevTools" as const }] : []), { type: "separator" }, { role: "resetZoom" }, { role: "zoomIn" }, { role: "zoomOut" }, { type: "separator" }, { role: "togglefullscreen" }] },
       { role: "windowMenu" },
       {
         role: "help",

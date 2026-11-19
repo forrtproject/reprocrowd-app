@@ -67,6 +67,9 @@ def test_deposit_draft_then_publish(client, pkg):
     pv = client.post(P + "/deposits:preview", json={"creators": ME, "note": "all fine"}).json()
     assert pv["exclude"] == ["paper"] and pv["contents"]["paper_license"] is None
     assert set(pv["contents"]["groups"]["paper"]["resources"]) == {"ft-paper-tei", "ex-paper-tei"}
+    files = pv["contents"]["files"]  # every file, for the dialog's full list (#91), datapackage.json included
+    assert {f["path"] for f in files} == {r["path"] for r in client.get(P + "/manifest").json()["resources"]} | {"datapackage.json"}
+    assert {f["group"] for f in files} >= {None, "paper"} and all(f["flags"] == [] for f in files)
     assert not z["create"].called
 
     r = client.post(P + "/deposits", json={"zenodo_token": "secret", "creators": ME, "note": "all fine"})
@@ -249,3 +252,93 @@ def test_local_paper_is_not_deposited(client, pkg, tmp_path):
     md.write_text("# A paper\n\n## Methods\n\nWe ran a test.\n", encoding="utf-8")
     assert client.post(f"/v1/packages/{local}/fulltexts", json={"path": str(md)}).status_code == 201
     problem(client.post(f"/v1/packages/{local}/deposits:preview", json={}), 409, "local_paper_text")
+
+
+def test_file_flags(tmp_path):
+    """Issue #91: files that may hold secrets are flagged in the deposit dialog by name and by content."""
+    from types import SimpleNamespace
+    from reprocrowd.package import Package
+    from reprocrowd.zenodo import file_flags
+
+    pkg = Package("p", tmp_path)
+    (tmp_path / "outputs").mkdir()
+    (tmp_path / "outputs" / "log.txt").write_text("run 1\n-----BEGIN OPENSSH PRIVATE KEY-----\nabc\n")
+    (tmp_path / "outputs" / "result.csv").write_text("a,b\n1,2\n")
+    (tmp_path / ".env").write_text("X=1\n")
+    flags = lambda p: file_flags(pkg, SimpleNamespace(path=p, hash="sha256:" + p))  # noqa: E731
+    assert flags("outputs/log.txt") == ["contains what looks like a private key or access token"]
+    assert flags("outputs/result.csv") == []
+    assert flags(".env") == ["hidden file", "the name suggests keys or credentials"]
+    assert flags("inputs/missing.pem") == ["the name suggests keys or credentials"]
+
+
+@respx.mock
+def test_preview_scans_the_archive(client, pkg):
+    """The secret check reads what is uploaded, the archive, datapackage.json included. A file it can't read is not
+    reported as checked. (Files on disk can't differ from the archive here: the preview refuses a stale report.)"""
+    from conftest import FIXTURES
+    from reprocrowd.package import Registry
+    from reprocrowd.zenodo import _looks_secret
+
+    mock_openalex()
+    ready_published(client, pkg)
+    P = f"/v1/packages/{pkg}"
+    assert client.post(P + "/inputs", json={"path": str(FIXTURES / "data.csv")}).status_code == 201
+    with Registry().get(pkg).edit() as m:  # a token pasted into a note ends up in datapackage.json
+        next(r for r in m.resources if r.reprocrowd.kind == "input").reprocrowd.note = "token ghp_" + "a" * 36
+    assert client.put(P + "/report", json={}).status_code in (200, 201)
+    assert client.put(P + "/archive").status_code == 200
+    r = client.post(P + "/deposits:preview", json={})
+    assert r.status_code == 200, r.text
+    files = {f["path"]: f for f in r.json()["contents"]["files"]}
+    assert "contains what looks like a private key or access token" in files["datapackage.json"]["flags"]
+    assert all(f["checked"] for f in files.values())
+    assert _looks_secret(Registry().get(pkg), "outputs/not-there.csv", None) is None  # unreadable: not checked
+
+
+@respx.mock
+def test_archive_from_elsewhere_is_checked(client, pkg):
+    """Issue #91: a package folder can bring its own archive. One with a file outside its list is refused at once;
+    one whose listed file differs from the package's is refused before anything is uploaded."""
+    import shutil
+    from pathlib import Path
+
+    mock_openalex()
+    ready_published(client, pkg)
+    z = mock_zenodo()
+    P = f"/v1/packages/{pkg}"
+    archive = Path(client.get(P).json()["path"]) / client.get(P + "/manifest").json()["reprocrowd"]["archive"]["path"]
+    good = archive.read_bytes()
+    with zipfile.ZipFile(archive, "a") as zf:
+        zf.writestr("outputs/hidden.txt", "not listed")
+    problem(client.post(P + "/deposits:preview", json={}), 409, "archive_stale")
+    archive.write_bytes(good)
+    listed = next(r["path"] for r in client.get(P + "/manifest").json()["resources"] if r["path"].startswith("outputs/"))
+    tmp = archive.with_suffix(".tmp")
+    with zipfile.ZipFile(archive) as src, zipfile.ZipFile(tmp, "w") as dst:
+        for info in src.infolist():
+            data = src.read(info)  # same size, other bytes: only hashing tells
+            dst.writestr(info, bytes(b ^ 1 for b in data) if info.filename == listed else data)
+    shutil.move(tmp, archive)
+    assert client.post(P + "/deposits:preview", json={}).status_code == 200  # same names: only a full read tells
+    problem(client.post(P + "/deposits", json={"zenodo_token": "t", "creators": ME}), 409, "archive_stale")
+    assert not z["create"].called
+
+
+@respx.mock
+def test_archive_member_with_another_size_is_refused_early(client, pkg):
+    """A listed file of another size (e.g. a zip bomb under a listed name) is refused before anything is decompressed."""
+    import shutil
+    from pathlib import Path
+
+    mock_openalex()
+    ready_published(client, pkg)
+    P = f"/v1/packages/{pkg}"
+    archive = Path(client.get(P).json()["path"]) / client.get(P + "/manifest").json()["reprocrowd"]["archive"]["path"]
+    listed = next(r["path"] for r in client.get(P + "/manifest").json()["resources"] if r["path"].startswith("outputs/"))
+    tmp = archive.with_suffix(".tmp")
+    with zipfile.ZipFile(archive) as src, zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED) as dst:
+        for info in src.infolist():
+            dst.writestr(info.filename, b"0" * 10_000_000 if info.filename == listed else src.read(info))
+    shutil.move(tmp, archive)
+    assert "size" in problem(client.post(P + "/deposits:preview", json={}), 409, "archive_stale")["detail"]

@@ -64,7 +64,7 @@ def add_local(pkg: Package, path: str, name: str | None = None) -> Resource:
         raise ApiError(400, "not_a_file", f"{src} is not a readable file")
     tmp = _incoming(pkg)
     shutil.copyfile(src, tmp)
-    return _accept(pkg, tmp, src.name, LocalOrigin(path=str(src)), name)
+    return _accept(pkg, tmp, src.name, LocalOrigin(path=src.name), name)
 
 
 def add_upload(pkg: Package, filename: str, data: BinaryIO, name: str | None = None) -> Resource:

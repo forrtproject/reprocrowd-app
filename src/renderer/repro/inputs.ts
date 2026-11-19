@@ -4,7 +4,7 @@
 import { ApiError, host, pkg } from "../api";
 import { countSentences } from "../doc";
 import { ROLES, type AcquireFailure, type Action, type AcquirePreview, type AcquireResult, type Document, type Resource, type Role } from "../types";
-import { confirmDialog, esc, modal, sizeText } from "../util";
+import { choose, confirmDialog, esc, modal, sizeText } from "../util";
 import type { Step, Wizard } from "./wizard";
 
 const REPOSITORIES = "Zenodo, OSF, GitHub, GitLab, Figshare";
@@ -115,6 +115,25 @@ function fetchDialog(p: AcquirePreview): Promise<{ action: "all" } | { action: "
 
 export class InputsStep implements Step {
   title = "Inputs";
+
+  /** Imported code can be run by the coding agent while running the analysis is allowed (#91): say so, and offer to
+   * turn running off. Nothing is shown when running is already off or no code came in. */
+  private async warnAboutCode(added: unknown, source: string) {
+    const st = this.w.app.state;
+    const code = (Array.isArray(added) ? added.flat(2) : []).filter((r): r is InputRes => (r as InputRes)?.reprocrowd?.role === "code");
+    if (!st.allowExec || !code.length) return;
+    const names = code.slice(0, 6).map((r) => `<li><code>${esc(r.path.replace(/^inputs\//, ""))}</code></li>`).join("")
+      + (code.length > 6 ? `<li class="muted">and ${code.length - 6} more</li>` : "");
+    const choice = await choose("Code was added to the package", `<p>${code.length === 1 ? "One file" : `${code.length} files`} ${esc(source)} ${code.length === 1 ? "is" : "are"} code:</p>
+      <ul class="rp-del-list">${names}</ul>
+      <p>The coding agent can read ${code.length === 1 ? "it" : "them"} in the package folder. With <b>let it run the analysis</b> on (in Code generation), it also runs R and Python and installs packages with pip, without asking you. Code from elsewhere can do anything on this computer, and its files can hold instructions aimed at the agent.</p>
+      <p>Turn running off unless you trust where the code comes from.</p>`,
+      [["off", "Turn running off"], ["keep", "Keep it on", "primary"]]);
+    if (choice !== "off") return;
+    st.allowExec = false;
+    this.w.app.save();
+    this.w.setStatus("From its next run, the coding agent won't run code (an agent already running keeps its setting); turn it back on in Code generation.");
+  }
   private inputs: InputRes[] = [];
   private docs = new Map<string, Document | Error>();
   private fetch?: AcquireResult;
@@ -253,15 +272,19 @@ export class InputsStep implements Step {
         <tbody>${rows || `<tr><td colspan="6" class="muted">No input files yet.</td></tr>`}</tbody></table>
     </div>${this.fetchList()}`;
 
-    const add = (files: File[]) =>
-      this.w.busy("upload", `Adding ${files.length} file(s)`, async () => {
-        for (const f of files) await pkg.upload("inputs", f);
+    const add = async (files: File[]) => {
+      const added: unknown[] = [];
+      await this.w.busy("upload", `Adding ${files.length} file(s)`, async () => {
+        for (const f of files) added.push(await pkg.upload("inputs", f));
       });
+      await this.warnAboutCode(added, "you added");
+    };
     body.querySelector<HTMLInputElement>("#rp-add-files")!.addEventListener("change", (e) => {
       const files = Array.from((e.target as HTMLInputElement).files ?? []);
       if (files.length) add(files);
     });
-    body.querySelector("#rp-add-dir")?.addEventListener("click", () => this.w.busy("upload", "Adding a folder", () => host.addFiles("inputs", true)));
+    body.querySelector("#rp-add-dir")?.addEventListener("click", async () =>
+      this.warnAboutCode(await this.w.busy("upload", "Adding a folder", () => host.addFiles("inputs", true)), "in the folder"));
     body.querySelector("#rp-fetch")?.addEventListener("click", async () => {
       // busy() reports errors itself and returns undefined.
       const preview = await this.w.busy("fetch", "Checking supplemental materials", () => pkg.acquirePreview({}));
@@ -281,6 +304,7 @@ export class InputsStep implements Step {
       const r = await this.w.busy("fetch", "Fetching supplemental materials", async () =>
         (this.fetch = await pkg.acquire(choice.action === "selected" ? { selected: choice.keys } : {})));
       if (r) this.w.setStatus(...fetchStatus(r));
+      if (r) await this.warnAboutCode(r.resources, "fetched");
     });
 
     const shortList = (rs: InputRes[], max = 8) =>

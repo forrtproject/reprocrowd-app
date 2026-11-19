@@ -12,7 +12,9 @@ the rest. Messages are written for the user (host, what went wrong, what to do).
 """
 from __future__ import annotations
 
+import ipaddress
 import re
+import socket
 from urllib.parse import quote
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -60,8 +62,32 @@ class File:
         return f"{self.repo}:{self.id}:{self.path}"
 
 
+def _addresses(host: str, port: int) -> list[str]:
+    """The IP addresses ``host`` resolves to (none if it doesn't resolve: the request then fails on its own)."""
+    try:
+        return [a[4][0] for a in socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)]
+    except (socket.gaierror, UnicodeError):
+        return []
+
+
+def _public_only(request: httpx.Request) -> None:
+    """Refuse a request, or a redirect, to anything but a public http(s) address (#91). Download URLs come from the
+    repositories' metadata, so a record could otherwise point the app at the user's router or another local service.
+    The check is on the name's addresses before connecting; a name that changes its answer in between is not covered."""
+    url = request.url
+    if url.scheme not in ("http", "https"):
+        raise ApiError(502, "acquire_failed", f"refused to fetch {url.scheme}: URLs")
+    for a in _addresses(url.host, url.port or (443 if url.scheme == "https" else 80)):
+        ip = ipaddress.ip_address(a.split("%")[0])
+        if ip.version == 6 and ip.ipv4_mapped:
+            ip = ip.ipv4_mapped
+        if not ip.is_global or ip.is_multicast:
+            raise ApiError(502, "acquire_failed", f"refused to fetch from {url.host}: it is a local or private address ({ip}), "
+                                                  "not a public repository")
+
+
 def _client() -> httpx.Client:
-    return httpx.Client(timeout=60, follow_redirects=True, headers={"User-Agent": USER_AGENT})
+    return httpx.Client(timeout=60, follow_redirects=True, headers={"User-Agent": USER_AGENT}, event_hooks={"request": [_public_only]})
 
 
 def _host(url: str) -> str:
@@ -187,8 +213,8 @@ class _Budget:
         return ""
 
 
-def _origin(url: str, repo: str, link: Link) -> FetchedOrigin:
-    return FetchedOrigin(url=url, repo=repo, id=link.id, label=f"fetched from {link.label}")
+def _origin(url: str, repo: str, link: Link, path: str | None = None, commit: str | None = None) -> FetchedOrigin:
+    return FetchedOrigin(url=url, repo=repo, id=link.id, label=f"fetched from {link.label}", path=path, commit=commit)
 
 
 @dataclass
@@ -213,6 +239,7 @@ class _Job:
     preview: bool = False  # list the files (with sizes) instead of downloading them
     selected: set[str] | None = None  # file keys (repo:id:path) to fetch; None fetches all
     files: list[File] = field(default_factory=list)
+    commit: str | None = None  # git repositories: the commit every file of this fetch is taken from
 
     known_inputs: list[Resource] = field(init=False, repr=False)
 
@@ -222,7 +249,7 @@ class _Job:
     def fail(self, filename: str, url: str, code: str, error: str) -> None:
         self.failures.append({"file": filename, "url": url, "code": code, "error": error})
 
-    def already_fetched(self, download_url: str) -> list[Resource]:
+    def already_fetched(self, download_url: str, path: str | None = None) -> list[Resource]:
         """The inputs already fetched from ``download_url`` for this link (several for an unpacked archive).
 
         Acquiring the same manuscript link again must be idempotent. Match on provenance rather than filename:
@@ -234,7 +261,13 @@ class _Job:
                 if r.reprocrowd.origin.type == "fetched"
                 and r.reprocrowd.origin.repo == self.link.repo
                 and r.reprocrowd.origin.id == self.link.id
-                and r.reprocrowd.origin.url == download_url]
+                and (r.reprocrowd.origin.url == download_url
+                     # git repositories: the URL names the commit, so the same file at a newer commit is matched by path;
+                     # elsewhere a new URL for the same name is a new file (e.g. a new Figshare version)
+                     or (path is not None and self.commit is not None and r.reprocrowd.origin.path == path)
+                     # fetched before paths were recorded: the URL ended in the branch and the path
+                     or (path is not None and self.commit is not None and r.reprocrowd.origin.path is None
+                         and r.reprocrowd.origin.url.endswith("/" + quote(path))))]
 
     def add(self, filename: str, download_url: str, size: int = 0, path: str | None = None) -> None:
         """Download one file and register it; on any failure record it in ``failures`` and return.
@@ -250,9 +283,9 @@ class _Job:
         if self.preview:
             self.files.append(File(repo=self.link.repo, id=self.link.id, path=path, name=filename,
                                    size=size, download_url=download_url,
-                                   present=bool(self.already_fetched(download_url))))
+                                   present=bool(self.already_fetched(download_url, path))))
             return
-        if matches := self.already_fetched(download_url):
+        if matches := self.already_fetched(download_url, path):
             known = {r.name for r in self.existing}
             self.existing += [r for r in matches if r.name not in known]
             return
@@ -269,7 +302,7 @@ class _Job:
             downloaded = dest.stat().st_size
 
         try:
-            r = inputs._add_file(self.pkg, filename, write, _origin(download_url, self.link.repo, self.link),
+            r = inputs._add_file(self.pkg, filename, write, _origin(download_url, self.link.repo, self.link, path, self.commit),
                                  self.role, self.note, self.unpack)
         except ApiError as e:
             if e.code == "acquire_too_large":  # size unknown up front; found out while downloading
@@ -348,7 +381,13 @@ def _github_default_branch(owner: str, repo: str) -> str:
 def github_fetch(job: _Job) -> None:
     owner, _, repo = job.link.id.partition("/")
     branch = _github_default_branch(owner, repo)
-    data = _get_json(f"https://api.github.com/repos/{owner}/{repo}/git/trees/{branch}?recursive=1")
+    # One commit for the whole fetch (#91), recorded with every file: what is pushed while it runs is not mixed in.
+    head = _get_json(f"https://api.github.com/repos/{owner}/{repo}/branches/{quote(branch, safe='')}")
+    sha = (head.get("commit") or {}).get("sha")
+    if not isinstance(sha, str) or not re.fullmatch(r"[0-9a-f]{40}", sha):
+        raise ApiError(502, "acquire_failed", f"GitHub gave no commit for the {branch} branch of {owner}/{repo}")
+    job.commit = sha
+    data = _get_json(f"https://api.github.com/repos/{owner}/{repo}/git/trees/{sha}?recursive=1")
     for entry in data.get("tree") or []:
         if entry.get("type") != "blob":
             continue
@@ -356,7 +395,7 @@ def github_fetch(job: _Job) -> None:
         if not path:
             continue
         name = Path(path).name
-        raw = f"https://raw.githubusercontent.com/{owner}/{repo}/{quote(branch)}/{quote(path)}"
+        raw = f"https://raw.githubusercontent.com/{owner}/{repo}/{sha}/{quote(path)}"
         size = int(entry["size"]) if entry.get("size") else 0
         job.add(name, raw, size, path)
 
@@ -393,10 +432,15 @@ def gitlab_fetch(job: _Job) -> None:
         branch = proj.get("default_branch", "main")
     except ApiError:
         branch = "main"
+    head = _get_json(f"https://gitlab.com/api/v4/projects/{project}/repository/branches/{urllib.parse.quote(branch, safe='')}")
+    sha = (head.get("commit") or {}).get("id")
+    if not isinstance(sha, str) or not re.fullmatch(r"[0-9a-f]{40}", sha):
+        raise ApiError(502, "acquire_failed", f"GitLab gave no commit for the {branch} branch of {job.link.id}")
+    job.commit = sha
     # The tree comes in pages (20 entries by default); keyset pagination hands out the next page's URL in
     # the Link header. Each page is read once, so a server pointing "next" back at a page can't loop.
     url: str | None = (f"https://gitlab.com/api/v4/projects/{project}/repository/tree"
-                       f"?recursive=true&ref={urllib.parse.quote(branch, safe='')}&per_page=100&pagination=keyset")
+                       f"?recursive=true&ref={sha}&per_page=100&pagination=keyset")
     seen: set[str] = set()
     while url and url not in seen:
         seen.add(url)
@@ -405,7 +449,7 @@ def gitlab_fetch(job: _Job) -> None:
             if not isinstance(entry, dict) or entry.get("type") != "blob" or not entry.get("path"):
                 continue
             path = entry["path"]
-            raw = f"https://gitlab.com/{job.link.id}/-/raw/{urllib.parse.quote(branch)}/{urllib.parse.quote(path)}"
+            raw = f"https://gitlab.com/{job.link.id}/-/raw/{sha}/{urllib.parse.quote(path)}"
             job.add(Path(path).name, raw, int(entry["size"]) if entry.get("size") else 0, path)
 
 

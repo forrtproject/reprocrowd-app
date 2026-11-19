@@ -51,7 +51,8 @@ def _docling(pdf: Path, out: Path) -> None:
     with tempfile.TemporaryDirectory(prefix="rc-docling-") as tmp:
         argv = expand_argv(cfg.docling_argv, {"input": str(pdf), "outdir": tmp})
         try:
-            proc = subprocess.Popen(argv, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, start_new_session=True)
+            proc = subprocess.Popen(argv, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, start_new_session=True,
+                                    env={k: v for k, v in os.environ.items() if not k.upper().startswith("REPROCROWD_")})  # not the backend's token file
         except OSError as e:
             raise ApiError(502, "conversion_failed", f"could not start docling: {e}", {"argv": argv})
         try:

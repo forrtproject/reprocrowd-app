@@ -165,7 +165,10 @@ def test_cli_settings_restriction(client, pkg, monkeypatch):
     ready_package(client, pkg)
     p = f"/v1/packages/{pkg}"
     codex = client.post(p + "/jobs:preview", json={"type": "codegen", "profile": "codex", "allow_exec": False}).json()
-    assert codex["exec_restriction"] == "cli_settings" and ["--disable", "shell_tool"] == codex["argv"][-12:-10]
+    assert codex["exec_restriction"] == "cli_settings" and ["--disable", "shell_tool"] == codex["argv"][-14:-12]
+    assert codex["argv"][-2:] == ["-c", "project_doc_max_bytes=0"]  # the package's AGENTS.md is not read (#91)
+    claude = client.post(p + "/jobs:preview", json={"type": "codegen", "profile": "claude", "allow_exec": True}).json()
+    assert claude["argv"][1:4] == ["--setting-sources", "user", "--strict-mcp-config"]  # nor its .claude/, .mcp.json, CLAUDE.md
     import sys as _sys
     assert f"mcp_servers.rc_files.command='{_sys.executable}'" in codex["argv"]  # {python} is the backend's interpreter
     allowed = client.post(p + "/jobs:preview", json={"type": "codegen", "profile": "codex", "allow_exec": True}).json()
