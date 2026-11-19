@@ -37,7 +37,7 @@ import httpx
 
 from . import __version__, identifiers
 from .config import settings
-from .database import Prepared
+from .database import Prepared, verify_archive_contents
 from .errors import ApiError, conflict, invalid, not_found
 from .package import MANIFEST, Package, sha256_file
 from .report import archive_path
@@ -393,6 +393,7 @@ def create(pkg: Package, *, token: str | None, sandbox: bool | None, exclude: li
     tok = _token(token)
     creators = _creators(creators)
     p = Prepared(pkg)
+    verify_archive_contents(pkg)
     c = contents(pkg, p.work)
     ex = c["default_exclude"] if exclude is None else [g for g in exclude if c["groups"][g]["resources"]]
     community = community if community is not None else settings().zenodo_community or None

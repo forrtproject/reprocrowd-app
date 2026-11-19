@@ -294,3 +294,31 @@ def test_preview_scans_the_archive(client, pkg):
     assert "contains what looks like a private key or access token" in files["datapackage.json"]["flags"]
     assert all(f["checked"] for f in files.values())
     assert _looks_secret(Registry().get(pkg), "outputs/not-there.csv", None) is None  # unreadable: not checked
+
+
+@respx.mock
+def test_archive_from_elsewhere_is_checked(client, pkg):
+    """Issue #91: a package folder can bring its own archive. One with a file outside its list is refused at once;
+    one whose listed file differs from the package's is refused before anything is uploaded."""
+    import shutil
+    from pathlib import Path
+
+    mock_openalex()
+    ready_published(client, pkg)
+    z = mock_zenodo()
+    P = f"/v1/packages/{pkg}"
+    archive = Path(client.get(P).json()["path"]) / client.get(P + "/manifest").json()["reprocrowd"]["archive"]["path"]
+    good = archive.read_bytes()
+    with zipfile.ZipFile(archive, "a") as zf:
+        zf.writestr("outputs/hidden.txt", "not listed")
+    problem(client.post(P + "/deposits:preview", json={}), 409, "archive_stale")
+    archive.write_bytes(good)
+    listed = next(r["path"] for r in client.get(P + "/manifest").json()["resources"] if r["path"].startswith("outputs/"))
+    tmp = archive.with_suffix(".tmp")
+    with zipfile.ZipFile(archive) as src, zipfile.ZipFile(tmp, "w") as dst:
+        for info in src.infolist():
+            dst.writestr(info, b"swapped" if info.filename == listed else src.read(info))
+    shutil.move(tmp, archive)
+    assert client.post(P + "/deposits:preview", json={}).status_code == 200  # same names: only a full read tells
+    problem(client.post(P + "/deposits", json={"zenodo_token": "t", "creators": ME}), 409, "archive_stale")
+    assert not z["create"].called

@@ -15,6 +15,7 @@ forwarded with the upload, which the database then publishes at once, and never 
 from __future__ import annotations
 
 import base64
+import hashlib
 import json
 import secrets
 import zipfile
@@ -64,10 +65,14 @@ def find(doi: str) -> list[dict[str, Any]]:
 
 
 def _check_archive(pkg: Package) -> None:
-    """The archive must contain the package as it is now (same resources, same hashes)."""
+    """The archive must contain the package as it is now (same resources, same hashes), and nothing else: a package
+    folder from someone else can bring its own archive (#91)."""
     path = archive_path(pkg)
     with zipfile.ZipFile(path) as z:
         archived = json.loads(z.read(MANIFEST))
+        members = {i.filename for i in z.infolist() if not i.is_dir()}
+    if members != {MANIFEST, *(r.get("path") for r in archived.get("resources", []))}:
+        raise conflict("archive_stale", "the archive holds files that aren't in its file list, or lacks some; create it again (PUT …/archive)")
     current = pkg.load()
     now_res = sorted((r.path, r.hash) for r in current.resources)
     then_res = sorted((r["path"], r["hash"]) for r in archived.get("resources", []))
@@ -75,6 +80,22 @@ def _check_archive(pkg: Package) -> None:
         raise conflict("archive_stale", "the package changed since the archive was made; create it again (PUT …/archive)")
     if licensing.FILE not in {p for p, _ in then_res}:
         raise conflict("archive_stale", "the archive was made before licences were recorded (no licenses.json); create it again (PUT …/archive)")
+
+
+def verify_archive_contents(pkg: Package) -> None:
+    """Before an upload: every file in the archive has the hash the package records for it. A whole read of the
+    archive, which the upload does anyway; the cheap checks (_check_archive) run on every preview."""
+    hashes = {r.path: r.hash for r in pkg.load().resources}
+    with zipfile.ZipFile(archive_path(pkg)) as z:
+        for info in z.infolist():
+            if info.is_dir() or info.filename == MANIFEST:
+                continue
+            h = hashlib.sha256()
+            with z.open(info) as f:
+                for chunk in iter(lambda: f.read(1 << 20), b""):
+                    h.update(chunk)
+            if hashes.get(info.filename) != f"sha256:{h.hexdigest()}":
+                raise conflict("archive_stale", f"{info.filename} in the archive differs from the package's file; create the archive again (PUT …/archive)")
 
 
 class Prepared:
@@ -111,6 +132,7 @@ class Prepared:
 def submit(pkg: Package, note: str = "", token: str | None = None) -> Submission:
     url = base()
     p = Prepared(pkg)
+    verify_archive_contents(pkg)
     m, doi, work, tpl = p.m, p.doi, p.work, p.template
     metadata = {
         "doi": doi,
