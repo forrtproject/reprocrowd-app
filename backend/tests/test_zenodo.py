@@ -270,3 +270,27 @@ def test_file_flags(tmp_path):
     assert flags("outputs/result.csv") == []
     assert flags(".env") == ["hidden file", "the name suggests keys or credentials"]
     assert flags("inputs/missing.pem") == ["the name suggests keys or credentials"]
+
+
+@respx.mock
+def test_preview_scans_the_archive(client, pkg):
+    """The secret check reads what is uploaded, the archive, datapackage.json included. A file it can't read is not
+    reported as checked. (Files on disk can't differ from the archive here: the preview refuses a stale report.)"""
+    from conftest import FIXTURES
+    from reprocrowd.package import Registry
+    from reprocrowd.zenodo import _looks_secret
+
+    mock_openalex()
+    ready_published(client, pkg)
+    P = f"/v1/packages/{pkg}"
+    assert client.post(P + "/inputs", json={"path": str(FIXTURES / "data.csv")}).status_code == 201
+    with Registry().get(pkg).edit() as m:  # a token pasted into a note ends up in datapackage.json
+        next(r for r in m.resources if r.reprocrowd.kind == "input").reprocrowd.note = "token ghp_" + "a" * 36
+    assert client.put(P + "/report", json={}).status_code in (200, 201)
+    assert client.put(P + "/archive").status_code == 200
+    r = client.post(P + "/deposits:preview", json={})
+    assert r.status_code == 200, r.text
+    files = {f["path"]: f for f in r.json()["contents"]["files"]}
+    assert "contains what looks like a private key or access token" in files["datapackage.json"]["flags"]
+    assert all(f["checked"] for f in files.values())
+    assert _looks_secret(Registry().get(pkg), "outputs/not-there.csv", None) is None  # unreadable: not checked

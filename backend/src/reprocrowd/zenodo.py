@@ -199,7 +199,9 @@ _SECRET_TEXT = re.compile(rb"-----BEGIN [A-Z ]*PRIVATE KEY-----|\bAKIA[0-9A-Z]{1
 _SCAN_BYTES = 2 * 1024**2  # per file: the start of it
 _SCAN_TOTAL = 256 * 1024**2  # per preview: small files first; the rest is reported as not checked
 _KEY_SECRET = "contains what looks like a private key or access token"
-_scanned: dict[str, bool] = {}  # file hash → whether its start looks like a secret (a file with the same hash is the same file)
+# Archive member hash → whether its start looks like a secret. The archive only holds files whose content matched
+# their recorded hash when it was made (validation), so the hash names exactly the bytes that are uploaded.
+_scanned: dict[str, bool] = {}
 
 
 def _name_flags(path: str) -> list[str]:
@@ -208,42 +210,72 @@ def _name_flags(path: str) -> list[str]:
         (["the name suggests keys or credentials"] if _SECRET_NAME.search(parts[-1]) else [])
 
 
-def _looks_secret(pkg: Package, r: Resource) -> bool:
-    if r.hash in _scanned:
-        return _scanned[r.hash]
+def _read_start(pkg: Package, path: str, z: zipfile.ZipFile | None) -> bytes | None:
+    """The first bytes of what is uploaded: the archive's member when there is an archive, else the file on disk.
+    None when it can't be read."""
     try:
-        with pkg.path(r.path).open("rb") as f:
-            found = bool(_SECRET_TEXT.search(f.read(_SCAN_BYTES)))
-    except OSError:
-        return False
-    _scanned[r.hash] = found
+        if z is not None:
+            with z.open(path) as f:
+                return f.read(_SCAN_BYTES)
+        with pkg.path(path).open("rb") as f:
+            return f.read(_SCAN_BYTES)
+    except (OSError, KeyError, zipfile.BadZipFile, ApiError):
+        return None
+
+
+def _looks_secret(pkg: Package, path: str, digest: str | None, z: zipfile.ZipFile | None = None) -> bool | None:
+    """Whether the start of the file looks like a key or token; None when it couldn't be read (not checked)."""
+    if digest and digest in _scanned:
+        return _scanned[digest]
+    data = _read_start(pkg, path, z)
+    if data is None:
+        return None
+    found = bool(_SECRET_TEXT.search(data))
+    if digest and z is not None:
+        _scanned[digest] = found
     return found
 
 
 def file_flags(pkg: Package, r: Resource) -> list[str]:
     """Why a file of the package may not belong in a public record: its name, or what looks like a key or token in it."""
-    return _name_flags(r.path) + ([_KEY_SECRET] if _looks_secret(pkg, r) else [])
+    return _name_flags(r.path) + ([_KEY_SECRET] if _looks_secret(pkg, r.path, None) else [])
+
+
+def _open_archive(pkg: Package) -> zipfile.ZipFile | None:
+    try:
+        return zipfile.ZipFile(archive_path(pkg))
+    except (ApiError, OSError, zipfile.BadZipFile):
+        return None
 
 
 def contents(pkg: Package, work: dict[str, Any] | None = None) -> dict[str, Any]:
     """The groups that can be left out, their files, which are left out by default, and every file of the upload
-    (group null: always uploaded) with the reasons it may not belong in a public record. ``checked`` is false for a file
-    whose contents weren't looked at (past the per-preview limit); a file is only ever checked for its first 2 MB."""
+    (group null: always uploaded) with the reasons it may not belong in a public record. The contents are read from the
+    archive, which is what is uploaded, for their first 2 MB; ``checked`` is false for a file that wasn't read (past
+    the per-preview limit, or unreadable)."""
     m = pkg.load()
     groups: dict[str, dict[str, Any]] = {g: {"description": d, "resources": [], "bytes": 0} for g, d in GROUPS.items()}
-    budget = _SCAN_TOTAL
-    checked: dict[str, list[str]] = {}
-    for r in sorted(m.resources, key=lambda r: r.bytes or 0):
-        if r.hash in _scanned or budget > 0:
-            budget -= 0 if r.hash in _scanned else min(r.bytes or 0, _SCAN_BYTES)
-            checked[r.name] = [_KEY_SECRET] if _looks_secret(pkg, r) else []
-    files = [{"path": MANIFEST, "bytes": pkg.path(MANIFEST).stat().st_size, "group": None, "flags": [], "checked": True}]
+    found: dict[str, bool | None] = {}
+    z = _open_archive(pkg)
+    try:
+        budget = _SCAN_TOTAL
+        for r in sorted(m.resources, key=lambda r: r.bytes or 0):
+            if r.hash in _scanned or budget > 0:
+                budget -= 0 if r.hash in _scanned else min(r.bytes or 0, _SCAN_BYTES)
+                found[r.path] = _looks_secret(pkg, r.path, r.hash, z)
+        found[MANIFEST] = _looks_secret(pkg, MANIFEST, None, z)  # small, and it holds the notes people type
+    finally:
+        if z is not None:
+            z.close()
+    entry = lambda path, size, g: {"path": path, "bytes": size, "group": g, "checked": found.get(path) is not None,  # noqa: E731
+                                   "flags": _name_flags(path) + ([_KEY_SECRET] if found.get(path) else [])}
+    files = [entry(MANIFEST, pkg.path(MANIFEST).stat().st_size, None)]
     for r in sorted(m.resources, key=lambda r: r.path):
         g = _group(r)
         if g:
             groups[g]["resources"].append(r.name)
             groups[g]["bytes"] += r.bytes or 0
-        files.append({"path": r.path, "bytes": r.bytes, "group": g, "flags": _name_flags(r.path) + checked.get(r.name, []), "checked": r.name in checked})
+        files.append(entry(r.path, r.bytes, g))
     lic = paper_license(work) if work else None
     default = [] if lic in OPEN_LICENSES else ["paper"]
     return {"groups": groups, "paper_license": lic, "default_exclude": [g for g in default if groups[g]["resources"]], "files": files}
