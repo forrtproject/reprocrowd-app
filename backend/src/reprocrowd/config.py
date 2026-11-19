@@ -43,6 +43,33 @@ class AgentProfile(BaseModel):
                                                                          "OPENCODE_PERMISSION denying every tool but reading and editing")
 
 
+# The coding CLIs run in the package folder, where a package from someone else can carry their project settings:
+# Claude Code's .claude/settings.json (hooks run commands), .mcp.json (MCP servers start without asking in -p mode)
+# and CLAUDE.md; Codex's AGENTS.md; OpenCode's AGENTS.md and CLAUDE.md (#91). These keep the user's own settings
+# and logins and skip the package's. They are added when a command is built, so configurations written before
+# them get them too. Checked with Claude Code 2.1 and codex-cli 0.152. OpenCode documents no switch for a project
+# opencode.json; adopting a folder that has one warns about it.
+_ISOLATION_ARGS = {"claude": ["--setting-sources", "user", "--strict-mcp-config"], "codex": ["-c", "project_doc_max_bytes=0"]}
+ISOLATION_ENV = {"OPENCODE_DISABLE_PROJECT_CONFIG": "1", "OPENCODE_DISABLE_CLAUDE_CODE": "1"}
+
+
+def isolate_argv(argv: list[str]) -> list[str]:
+    """``argv`` with the flags that keep its CLI from reading the package folder's own settings (see above). A flag
+    the command already sets is left as it is."""
+    if not argv:
+        return argv
+    name = Path(argv[0].replace("\\", "/")).name.lower()
+    for suffix in (".exe", ".cmd", ".ps1"):
+        name = name.removesuffix(suffix)
+    if name == "claude":
+        extra = [] if "--setting-sources" in argv else ["--setting-sources", "user"]
+        extra += [] if "--strict-mcp-config" in argv else ["--strict-mcp-config"]
+        return [argv[0], *extra, *argv[1:]]
+    if name == "codex" and not any(a.startswith("project_doc_max_bytes") for a in argv):
+        return [*argv, *_ISOLATION_ARGS["codex"]]
+    return argv
+
+
 def expand_argv(argv: list[str], values: dict[str, str]) -> list[str]:
     """Substitute {name} placeholders. An argument with a placeholder whose value is empty is dropped, with the flag
     before it: ``["--model", "{model}"]`` and ``["-c", "model_reasoning_effort={effort}"]`` both vanish when unset."""

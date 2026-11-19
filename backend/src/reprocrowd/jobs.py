@@ -24,6 +24,7 @@ from typing import Any, Callable
 from pydantic import BaseModel
 
 from .errors import ApiError, conflict, not_found
+from .config import ISOLATION_ENV
 from .llm import resolve_argv
 from .package import Package, atomic_write, dump_json
 from .schemas.common import now
@@ -102,7 +103,7 @@ def job_env(extra: dict[str, str] | None = None) -> dict[str, str]:
         env["PATH"] = os.pathsep.join(p for p in env.get("PATH", "").split(os.pathsep) if p and Path(p).parent != own)
         if Path(env.get("VIRTUAL_ENV", "/nonexistent")) == own:
             env.pop("VIRTUAL_ENV")
-    return env | (extra or {})
+    return env | ISOLATION_ENV | (extra or {})
 
 
 def start(pkg: Package, *, jid: str, type: JobType, argv: list[str], stdin: str, timeout_s: int, events_format: str,

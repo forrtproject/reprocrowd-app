@@ -9,7 +9,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import * as backend from "./backend";
-import { changedCommands, confirmCommands } from "./confirm";
+import { changedCommands, confirmCommands, confirmToolSettings } from "./confirm";
 import { detectLlmModels, LlmModel } from "./models";
 import { openInTerminal, searchPath, spawnDetached, splitCommand, which } from "./processes";
 import { get, post, request, ResponseType, ServiceError } from "./service";
@@ -380,6 +380,7 @@ export function makeApi(wc: WebContents) {
       if (!fs.existsSync(path.join(dir, "datapackage.json"))) throw new Error(`${dir} has no datapackage.json, so it isn't a ReproCrowd package.`);
       const known = (await get<any[]>("/v1/packages")).find((p) => norm(p.path) === norm(dir));
       if (known) return known.id as string;
+      if (!(await confirmToolSettings(win(), dir))) return null;
       return ((await request("POST", "/v1/packages", { json: { path: dir, adopt: true } })).data as any).id as string;
     },
     removePackage: async (id: string) => {

@@ -21,7 +21,7 @@ from string import Template
 from typing import Any
 
 from . import providers
-from .config import LlmProfile, expand_argv, settings
+from .config import ISOLATION_ENV, LlmProfile, expand_argv, isolate_argv, settings
 from .errors import ApiError
 from .package import Package, atomic_write, dump_json
 from .schemas import json_schema
@@ -83,7 +83,7 @@ def command(profile_name: str | None, *, read_files: bool = False, schema: str |
     structured = schema if schema and p.json_schema_argv else None
     if structured:
         argv += expand_argv(p.json_schema_argv, {"schema": cli_schema(structured)})
-    return name, p, argv, structured
+    return name, p, isolate_argv(argv), structured
 
 
 def run(pkg: Package, task: str, prompt: str, *, profile_name: str | None, template: str, instructions: str, read_files: bool = False,
@@ -107,7 +107,7 @@ def run(pkg: Package, task: str, prompt: str, *, profile_name: str | None, templ
 
     try:
         # PWD follows cwd: some CLIs (OpenCode) resolve relative paths from $PWD, which would otherwise be the service's folder.
-        proc = subprocess.Popen(resolve_argv(argv), cwd=pkg.root, env={**os.environ, "PWD": str(pkg.root)}, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        proc = subprocess.Popen(resolve_argv(argv), cwd=pkg.root, env={**os.environ, **ISOLATION_ENV, "PWD": str(pkg.root)}, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                 text=True, encoding="utf-8", errors="replace", start_new_session=True)
     except OSError as e:
         record("", str(e), None)
