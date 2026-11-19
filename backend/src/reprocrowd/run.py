@@ -38,7 +38,7 @@ def start(pkg: Package) -> Job:
         raise conflict("script_missing", "create the master script first (PUT …/script)")
     jobs.ensure_idle(pkg)
     targets = frozen_targets(pkg)
-    jid = jobs.new_id()
+    jid = jobs.new_id(pkg)
     pkg.path(RESULTS).unlink(missing_ok=True)
     files.sync(pkg)
     before_snapshot = evidence.snapshot(pkg)
