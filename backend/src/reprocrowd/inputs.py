@@ -60,7 +60,7 @@ def add(pkg: Package, path: str, role: Role | None, note: str, unpack: bool) -> 
         return add_directory(pkg, src, role, note)
     if not src.is_file():
         raise ApiError(400, "not_a_file", f"{src} is not a readable file or directory")
-    return _add_file(pkg, src.name, lambda dest: shutil.copyfile(src, dest), LocalOrigin(path=str(src)), role, note, unpack)
+    return _add_file(pkg, src.name, lambda dest: shutil.copyfile(src, dest), LocalOrigin(path=src.name), role, note, unpack)
 
 
 def add_upload(pkg: Package, filename: str, data: BinaryIO, role: Role | None, note: str, unpack: bool) -> list[Resource]:
@@ -112,7 +112,7 @@ def add_directory(pkg: Package, src: Path, role: Role | None, note: str) -> list
     out = []
     with pkg.edit() as m:
         base = pkg.free_path(f"inputs/{src.name}")
-        origin = LocalOrigin(path=str(src))
+        origin = LocalOrigin(path=src.name)
         for rel in files:
             member_rel = f"{base}/{rel.as_posix()}"
             dest = pkg.path(member_rel)

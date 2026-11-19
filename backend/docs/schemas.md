@@ -179,7 +179,7 @@ A work identifier that OpenAlex can resolve.
 | Field | Type | Req. | Description |
 |---|---|---|---|
 | `type` | `"local"` |  | default `local` |
-| `path` | string | yes | absolute path the file was copied from |
+| `path` | string | yes | name of the local file or folder it was copied from. Only the name: a full path would publish the user's folder layout (often their real name) with the package |
 
 ### OtherMeta
 

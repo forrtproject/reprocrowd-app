@@ -211,6 +211,7 @@ def test_parse_and_reconcile(client, pkg):
 def test_inputs(client, pkg):
     r = client.post(f"/v1/packages/{pkg}/inputs", json={"path": str(FIXTURES / "data.csv"), "note": "raw RTs"})
     assert r.status_code == 201 and r.json()[0]["reprocrowd"]["role"] == "data"
+    assert r.json()[0]["reprocrowd"]["origin"] == {"type": "local", "path": "data.csv"}  # not the full path: it would be published
     r = client.post(f"/v1/packages/{pkg}/inputs", json={"path": str(FIXTURES / "replication.zip")})
     rs = r.json()
     assert [x["path"] for x in rs] == ["inputs/replication.zip", "inputs/replication/replication/analysis.R", "inputs/replication/replication/data/raw.csv"]
@@ -226,6 +227,14 @@ def test_inputs(client, pkg):
     assert left == ["inputs/data.csv"]
     root = Path(client.get(f"/v1/packages/{pkg}").json()["path"])
     assert not (root / "inputs" / "replication").exists()
+
+
+def test_local_origin_keeps_only_the_name():
+    """Older packages recorded the full source path; it is cut to the name when they are loaded."""
+    from reprocrowd.schemas.manifest import LocalOrigin
+    assert LocalOrigin(path="/home/jane.doe/IRB/participants_raw.csv").path == "participants_raw.csv"
+    assert LocalOrigin(path=r"C:\Users\jane\study\data.xlsx").path == "data.xlsx"
+    assert LocalOrigin(path="data.csv").path == "data.csv"
 
 
 def test_inputs_bulk_delete(client, pkg, tmp_path):

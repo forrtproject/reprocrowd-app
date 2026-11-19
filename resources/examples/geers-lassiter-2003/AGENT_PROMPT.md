@@ -1,5 +1,4 @@
-You are working in a computational reproduction package at:
-C:\Users\user\ReproCrowd\260707-aemreplication-rev1
+You are working in a computational reproduction package: the folder that holds this file, which is also your working directory.
 
 Goal: implement the analysis so that running `Rscript analysis.R` from the package root reproduces the paper's results.
 

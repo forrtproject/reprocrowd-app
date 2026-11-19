@@ -576,8 +576,8 @@
       "type": "file",
       "format": "md",
       "mediatype": "text/plain",
-      "bytes": 2789,
-      "hash": "sha256:9ddf4621162cf6004a8d57e47341c6ca4934eecd2bccdf991804953fcf7f0bcf",
+      "bytes": 2805,
+      "hash": "sha256:0c5fce43c5895c6f7de5e8e7980493a63e2deec891012994bea4d8726ac5de5a",
       "reprocrowd": {
         "kind": "script",
         "added_at": "2026-11-13T10:52:57Z",

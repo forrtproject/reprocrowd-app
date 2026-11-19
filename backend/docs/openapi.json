@@ -13233,7 +13233,7 @@
           "path": {
             "type": "string",
             "title": "Path",
-            "description": "absolute path the file was copied from"
+            "description": "name of the local file or folder it was copied from. Only the name: a full path would publish the user's folder layout (often their real name) with the package"
           }
         },
         "additionalProperties": false,

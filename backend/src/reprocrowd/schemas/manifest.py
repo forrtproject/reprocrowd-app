@@ -33,7 +33,15 @@ Role = Literal["data", "code", "other"]
 
 class LocalOrigin(Model):
     type: Literal["local"] = "local"
-    path: str = Field(description="absolute path the file was copied from")
+    path: str = Field(description="name of the local file or folder it was copied from. Only the name: a full path would publish the "
+                                  "user's folder layout (often their real name) with the package")
+
+    @field_validator("path")
+    @classmethod
+    def _name_only(cls, v: str) -> str:
+        # Older packages hold the absolute path; it is cut to the name when the package is next saved.
+        # PureWindowsPath splits on both / and \.
+        return PureWindowsPath(v).name or v
 
 
 class UrlOrigin(Model):

@@ -209,7 +209,7 @@ def agent_prompt(pkg: Package, tpl: Template, instructions: str = "", *, allow_e
     m = pkg.load()
     used = [r for r in m.by_kind("input") if r.reprocrowd.used and r.reprocrowd.role != "code"]
     by_role = {role: [r for r in used if r.reprocrowd.role == role] for role in ("data", "code", "other")}
-    text = _env().get_template("_AGENT_PROMPT.md.j2").render(tpl=tpl, inputs=by_role, marker=TODO_MARK, folder=str(pkg.root), allow_exec=allow_exec)
+    text = _env().get_template("_AGENT_PROMPT.md.j2").render(tpl=tpl, inputs=by_role, marker=TODO_MARK, allow_exec=allow_exec)
     if instructions.strip():
         text += f"\nAdditional instructions:\n{instructions.strip()}\n"
     return text
