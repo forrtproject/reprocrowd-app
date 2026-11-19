@@ -44,12 +44,18 @@ def _key(pkg: Package, jid: str) -> str:
 
 
 def new_id(pkg: Package) -> str:
-    """A job id this package hasn't used: two jobs in the same second must not share a record and logs. Only one job
-    runs at a time in a package (ensure_idle), so checking is enough."""
+    """A job id this package hasn't used: two jobs in the same second must not share a record and logs. Creating the
+    job's folder reserves the id, so two starts at the same moment can't get the same one either. (If the start fails
+    before the job is recorded, the empty folder stays; jobs are listed by their records.)"""
     while True:
         jid = f"job-{time.strftime('%Y%m%d-%H%M%S').lower()}-{secrets.token_hex(2)}"
-        if not _record_path(pkg, jid).exists() and not pkg.path(f"jobs/{jid}").exists():
+        if _record_path(pkg, jid).exists():
+            continue
+        try:
+            pkg.path(f"jobs/{jid}").mkdir(parents=True)
             return jid
+        except FileExistsError:
+            continue
 
 
 def _record_path(pkg: Package, jid: str) -> Path:

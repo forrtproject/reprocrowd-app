@@ -215,11 +215,12 @@ def test_jobs_in_the_same_second_get_their_own_ids(tmp_path, monkeypatch):
     init_package(tmp_path / "pkg", "pkg", None)
     pkg = Package("pkg", tmp_path / "pkg")
     monkeypatch.setattr(jobs.time, "strftime", lambda fmt: "20260101-000000")
-    suffixes = iter(["abcd", "abcd", "abcd", "ef01", "2345"])
+    suffixes = iter(["abcd", "abcd", "ef01", "9999", "abcd", "ef01", "2345"])
     monkeypatch.setattr(jobs.secrets, "token_hex", lambda n: next(suffixes))
     first = jobs.new_id(pkg)
-    pkg.path(f"jobs/{first}").mkdir(parents=True)  # its folder exists before its record does
-    second = jobs.new_id(pkg)
-    pkg.path(f"jobs/{second}.json").write_text("{}")
-    third = jobs.new_id(pkg)
+    assert pkg.path(f"jobs/{first}").is_dir()  # reserved by its folder
+    second = jobs.new_id(pkg)  # abcd is taken by first's folder
+    pkg.path("jobs/job-20260101-000000-9999.json").write_text("{}")  # a record whose folder is gone
+    third = jobs.new_id(pkg)  # 9999 has a record, abcd and ef01 folders
     assert (first, second, third) == ("job-20260101-000000-abcd", "job-20260101-000000-ef01", "job-20260101-000000-2345")
+    assert next(suffixes, None) is None  # every draw was needed
