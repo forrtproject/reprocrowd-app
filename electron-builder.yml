@@ -22,6 +22,17 @@ extraResources:
   - from: resources/examples
     to: examples
 asarUnpack: []
+# Electron fuses (#91): the packaged app can't be turned into a plain Node.js runtime (ELECTRON_RUN_AS_NODE,
+# NODE_OPTIONS) or made to load code from outside its checked app.asar. --inspect stays on for now: the Playwright
+# e2e test drives the packaged build through it.
+electronFuses:
+  runAsNode: false
+  enableNodeOptionsEnvironmentVariable: false
+  enableNodeCliInspectArguments: true
+  enableCookieEncryption: true
+  enableEmbeddedAsarIntegrityValidation: true
+  onlyLoadAppFromAsar: true
+  grantFileProtocolExtraPrivileges: false
 linux:
   syncDesktopName: true
   target: [AppImage, dir]
