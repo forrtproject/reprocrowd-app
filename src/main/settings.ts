@@ -125,7 +125,11 @@ const available = async () => (ss.isAsyncEncryptionAvailable ? ss.isAsyncEncrypt
 const encrypt = async (v: string) => (ss.encryptStringAsync ? ss.encryptStringAsync(v) : safeStorage.encryptString(v));
 const decrypt = async (b: Buffer) => (ss.decryptStringAsync ? (await ss.decryptStringAsync(b)).result : safeStorage.decryptString(b));
 
+// Tokens kept for this session only (no keyring, and the user declined to save them unprotected); gone on quit.
+const sessionSecrets = new Map<string, string>();
+
 export async function getSecret(key: string): Promise<string | undefined> {
+  if (sessionSecrets.has(key)) return sessionSecrets.get(key);
   const v = readJson(secretsFile())[key];
   if (typeof v !== "string") return undefined;
   try {
@@ -135,9 +139,14 @@ export async function getSecret(key: string): Promise<string | undefined> {
   }
 }
 
-export async function setSecret(key: string, value: string | null) {
+/** sessionOnly: keep the value in memory until the app quits, and drop any saved copy. */
+export async function setSecret(key: string, value: string | null, { sessionOnly = false } = {}) {
+  sessionSecrets.delete(key);
   const all = readJson(secretsFile());
-  if (value) {
+  if (value && sessionOnly) {
+    sessionSecrets.set(key, value);
+    delete all[key];
+  } else if (value) {
     if (!(await available())) throw new Error("This system offers no secure storage for the token (no keyring).");
     all[key] = (await encrypt(value)).toString("base64");
   } else delete all[key];

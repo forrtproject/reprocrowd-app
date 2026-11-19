@@ -142,7 +142,13 @@ const step = (msg) => console.log(`• ${msg}`);
 try {
   step("library");
   await win.waitForSelector(".lib-list h2", { timeout: 180_000 });
+  // Without a keyring (CI) saving a token asks how to keep it: for this session.
+  await app.evaluate(({ dialog }) => {
+    globalThis.realShowMessageBox = dialog.showMessageBox;
+    dialog.showMessageBox = async () => ({ response: 1, checkboxChecked: false });
+  });
   await call("setZenodoToken", "sandbox", "test-token");
+  await app.evaluate(({ dialog }) => { dialog.showMessageBox = globalThis.realShowMessageBox; });
   assert.equal((await call("verifyZenodoToken", true)).ok, true);
   await win.reload();
   await win.waitForSelector(".lib-list h2");

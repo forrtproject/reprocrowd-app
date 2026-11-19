@@ -428,7 +428,26 @@ export function makeApi(wc: WebContents) {
     },
     claudeLogin: async () => cliLogin("claude"),
     cliLogin: async (cli: string) => cliLogin(cli),
-    setZenodoToken: async (server: ZenodoServer, token: string | null) => setSecret(zenodoKey(server), token?.trim() || null),
+    setZenodoToken: async (server: ZenodoServer, token: string | null) => {
+      const value = token?.trim() || null;
+      const storage = value ? await secretStorageKind() : "secure";
+      if (storage === "secure") return setSecret(zenodoKey(server), value);
+      // No keyring (#91): saving the token with Electron's fixed key is only obfuscation, so it is the user's choice.
+      const weak = storage === "weak";
+      const { response } = await dialog.showMessageBox(win(), {
+        type: "warning",
+        title: "No keyring",
+        message: weak ? "This system has no keyring, so the token can't be saved securely." : "This system offers no secure storage for the token.",
+        detail: (weak ? "Saved unprotected, the token is only obfuscated, with a key that is the same on every computer: any program running as you can read it. " : "")
+          + "Kept for this session, it works until ReproCrowd quits, and you paste it again next time.",
+        buttons: weak ? ["Cancel", "Keep for this session", "Save unprotected"] : ["Cancel", "Keep for this session"],
+        defaultId: 1,
+        cancelId: 0,
+        noLink: true,
+      });
+      if (response === 0) throw new Error("The token was not saved.");
+      return setSecret(zenodoKey(server), value, { sessionOnly: response === 1 });
+    },
     verifyZenodoToken: async (sandbox: boolean, token?: string) => {
       const t = token?.trim() || (await zenodoToken(sandbox));
       if (!t) throw new ServiceError("No token stored for this server.", { status: 400, code: "zenodo_token_missing" });
