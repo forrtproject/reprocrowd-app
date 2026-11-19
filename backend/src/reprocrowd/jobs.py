@@ -43,8 +43,13 @@ def _key(pkg: Package, jid: str) -> str:
     return f"{pkg.root}::{jid}"
 
 
-def new_id() -> str:
-    return f"job-{time.strftime('%Y%m%d-%H%M%S').lower()}-{secrets.token_hex(2)}"
+def new_id(pkg: Package) -> str:
+    """A job id this package hasn't used: two jobs in the same second must not share a record and logs. Only one job
+    runs at a time in a package (ensure_idle), so checking is enough."""
+    while True:
+        jid = f"job-{time.strftime('%Y%m%d-%H%M%S').lower()}-{secrets.token_hex(2)}"
+        if not _record_path(pkg, jid).exists() and not pkg.path(f"jobs/{jid}").exists():
+            return jid
 
 
 def _record_path(pkg: Package, jid: str) -> Path:

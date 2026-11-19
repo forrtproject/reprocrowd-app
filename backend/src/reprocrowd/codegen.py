@@ -57,7 +57,7 @@ def plan(pkg: Package, *, profile: str | None, allow_exec: bool, instructions: s
 def start(pkg: Package, *, profile: str | None, allow_exec: bool, instructions: str, model: str | None = None) -> Job:
     name, prof, tpl, tools, argv, prompt, env = plan(pkg, profile=profile, allow_exec=allow_exec, instructions=instructions, model=model)
     jobs.ensure_idle(pkg)
-    jid = jobs.new_id()
+    jid = jobs.new_id(pkg)
 
     git_note, before = None, None
     if gitrepo.available():

@@ -17,6 +17,7 @@ import signal
 import subprocess
 import time
 from importlib import resources
+from pathlib import Path
 from string import Template
 from typing import Any
 
@@ -87,13 +88,24 @@ def command(profile_name: str | None, *, read_files: bool = False, schema: str |
     return name, p, isolate_argv(argv), structured
 
 
+def _new_call_folder(pkg: Package, task: str) -> tuple[str, Path]:
+    """A new folder for a call, named by its task and the second it started. Calls in the same second get different
+    suffixes; creating the folder reserves the name, so calls running at the same time can't share one either."""
+    while True:
+        call_id = f"{task}-{time.strftime('%Y%m%dT%H%M%S')}-{secrets.token_hex(2)}"
+        folder = pkg.path(f"llm-calls/{call_id}")
+        try:
+            folder.mkdir(parents=True)
+            return call_id, folder
+        except FileExistsError:
+            continue
+
+
 def run(pkg: Package, task: str, prompt: str, *, profile_name: str | None, template: str, instructions: str, read_files: bool = False,
         schema: str | None = None, model: str | None = None) -> LlmCall:
     name, p, argv, structured = command(profile_name, read_files=read_files, schema=schema, model=model)
     used_model = model if model is not None else p.model
-    call_id = f"{task}-{time.strftime('%Y%m%dT%H%M%S')}-{secrets.token_hex(2)}"
-    folder = pkg.path(f"llm-calls/{call_id}")
-    folder.mkdir(parents=True)
+    call_id, folder = _new_call_folder(pkg, task)
     (folder / "prompt.txt").write_text(prompt, encoding="utf-8")
     started, t0 = now(), time.monotonic()
 
