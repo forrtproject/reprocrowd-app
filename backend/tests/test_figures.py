@@ -369,3 +369,52 @@ def test_which_fig_a_figure_is():
     assert file("unnumbered", other) == "b"  # caption alone
     assert file("S1 Figure", "") == "s" and file("Fig 3", "") is None
     assert file("Fig 1", other) is None  # they disagree: don't guess
+
+
+PLOS_REF = '<graphic xlink:href="info:doi/10.1371/journal.pbio.1234567.g001"/>'
+PLOS_IMAGE = "https://journals.plos.org/plosone/article/figure/image"
+
+
+def plos(size: str):
+    return respx.get(PLOS_IMAGE, params={"size": size, "id": "10.1371/journal.pbio.1234567.g001"})
+
+
+@respx.mock  # no Europe PMC route: PLOS's JATS names its figures by DOI, so Europe PMC isn't asked
+def test_a_plos_figure_comes_from_plos(client, pkg, tmp_path):
+    P = f"/v1/packages/{pkg}"
+    t = published(client, P, tmp_path, graphics=PLOS_REF, pmcid=None)
+    original = plos("original").mock(return_value=httpx.Response(200, content=image((90, 60), "TIFF", "CMYK")))
+    out = client.put(f"{P}/figures/{t}", json={}).json()
+    assert out["method"] == "published" and out["size"] == [90, 60] and original.called
+    assert out["source"] == f"{PLOS_IMAGE}?size=original&id=10.1371%2Fjournal.pbio.1234567.g001"
+    assert client.get(f"{P}/figures/{t}").headers["content-type"] == "image/png"
+
+
+@respx.mock
+def test_a_plos_figure_falls_back_to_the_large_image(client, pkg, tmp_path):
+    P = f"/v1/packages/{pkg}"
+    t = published(client, P, tmp_path, graphics=PLOS_REF, pmcid=None)
+    plos("original").mock(return_value=httpx.Response(200, content=b"not an image"))
+    plos("large").mock(return_value=httpx.Response(200, content=image((30, 20), "PNG")))
+    out = client.put(f"{P}/figures/{t}", json={}).json()
+    assert out["method"] == "published" and out["size"] == [30, 20] and "size=large" in out["source"]
+
+
+@respx.mock
+def test_without_plos_figure_the_pdf_provides_it(client, pkg, tmp_path):
+    P = f"/v1/packages/{pkg}"
+    t = published(client, P, tmp_path, graphics=PLOS_REF, pmcid=None, caption=CAPTION)
+    add(client, P, tmp_path, "paper.pdf", pdf_with("no figure here", CAPTION))
+    plos("original").mock(return_value=httpx.Response(404))
+    plos("large").mock(return_value=httpx.Response(200, content=b"<html>not found</html>"))
+    out = client.put(f"{P}/figures/{t}", json={}).json()
+    assert out["method"] == "page" and "HTTP 404" in out["note"] and "large image" in out["note"]
+
+
+@respx.mock  # no route at all: neither PLOS nor Europe PMC is asked
+def test_only_plos_figure_dois_are_fetched_from_plos(client, pkg, tmp_path):
+    P = f"/v1/packages/{pkg}"
+    t = published(client, P, tmp_path, graphics='<graphic xlink:href="info:doi/10.1371/journal.pbio.1234567.g001/../../x"/>', pmcid=None, caption=CAPTION)
+    add(client, P, tmp_path, "paper.pdf", pdf_with("no figure here", CAPTION))
+    out = client.put(f"{P}/figures/{t}", json={}).json()
+    assert out["method"] == "page" and "no PMCID" in out["note"]

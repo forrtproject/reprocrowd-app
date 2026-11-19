@@ -849,7 +849,7 @@ def get_coordinates(pkg: Pkg):
 
 @api.put("/packages/{pkg}/figures/{target}", tags=["report"], response_model=M.CropResult, summary="Get the original figure of a figure target",
          description="Writes `targets/figures/<target>.png`, best first: the image as published, when a JATS full text names it and Europe PMC "
-                     "has it; the figure's area, from a full text that locates it (matched by caption when the target refers to an extraction "
+                     "(or PLOS, for its own JATS) has it; the figure's area, from a full text that locates it (matched by caption when the target refers to an extraction "
                      "without coordinates, such as JATS or a reconciled one); the whole page with the figure's caption. `method` says which, and "
                      "`note` why the published image wasn't available if that failed. Naming a `pdf` skips the published image. "
                      "The report shows the original next to the reproduced figure. "
