@@ -420,9 +420,10 @@ class SubmissionCreate(Req):
 
 class JatsAvailability(BaseModel):
     doi: str
-    available: bool = Field(description="Europe PMC serves the paper's JATS XML")
+    available: bool = Field(description="Europe PMC or the publisher (PLOS) serves the paper's JATS XML")
+    source: Literal["Europe PMC", "PLOS"] | None = Field(default=None, description="where the JATS XML is served, if available")
     pmcid: str | None
-    url: str | None = Field(description="the JATS XML at Europe PMC")
+    url: str | None = Field(description="the JATS XML (if unavailable, the first place looked)")
     title: str | None = Field(description="from OpenAlex")
     reason: str | None = Field(description="why it isn't available")
 

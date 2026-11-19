@@ -1,10 +1,11 @@
-"""OpenAlex metadata and full-text download candidates (URLs named in the OpenAlex record, plus Europe PMC
-JATS when a PMCID is known)."""
+"""OpenAlex metadata and full-text download candidates (URLs named in the OpenAlex record, plus JATS XML from
+Europe PMC when a PMCID is known, and from the publisher for PLOS articles)."""
 from __future__ import annotations
 
 import hashlib
 from dataclasses import dataclass
 from typing import Any
+from urllib.parse import urlencode
 
 import httpx
 
@@ -16,6 +17,8 @@ from .schemas.common import Identifier
 API = "https://api.openalex.org"
 CONTENT = "https://content.openalex.org"
 EUROPEPMC = "https://www.ebi.ac.uk/europepmc/webservices/rest"
+# PLOS serves the JATS XML of every article it publishes, PubMed Central or not; the journal in the path doesn't matter.
+PLOS = "https://journals.plos.org/plosone/article/file"
 USER_AGENT = "reprocrowd-cli/0.1 (+https://github.com/)"
 
 
@@ -112,13 +115,15 @@ def candidates(work: dict[str, Any]) -> tuple[list[Candidate], list[str]]:
         add(f"Europe PMC JATS ({pmcid})", f"{EUROPEPMC}/{pmcid}/fullTextXML", "jats", "europepmc.jats.xml")
     else:
         notes.append("No PMCID known: no Europe PMC JATS candidate.")
+    if ids.get("doi", "").startswith("10.1371/journal."):  # after Europe PMC, whose archive has the published figures
+        add("PLOS JATS", f"{PLOS}?{urlencode({'id': ids['doi'], 'type': 'manuscript'})}", "jats", "plos.jats.xml")
     return out, notes
 
 
 def download(c: Candidate, dest, max_bytes: int) -> None:
-    url, params = c.download_url()
+    url, params = c.download_url()  # params=None: an empty dict would drop the query string already in the URL
     try:
-        with _client() as client, client.stream("GET", url, params=params, headers={"Accept": "application/pdf,application/xml;q=0.9,*/*;q=0.5"}) as r:
+        with _client() as client, client.stream("GET", url, params=params or None, headers={"Accept": "application/pdf,application/xml;q=0.9,*/*;q=0.5"}) as r:
             if r.status_code != 200:
                 raise ApiError(502, "download_failed", f"{c.label}: HTTP {r.status_code}", {"url": c.url})
             n = 0
@@ -132,20 +137,16 @@ def download(c: Candidate, dest, max_bytes: int) -> None:
         raise ApiError(502, "download_failed", f"{c.label}: {e}", {"url": c.url})
 
 
-def jats_availability(doi: str) -> dict[str, Any]:
-    """Can the paper's JATS XML be retrieved? Asks OpenAlex and Europe PMC for its PMCID, then fetches the start of
-    Europe PMC's fullTextXML: a PMCID alone isn't enough, since only the open-access subset has full-text XML."""
-    work = fetch_work(Identifier(scheme="doi", value=doi))
-    cands, _ = candidates(work)
-    jats = next((c for c in cands if c.format == "jats"), None)
-    out: dict[str, Any] = {"doi": doi, "available": False, "pmcid": None, "url": None, "title": work.get("title"), "reason": None}
-    if jats is None:
-        out["reason"] = "Europe PMC has no copy of this paper in PubMed Central (no PMCID)."
-        return out
-    out["pmcid"] = jats.label.split("(")[-1].rstrip(")")
-    out["url"] = jats.url
+def _pmcid_of(c: Candidate) -> str | None:
+    return c.label.split("(")[-1].rstrip(")") if c.label.startswith("Europe PMC") else None
+
+
+def _jats_head(c: Candidate) -> str | None:
+    """Why the candidate's JATS XML can't be had, from the start of the download; None if it can. Raises
+    jats_check_failed if its source can't be reached."""
+    source = "Europe PMC" if _pmcid_of(c) else "PLOS"
     try:
-        with _client() as c, c.stream("GET", jats.url, headers={"Accept": "application/xml"}) as r:
+        with _client() as client, client.stream("GET", c.url, headers={"Accept": "application/xml"}) as r:
             head = b""
             if r.status_code == 200:
                 for chunk in r.iter_bytes():
@@ -153,11 +154,41 @@ def jats_availability(doi: str) -> dict[str, Any]:
                     if len(head) > 65536:
                         break
     except httpx.HTTPError as e:
-        raise ApiError(502, "jats_check_failed", f"could not reach Europe PMC: {e}")
+        raise ApiError(502, "jats_check_failed", f"could not reach {source}: {e}")
     if r.status_code != 200:
-        out["reason"] = f"Europe PMC has no JATS XML for {out['pmcid']}: the paper isn't in the open-access subset of PubMed Central."
-    elif b"<article" not in head:
-        out["reason"] = f"Europe PMC's answer for {out['pmcid']} isn't JATS XML."
-    else:
-        out["available"] = True
-    return out
+        if _pmcid_of(c):
+            return f"Europe PMC has no JATS XML for {_pmcid_of(c)}: the paper isn't in the open-access subset of PubMed Central."
+        return f"PLOS has no JATS XML for this DOI (HTTP {r.status_code})."
+    if b"<article" not in head:
+        return f"{source}'s answer for {_pmcid_of(c) or 'this DOI'} isn't JATS XML."
+    return None
+
+
+def jats_availability(doi: str) -> dict[str, Any]:
+    """Can the paper's JATS XML be retrieved? Asks OpenAlex and Europe PMC for its PMCID, then fetches the start of
+    Europe PMC's fullTextXML: a PMCID alone isn't enough, since only the open-access subset has full-text XML. PLOS
+    articles also have it from PLOS, which is tried if Europe PMC has none. A source that can't be reached doesn't stop
+    the others from being tried, but if none has the XML, that is jats_check_failed: the answer isn't known."""
+    work = fetch_work(Identifier(scheme="doi", value=doi))
+    cands, _ = candidates(work)
+    jats = [c for c in cands if c.format == "jats"]
+    out: dict[str, Any] = {"doi": doi, "available": False, "source": None, "pmcid": None, "url": None, "title": work.get("title"),
+                           "reason": None}
+    if not jats:
+        out["reason"] = "Europe PMC has no copy of this paper in PubMed Central (no PMCID)."
+        return out
+    reasons = [] if _pmcid_of(jats[0]) else ["Europe PMC has no copy of this paper in PubMed Central (no PMCID)."]
+    unreachable: list[str] = []
+    for c in jats:
+        try:
+            reason = _jats_head(c)
+        except ApiError as e:
+            unreachable.append(e.message)
+            continue
+        if reason is None:
+            return out | {"available": True, "source": "Europe PMC" if _pmcid_of(c) else "PLOS", "pmcid": _pmcid_of(c), "url": c.url}
+        reasons.append(reason)
+    if unreachable:
+        raise ApiError(502, "jats_check_failed", "; ".join(unreachable) + (f" ({' '.join(reasons)})" if reasons else ""))
+    pmcid = next((_pmcid_of(c) for c in jats if _pmcid_of(c)), None)
+    return out | {"pmcid": pmcid, "url": jats[0].url, "reason": " ".join(reasons)}

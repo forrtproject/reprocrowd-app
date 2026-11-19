@@ -97,8 +97,8 @@ export type UpdateStatus =
 export interface UpdateInfo { mode: "auto" | "notify" | "off"; explain: string; status: UpdateStatus; pending: boolean; installOnQuit: boolean }
 /** What the window's creation or opening of a package is doing: step `step` (1-based) of `steps`, for `elapsed` ms. */
 export interface TextProgress { step: number; steps: number; label: string; elapsed: number; cancelling: boolean }
-export interface JatsAvailability { doi: string; available: boolean; pmcid: string | null; url: string | null; title: string | null; reason: string | null }
-export const JATS_ONLY = "Only articles with JATS XML full text (the open-access subset of PubMed Central) are supported at this time.";
+export interface JatsAvailability { doi: string; available: boolean; source: "Europe PMC" | "PLOS" | null; pmcid: string | null; url: string | null; title: string | null; reason: string | null }
+export const JATS_ONLY = "Only articles with JATS XML full text (the open-access subset of PubMed Central, or PLOS journals) are supported at this time.";
 export interface Work { doi: string; title: string | null; authors: string[]; year: number | null; venue: string | null; license: string | null; open_access: boolean | null }
 export interface ZenodoRecord { id: number | string | null; doi: string | null; title: string | null; creators: string[]; published: string | null; url: string }
 export interface ZenodoAccount { sandbox: boolean; hasToken: boolean; creator: Creator; community: string }

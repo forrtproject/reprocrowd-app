@@ -1,5 +1,5 @@
 // Step 1: the inputs of the reproduction.
-//   The paper's text: its JATS XML from Europe PMC, parsed (retrieved by the app; shown here, nothing to choose).
+//   The paper's text: its JATS XML from Europe PMC or PLOS, parsed (retrieved by the app; shown here, nothing to choose).
 //   Input files:      the study's published data (POST …/inputs; zip archives are unpacked).
 import { ApiError, host, pkg } from "../api";
 import { countSentences } from "../doc";

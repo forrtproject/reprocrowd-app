@@ -525,7 +525,7 @@ function newDialog() {
     err("");
     suggest();
     jbox.hidden = false;
-    jbox.innerHTML = `<p class="muted small">Checking Europe PMC for the article's JATS XML…</p>`;
+    jbox.innerHTML = `<p class="muted small">Checking for the article's JATS XML…</p>`;
     try {
       jats = await host.jatsAvailability(work.doi);
     } catch (e) {
@@ -543,7 +543,7 @@ function newDialog() {
       jbox.innerHTML = `<div class="refusal"><b>This article isn't supported.</b> ${esc(JATS_ONLY)}<br><span class="small">${esc(jats.reason ?? "")}</span></div>`;
       return;
     }
-    jbox.innerHTML = `<p class="ok small">✓ JATS XML available from Europe PMC (${esc(jats.pmcid ?? "")}).</p>`;
+    jbox.innerHTML = `<p class="ok small">✓ JATS XML available from ${esc(jats.source ?? "Europe PMC")}${jats.pmcid ? ` (${esc(jats.pmcid)})` : ""}.</p>`;
     create.disabled = false;
     const [records, pilots] = await Promise.all([
       host.zenodoRecords(work.doi).catch(() => [] as ZenodoRecord[]),

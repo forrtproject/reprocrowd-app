@@ -1321,7 +1321,7 @@
           "fulltexts"
         ],
         "summary": "Is the paper's JATS XML available?",
-        "description": "Looks the DOI up in OpenAlex and Europe PMC and fetches the start of Europe PMC's full-text XML, before any package exists. Only papers in the open-access subset of PubMed Central have it.",
+        "description": "Looks the DOI up in OpenAlex and Europe PMC and fetches the start of Europe PMC's full-text XML, before any package exists. Only papers in the open-access subset of PubMed Central have it; for PLOS articles, the publisher's JATS XML is tried next.",
         "operationId": "jats_availability_v1_jats_get",
         "security": [
           {
@@ -1393,7 +1393,7 @@
                 }
               }
             },
-            "description": "`openalex_failed`: OpenAlex could not be reached or returned an error; `jats_check_failed`: Europe PMC could not be reached to check for JATS XML"
+            "description": "`openalex_failed`: OpenAlex could not be reached or returned an error; `jats_check_failed`: A source of JATS XML (Europe PMC, PLOS) could not be reached to check for it"
           }
         }
       }
@@ -1404,7 +1404,7 @@
           "fulltexts"
         ],
         "summary": "Download candidates from OpenAlex",
-        "description": "URLs named in the OpenAlex record (PDF locations, OpenAlex cached content if an API key is configured) and Europe PMC JATS when a PMCID is known.",
+        "description": "URLs named in the OpenAlex record (PDF locations, OpenAlex cached content if an API key is configured) Europe PMC JATS when a PMCID is known, and PLOS JATS for PLOS DOIs.",
         "operationId": "candidates_v1_packages__pkg__fulltexts_candidates_get",
         "security": [
           {
@@ -12624,7 +12624,23 @@
           "available": {
             "type": "boolean",
             "title": "Available",
-            "description": "Europe PMC serves the paper's JATS XML"
+            "description": "Europe PMC or the publisher (PLOS) serves the paper's JATS XML"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "Europe PMC",
+                  "PLOS"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source",
+            "description": "where the JATS XML is served, if available"
           },
           "pmcid": {
             "anyOf": [
@@ -12647,7 +12663,7 @@
               }
             ],
             "title": "Url",
-            "description": "the JATS XML at Europe PMC"
+            "description": "the JATS XML (if unavailable, the first place looked)"
           },
           "title": {
             "anyOf": [

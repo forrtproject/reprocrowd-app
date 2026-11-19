@@ -18,7 +18,7 @@ import * as updater from "./updater";
 
 /** Read-only backend endpoints any window may call. */
 const GLOBAL_GETS = new Set(["/v1/health", "/v1/templates", "/v1/llm-profiles", "/v1/agent-profiles", "/v1/zenodo"]);
-export const JATS_ONLY = "Only articles with JATS XML full text (the open-access subset of PubMed Central) are supported at this time.";
+export const JATS_ONLY = "Only articles with JATS XML full text (the open-access subset of PubMed Central, or PLOS journals) are supported at this time.";
 const EDITORS = ["code", "codium", "cursor", "zed", "subl", "xdg-open"];
 const LONG = 3 * 3600_000; // LLM calls and conversions are synchronous requests bounded by the backend's own timeouts
 
@@ -147,8 +147,8 @@ const STEPS = {
   open: "Opening the package",
   create: "Creating the package",
   metadata: "Fetching the paper's metadata from OpenAlex",
-  locate: "Finding the article's JATS XML on Europe PMC",
-  download: "Downloading the JATS XML from Europe PMC",
+  locate: "Finding the article's JATS XML",
+  download: "Downloading the article's JATS XML",
   parse: "Converting the JATS XML into the paper's text",
   upload: "Adding the paper file to the package",
   extract: "Extracting the text of the paper file",
@@ -204,18 +204,33 @@ export async function ensureText(id: string, progress?: Progress): Promise<strin
   // No full text: fetch the paper's JATS XML (a DOI package).
   progress?.to("locate");
   const { candidates, notes } = await get<{ candidates: any[]; notes: string[] }>(`${P}/fulltexts/candidates`, undefined, 60_000);
-  const c = candidates.find((x) => x.format === "jats");
-  if (!c) throw new ServiceError(`${JATS_ONLY} ${notes.find((n) => /PMCID/.test(n)) ?? "There is no JATS XML for this paper."}`, { status: 409, code: "jats_unavailable" });
-  try {
-    progress?.to("download");
-    const ftName = ((await request("POST", `${P}/fulltexts`, { json: { candidate: c.id, name: "ft-jats" }, timeout: 300_000 })).data as any).name;
-    progress?.to("parse");
-    return ((await request("POST", `${P}/extractions`, { json: { method: "parse", fulltext: ftName }, timeout: 300_000 })).data as any).name;
-  } catch (e) {
-    const code = (e as ServiceError).problem?.code;
-    if (code === "download_failed" || code === "integrity_check_failed") throw new ServiceError(`${JATS_ONLY} Europe PMC has no JATS XML for this paper (${(e as Error).message}).`, { status: 409, code: "jats_unavailable" });
-    throw e;
+  // Europe PMC first (its archive has the published figures), then the publisher's (PLOS).
+  const jats = candidates.filter((x) => x.format === "jats");
+  if (!jats.length) throw new ServiceError(`${JATS_ONLY} ${notes.find((n) => /PMCID/.test(n)) ?? "There is no JATS XML for this paper."}`, { status: 409, code: "jats_unavailable" });
+  // A source whose file can't be downloaded or parsed is skipped for the next one.
+  const failures: string[] = [];
+  for (const c of jats) {
+    let ftName: string;
+    try {
+      progress?.to("download");
+      ftName = ((await request("POST", `${P}/fulltexts`, { json: { candidate: c.id, name: "ft-jats" }, timeout: 300_000 })).data as any).name;
+    } catch (e) {
+      const code = (e as ServiceError).problem?.code;
+      if (code !== "download_failed" && code !== "integrity_check_failed") throw e;
+      failures.push((e as Error).message);
+      continue;
+    }
+    try {
+      progress?.to("parse");
+      return ((await request("POST", `${P}/extractions`, { json: { method: "parse", fulltext: ftName }, timeout: 300_000 })).data as any).name;
+    } catch (e) {
+      if ((e as ServiceError).problem?.code !== "parse_failed") throw e;
+      failures.push(`${c.label}: ${(e as Error).message}`);
+      // Not left in the package: opening it again would try to parse this file rather than the next source.
+      await request("DELETE", `${P}/fulltexts/${enc(ftName)}`);
+    }
   }
+  throw new ServiceError(`${JATS_ONLY} No JATS XML could be used for this paper (${failures.join("; ")}).`, { status: 409, code: "jats_unavailable" });
 }
 
 /** New editor/backend commands in a settings patch, as the confirmation lists them. Clearing one goes back to the
