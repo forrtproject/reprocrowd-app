@@ -107,3 +107,19 @@ def test_jobs_do_not_inherit_the_service_virtualenv(monkeypatch):
     monkeypatch.setenv("VIRTUAL_ENV", sys.prefix)
     env = job_env({"X": "1"})
     assert env["PATH"] == "/usr/local/bin:/usr/bin" and "VIRTUAL_ENV" not in env and env["X"] == "1"
+
+
+def test_child_environments_are_allowlisted():
+    """Issue #91: scripts and agents don't get the app's credentials or the path of the backend's token file."""
+    from reprocrowd import childenv
+
+    env = {"PATH": "/usr/bin", "HOME": "/home/u", "LC_ALL": "C", "https_proxy": "http://proxy:3128", "R_LIBS_USER": "/r",
+           "AWS_SECRET_ACCESS_KEY": "aws", "GITHUB_TOKEN": "gh", "ANTHROPIC_API_KEY": "ant", "OPENAI_API_KEY": "oai",
+           "REPROCROWD_CONFIG": "/cfg.toml", "REPROCROWD_TOKEN": "t", "MY_GATEWAY_URL": "g"}
+    assert set(childenv.for_script(env)) == {"PATH", "HOME", "LC_ALL", "https_proxy", "R_LIBS_USER"}
+    claude = childenv.for_cli(["/usr/local/bin/claude", "-p"], env=env)
+    assert {"ANTHROPIC_API_KEY", "AWS_SECRET_ACCESS_KEY", "PATH"} <= set(claude) and not {"GITHUB_TOKEN", "OPENAI_API_KEY", "R_LIBS_USER"} & set(claude)
+    codex = childenv.for_cli([r"C:\npm\codex.cmd", "exec"], env=env)
+    assert "OPENAI_API_KEY" in codex and "ANTHROPIC_API_KEY" not in codex
+    assert "MY_GATEWAY_URL" in childenv.for_cli(["mycli"], ["MY_GATEWAY_*"], env=env)
+    assert not any(k.startswith("REPROCROWD_") for k in childenv.for_cli(["mycli"], ["REPROCROWD_*", "*"], env=env))

@@ -101,6 +101,8 @@ timeout_s = 7200
 default_profile = "claude"
 
 # {model} and {effort} are substituted; the prompt is sent on stdin, in the package folder.
+# Each CLI gets only the environment any program needs plus its own and its model providers' variables;
+# env_pass = ["MY_GATEWAY_*"] in a profile passes on more.
 [llm.profiles.claude]
 argv = ["claude", "-p", "--output-format", "json", "--model", "{model}", "--effort", "{effort}"]
 read_files_argv = ["--allowedTools", "Read"]

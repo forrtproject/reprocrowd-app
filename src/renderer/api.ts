@@ -230,7 +230,7 @@ export interface ConfiguredProfile {
   argv: string[]; model: string; effort: string; timeout_s: number;
   output?: string; events?: string; tools?: string[]; exec_tools?: string[];
   read_files_argv?: string[]; json_schema_argv?: string[];
-  no_exec_argv?: string[]; no_exec_env?: Record<string, string>;
+  no_exec_argv?: string[]; no_exec_env?: Record<string, string>; env_pass?: string[];
 }
 
 /** How an agent profile honours "don't run the analysis", derived like the backend (providers.exec_restriction). */

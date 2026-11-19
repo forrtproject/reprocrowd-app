@@ -85,4 +85,4 @@ def start(pkg: Package, *, profile: str | None, allow_exec: bool, instructions: 
                "exec_restriction": "none" if allow_exec else exec_restriction(prof, tools),
                "code_context": "excluded_from_prompt", "code_files_on_disk": [r.path for r in pkg.load().by_kind("input") if r.reprocrowd.role == "code" and pkg.path(r.path).exists()]}
     return jobs.start(pkg, jid=jid, type="codegen", argv=argv, stdin=prompt, timeout_s=prof.timeout_s, events_format=prof.events,
-                      profile=name, request=request, finish=finish, env=env)
+                      profile=name, request=request, finish=finish, env=env, env_pass=prof.env_pass)

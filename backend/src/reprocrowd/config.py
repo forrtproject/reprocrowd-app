@@ -10,10 +10,14 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from .childenv import cli_name
+
 
 class LlmProfile(BaseModel):
     argv: list[str] = Field(min_length=1, description="command line; {model} and {effort} are substituted, the prompt goes to stdin")
     read_files_argv: list[str] = Field(default_factory=list, description="appended when the LLM must read package files (cwd = package root)")
+    env_pass: list[str] = Field(default_factory=list, description="environment variables passed on besides the defaults for its CLI (childenv); "
+                                                              "a trailing * matches a prefix, e.g. MY_GATEWAY_*")
     json_schema_argv: list[str] = Field(default_factory=list, description="appended with {schema} = the task's output JSON Schema, for CLIs "
                                                                           "that constrain output to a schema (claude: --json-schema)")
     output: Literal["text", "claude-json", "opencode-json", "codex-json"] = Field(
@@ -39,6 +43,8 @@ class AgentProfile(BaseModel):
     events: Literal["claude-stream-json", "opencode-json", "codex-json", "text"] = Field(default="claude-stream-json", description="how to read the agent's stdout as events")
     no_exec_argv: list[str] = Field(default_factory=list, description="appended when the caller forbids running the analysis (allow_exec=false): "
                                                                     "CLI flags that remove its command-running tools while keeping its read and edit tools")
+    env_pass: list[str] = Field(default_factory=list, description="environment variables passed on besides the defaults for its CLI (childenv); "
+                                                              "a trailing * matches a prefix, e.g. MY_GATEWAY_*")
     no_exec_env: dict[str, str] = Field(default_factory=dict, description="environment added when allow_exec=false, e.g. OpenCode's "
                                                                          "OPENCODE_PERMISSION denying every tool but reading and editing")
 
@@ -58,9 +64,7 @@ def isolate_argv(argv: list[str]) -> list[str]:
     the command already sets is left as it is."""
     if not argv:
         return argv
-    name = Path(argv[0].replace("\\", "/")).name.lower()
-    for suffix in (".exe", ".cmd", ".ps1"):
-        name = name.removesuffix(suffix)
+    name = cli_name(argv)
     if name == "claude":
         extra = [] if "--setting-sources" in argv else ["--setting-sources", "user"]
         extra += [] if "--strict-mcp-config" in argv else ["--strict-mcp-config"]

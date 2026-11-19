@@ -7,7 +7,7 @@ import path from "node:path";
 import { parse } from "smol-toml";
 
 /** Keys of the backend configuration that decide what runs, or with which tools and environment. */
-const COMMAND_KEY = /(^|_)(argv|env)$|^(exec_)?tools$/;
+const COMMAND_KEY = /(^|_)(argv|env)$|^(exec_)?tools$|^env_pass$/;
 
 /** Every command-bearing value of a TOML text, by its dotted key (unparseable text has none). */
 export function commandEntries(text: string): Map<string, string> {

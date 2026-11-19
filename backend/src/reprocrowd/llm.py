@@ -21,6 +21,7 @@ from string import Template
 from typing import Any
 
 from . import providers
+from . import childenv
 from .config import ISOLATION_ENV, LlmProfile, expand_argv, isolate_argv, settings
 from .errors import ApiError
 from .package import Package, atomic_write, dump_json
@@ -107,7 +108,7 @@ def run(pkg: Package, task: str, prompt: str, *, profile_name: str | None, templ
 
     try:
         # PWD follows cwd: some CLIs (OpenCode) resolve relative paths from $PWD, which would otherwise be the service's folder.
-        proc = subprocess.Popen(resolve_argv(argv), cwd=pkg.root, env={**os.environ, **ISOLATION_ENV, "PWD": str(pkg.root)}, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        proc = subprocess.Popen(resolve_argv(argv), cwd=pkg.root, env={**childenv.for_cli(argv, p.env_pass), **ISOLATION_ENV, "PWD": str(pkg.root)}, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                 text=True, encoding="utf-8", errors="replace", start_new_session=True)
     except OSError as e:
         record("", str(e), None)
