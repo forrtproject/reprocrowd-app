@@ -9,6 +9,14 @@ from reprocrowd.errors import ApiError
 from reprocrowd.package import Package, init_package
 
 
+@pytest.fixture(autouse=True)
+def _public_dns(monkeypatch):
+    """No real DNS in tests: every name is public, except *.internal.test, which is on the local network."""
+    real = acquire._addresses
+    monkeypatch.setattr(acquire, "_addresses", lambda host, port: ["192.168.1.1"] if host.endswith(".internal.test")
+                        else real(host, port) if host[:1].isdigit() or ":" in host else ["93.184.216.34"])
+
+
 def _make_pkg(tmp_path) -> Package:
     root = tmp_path / "pkg"
     init_package(root, "pkg", None)
@@ -541,3 +549,23 @@ def test_preview_marks_files_already_fetched(tmp_path, monkeypatch):
 
     inputs.delete(pkg, "in-data.csv")
     assert not any(f["present"] for f in acquire.preview(pkg)["files"])
+
+
+@respx.mock
+@pytest.mark.parametrize("url", ["http://127.0.0.1:8080/x", "http://[::1]/x", "http://[::ffff:10.0.0.1]/x", "http://169.254.169.254/latest",
+                                 "http://router.internal.test/admin"])
+def test_download_refuses_local_addresses(tmp_path, url):
+    """Issue #91: a repository's download URL can't point the app at the user's own network."""
+    route = respx.get(url).mock(return_value=httpx.Response(200, content=b"secret"))
+    with pytest.raises(ApiError, match="local or private address"):
+        acquire._download(url, tmp_path / "f", 1000)
+    assert not route.called and not (tmp_path / "f").exists()
+
+
+@respx.mock
+def test_redirects_to_local_addresses_are_refused(tmp_path):
+    respx.get("https://figshare.com/ndownloader/files/1").mock(return_value=httpx.Response(302, headers={"Location": "http://192.168.0.1/cfg"}))
+    local = respx.get("http://192.168.0.1/cfg").mock(return_value=httpx.Response(200, content=b"router config"))
+    with pytest.raises(ApiError, match="local or private address"):
+        acquire._download("https://figshare.com/ndownloader/files/1", tmp_path / "f", 1000)
+    assert not local.called

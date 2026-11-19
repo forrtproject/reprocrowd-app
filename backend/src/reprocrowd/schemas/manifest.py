@@ -21,6 +21,7 @@ RESOURCE_NAME = r"^[a-z0-9][a-z0-9._-]*$"
 CONTROL_CHARS = r"\x00-\x1f\x7f\x85\u2028\u2029"
 RESOURCE_PATH = rf"^[^{CONTROL_CHARS}]+$"
 _CONTROL = re.compile(f"[{CONTROL_CHARS}]")
+_URL = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*://")
 
 
 def unsafe_parts(parts: list[str]) -> bool:
@@ -147,8 +148,10 @@ class Resource(Model):
     @classmethod
     def _package_relative(cls, v: str | None) -> str | None:
         # The plan and the master script take r.path as it is: the same rules as Package.path, and no leading /.
-        if v is not None and (v.startswith("/") or unsafe_parts([p for p in v.split("/") if p not in ("", ".")])):
-            raise ValueError(f"not a safe package-relative path: {v!r}")
+        # No URLs either: validation (frictionless) would fetch them, so opening a package could make the app request
+        # any address, including ones on the user's own network (#91).
+        if v is not None and (v.startswith("/") or _URL.match(v) or unsafe_parts([p for p in v.split("/") if p not in ("", ".")])):
+            raise ValueError(f"not a package-relative path: {v!r}")
         return v
 
 

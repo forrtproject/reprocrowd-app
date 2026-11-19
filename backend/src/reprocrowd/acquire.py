@@ -12,7 +12,9 @@ the rest. Messages are written for the user (host, what went wrong, what to do).
 """
 from __future__ import annotations
 
+import ipaddress
 import re
+import socket
 from urllib.parse import quote
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -60,8 +62,32 @@ class File:
         return f"{self.repo}:{self.id}:{self.path}"
 
 
+def _addresses(host: str, port: int) -> list[str]:
+    """The IP addresses ``host`` resolves to (none if it doesn't resolve: the request then fails on its own)."""
+    try:
+        return [a[4][0] for a in socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)]
+    except (socket.gaierror, UnicodeError):
+        return []
+
+
+def _public_only(request: httpx.Request) -> None:
+    """Refuse a request, or a redirect, to anything but a public http(s) address (#91). Download URLs come from the
+    repositories' metadata, so a record could otherwise point the app at the user's router or another local service.
+    The check is on the name's addresses before connecting; a name that changes its answer in between is not covered."""
+    url = request.url
+    if url.scheme not in ("http", "https"):
+        raise ApiError(502, "acquire_failed", f"refused to fetch {url.scheme}: URLs")
+    for a in _addresses(url.host, url.port or (443 if url.scheme == "https" else 80)):
+        ip = ipaddress.ip_address(a.split("%")[0])
+        if ip.version == 6 and ip.ipv4_mapped:
+            ip = ip.ipv4_mapped
+        if not ip.is_global or ip.is_multicast:
+            raise ApiError(502, "acquire_failed", f"refused to fetch from {url.host}: it is a local or private address ({ip}), "
+                                                  "not a public repository")
+
+
 def _client() -> httpx.Client:
-    return httpx.Client(timeout=60, follow_redirects=True, headers={"User-Agent": USER_AGENT})
+    return httpx.Client(timeout=60, follow_redirects=True, headers={"User-Agent": USER_AGENT}, event_hooks={"request": [_public_only]})
 
 
 def _host(url: str) -> str:
