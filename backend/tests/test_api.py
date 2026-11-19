@@ -594,7 +594,9 @@ def test_jats_from_plos(client):
                                    "title": None, "reason": None}
     # Europe PMC can't be reached: PLOS is still asked
     epmc.mock(side_effect=httpx.ConnectError("down"))
+    before = epmc.call_count, plos.call_count
     assert client.get("/v1/jats", params={"doi": "10.1371/journal.pbio.1002106"}).json()["source"] == "PLOS"
+    assert (epmc.call_count, plos.call_count) == (before[0] + 1, before[1] + 1)  # Europe PMC was tried, then PLOS
     # neither has it, and one couldn't be asked: not known, so not a refusal
     plos.mock(return_value=httpx.Response(404))
     e = problem(client.get("/v1/jats", params={"doi": "10.1371/journal.pbio.1002106"}), 502, "jats_check_failed")
