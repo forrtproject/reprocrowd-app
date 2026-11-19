@@ -2526,7 +2526,7 @@
                 }
               }
             },
-            "description": "`invalid_archive`: The zip archive is corrupt or unsafe; `directory_too_large`: Too many files in the directory; `directory_empty`: The directory contains no regular files"
+            "description": "`invalid_archive`: The zip archive is corrupt or unsafe; `archive_too_large`: The zip archive unpacks to too many files or bytes; `directory_too_large`: Too many files in the directory; `directory_empty`: The directory contains no regular files"
           },
           "400": {
             "content": {

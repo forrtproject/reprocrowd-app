@@ -138,6 +138,8 @@ class Settings(BaseModel):
     mailto: str = ""
     max_download_mb: int = 200
     max_upload_mb: int = 500
+    max_unpack_mb: int = Field(default=20000, gt=0, description="limit for the unpacked size of one zip archive (zip bombs)")
+    max_unpack_files: int = Field(default=20000, gt=0, description="limit for the number of files in one zip archive")
     llm_default_profile: str = "claude"
     llm_profiles: dict[str, LlmProfile] = Field(default_factory=_default_profiles)
     grobid_url: str = Field(default="", description="GROBID service, e.g. http://localhost:8070; empty = not configured")
@@ -186,7 +188,7 @@ def load_settings(path: Path | None = None) -> Settings:
         data["openalex_api_key"] = openalex["api_key"]
     if "mailto" in openalex:
         data["mailto"] = openalex["mailto"]
-    for k in ("max_download_mb", "max_upload_mb"):
+    for k in ("max_download_mb", "max_upload_mb", "max_unpack_mb", "max_unpack_files"):
         if k in raw.get("downloads", {}):
             data[k] = raw["downloads"][k]
     if "default_profile" in llm:

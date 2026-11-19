@@ -229,6 +229,30 @@ def test_inputs(client, pkg):
     assert not (root / "inputs" / "replication").exists()
 
 
+def test_zip_limits(client, pkg, tmp_path, monkeypatch):
+    """Zip bombs and huge archives are refused before anything is unpacked, and nothing is left behind."""
+    import zipfile
+    from reprocrowd.config import settings
+    P = f"/v1/packages/{pkg}"
+    bomb = tmp_path / "bomb.zip"
+    with zipfile.ZipFile(bomb, "w", zipfile.ZIP_DEFLATED) as z:
+        z.writestr("zeros.csv", b"0" * 50_000_000)  # 50 MB of one byte compresses about 1000:1
+    body = problem(client.post(P + "/inputs", json={"path": str(bomb)}), 422, "archive_too_large")
+    assert "zip bomb" in body["detail"]
+    many = tmp_path / "many.zip"
+    with zipfile.ZipFile(many, "w") as z:
+        for i in range(4):
+            z.writestr(f"f{i}.csv", "a,b\n1,2\n")
+    monkeypatch.setattr(settings(), "max_unpack_files", 3)
+    problem(client.post(P + "/inputs", json={"path": str(many)}), 422, "archive_too_large")
+    monkeypatch.setattr(settings(), "max_unpack_files", 20000)
+    monkeypatch.setattr(settings(), "max_unpack_mb", 0.000001)
+    problem(client.post(P + "/inputs", json={"path": str(many)}), 422, "archive_too_large")
+    assert client.get(P + "/inputs").json() == []
+    root = Path(client.get(P).json()["path"])
+    assert not any((root / "inputs").iterdir())
+
+
 def test_local_origin_keeps_only_the_name():
     """Older packages recorded the full source path; it is cut to the name when they are loaded."""
     from reprocrowd.schemas.manifest import LocalOrigin

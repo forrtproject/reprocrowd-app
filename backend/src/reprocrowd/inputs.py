@@ -122,6 +122,29 @@ def add_directory(pkg: Package, src: Path, role: Role | None, note: str) -> list
     return out
 
 
+# A member this much larger unpacked than packed is a zip bomb, not data (text compresses about 10:1, sparse CSVs 100:1).
+MAX_COMPRESSION_RATIO = 1000
+
+
+def _check_unpack_size(pkg: Package, zpath: Path, members: list[zipfile.ZipInfo]) -> None:
+    """Refuse an archive before unpacking it when it would fill the disk. The sizes are the archive's own claims, which
+    bind: zipfile stops reading a member at its declared size."""
+    s = settings()
+    total = sum(i.file_size for i in members)
+    if len(members) > s.max_unpack_files:
+        raise invalid("archive_too_large", f"{zpath.name} has {len(members)} files, more than the limit of {s.max_unpack_files} (max_unpack_files)")
+    if total > s.max_unpack_mb * 1_000_000:
+        raise invalid("archive_too_large", f"{zpath.name} unpacks to {total / 1e9:.1f} GB, more than the limit of "
+                                           f"{s.max_unpack_mb / 1000:g} GB (max_unpack_mb)")
+    bomb = next((i for i in members if i.file_size > 1_000_000 and i.file_size > MAX_COMPRESSION_RATIO * max(i.compress_size, 1)), None)
+    if bomb:
+        raise invalid("archive_too_large", f"{bomb.filename!r} in {zpath.name} is compressed more than {MAX_COMPRESSION_RATIO}:1, "
+                                           "which data never is; the archive looks like a zip bomb")
+    free = shutil.disk_usage(pkg.root).free
+    if total > free:
+        raise invalid("archive_too_large", f"{zpath.name} unpacks to {total / 1e9:.1f} GB, but only {free / 1e9:.1f} GB is free")
+
+
 def _unpack(pkg: Package, m: Manifest, zpath: Path, rel: str, archive: str, origin) -> list[Resource]:
     base = pkg.free_path(rel.rsplit(".", 1)[0])
     out: list[Resource] = []
@@ -138,6 +161,7 @@ def _unpack(pkg: Package, m: Manifest, zpath: Path, rel: str, archive: str, orig
                 members.append((info, member_rel, pkg.path(member_rel)))
             except ApiError:
                 raise invalid("invalid_archive", f"unsafe path in zip: {info.filename!r}")
+        _check_unpack_size(pkg, zpath, [info for info, _, _ in members])
         try:
             for info, member_rel, dest in members:
                 dest.parent.mkdir(parents=True, exist_ok=True)

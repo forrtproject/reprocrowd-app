@@ -60,6 +60,7 @@ CATALOG: dict[str, tuple[int, str]] = {
     "llm_output_invalid": (422, "The LLM call succeeded but its output is not valid (see stage and errors)"),
     # inputs
     "invalid_archive": (422, "The zip archive is corrupt or unsafe"),
+    "archive_too_large": (422, "The zip archive unpacks to too many files or bytes"),
     "archive_member": (409, "Archive members can't be deleted; mark them unused"),
     # targets and actions
     "schema_invalid": (422, "The item doesn't satisfy its schema"),

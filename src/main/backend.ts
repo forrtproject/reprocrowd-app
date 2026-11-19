@@ -87,6 +87,8 @@ mailto = ""                # your e-mail for OpenAlex's polite pool (optional)
 [downloads]
 max_download_mb = 200
 max_upload_mb = 500
+max_unpack_mb = 20000      # a zip archive that unpacks to more is refused (zip bombs)
+max_unpack_files = 20000
 
 [zenodo]
 license = "cc-by-4.0"
