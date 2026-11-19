@@ -398,7 +398,8 @@ def list_fulltexts(pkg: Pkg, page: Paged):
 
 @api.get("/jats", tags=["fulltexts"], response_model=M.JatsAvailability, summary="Is the paper's JATS XML available?",
          description="Looks the DOI up in OpenAlex and Europe PMC and fetches the start of Europe PMC's full-text XML, before "
-                     "any package exists. Only papers in the open-access subset of PubMed Central have it.",
+                     "any package exists. Only papers in the open-access subset of PubMed Central have it; for PLOS articles, "
+                     "the publisher's JATS XML is tried next.",
          responses=errors("openalex_not_found", "openalex_failed", "jats_check_failed"))
 def jats_availability(doi: Annotated[str, Query(min_length=3)]):
     ident = parse_identifier(doi)
@@ -409,7 +410,7 @@ def jats_availability(doi: Annotated[str, Query(min_length=3)]):
 
 @api.get("/packages/{pkg}/fulltexts/candidates", tags=["fulltexts"], response_model=M.CandidateList, summary="Download candidates from OpenAlex",
          description="URLs named in the OpenAlex record (PDF locations, OpenAlex cached content if an API key is configured) "
-                     "and Europe PMC JATS when a PMCID is known.", responses=errors("metadata_missing"))
+                     "Europe PMC JATS when a PMCID is known, and PLOS JATS for PLOS DOIs.", responses=errors("metadata_missing"))
 def candidates(pkg: Pkg):
     return fulltexts.list_candidates(pkg)
 

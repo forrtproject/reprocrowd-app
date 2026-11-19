@@ -98,7 +98,8 @@ def test_fulltexts(client, pkg, tmp_path):
     client.post(f"/v1/packages/{pkg}/metadata", json={})
     c = client.get(f"/v1/packages/{pkg}/fulltexts/candidates").json()
     labels = {x["label"]: x for x in c["candidates"]}
-    assert set(labels) == {"best open-access location", "location: Mirror", "Europe PMC JATS (PMC4359000)"}
+    assert set(labels) == {"best open-access location", "location: Mirror", "Europe PMC JATS (PMC4359000)", "PLOS JATS"}
+    assert list(labels).index("Europe PMC JATS (PMC4359000)") < list(labels).index("PLOS JATS")  # its archive has the figures
     assert any("API key" in n for n in c["notes"])
     landing = labels["location: Mirror"]["id"]
     problem(client.post(f"/v1/packages/{pkg}/fulltexts", json={"candidate": landing}), 422, "integrity_check_failed")
@@ -553,6 +554,7 @@ def test_structured_output(client, pkg):
 # ---------- JATS availability (before a package exists) ----------
 
 JATS_URL = "https://www.ebi.ac.uk/europepmc/webservices/rest/PMC4359000/fullTextXML"
+PLOS_URL = "https://journals.plos.org/plosone/article/file?id=10.1371%2Fjournal.pbio.1002106&type=manuscript"
 
 
 @respx.mock
@@ -561,22 +563,55 @@ def test_jats_available(client):
     respx.get(JATS_URL).mock(return_value=httpx.Response(200, content=(FIXTURES / "paper.jats.xml").read_bytes()))
     r = client.get("/v1/jats", params={"doi": "https://doi.org/10.1371/journal.pbio.1002106"})
     assert r.status_code == 200, r.text
-    assert r.json() | {"title": None} == {"doi": "10.1371/journal.pbio.1002106", "available": True, "pmcid": "PMC4359000", "url": JATS_URL,
-                                          "title": None, "reason": None}
+    assert r.json() | {"title": None} == {"doi": "10.1371/journal.pbio.1002106", "available": True, "source": "Europe PMC", "pmcid": "PMC4359000",
+                                          "url": JATS_URL, "title": None, "reason": None}
 
 
 @respx.mock
 def test_jats_unavailable(client):
     xml = respx.get(JATS_URL).mock(return_value=httpx.Response(404))  # before mock_openalex's route for the same URL
+    respx.get(PLOS_URL).mock(return_value=httpx.Response(404))
     mock_openalex()
     j = client.get("/v1/jats", params={"doi": "10.1371/journal.pbio.1002106"}).json()
-    assert not j["available"] and "open-access subset" in j["reason"]
+    assert not j["available"] and "open-access subset" in j["reason"] and "PLOS has no JATS XML" in j["reason"]
+    assert j["pmcid"] == "PMC4359000" and j["url"] == JATS_URL and j["source"] is None
     xml.mock(return_value=httpx.Response(200, text="<html>error</html>"))
     assert "isn't JATS" in client.get("/v1/jats", params={"doi": "10.1371/journal.pbio.1002106"}).json()["reason"]
     xml.mock(side_effect=httpx.ConnectError("down"))
     problem(client.get("/v1/jats", params={"doi": "10.1371/journal.pbio.1002106"}), 502, "jats_check_failed")
     problem(client.get("/v1/jats", params={"doi": "10.1234/missing"}), 404, "openalex_not_found")
     problem(client.get("/v1/jats", params={"doi": "W123"}), 400, "invalid_identifier")
+
+
+@respx.mock
+def test_jats_from_plos(client):
+    """A PLOS article Europe PMC has no JATS XML for (issue 75): PLOS's own is used."""
+    respx.get(JATS_URL).mock(return_value=httpx.Response(404))
+    plos = respx.get(PLOS_URL).mock(return_value=httpx.Response(200, content=(FIXTURES / "paper.jats.xml").read_bytes()))
+    mock_openalex()
+    j = client.get("/v1/jats", params={"doi": "10.1371/journal.pbio.1002106"}).json()
+    assert j | {"title": None} == {"doi": "10.1371/journal.pbio.1002106", "available": True, "source": "PLOS", "pmcid": None, "url": PLOS_URL,
+                                   "title": None, "reason": None}
+    # and without a PMCID at all
+    work = WORK | {"ids": {"openalex": "https://openalex.org/W3", "doi": "https://doi.org/10.1371/journal.pcsy.0000125"}}
+    respx.get(url__regex=r"https://api\.openalex\.org/works/doi:10\.1371/journal\.pcsy\.0000125.*").mock(return_value=httpx.Response(200, json=work))
+    respx.get(url__regex=r"https://www\.ebi\.ac\.uk/europepmc/webservices/rest/search.*").mock(return_value=httpx.Response(200, json={"resultList": {"result": []}}))
+    pcsy = respx.get("https://journals.plos.org/plosone/article/file", params={"id": "10.1371/journal.pcsy.0000125", "type": "manuscript"}).mock(
+        return_value=httpx.Response(200, content=(FIXTURES / "paper.jats.xml").read_bytes()))
+    j = client.get("/v1/jats", params={"doi": "10.1371/journal.pcsy.0000125"}).json()
+    assert j["available"] and j["source"] == "PLOS" and j["pmcid"] is None and pcsy.called
+
+
+@respx.mock
+def test_download_keeps_the_query_string(tmp_path):
+    """A candidate URL with a query string (PLOS's JATS and PDF URLs) is fetched as it is."""
+    from reprocrowd import openalex
+    route = respx.get("https://journals.plos.org/plosone/article/file", params={"id": "10.1371/journal.pone.1", "type": "manuscript"}).mock(
+        return_value=httpx.Response(200, content=b"<article/>"))
+    c = openalex.Candidate("c-1", "PLOS JATS", "https://journals.plos.org/plosone/article/file?id=10.1371/journal.pone.1&type=manuscript",
+                           "jats", "plos.jats.xml")
+    openalex.download(c, tmp_path / "x.xml", 2**20)
+    assert route.called and (tmp_path / "x.xml").read_bytes() == b"<article/>"
 
 
 @respx.mock

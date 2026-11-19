@@ -167,6 +167,13 @@ try {
   assert.ok(await win.locator("#nd-create").isDisabled());
   await shot("02a-refused");
 
+  step("new reproduction: a PLOS paper outside PubMed Central has JATS XML from PLOS");
+  await win.fill(".dlg-new [name=doi]", "10.1371/journal.pcsy.0000125");
+  await win.click("#nd-lookup");
+  await win.waitForSelector("#nd-jats .ok", { timeout: 60_000 });
+  assert.match(await win.locator("#nd-jats").innerText(), /available from PLOS\./);
+  assert.ok(await win.locator("#nd-create").isEnabled());
+
   step("new reproduction: DOI lookup, JATS available");
   await win.fill(".dlg-new [name=doi]", `https://doi.org/${DOI}`);
   await win.click("#nd-lookup");

@@ -85,7 +85,8 @@ Apple silicon Macs runs ARM64 Linux, which works like any other Linux.
 - **Library**: your reproductions. **New reproduction** takes a DOI, looked up
   in OpenAlex. **Only articles with JATS XML are supported at this time**: the
   app checks that Europe PMC serves the article's full-text XML (the open-access
-  subset of PubMed Central) and refuses the paper otherwise. It also checks for
+  subset of PubMed Central), or for PLOS articles that PLOS does, and refuses
+  the paper otherwise. It also checks for
   ReproCrowd records of that paper already on Zenodo. The package goes in a
   folder (default `~/ReproCrowd/<doi>`); the JATS XML is downloaded and parsed
   right away. **Open a package folder…** adds an existing package.
