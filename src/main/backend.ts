@@ -416,9 +416,10 @@ export async function restart() {
 export const profileConfig = () => configuredProfiles(readUserConfig());
 
 /** Local administrator operation. Restore the exact previous text on failed restart. */
-export async function saveProfile(kind: ProfileKind, name: string, profile: Profile): Promise<string> {
+export async function saveProfile(kind: ProfileKind, name: string, profile: Profile, confirm?: (previous: string, next: string) => Promise<void>): Promise<string> {
   const previous = readUserConfig();
   const next = replaceProfile(previous, kind, name, profile);
+  await confirm?.(previous, next);
   return applyProfileChange(previous, next, {
     backup(text) {
       const backup = userConfigFile() + ".bak";

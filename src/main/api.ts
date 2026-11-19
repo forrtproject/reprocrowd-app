@@ -9,6 +9,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import * as backend from "./backend";
+import { changedCommands, confirmCommands } from "./confirm";
 import { detectLlmModels, LlmModel } from "./models";
 import { openInTerminal, searchPath, spawnDetached, splitCommand, which } from "./processes";
 import { get, post, request, ResponseType, ServiceError } from "./service";
@@ -411,6 +412,11 @@ export function makeApi(wc: WebContents) {
     },
     setConfig: async (patch: Parameters<typeof saveSettings>[0]) => {
       const before = loadSettings();
+      // A new command is confirmed in a native dialog; clearing one goes back to the built-in default.
+      const commands = (["editorCmd", "backendCmd"] as const)
+        .filter((k) => typeof patch[k] === "string" && patch[k]!.trim() && patch[k]!.trim() !== before[k].trim())
+        .map((k) => `${k === "editorCmd" ? "Code editor" : "Backend"}: ${patch[k]!.trim()}`);
+      await confirmCommands(win(), commands);
       const after = saveSettings(patch);
       if (before.autoUpdate !== after.autoUpdate) updater.applyUpdateSettings();
       // The backend gets the Zenodo choices and its start command at start.
@@ -431,7 +437,7 @@ export function makeApi(wc: WebContents) {
     profileConfig: async () => backend.profileConfig(),
     /** Whether a profile's command is installed; no model call. */
     commandFound: async (command: string) => !!which(String(command ?? "").trim()),
-    saveProfile: (kind: Parameters<typeof backend.saveProfile>[0], name: string, profile: Parameters<typeof backend.saveProfile>[2]) => backend.saveProfile(kind, name, profile),
+    saveProfile: (kind: Parameters<typeof backend.saveProfile>[0], name: string, profile: Parameters<typeof backend.saveProfile>[2]) => backend.saveProfile(kind, name, profile, (previous, next) => confirmCommands(win(), changedCommands(previous, next))),
     runningJobs: async () => get<any[]>("/v1/jobs"),
     /** `repo` as typed in Settings ("" = the default pilots repository, as Save would store it); omitted = the saved one. */
     checkGithubToken: async (repo?: string) => {
@@ -449,6 +455,7 @@ export function makeApi(wc: WebContents) {
       return "GitHub's login opened in a terminal window. Finish it there (it opens your browser), then click Check.";
     },
     saveBackendConfig: async (text: string) => {
+      await confirmCommands(win(), changedCommands(backend.readUserConfig(), text));
       backend.writeUserConfig(text);
       await backend.restart();
     },
