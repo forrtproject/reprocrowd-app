@@ -70,9 +70,13 @@ def _check_archive(pkg: Package) -> None:
     path = archive_path(pkg)
     with zipfile.ZipFile(path) as z:
         archived = json.loads(z.read(MANIFEST))
-        members = {i.filename for i in z.infolist() if not i.is_dir()}
-    if members != {MANIFEST, *(r.get("path") for r in archived.get("resources", []))}:
+        sizes = {i.filename: i.file_size for i in z.infolist() if not i.is_dir()}
+    if set(sizes) != {MANIFEST, *(r.get("path") for r in archived.get("resources", []))}:
         raise conflict("archive_stale", "the archive holds files that aren't in its file list, or lacks some; create it again (PUT …/archive)")
+    # The sizes the archive declares bind (zipfile stops reading a member there), so with them equal to the package's,
+    # hashing the archive before an upload reads no more than the package itself: no zip bomb under a listed name.
+    if any(sizes.get(r.path) != r.bytes for r in pkg.load().resources):
+        raise conflict("archive_stale", "a file in the archive has another size than the package's; create the archive again (PUT …/archive)")
     current = pkg.load()
     now_res = sorted((r.path, r.hash) for r in current.resources)
     then_res = sorted((r["path"], r["hash"]) for r in archived.get("resources", []))
@@ -84,7 +88,7 @@ def _check_archive(pkg: Package) -> None:
 
 def verify_archive_contents(pkg: Package) -> None:
     """Before an upload: every file in the archive has the hash the package records for it. A whole read of the
-    archive, which the upload does anyway; the cheap checks (_check_archive) run on every preview."""
+    archive, which the upload does anyway, bounded by the sizes _check_archive compared on the way (Prepared)."""
     hashes = {r.path: r.hash for r in pkg.load().resources}
     with zipfile.ZipFile(archive_path(pkg)) as z:
         for info in z.infolist():

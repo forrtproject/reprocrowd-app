@@ -317,8 +317,28 @@ def test_archive_from_elsewhere_is_checked(client, pkg):
     tmp = archive.with_suffix(".tmp")
     with zipfile.ZipFile(archive) as src, zipfile.ZipFile(tmp, "w") as dst:
         for info in src.infolist():
-            dst.writestr(info, b"swapped" if info.filename == listed else src.read(info))
+            data = src.read(info)  # same size, other bytes: only hashing tells
+            dst.writestr(info, bytes(b ^ 1 for b in data) if info.filename == listed else data)
     shutil.move(tmp, archive)
     assert client.post(P + "/deposits:preview", json={}).status_code == 200  # same names: only a full read tells
     problem(client.post(P + "/deposits", json={"zenodo_token": "t", "creators": ME}), 409, "archive_stale")
     assert not z["create"].called
+
+
+@respx.mock
+def test_archive_member_with_another_size_is_refused_early(client, pkg):
+    """A listed file of another size (e.g. a zip bomb under a listed name) is refused before anything is decompressed."""
+    import shutil
+    from pathlib import Path
+
+    mock_openalex()
+    ready_published(client, pkg)
+    P = f"/v1/packages/{pkg}"
+    archive = Path(client.get(P).json()["path"]) / client.get(P + "/manifest").json()["reprocrowd"]["archive"]["path"]
+    listed = next(r["path"] for r in client.get(P + "/manifest").json()["resources"] if r["path"].startswith("outputs/"))
+    tmp = archive.with_suffix(".tmp")
+    with zipfile.ZipFile(archive) as src, zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED) as dst:
+        for info in src.infolist():
+            dst.writestr(info.filename, b"0" * 10_000_000 if info.filename == listed else src.read(info))
+    shutil.move(tmp, archive)
+    assert "size" in problem(client.post(P + "/deposits:preview", json={}), 409, "archive_stale")["detail"]
