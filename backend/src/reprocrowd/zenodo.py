@@ -24,6 +24,7 @@ The service never stores the user's Zenodo token: clients send it with each requ
 from __future__ import annotations
 
 import json
+import re
 import secrets
 import tempfile
 import zipfile
@@ -189,18 +190,47 @@ def paper_license(work: dict[str, Any]) -> str | None:
     return None
 
 
+# Files that should rarely be public (#91): flagged in the deposit dialog, never left out silently.
+_SECRET_NAME = re.compile(r"""(^\.env(\..*)?$|\.env$|^\.netrc$|^\.npmrc$|^\.pypirc$|^\.pgpass$|^\.git-credentials$|^\.Renviron$
+    |^id_(rsa|dsa|ecdsa|ed25519)$|\.(pem|key|p12|pfx|jks|keystore|kdbx|ppk|gpg|asc)$
+    |credential|secret|password|passwd|(access|auth|api|bearer)[_-]?token|apikey|api_key)""", re.I | re.X)
+_SECRET_TEXT = re.compile(rb"-----BEGIN [A-Z ]*PRIVATE KEY-----|\bAKIA[0-9A-Z]{16}\b|\bgh[pousr]_[A-Za-z0-9]{36}\b|\bgithub_pat_\w{40,}"
+                          rb"|\bsk-ant-[\w-]{20,}|\bsk-(proj-)?[A-Za-z0-9_-]{32,}|\bxox[abpr]-[\w-]{10,}|\bAIza[\w-]{35}\b")
+_SCAN_BYTES = 2 * 1024**2
+
+
+def file_flags(pkg: Package, r: Resource) -> list[str]:
+    """Why a file of the package may not belong in a public record: its name, or what looks like a key or token in it."""
+    flags = []
+    parts = r.path.split("/")
+    if any(p.startswith(".") for p in parts):
+        flags.append("hidden file")
+    if _SECRET_NAME.search(parts[-1]):
+        flags.append("the name suggests keys or credentials")
+    try:
+        with pkg.path(r.path).open("rb") as f:
+            if _SECRET_TEXT.search(f.read(_SCAN_BYTES)):
+                flags.append("contains what looks like a private key or access token")
+    except OSError:
+        pass
+    return flags
+
+
 def contents(pkg: Package, work: dict[str, Any] | None = None) -> dict[str, Any]:
-    """The groups that can be left out, their files, and which are left out by default."""
+    """The groups that can be left out, their files, which are left out by default, and every file of the package
+    (group null: always uploaded) with the reasons it may not belong in a public record."""
     m = pkg.load()
     groups: dict[str, dict[str, Any]] = {g: {"description": d, "resources": [], "bytes": 0} for g, d in GROUPS.items()}
-    for r in m.resources:
+    files = []
+    for r in sorted(m.resources, key=lambda r: r.path):
         g = _group(r)
         if g:
             groups[g]["resources"].append(r.name)
             groups[g]["bytes"] += r.bytes or 0
+        files.append({"path": r.path, "bytes": r.bytes, "group": g, "flags": file_flags(pkg, r)})
     lic = paper_license(work) if work else None
     default = [] if lic in OPEN_LICENSES else ["paper"]
-    return {"groups": groups, "paper_license": lic, "default_exclude": [g for g in default if groups[g]["resources"]]}
+    return {"groups": groups, "paper_license": lic, "default_exclude": [g for g in default if groups[g]["resources"]], "files": files}
 
 
 def _publication_zip(pkg: Package, archive: Path, exclude: set[str], out_dir: Path) -> tuple[Path, list[Resource]]:

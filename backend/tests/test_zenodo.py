@@ -67,6 +67,8 @@ def test_deposit_draft_then_publish(client, pkg):
     pv = client.post(P + "/deposits:preview", json={"creators": ME, "note": "all fine"}).json()
     assert pv["exclude"] == ["paper"] and pv["contents"]["paper_license"] is None
     assert set(pv["contents"]["groups"]["paper"]["resources"]) == {"ft-paper-tei", "ex-paper-tei"}
+    files = pv["contents"]["files"]  # every file, for the dialog's full list (#91)
+    assert {f["group"] for f in files} >= {None, "paper"} and all(f["flags"] == [] for f in files)
     assert not z["create"].called
 
     r = client.post(P + "/deposits", json={"zenodo_token": "secret", "creators": ME, "note": "all fine"})
@@ -249,3 +251,21 @@ def test_local_paper_is_not_deposited(client, pkg, tmp_path):
     md.write_text("# A paper\n\n## Methods\n\nWe ran a test.\n", encoding="utf-8")
     assert client.post(f"/v1/packages/{local}/fulltexts", json={"path": str(md)}).status_code == 201
     problem(client.post(f"/v1/packages/{local}/deposits:preview", json={}), 409, "local_paper_text")
+
+
+def test_file_flags(tmp_path):
+    """Issue #91: files that may hold secrets are flagged in the deposit dialog by name and by content."""
+    from types import SimpleNamespace
+    from reprocrowd.package import Package
+    from reprocrowd.zenodo import file_flags
+
+    pkg = Package("p", tmp_path)
+    (tmp_path / "outputs").mkdir()
+    (tmp_path / "outputs" / "log.txt").write_text("run 1\n-----BEGIN OPENSSH PRIVATE KEY-----\nabc\n")
+    (tmp_path / "outputs" / "result.csv").write_text("a,b\n1,2\n")
+    (tmp_path / ".env").write_text("X=1\n")
+    flags = lambda p: file_flags(pkg, SimpleNamespace(path=p))  # noqa: E731
+    assert flags("outputs/log.txt") == ["contains what looks like a private key or access token"]
+    assert flags("outputs/result.csv") == []
+    assert flags(".env") == ["hidden file", "the name suggests keys or credentials"]
+    assert flags("inputs/missing.pem") == ["the name suggests keys or credentials"]

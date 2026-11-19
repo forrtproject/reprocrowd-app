@@ -11338,7 +11338,7 @@
             "additionalProperties": true,
             "type": "object",
             "title": "Contents",
-            "description": "groups of files that can be left out, the paper's license and the default"
+            "description": "groups of files that can be left out, the paper's license and the default; files: every file of the package {path, bytes, group (null: always uploaded), flags: reasons it may not belong in a public record, e.g. a hidden file or what looks like a key}"
           },
           "exclude": {
             "items": {

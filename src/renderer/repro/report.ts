@@ -154,6 +154,7 @@ export class ReportStep implements Step {
           <div class="groups">${groups.map(([g, info]) => `<label class="inline"><input type="checkbox" data-group="${esc(g)}" ${this.exclude?.has(g) ? "" : "checked"} /> ${esc(GROUP_LABEL[g] ?? info.description)} <span class="muted small">(${info.resources.length} file${info.resources.length === 1 ? "" : "s"}, ${sizeText(info.bytes)})</span></label>`).join("") || `<span class="muted small">Nothing optional in this package.</span>`}</div>
           ${pv.contents.groups.paper?.resources.length ? `<p class="small ${lic && !pv.contents.default_exclude.includes("paper") ? "ok" : "warn-soft"}">${lic ? `OpenAlex reports the license <b>${esc(lic)}</b> for the paper.` : "OpenAlex reports no license for the paper."} ${pv.contents.default_exclude.includes("paper") ? "Include its material only if you may redistribute it." : "Its material may be redistributed with attribution."}</p>` : ""}
           ${pv.contents.groups.inputs?.resources.length ? `<p class="hint">Include the input files only if their license allows redistribution (most open data repositories use CC-BY or CC0).</p>` : ""}
+          ${this.fileList(pv)}
           <label>Note for the record (optional) <textarea id="rp-note" rows="2" placeholder="e.g. what didn't reproduce and why">${esc(this.note)}</textarea></label>
           <div class="actions"><button id="rp-deposit" class="primary big" ${ready ? "" : "disabled"}>${this.w.running.has("deposit") ? "Uploading…" : `Upload to ${server} as a draft`}</button><button id="rp-metadata">Show metadata</button></div>
           ${already ? `<p class="hint">This ZIP is already on Zenodo (${already.status === "draft" ? "as a draft" : "published"}). A changed package (new run or report, then a new ZIP) or another choice of files makes a new deposit.</p>` : ""}
@@ -207,6 +208,18 @@ export class ReportStep implements Step {
       }),
     );
     body.querySelectorAll<HTMLButtonElement>("[data-dep]").forEach((b) => b.addEventListener("click", () => this.action(b.dataset.dep!, b.dataset.action as "refresh" | "publish" | "discard")));
+  }
+
+  /** Every file the upload would hold (#91), flagged ones first and named above the list. */
+  private fileList(pv: DepositPreview) {
+    const sent = (pv.contents.files ?? []).filter((f) => !f.group || !this.exclude?.has(f.group));
+    if (!sent.length) return "";
+    const flagged = sent.filter((f) => f.flags.length);
+    const row = (f: (typeof sent)[number]) =>
+      `<li${f.flags.length ? ` class="warn-inline"` : ""}><code>${esc(f.path)}</code> <span class="muted small">${sizeText(f.bytes)}</span>${f.flags.length ? ` <span class="small">⚠ ${esc(f.flags.join("; "))}</span>` : ""}</li>`;
+    return `${flagged.length ? `<p class="warn-inline small">${flagged.length === 1 ? "One file" : `${flagged.length} files`} may not belong in a public record; check ${flagged.length === 1 ? "it" : "them"} in the list below. To leave one out, delete it (an input in the Inputs step, any other file in the package folder) and create the ZIP again.</p>` : ""}
+      <details class="small"${flagged.length ? " open" : ""}><summary>All ${sent.length} files in the upload (${sizeText(sent.reduce((n, f) => n + (f.bytes || 0), 0))}), with <code>datapackage.json</code></summary>
+        <ul class="rp-del-list">${[...flagged, ...sent.filter((f) => !f.flags.length)].map(row).join("")}</ul></details>`;
   }
 
   /** GitHub pilot: the same preconditions as a deposit (minus the Zenodo account), the same choice of files. */

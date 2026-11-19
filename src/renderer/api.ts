@@ -104,7 +104,11 @@ export interface ZenodoRecord { id: number | string | null; doi: string | null; 
 export interface ZenodoAccount { sandbox: boolean; hasToken: boolean; creator: Creator; community: string }
 export interface DepositPreview {
   metadata: Record<string, any>;
-  contents: { groups: Record<string, { description: string; resources: string[]; bytes: number }>; paper_license: string | null; default_exclude: string[] };
+  contents: {
+    groups: Record<string, { description: string; resources: string[]; bytes: number }>; paper_license: string | null; default_exclude: string[];
+    /** Every file of the package; group null: always uploaded. flags: why it may not belong in a public record. */
+    files: { path: string; bytes: number; group: string | null; flags: string[] }[];
+  };
   exclude: string[];
 }
 /** A pilot issue for a paper in the pilots repository (anyone's reproduction of it). */

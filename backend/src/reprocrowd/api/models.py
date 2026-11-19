@@ -480,7 +480,9 @@ class DepositCreate(DepositOptions, ZenodoAuth):
 
 class DepositPreview(BaseModel):
     metadata: dict[str, Any] = Field(description="the Zenodo metadata that would be sent")
-    contents: dict[str, Any] = Field(description="groups of files that can be left out, the paper's license and the default")
+    contents: dict[str, Any] = Field(description="groups of files that can be left out, the paper's license and the default; files: every "
+                                                "file of the package {path, bytes, group (null: always uploaded), flags: reasons it may not "
+                                                "belong in a public record, e.g. a hidden file or what looks like a key}")
     exclude: list[str]
 
 
