@@ -11774,6 +11774,30 @@
             "type": "string",
             "title": "Label",
             "description": "where the link was found, e.g. 'data availability statement'"
+          },
+          "path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Path",
+            "description": "repository-relative path of the file"
+          },
+          "commit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Commit",
+            "description": "commit the file was fetched at (git repositories): the files of one fetch all come from the same commit, whatever is pushed meanwhile"
           }
         },
         "additionalProperties": false,

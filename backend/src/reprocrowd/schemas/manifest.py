@@ -70,6 +70,9 @@ class FetchedOrigin(Model):
     repo: str = Field(description="repository type the file came from (zenodo, github, gitlab, osf, figshare, ...)")
     id: str = Field(description="repository-specific identifier (DOI, owner/repo, record id, ...)")
     label: str = Field(description="where the link was found, e.g. 'data availability statement'")
+    path: str | None = Field(default=None, description="repository-relative path of the file")
+    commit: str | None = Field(default=None, description="commit the file was fetched at (git repositories): the files of one fetch "
+                                                         "all come from the same commit, whatever is pushed meanwhile")
 
 
 class CheckResult(Model):
