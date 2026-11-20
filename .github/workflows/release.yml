@@ -93,10 +93,45 @@ jobs:
         if: runner.os == 'Linux'
         run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
 
-      - name: Smoke test the packaged app
+      - name: Smoke test the unpacked app
         shell: bash
+        env:
+          SMOKE_LABEL: unpacked
         run: |
           if [ "$RUNNER_OS" = Linux ]; then xvfb-run -a node test/smoke.mjs; else node test/smoke.mjs; fi
+
+      # The same check on the copy users get: installed by the NSIS installer, copied out of the dmg, or the AppImage.
+      - name: Smoke test the installed app (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          SMOKE_LABEL: installed
+        run: |
+          $setup = Get-ChildItem dist\*-setup.exe | Select-Object -First 1
+          Start-Process -FilePath $setup.FullName -ArgumentList '/S' -Wait
+          $exe = Get-ChildItem "$env:LOCALAPPDATA\Programs" -Recurse -Filter ReproCrowd.exe | Select-Object -First 1
+          if (-not $exe) { throw "The installer didn't put ReproCrowd.exe under $env:LOCALAPPDATA\Programs" }
+          node test/smoke.mjs $exe.FullName
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Smoke test the installed app (macOS)
+        if: runner.os == 'macOS'
+        env:
+          SMOKE_LABEL: installed
+        run: |
+          hdiutil attach dist/*.dmg -nobrowse -mountpoint "$RUNNER_TEMP/dmg"
+          ditto "$RUNNER_TEMP/dmg/ReproCrowd.app" "$RUNNER_TEMP/Applications/ReproCrowd.app"
+          hdiutil detach "$RUNNER_TEMP/dmg"
+          node test/smoke.mjs "$RUNNER_TEMP/Applications/ReproCrowd.app/Contents/MacOS/ReproCrowd"
+
+      - name: Smoke test the installed app (Linux AppImage)
+        if: runner.os == 'Linux'
+        env:
+          SMOKE_LABEL: installed
+        run: |
+          sudo apt-get install -y libfuse2t64 # AppImages mount themselves with FUSE 2
+          chmod +x dist/*.AppImage
+          xvfb-run -a node test/smoke.mjs dist/*.AppImage
 
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always()

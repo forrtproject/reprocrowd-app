@@ -5,7 +5,8 @@
 //   4. targets and a plan are added and a small Python analysis runs as a job (bash + python3, as for users)
 //   5. every workflow step renders; the report and the ZIP are built
 //   6. quitting leaves no backend behind; no page errors throughout
-// Nothing goes over the network; test/e2e.mjs covers DOI lookups, Zenodo and GitHub. Screenshots go to test-output/.
+// Nothing goes over the network; test/e2e.mjs covers DOI lookups, Zenodo and GitHub. Screenshots go to test-output/,
+// named after the platform and SMOKE_LABEL (CI: "unpacked", then "installed" for the copy the installer put in place).
 //
 //   node test/smoke.mjs [path/to/executable]    (default: the unpacked build in dist/)
 import { _electron as electron } from "playwright-core";
@@ -73,7 +74,8 @@ win.on("pageerror", (e) => errors.push(e.message));
 win.on("console", (m) => m.type() === "error" && !/Failed to load resource|about:srcdoc|inline event handler/.test(m.text()) && errors.push(m.text()));
 await win.setViewportSize({ width: 1440, height: 900 });
 
-const shot = (name) => win.screenshot({ path: path.join(OUT, `smoke-${process.platform}-${name}.png`) });
+const tag = [process.platform, process.env.SMOKE_LABEL].filter(Boolean).join("-");
+const shot = (name) => win.screenshot({ path: path.join(OUT, `smoke-${tag}-${name}.png`) });
 const call = (method, ...args) =>
   win.evaluate(async ([m, a]) => {
     const r = await window.reprocrowd.call(m, a);
