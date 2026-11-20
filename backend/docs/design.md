@@ -411,8 +411,11 @@ sequenceDiagram
 
 ## Run and compare
 
-`POST …/jobs {type: "run"}` runs the master script with the template's command (`bash -c "<command>"`, from
-`template.toml`; callers can't supply one) as a job. Output and errors are merged into one log, read as `log`
+`POST …/jobs {type: "run"}` runs the master script with the template's command (from `template.toml`; callers
+can't supply one) as a job. The command is a program and its arguments, started without a shell, so Windows needs
+no bash. `python3` falls back to `python` or `py -3` (Windows), passing over the Microsoft Store's stand-in, and
+`Rscript` is also looked for where R's installers put it. If neither is found, the request fails with 409
+`program_not_found` and says where to get it. Output and errors are merged into one log, read as `log`
 events (Python is run unbuffered so lines arrive live). Jobs get the service's environment minus
 ReproCrowd's own virtualenv, so `python3`/`Rscript` are the user's.
 

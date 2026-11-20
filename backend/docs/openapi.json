@@ -5676,7 +5676,7 @@
                 }
               }
             },
-            "description": "`script_missing`: Create the master script first; `job_running`: Another job is running in this package; `exec_restriction_unsupported`: This profile cannot restrict analysis execution"
+            "description": "`script_missing`: Create the master script first; `job_running`: Another job is running in this package; `exec_restriction_unsupported`: This profile cannot restrict analysis execution; `program_not_found`: The program the template runs (Python, R, Snakemake) isn't installed or can't be found"
           },
           "400": {
             "content": {
