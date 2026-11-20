@@ -156,6 +156,7 @@ resources/      the ReproCrowd hex sticker (app icon and logo)
 scripts/        build.mjs, bundle-backend.mjs, install.sh
 test/e2e.mjs    end-to-end check with a fake Zenodo and the backend tests' fake LLM
 test/quit-early.mjs  quitting while the backend starts closes the app and stops the backend
+test/smoke.mjs  offline check of a packaged app: start, example, new from file, run, report, ZIP, quit (CI, all systems)
 ```
 
 The backend is chosen at start: Settings → Advanced start command; else the
@@ -173,9 +174,25 @@ npm run bundle-backend    # build/backend: a standalone Python with reprocrowd i
 npm run dist              # installers for this system in dist/ (with the bundled backend)
 node test/e2e.mjs         # after npm run build
 node test/quit-early.mjs  # likewise; or give it a packaged app (dist/linux-unpacked/reprocrowd-app)
+node test/smoke.mjs       # after npm run dist: the offline check of the packaged app in dist/
 npm run test:backend      # the backend's tests (pytest)
 npm run schemas           # regenerate backend/schemas and docs after model or API changes
 ```
+
+## Checking Windows, macOS and Linux before merging
+
+The test workflow runs on every pull request, on Linux only. To check that the
+packaged app works on all three systems, add the label `build-all` to the pull
+request. The Release workflow then builds the installers on each system and runs
+`test/smoke.mjs` twice: on the unpacked app, and on the copy its installer puts in
+place (NSIS installer, dmg, AppImage). The check starts the app, opens a bundled
+example, creates a reproduction from a local paper, runs a small Python analysis,
+builds the report and ZIP, and quits, all without network access. It runs again
+after each later push and takes about 5 minutes.
+
+Do this before merging changes to packaging, `package.json` or the lock files,
+`src/main/`, `scripts/` or the backend's dependencies. You can also run the Release
+workflow by hand on any branch from the Actions tab; that builds without releasing.
 
 ## Releases and updates
 
