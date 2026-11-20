@@ -22,8 +22,13 @@ PLOS = "https://journals.plos.org/plosone/article/file"
 USER_AGENT = "reprocrowd-cli/0.1 (+https://github.com/)"
 
 
-def _client() -> httpx.Client:
-    return httpx.Client(timeout=60, follow_redirects=True, headers={"User-Agent": USER_AGENT})
+# Checks that only ask (a PMCID search, the start of a JATS file) wait at most this long for each step, so a hanging
+# Europe PMC still leaves time to ask PLOS before the app's 60-s limit on the whole JATS check (src/main/api.ts).
+CHECK_TIMEOUT = 15
+
+
+def _client(timeout: float = 60) -> httpx.Client:
+    return httpx.Client(timeout=timeout, follow_redirects=True, headers={"User-Agent": USER_AGENT})
 
 
 def _auth_params() -> dict[str, str]:
@@ -75,7 +80,7 @@ class Candidate:
 
 def _europepmc_pmcid(doi: str) -> str | None:
     try:
-        with _client() as c:
+        with _client(CHECK_TIMEOUT) as c:
             r = c.get(f"{EUROPEPMC}/search", params={"query": f'DOI:"{doi}"', "format": "json", "resultType": "lite"})
         return next((x["pmcid"] for x in r.json().get("resultList", {}).get("result", []) if x.get("pmcid")), None)
     except (httpx.HTTPError, ValueError, KeyError):
@@ -146,7 +151,7 @@ def _jats_head(c: Candidate) -> str | None:
     jats_check_failed if its source can't be reached."""
     source = "Europe PMC" if _pmcid_of(c) else "PLOS"
     try:
-        with _client() as client, client.stream("GET", c.url, headers={"Accept": "application/xml"}) as r:
+        with _client(CHECK_TIMEOUT) as client, client.stream("GET", c.url, headers={"Accept": "application/xml"}) as r:
             head = b""
             if r.status_code == 200:
                 for chunk in r.iter_bytes():

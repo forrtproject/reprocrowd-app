@@ -436,6 +436,8 @@ export class CurationStep implements Step {
       } else Object.assign(body, { kind: v("kind"), summary: v("summary"), inputs: list(v("inputs")), depends_on: list(v("depends_on")), produces: list(v("produces")) });
       try {
         await pkg.post(`/${this.kind}`, body);
+        // Once added, the marks have served their purpose; cleared before the redraw, which shows them.
+        if (marked.length) this.marked.clear();
         dlg.close();
         this.w.render();
       } catch (err) {
@@ -446,10 +448,6 @@ export class CurationStep implements Step {
       floats: true,
       presets: [],
       initial: () => (marked.length ? { sections: [], items: marked } : undefined),
-    });
-    // Once added, the marks have served their purpose.
-    dlg.addEventListener("close", () => {
-      if (dlg.returnValue !== "cancel" && marked.length) this.marked.clear();
     });
   }
 

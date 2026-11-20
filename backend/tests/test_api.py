@@ -597,6 +597,11 @@ def test_jats_from_plos(client):
     before = epmc.call_count, plos.call_count
     assert client.get("/v1/jats", params={"doi": "10.1371/journal.pbio.1002106"}).json()["source"] == "PLOS"
     assert (epmc.call_count, plos.call_count) == (before[0] + 1, before[1] + 1)  # Europe PMC was tried, then PLOS
+    # Europe PMC hangs: the check gives up on it after CHECK_TIMEOUT and still asks PLOS
+    epmc.mock(side_effect=httpx.ReadTimeout("slow"))
+    assert client.get("/v1/jats", params={"doi": "10.1371/journal.pbio.1002106"}).json()["source"] == "PLOS"
+    from reprocrowd import openalex
+    assert 2 * openalex.CHECK_TIMEOUT < 60, "a PMCID search and a JATS check on Europe PMC leave time for PLOS"
     # neither has it, and one couldn't be asked: not known, so not a refusal
     plos.mock(return_value=httpx.Response(404))
     e = problem(client.get("/v1/jats", params={"doi": "10.1371/journal.pbio.1002106"}), 502, "jats_check_failed")
