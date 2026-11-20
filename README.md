@@ -202,8 +202,9 @@ attaches them to a GitHub Release. Installed copies check that release a little
 after start (Settings → Updates; Help → Check for Updates…):
 
 - Windows (installer) and Linux (AppImage) download the new version and install it on restart.
-- macOS (not notarized, so it can't replace itself) and Linux installs from `scripts/install.sh`
-  are told about the new version and where to get it.
+- macOS and Linux installs from `scripts/install.sh` are told about the new version and where
+  to get it. On macOS the updater always works this way (`src/main/updater.ts`); installing
+  updates itself would need a Developer ID signature and a change to the updater.
 - The Windows installer isn't code-signed, and the macOS app is signed but not notarized. On
   Windows, SmartScreen asks first ("More info → Run anyway"). On macOS (Apple silicon only), use
   System Settings → Privacy & Security → Open Anyway, or, if the app is reported as "damaged",
