@@ -95,7 +95,8 @@ def _store_stub(path: str) -> bool:
 def _runs(argv: list[str]) -> bool:
     """Does the program start? The Store's stand-in exits with an error (and an offer to install Python)."""
     try:
-        return subprocess.run([*argv, "--version"], capture_output=True, timeout=15).returncode == 0
+        # with the run's environment (the scripts' allowlist), not the service's
+        return subprocess.run([*argv, "--version"], capture_output=True, timeout=15, env=jobs.job_env(base=childenv.for_script())).returncode == 0
     except (OSError, subprocess.SubprocessError):
         return False
 
