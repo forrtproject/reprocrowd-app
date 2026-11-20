@@ -4,7 +4,7 @@ name: Release
 # for updates there (src/main/updater.ts):
 #   Windows  ReproCrowd-<version>-setup.exe + latest.yml        installs itself (electron-updater)
 #   Linux    ReproCrowd-<version>.AppImage  + latest-linux.yml  replaces itself (electron-updater)
-#   macOS    ReproCrowd-<version>-arm64.dmg                     unsigned: the app points users to the download
+#   macOS    ReproCrowd-<version>-arm64.dmg                     signed, not notarized: the app points users to the download
 # Each build is started and checked with test/smoke.mjs: the app opens, its bundled backend answers, and quitting
 # leaves no backend behind.
 # Triggers:
@@ -47,10 +47,13 @@ jobs:
               dist/*.AppImage
               dist/latest-linux.yml
           - os: macos-latest
-            builder: --mac dmg
+            builder: --mac dir # signed below, then packed into the dmg
             files: |
               dist/*.dmg
     runs-on: ${{ matrix.os }}
+    # The macOS signing certificate lives in the "mac-signing" environment, which only main and v* tags may use. Other
+    # refs (manual runs on a branch, pull requests) build without it and stay ad-hoc signed.
+    environment: ${{ matrix.os == 'macos-latest' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')) && 'mac-signing' || '' }}
     permissions:
       contents: read
     steps:
@@ -87,6 +90,31 @@ jobs:
         run: npx electron-builder ${{ matrix.builder }} --publish never
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: "false" # no signing certificates (yet)
+
+      # macOS: signed with an Apple Development certificate (free Xcode Personal Team), so every release has the same
+      # Team ID and updates may go on reading the app's keychain item without asking (scripts/sign-mac.sh). Only runs
+      # in the mac-signing environment (main, v* tags) see the certificate; a release must not be built without it.
+      - name: Sign the app (macOS)
+        if: runner.os == 'macOS' && github.event_name != 'pull_request'
+        env:
+          MAC_SIGNING_P12_BASE64: ${{ secrets.MAC_SIGNING_P12_BASE64 }}
+          MAC_SIGNING_P12_PASSWORD: ${{ secrets.MAC_SIGNING_P12_PASSWORD }}
+        run: |
+          if [ -z "$MAC_SIGNING_P12_BASE64" ]; then
+            if [ "$GITHUB_REF_TYPE" = tag ]; then
+              echo "::error::The macOS signing certificate (secret MAC_SIGNING_P12_BASE64) is missing. An unsigned release would make Mac users allow keychain access again after every update."
+              exit 1
+            fi
+            echo "::warning::No macOS signing certificate: this build stays ad-hoc signed."
+            exit 0
+          fi
+          scripts/sign-mac.sh dist/mac-arm64/ReproCrowd.app
+
+      - name: Build the dmg (macOS)
+        if: runner.os == 'macOS'
+        run: npx electron-builder --mac dmg --arm64 --prepackaged dist/mac-arm64/ReproCrowd.app --publish never
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
 
       # Ubuntu 24.04 blocks the user namespaces Chromium's sandbox needs.
       - name: Allow Electron's sandbox (Linux)
@@ -177,14 +205,17 @@ jobs:
           body: |
             ## Installing
 
-            The installers aren't code-signed yet, so Windows and macOS warn before the first start.
+            The Windows installer isn't code-signed yet, and the macOS app is signed but not notarized by Apple, so
+            both warn before the first start.
 
             - **Windows** (`ReproCrowd-<version>-setup.exe`): if SmartScreen says "Windows protected your PC", click
               **More info → Run anyway**. Later updates install themselves.
             - **macOS** (`ReproCrowd-<version>-arm64.dmg`, Apple silicon only): drag ReproCrowd to Applications and open
               it. If macOS refuses, open **System Settings → Privacy & Security** and click **Open Anyway**. If it says
               the app "is damaged and can't be opened", run `xattr -cr /Applications/ReproCrowd.app` in Terminal and
-              open it again. The app tells you about updates; download them from this page.
+              open it again. If macOS asks for your login password so ReproCrowd can use "ReproCrowd Safe Storage",
+              enter it and click **Always Allow**; later updates won't ask again. The app tells you about updates;
+              download them from this page.
             - **Linux** (`ReproCrowd-<version>.AppImage`): `chmod +x ReproCrowd-*.AppImage` and run it. Later updates
               install themselves.
           files: |
