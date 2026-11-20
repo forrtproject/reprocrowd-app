@@ -3,6 +3,7 @@ Europe PMC when a PMCID is known, and from the publisher for PLOS articles)."""
 from __future__ import annotations
 
 import hashlib
+import json
 import time
 from dataclasses import dataclass
 from typing import Any
@@ -47,6 +48,19 @@ def _client(timeout: float = 60) -> httpx.Client:
     return httpx.Client(timeout=timeout, follow_redirects=True, headers={"User-Agent": USER_AGENT})
 
 
+def _get(url: str, params: dict[str, str], timeout: float) -> tuple[int, bytes]:
+    """GET (status, body), given up after ``timeout`` seconds in all: httpx's own timeout bounds each wait, so a server
+    sending a trickle could otherwise take far longer."""
+    deadline = Deadline(timeout)
+    with _client(timeout) as c, c.stream("GET", url, params=params) as r:
+        body = b""
+        for chunk in r.iter_bytes():
+            body += chunk
+            if _now() > deadline.end:
+                raise httpx.ReadTimeout(f"no complete answer within {timeout:.0f} s")
+        return r.status_code, body
+
+
 def _auth_params() -> dict[str, str]:
     cfg = settings()
     return {k: v for k, v in {"api_key": cfg.openalex_api_key, "mailto": cfg.mailto}.items() if v}
@@ -55,15 +69,14 @@ def _auth_params() -> dict[str, str]:
 def fetch_work(ident: Identifier, timeout: float = 60) -> dict[str, Any]:
     url = f"{API}/works/{openalex_key(ident)}"
     try:
-        with _client(timeout) as c:
-            r = c.get(url, params=_auth_params())
+        status, body = _get(url, _auth_params(), timeout)
     except httpx.HTTPError as e:
         raise ApiError(502, "openalex_failed", f"could not reach OpenAlex: {e}")
-    if r.status_code == 404:
+    if status == 404:
         raise ApiError(404, "openalex_not_found", f"OpenAlex has no work for {ident.scheme}:{ident.value}")
-    if r.status_code != 200:
-        raise ApiError(502, "openalex_failed", f"OpenAlex returned HTTP {r.status_code}", {"body": r.text[:500]})
-    return r.json()
+    if status != 200:
+        raise ApiError(502, "openalex_failed", f"OpenAlex returned HTTP {status}", {"body": body[:500].decode("utf-8", "replace")})
+    return json.loads(body)
 
 
 def identifiers_of(work: dict[str, Any]) -> dict[str, str]:
@@ -96,9 +109,8 @@ class Candidate:
 
 def _europepmc_pmcid(doi: str, timeout: float = CHECK_TIMEOUT) -> str | None:
     try:
-        with _client(timeout) as c:
-            r = c.get(f"{EUROPEPMC}/search", params={"query": f'DOI:"{doi}"', "format": "json", "resultType": "lite"})
-        return next((x["pmcid"] for x in r.json().get("resultList", {}).get("result", []) if x.get("pmcid")), None)
+        _, body = _get(f"{EUROPEPMC}/search", {"query": f'DOI:"{doi}"', "format": "json", "resultType": "lite"}, timeout)
+        return next((x["pmcid"] for x in json.loads(body).get("resultList", {}).get("result", []) if x.get("pmcid")), None)
     except (httpx.HTTPError, ValueError, KeyError):
         return None
 

@@ -659,6 +659,23 @@ def test_jats_check_gives_up_on_a_trickle(monkeypatch):
 
 
 @respx.mock
+def test_small_requests_give_up_on_a_trickle(monkeypatch):
+    """The OpenAlex lookup and the PMCID search keep to their time too, however slowly the answer arrives."""
+    from reprocrowd import openalex
+    clock = [0.0]
+
+    def tick():
+        clock[0] += 1
+        return clock[0]
+    monkeypatch.setattr(openalex, "_now", tick)
+    respx.get(url__regex=r"https://www\.ebi\.ac\.uk/europepmc/webservices/rest/search.*").mock(
+        return_value=httpx.Response(200, content=iter([b" "] * 1000 + [b'{"resultList": {"result": [{"pmcid": "PMC1"}]}}'])))
+    assert openalex._europepmc_pmcid("10.1371/journal.pbio.1002106", timeout=5) is None  # gave up: no PMCID, PLOS next
+    clock[0] = 0.0
+    assert openalex._europepmc_pmcid("10.1371/journal.pbio.1002106", timeout=5000) == "PMC1"  # given the time, it is read
+
+
+@respx.mock
 def test_download_keeps_the_query_string(tmp_path):
     """A candidate URL with a query string (PLOS's JATS and PDF URLs) is fetched as it is."""
     from reprocrowd import openalex
