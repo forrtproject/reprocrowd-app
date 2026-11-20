@@ -4,7 +4,7 @@ name: Release
 # for updates there (src/main/updater.ts):
 #   Windows  ReproCrowd-<version>-setup.exe + latest.yml        installs itself (electron-updater)
 #   Linux    ReproCrowd-<version>.AppImage  + latest-linux.yml  replaces itself (electron-updater)
-#   macOS    ReproCrowd-<version>-arm64.dmg                     unsigned: the app points users to the download
+#   macOS    ReproCrowd-<version>-arm64.dmg                     signed, not notarized: the app points users to the download
 # Each build is started and checked with test/smoke.mjs: the app opens, its bundled backend answers, and quitting
 # leaves no backend behind.
 # Triggers:
@@ -51,6 +51,9 @@ jobs:
             files: |
               dist/*.dmg
     runs-on: ${{ matrix.os }}
+    # The macOS signing certificate lives in the "mac-signing" environment, which only main and v* tags may use. Other
+    # refs (manual runs on a branch, pull requests) build without it and stay ad-hoc signed.
+    environment: ${{ matrix.os == 'macos-latest' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')) && 'mac-signing' || '' }}
     permissions:
       contents: read
     steps:
@@ -89,8 +92,8 @@ jobs:
           CSC_IDENTITY_AUTO_DISCOVERY: "false" # no signing certificates (yet)
 
       # macOS: signed with an Apple Development certificate (free Xcode Personal Team), so every release has the same
-      # Team ID and updates may go on reading the app's keychain item without asking (scripts/sign-mac.sh). Pull-request
-      # builds never see the certificate and stay ad-hoc signed; a release must not.
+      # Team ID and updates may go on reading the app's keychain item without asking (scripts/sign-mac.sh). Only runs
+      # in the mac-signing environment (main, v* tags) see the certificate; a release must not be built without it.
       - name: Sign the app (macOS)
         if: runner.os == 'macOS' && github.event_name != 'pull_request'
         env:
@@ -193,7 +196,8 @@ jobs:
           body: |
             ## Installing
 
-            The installers aren't code-signed yet, so Windows and macOS warn before the first start.
+            The Windows installer isn't code-signed yet, and the macOS app is signed but not notarized by Apple, so
+            both warn before the first start.
 
             - **Windows** (`ReproCrowd-<version>-setup.exe`): if SmartScreen says "Windows protected your PC", click
               **More info → Run anyway**. Later updates install themselves.
