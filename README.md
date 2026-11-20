@@ -208,6 +208,14 @@ after start (Settings → Updates; Help → Check for Updates…):
   anyway"). On macOS (Apple silicon only), use System Settings → Privacy & Security → Open
   Anyway, or, if the app is reported as "damaged", `xattr -cr /Applications/ReproCrowd.app`.
   The release notes repeat this for users.
+- The macOS app is signed with an Apple Development certificate from a free Xcode Personal Team
+  (`scripts/sign-mac.sh`, repository secrets `MAC_SIGNING_P12_BASE64` and `MAC_SIGNING_P12_PASSWORD`;
+  tag and manual Release runs only). Every release then has the same Team ID, so macOS lets updates
+  read the app's keychain item ("ReproCrowd Safe Storage") without asking again. Ad-hoc builds
+  would ask after every update. The certificate expires on 20 November 2027: renew it in Xcode
+  (Settings → Accounts → Manage Certificates), export it with Apple's WWDR G3 intermediate as a
+  `.p12`, and replace both secrets. The Team ID stays the same, so users aren't asked again. A
+  tag release fails if the secrets are missing.
 - A development checkout doesn't check. `REPROCROWD_UPDATES=off` turns checks off;
   `REPROCROWD_UPDATE_SERVER=<url>` points them at a test server (see `src/main/updater.ts`).
 
