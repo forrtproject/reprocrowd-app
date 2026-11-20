@@ -112,7 +112,10 @@ jobs:
           foreach ($name in 'bash', 'python3') {
             Get-Command $name -All -ErrorAction SilentlyContinue | ForEach-Object { Rename-Item $_.Source "$($_.Name).hidden" -ErrorAction SilentlyContinue }
           }
-          Get-Command bash, python3 -All -ErrorAction SilentlyContinue | ForEach-Object { "still found: $($_.Source)" }
+          # What can't be hidden: WSL's bash launcher in System32 (protected; the app never calls bash) and the Store's
+          # python3 stand-in (the app checks that it really starts). Anything else left means the check isn't a plain PC.
+          $left = Get-Command bash, python3 -All -ErrorAction SilentlyContinue | Where-Object { $_.Source -notmatch '\\(System32|Microsoft\\WindowsApps)\\' }
+          if ($left) { throw "Couldn't hide: $($left.Source -join ', ')" }
           $setup = Get-ChildItem dist\*-setup.exe | Select-Object -First 1
           Start-Process -FilePath $setup.FullName -ArgumentList '/S' -Wait
           $exe = Get-ChildItem "$env:LOCALAPPDATA\Programs" -Recurse -Filter ReproCrowd.exe | Select-Object -First 1

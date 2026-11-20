@@ -13,11 +13,12 @@ import os
 import re
 import shlex
 import shutil
+import subprocess
 import sys
 from pathlib import Path
 from typing import Any
 
-from . import files, gitrepo, jobs, evidence
+from . import childenv, files, gitrepo, jobs, evidence
 from .compare import check_output, compare
 from .config import settings
 from .errors import conflict
@@ -46,6 +47,7 @@ def start(pkg: Package) -> Job:
         raise conflict("script_missing", "create the master script first (PUT …/script)")
     jobs.ensure_idle(pkg)
     targets = frozen_targets(pkg)
+    argv = run_argv(tpl.command)  # before anything is cleaned up or committed: a missing program changes nothing
     jid = jobs.new_id(pkg)
     pkg.path(RESULTS).unlink(missing_ok=True)
     files.sync(pkg)
@@ -71,7 +73,7 @@ def start(pkg: Package) -> Job:
         return RunResult(commit_before=before, snapshot=before_snapshot, results_sha256=evidence.digest(pkg, RESULTS),
                          log_sha256=evidence.digest(pkg, job.stdout), command=tpl.command, log=job.stdout, results_file=exists, output_errors=errors, output_warnings=warnings, commit_after=after)
 
-    return jobs.start(pkg, jid=jid, type="run", argv=run_argv(tpl.command), stdin="", timeout_s=settings().run_timeout_s,
+    return jobs.start(pkg, jid=jid, type="run", argv=argv, stdin="", timeout_s=settings().run_timeout_s,
                       events_format="text", profile=None, request={"template": tpl.id, "command": tpl.command}, finish=finish, merge_stderr=True,
                       env={"PYTHONUNBUFFERED": "1"})  # live, ordered log lines from Python pipelines
 
@@ -86,7 +88,16 @@ INSTALL_HINTS = {
 
 
 def _store_stub(path: str) -> bool:
+    """An app alias in WindowsApps: the Microsoft Store's stand-in, or a Python installed from the Store."""
     return os.name == "nt" and "\\microsoft\\windowsapps\\" in path.lower()
+
+
+def _runs(argv: list[str]) -> bool:
+    """Does the program start? The Store's stand-in exits with an error (and an offer to install Python)."""
+    try:
+        return subprocess.run([*argv, "--version"], capture_output=True, timeout=15).returncode == 0
+    except (OSError, subprocess.SubprocessError):
+        return False
 
 
 def _r_installs() -> list[str]:
@@ -105,11 +116,13 @@ def _r_installs() -> list[str]:
 def find_program(name: str) -> list[str] | None:
     """The command line that starts the template's program, or None if it isn't installed."""
     options = ALTERNATIVES.get(name, [[name]])
-    found = [[exe, *rest] for prog, *rest in options if (exe := shutil.which(prog))]
+    path = jobs.job_env(base=childenv.for_script()).get("PATH")  # the run's own PATH, without ReproCrowd's virtualenv
+    found = [[exe, *rest] for prog, *rest in options if (exe := shutil.which(prog, path=path))]
     if name == "Rscript":
         found += [[p] for p in _r_installs()]
-    real = [f for f in found if not _store_stub(f[0])]
-    return (real or found or [None])[0]
+    # Store aliases last, and only if they really start (a Store-installed Python does; the stand-in doesn't).
+    found = [f for f in found if not _store_stub(f[0])] + [f for f in found if _store_stub(f[0]) and _runs(f)]
+    return found[0] if found else None
 
 
 def run_argv(command: str) -> list[str]:

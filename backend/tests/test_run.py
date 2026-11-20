@@ -44,7 +44,10 @@ def test_run_and_compare(client, pkg):
     problem(client.get(P + "/comparison"), 409, "results_missing")
     (root / "analysis.py").write_text(SCRIPT)
     r = client.post(P + "/jobs", json={"type": "run"})
-    assert r.status_code == 202 and r.json()["argv"][-1] == "analysis.py" and "bash" not in r.json()["argv"][0]  # no shell: Windows has none
+    from reprocrowd import run
+    # no shell (Windows has none): the Python found for the run, then the script
+    assert r.status_code == 202 and r.json()["argv"] == [*run.find_program("python3"), "analysis.py"], r.json()["argv"]
+    assert Path(r.json()["argv"][0]).name.startswith("py")
     job = wait(client, pkg, r.json()["id"])
     assert job["status"] == "succeeded", job
     res = job["result"]
@@ -143,13 +146,25 @@ def test_programs_are_found_where_windows_and_r_put_them(monkeypatch):
     from reprocrowd import run
     from reprocrowd.errors import ApiError
     on_path: dict[str, str] = {}
-    monkeypatch.setattr(run.shutil, "which", lambda name: on_path.get(name))
+    monkeypatch.setattr(run.shutil, "which", lambda name, path=None: on_path.get(name))
     monkeypatch.setattr(run, "_store_stub", lambda p: "WindowsApps" in p)
+    stub_runs = False
+    monkeypatch.setattr(run, "_runs", lambda argv: stub_runs)
     monkeypatch.setattr(run, "_r_installs", lambda: [])
     # nothing installed: a clear error that says where to get it
     with pytest.raises(ApiError) as e:
         run.run_argv("python3 analysis.py")
     assert e.value.code == "program_not_found" and "python.org" in e.value.message
+    # only the Store's stand-in: not a Python, so the same clear error
+    on_path["python3"] = r"C:\Users\a\AppData\Local\Microsoft\WindowsApps\python3.exe"
+    with pytest.raises(ApiError) as e:
+        run.run_argv("python3 analysis.py")
+    assert e.value.code == "program_not_found"
+    # but a Python installed from the Store is used
+    stub_runs = True
+    assert run.run_argv("python3 analysis.py")[0].endswith("WindowsApps\\python3.exe")
+    stub_runs = False
+    del on_path["python3"]
     # Windows: no python3, but python, or only the py launcher
     on_path["py"] = r"C:\Windows\py.exe"
     assert run.run_argv("python3 analysis.py") == [r"C:\Windows\py.exe", "-3", "analysis.py"]
@@ -167,3 +182,18 @@ def test_programs_are_found_where_windows_and_r_put_them(monkeypatch):
     # elsewhere, the program on the PATH as it is
     on_path["snakemake"] = "/usr/bin/snakemake"
     assert run.run_argv("snakemake --cores 1") == ["/usr/bin/snakemake", "--cores", "1"]
+
+
+def test_a_missing_program_changes_nothing(client, pkg, monkeypatch):
+    """Without Python, the run is refused before the old results are removed or anything is committed."""
+    from reprocrowd import gitrepo, run
+    root = package_with_targets(client, pkg)
+    (root / "outputs").mkdir(exist_ok=True)
+    (root / "outputs" / "results.json").write_text("{}")
+    head = gitrepo.head(run.Package(pkg, root)) if gitrepo.available() else None
+    monkeypatch.setattr(run, "find_program", lambda name: None)
+    problem(client.post(f"/v1/packages/{pkg}/jobs", json={"type": "run"}), 409, "program_not_found")
+    assert (root / "outputs" / "results.json").read_text() == "{}"
+    assert not (root / "jobs").exists() or not any((root / "jobs").iterdir())
+    if gitrepo.available():
+        assert gitrepo.head(run.Package(pkg, root)) == head
