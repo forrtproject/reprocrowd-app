@@ -5,13 +5,24 @@ name: Release
 #   Windows  ReproCrowd-<version>-setup.exe + latest.yml        installs itself (electron-updater)
 #   Linux    ReproCrowd-<version>.AppImage  + latest-linux.yml  replaces itself (electron-updater)
 #   macOS    ReproCrowd-<version>-arm64.dmg                     unsigned: the app points users to the download
-# Trigger: push a tag v<version> matching package.json's version (e.g. v0.2.0), or run it by hand from the Actions
-# tab (builds only; no release).
+# Each build is started and checked with test/smoke.mjs: the app opens, its bundled backend answers, and quitting
+# leaves no backend behind.
+# Triggers:
+#   - push a tag v<version> matching package.json's version (e.g. v0.2.0): build, smoke test, release
+#   - add the label "build-all" to a pull request: build and smoke test now and on each later push
+#   - run it by hand from the Actions tab: build and smoke test the chosen branch (no release)
 
 on:
   push:
     tags: ["v*"]
+  pull_request:
+    types: [labeled, synchronize, reopened]
   workflow_dispatch:
+
+# A newer push to the same pull request cancels the older run; tag and manual runs are never cancelled.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 # Read-only by default; only the release job, which runs no third-party build code, can write.
 permissions:
@@ -19,6 +30,7 @@ permissions:
 
 jobs:
   build:
+    if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'build-all')
     strategy:
       fail-fast: false
       matrix:
@@ -76,11 +88,30 @@ jobs:
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: "false" # no signing certificates (yet)
 
+      # Ubuntu 24.04 blocks the user namespaces Chromium's sandbox needs.
+      - name: Allow Electron's sandbox (Linux)
+        if: runner.os == 'Linux'
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+
+      - name: Smoke test the packaged app
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = Linux ]; then xvfb-run -a node test/smoke.mjs; else node test/smoke.mjs; fi
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: smoke-screens-${{ runner.os }}
+          path: test-output/smoke-*.png
+          retention-days: 7
+          if-no-files-found: ignore
+
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: reprocrowd-${{ runner.os }}
           path: ${{ matrix.files }}
           if-no-files-found: error
+          retention-days: ${{ github.event_name == 'pull_request' && 3 || 90 }}
 
   release:
     if: startsWith(github.ref, 'refs/tags/')
