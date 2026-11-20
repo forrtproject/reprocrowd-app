@@ -3,6 +3,7 @@ import shutil
 from pathlib import Path
 
 import httpx
+import pytest
 import respx
 
 from conftest import FIXTURES
@@ -597,6 +598,9 @@ def test_jats_from_plos(client):
     before = epmc.call_count, plos.call_count
     assert client.get("/v1/jats", params={"doi": "10.1371/journal.pbio.1002106"}).json()["source"] == "PLOS"
     assert (epmc.call_count, plos.call_count) == (before[0] + 1, before[1] + 1)  # Europe PMC was tried, then PLOS
+    # Europe PMC times out: PLOS is still asked
+    epmc.mock(side_effect=httpx.ReadTimeout("slow"))
+    assert client.get("/v1/jats", params={"doi": "10.1371/journal.pbio.1002106"}).json()["source"] == "PLOS"
     # neither has it, and one couldn't be asked: not known, so not a refusal
     plos.mock(return_value=httpx.Response(404))
     e = problem(client.get("/v1/jats", params={"doi": "10.1371/journal.pbio.1002106"}), 502, "jats_check_failed")
@@ -610,6 +614,65 @@ def test_jats_from_plos(client):
         return_value=httpx.Response(200, content=(FIXTURES / "paper.jats.xml").read_bytes()))
     j = client.get("/v1/jats", params={"doi": "10.1371/journal.pcsy.0000125"}).json()
     assert j["available"] and j["source"] == "PLOS" and j["pmcid"] is None and pcsy.called
+
+
+@respx.mock
+def test_jats_check_keeps_to_its_budget(client, monkeypatch):
+    """Every step hangs as long as it may: Europe PMC is given up in time, PLOS gets what is left, and the whole check
+    ends within CHECK_BUDGET, below the app's 60-s limit (src/main/api.ts)."""
+    from reprocrowd import openalex
+    clock = [0.0]
+    monkeypatch.setattr(openalex, "_now", lambda: clock[0])
+    timeouts: list[float] = []
+    real = openalex._client
+
+    def hanging_client(timeout: float = 60):
+        timeouts.append(timeout)
+        clock[0] += timeout  # the step used all of its time
+        return real(timeout)
+    monkeypatch.setattr(openalex, "_client", hanging_client)
+    respx.get(JATS_URL).mock(return_value=httpx.Response(404))
+    respx.get(PLOS_URL).mock(return_value=httpx.Response(200, content=(FIXTURES / "paper.jats.xml").read_bytes()))
+    mock_openalex()
+    assert client.get("/v1/jats", params={"doi": "10.1371/journal.pbio.1002106"}).json()["source"] == "PLOS"
+    T, budget = openalex.CHECK_TIMEOUT, openalex.CHECK_BUDGET
+    assert timeouts == [T, T, budget - 2 * T], "OpenAlex and Europe PMC at most CHECK_TIMEOUT each; PLOS the rest"
+    assert clock[0] <= budget < 60
+
+
+@respx.mock
+def test_jats_check_gives_up_on_a_trickle(monkeypatch):
+    """httpx's timeout is per wait: a server sending a byte at a time is stopped by the check's own deadline."""
+    from reprocrowd import openalex
+    from reprocrowd.errors import ApiError
+    clock = [0.0]
+
+    def tick():
+        clock[0] += 1
+        return clock[0]
+    monkeypatch.setattr(openalex, "_now", tick)
+    respx.get(JATS_URL).mock(return_value=httpx.Response(200, content=iter([b"x"] * 1000)))
+    c = openalex.Candidate("c-1", "Europe PMC JATS (PMC4359000)", JATS_URL, "jats", "europepmc.jats.xml")
+    with pytest.raises(ApiError) as e:
+        openalex._jats_head(c, timeout=5)
+    assert e.value.code == "jats_check_failed" and "within 5 s" in e.value.message
+
+
+@respx.mock
+def test_small_requests_give_up_on_a_trickle(monkeypatch):
+    """The OpenAlex lookup and the PMCID search keep to their time too, however slowly the answer arrives."""
+    from reprocrowd import openalex
+    clock = [0.0]
+
+    def tick():
+        clock[0] += 1
+        return clock[0]
+    monkeypatch.setattr(openalex, "_now", tick)
+    respx.get(url__regex=r"https://www\.ebi\.ac\.uk/europepmc/webservices/rest/search.*").mock(
+        return_value=httpx.Response(200, content=iter([b" "] * 1000 + [b'{"resultList": {"result": [{"pmcid": "PMC1"}]}}'])))
+    assert openalex._europepmc_pmcid("10.1371/journal.pbio.1002106", timeout=5) is None  # gave up: no PMCID, PLOS next
+    clock[0] = 0.0
+    assert openalex._europepmc_pmcid("10.1371/journal.pbio.1002106", timeout=5000) == "PMC1"  # given the time, it is read
 
 
 @respx.mock
