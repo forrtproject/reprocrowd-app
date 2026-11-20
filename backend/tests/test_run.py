@@ -1,4 +1,5 @@
 import json
+import pytest
 from pathlib import Path
 
 from conftest import FIXTURES
@@ -43,7 +44,7 @@ def test_run_and_compare(client, pkg):
     problem(client.get(P + "/comparison"), 409, "results_missing")
     (root / "analysis.py").write_text(SCRIPT)
     r = client.post(P + "/jobs", json={"type": "run"})
-    assert r.status_code == 202 and r.json()["argv"] == ["bash", "-c", "python3 analysis.py"]
+    assert r.status_code == 202 and r.json()["argv"][-1] == "analysis.py" and "bash" not in r.json()["argv"][0]  # no shell: Windows has none
     job = wait(client, pkg, r.json()["id"])
     assert job["status"] == "succeeded", job
     res = job["result"]
@@ -123,3 +124,46 @@ def test_child_environments_are_allowlisted():
     assert "OPENAI_API_KEY" in codex and "ANTHROPIC_API_KEY" not in codex
     assert "MY_GATEWAY_URL" in childenv.for_cli(["mycli"], ["MY_GATEWAY_*"], env=env)
     assert not any(k.startswith("REPROCROWD_") for k in childenv.for_cli(["mycli"], ["REPROCROWD_*", "*"], env=env))
+
+
+def test_template_commands_need_no_shell():
+    """Commands are started without a shell (Windows has no bash): a program and its arguments only."""
+    import shlex
+    import tomllib
+    from importlib import resources
+    for t in resources.files("reprocrowd.templates").iterdir():
+        if t.is_dir() and t.joinpath("template.toml").is_file():
+            command = tomllib.loads(t.joinpath("template.toml").read_text(encoding="utf-8"))["command"]
+            argv = shlex.split(command)
+            assert not any(a in {"&&", "||", "|", ";", ">", "<", "&"} for a in argv), command
+    assert shlex.split("Rscript -e 'targets::tar_make()'") == ["Rscript", "-e", "targets::tar_make()"]
+
+
+def test_programs_are_found_where_windows_and_r_put_them(monkeypatch):
+    from reprocrowd import run
+    from reprocrowd.errors import ApiError
+    on_path: dict[str, str] = {}
+    monkeypatch.setattr(run.shutil, "which", lambda name: on_path.get(name))
+    monkeypatch.setattr(run, "_store_stub", lambda p: "WindowsApps" in p)
+    monkeypatch.setattr(run, "_r_installs", lambda: [])
+    # nothing installed: a clear error that says where to get it
+    with pytest.raises(ApiError) as e:
+        run.run_argv("python3 analysis.py")
+    assert e.value.code == "program_not_found" and "python.org" in e.value.message
+    # Windows: no python3, but python, or only the py launcher
+    on_path["py"] = r"C:\Windows\py.exe"
+    assert run.run_argv("python3 analysis.py") == [r"C:\Windows\py.exe", "-3", "analysis.py"]
+    on_path["python"] = r"C:\Python313\python.exe"
+    assert run.run_argv("python3 analysis.py") == [r"C:\Python313\python.exe", "analysis.py"]
+    # the Microsoft Store's python3 stand-in is passed over for a real Python
+    on_path["python3"] = r"C:\Users\a\AppData\Local\Microsoft\WindowsApps\python3.exe"
+    assert run.run_argv("python3 analysis.py")[0] == r"C:\Python313\python.exe"
+    # R: not on the PATH, but where its installer put it
+    with pytest.raises(ApiError) as e:
+        run.run_argv("Rscript analysis.R")
+    assert "r-project.org" in e.value.message
+    monkeypatch.setattr(run, "_r_installs", lambda: [r"C:\Program Files\R\R-4.5.1\bin\Rscript.exe"])
+    assert run.run_argv("Rscript -e 'targets::tar_make()'") == [r"C:\Program Files\R\R-4.5.1\bin\Rscript.exe", "-e", "targets::tar_make()"]
+    # elsewhere, the program on the PATH as it is
+    on_path["snakemake"] = "/usr/bin/snakemake"
+    assert run.run_argv("snakemake --cores 1") == ["/usr/bin/snakemake", "--cores", "1"]

@@ -118,6 +118,7 @@ CATALOG: dict[str, tuple[int, str]] = {
     "job_running": (409, "Another job is running in this package"),
     "job_finished": (409, "The job is not running"),
     "job_start_failed": (502, "The job's command could not be started"),
+    "program_not_found": (409, "The program the template runs (Python, R, Snakemake) isn't installed or can't be found"),
     # data & code acquisition (metacheck-style)
     "no_fulltext": (409, "Add a full text (JATS XML) to scan first"),
     "unknown_repository": (400, "No acquisition adapter for this repository"),

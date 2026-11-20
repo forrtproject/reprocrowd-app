@@ -107,6 +107,12 @@ jobs:
         env:
           SMOKE_LABEL: installed
         run: |
+          # Like a plain Windows PC: no bash and no python3 command (Python is `python` or `py` there). Analysis runs must
+          # not need them.
+          foreach ($name in 'bash', 'python3') {
+            Get-Command $name -All -ErrorAction SilentlyContinue | ForEach-Object { Rename-Item $_.Source "$($_.Name).hidden" -ErrorAction SilentlyContinue }
+          }
+          Get-Command bash, python3 -All -ErrorAction SilentlyContinue | ForEach-Object { "still found: $($_.Source)" }
           $setup = Get-ChildItem dist\*-setup.exe | Select-Object -First 1
           Start-Process -FilePath $setup.FullName -ArgumentList '/S' -Wait
           $exe = Get-ChildItem "$env:LOCALAPPDATA\Programs" -Recurse -Filter ReproCrowd.exe | Select-Object -First 1

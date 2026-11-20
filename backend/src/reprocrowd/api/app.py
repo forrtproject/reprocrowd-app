@@ -720,7 +720,7 @@ def agent_profiles():
                       "`TODO(LLM):` markers. `type: run` runs the master script with the template's command (output and "
                       "errors as `log` events), then checks `outputs/results.json`. The package is committed to git before "
                       "and after. Returns 202 at once; follow the job at its `Location`, its progress at `…/events`.",
-          responses=errors("script_missing", "job_running", "unknown_profile", "exec_restriction_unsupported", "job_start_failed"))
+          responses=errors("script_missing", "job_running", "unknown_profile", "exec_restriction_unsupported", "job_start_failed", "program_not_found"))
 def create_job(pkg: Pkg, body: Annotated[M.JobCreate, Body()], response: Response):
     if isinstance(body, M.RunJobCreate):
         job = run.start(pkg)
