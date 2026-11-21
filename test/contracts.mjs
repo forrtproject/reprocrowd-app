@@ -9,7 +9,7 @@ async function load(file) {
 }
 globalThis.window = { reprocrowd: {} };
 const { modelCompatible } = await load('src/renderer/api.ts');
-const claude = { cli: 'claude', id: 'claude/sonnet' };
+const claude = { cli: 'claude', id: 'claude/claude-sonnet-5-5' };
 const open = { cli: 'opencode', id: 'vendor/model' };
 const t3 = { cli: 't3', id: 'vendor/model' };
 assert(modelCompatible(claude, ['/usr/local/bin/claude']));
@@ -21,10 +21,10 @@ assert(modelCompatible(open, ['opencode']) && modelCompatible(open, ['/other/ope
 const codex = { cli: 'codex', id: 'codex/gpt-x' };
 assert(modelCompatible(codex, ['codex']) && !modelCompatible(codex, ['opencode']) && !modelCompatible(open, ['codex']));
 const { cliModel } = await load('src/renderer/api.ts');
-assert.equal(cliModel('codex/gpt-x'), 'gpt-x'); assert.equal(cliModel('claude/opus'), 'opus'); assert.equal(cliModel('deepseek/deepseek-v4-pro'), 'deepseek/deepseek-v4-pro');
+assert.equal(cliModel('codex/gpt-x'), 'gpt-x'); assert.equal(cliModel('claude/claude-opus-5-5'), 'claude-opus-5-5'); assert.equal(cliModel('deepseek/deepseek-v4-pro'), 'deepseek/deepseek-v4-pro');
 const { status: llmStatus, cliStates } = await load('src/renderer/llm-status.ts');
 {
-  const models = (o) => ({ available: [], disabled: [], claudeNeedsLogin: false, needsLogin: [], installed: [], ...o });
+  const models = (o) => ({ available: [], claudeNeedsLogin: false, needsLogin: [], installed: [], ...o });
   const claudeProfile = [{ name: 'claude', argv: ['claude', '-p'] }];
   assert.equal(llmStatus({ models: models({}), profiles: claudeProfile }).level, 'none'); // red: nothing installed
   assert.equal(llmStatus({ models: models({ installed: ['claude'], needsLogin: ['claude'] }), profiles: claudeProfile }).level, 'warn'); // yellow: not signed in
@@ -38,14 +38,17 @@ const { status: llmStatus, cliStates } = await load('src/renderer/llm-status.ts'
   assert.equal(llmStatus({ models: models({ installed: ['claude'], loginUnknown: ['claude'] }), profiles: claudeProfile }).level, 'warn'); // login probe couldn't tell
   assert.match(llmStatus({ models: models({ installed: ['claude'], loginUnknown: ['claude'] }), profiles: claudeProfile }).text, /sign-in not confirmed/);
   // An older main process reports no `installed`: CLIs are inferred from the models listed and the ones needing login.
-  const legacy = { available: [{ cli: 'claude', provider: 'claude', id: 'claude/sonnet', name: 'Sonnet' }], disabled: [], claudeNeedsLogin: false, needsLogin: ['codex'] };
+  const legacy = { available: [{ cli: 'claude', provider: 'claude', id: 'claude/claude-sonnet-5-5', name: 'Sonnet 5.5' }], claudeNeedsLogin: false, needsLogin: ['codex'] };
   assert.equal(llmStatus({ models: legacy, profiles: claudeProfile }).level, 'ok');
   assert.deepEqual(cliStates({ models: legacy, profiles: claudeProfile }).filter((c) => c.installed).map((c) => [c.cli, c.problem]), [['claude', undefined], ['codex', 'not signed in']]);
   assert.equal(llmStatus({ models: { ...legacy, available: [] }, profiles: claudeProfile }).level, 'warn'); // only codex, not signed in
   assert.match(llmStatus({ models: models({ installed: ['claude'], needsLogin: ['claude'] }), profiles: claudeProfile }).text, /Claude Code: installed, not signed in/);
   assert.deepEqual(cliStates({ models: models({}), profiles: [] }).map((c) => [c.cli, c.problem]), [['claude', 'not installed'], ['codex', 'not installed'], ['opencode', 'not installed']]);
 }
-const { parseCodexModels } = await load('src/main/models.ts');
+const { parseCodexModels, CLAUDE_MODELS } = await load('src/main/models.ts');
+// Claude Code's models are offered by version, never as a tier alias, so a run records the version it asked for.
+for (const [model, name] of CLAUDE_MODELS) assert.match(`${model} ${name}`, /^claude-(opus|sonnet|haiku|fable)-\d+(-\d+)? (Opus|Sonnet|Haiku|Fable) \d+(\.\d+)?$/);
+assert.equal(new Set(CLAUDE_MODELS.map(([m]) => m)).size, CLAUDE_MODELS.length);
 assert.deepEqual(parseCodexModels(JSON.stringify({ models: [{ slug: 'gpt-x', display_name: 'GPT X', visibility: 'list' }, { slug: 'hidden', visibility: 'hide' }] })),
   [{ cli: 'codex', provider: 'codex', id: 'codex/gpt-x', name: 'GPT X' }]);
 assert.deepEqual(parseCodexModels('not json'), []);

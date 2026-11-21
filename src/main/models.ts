@@ -1,8 +1,8 @@
 // Which LLM models the user can use, and from which CLI. Each installed agent CLI is asked for its own list:
 // `opencode models` lists only providers the user has credentials for (plus OpenCode's free models), `codex debug
-// models` the models of the signed-in Codex account, and Claude Code takes its tier aliases once signed in. A model
-// belongs to the CLI that listed it; the renderer never routes it to another CLI. The models the user turns off on the
-// starting page are kept (settings.llmDisabled) so they don't accidentally spend tokens on them.
+// models` the models of the signed-in Codex account. Claude Code has no list command: once it is signed in, the app
+// offers a fixed list of versioned model names (CLAUDE_MODELS), never the tier aliases, so a run names the exact
+// version it asked for. A model belongs to the CLI that listed it; the renderer never routes it to another CLI.
 import { exec } from "node:child_process";
 import { searchPath, which } from "./processes";
 
@@ -60,10 +60,19 @@ function parseModels(out: string): string[] {
 }
 
 /** Claude Code has no command that lists its models; it takes these aliases, each the newest model of its tier. */
-const CLAUDE_MODELS: [string, string][] = [
-  ["opus", "Opus"],
-  ["sonnet", "Sonnet"],
-  ["haiku", "Haiku"],
+/** Claude Code's models by full name, newest first per tier; `--model` takes these as they are. Update when Anthropic
+ * releases a model. Fable needs usage credits on top of a subscription; without them Claude Code says so at run time. */
+export const CLAUDE_MODELS: [string, string][] = [
+  ["claude-opus-5-5", "Opus 5.5"],
+  ["claude-opus-5", "Opus 5"],
+  ["claude-opus-4-8", "Opus 4.8"],
+  ["claude-sonnet-5-5", "Sonnet 5.5"],
+  ["claude-sonnet-5", "Sonnet 5"],
+  ["claude-sonnet-4-6", "Sonnet 4.6"],
+  ["claude-haiku-5-5", "Haiku 5.5"],
+  ["claude-haiku-4-5", "Haiku 4.5"],
+  ["claude-fable-5-2", "Fable 5.2"],
+  ["claude-fable-5-1", "Fable 5.1"],
 ];
 
 /** Whether Claude Code is signed in (`claude auth status` prints JSON with `loggedIn`); undefined if it can't tell. */
@@ -120,11 +129,12 @@ async function detect(): Promise<ModelSet> {
       found.push(modelOf(id, cli));
     }
   }
-  // Claude Code: its tier aliases once signed in. The `claude/` (and Codex's `codex/`) prefix makes each CLI its own
+  // Claude Code: the versioned models once signed in. The `claude/` (and Codex's `codex/`) prefix makes each CLI its own
   // family; the renderer strips it before handing the model to the CLI (cliModel).
-  if (claude) for (const [alias, name] of CLAUDE_MODELS) found.push({ cli: "claude", provider: "claude", id: `claude/${alias}`, name });
+  if (claude) for (const [model, name] of CLAUDE_MODELS) found.push({ cli: "claude", provider: "claude", id: `claude/${model}`, name });
   if (codexIn !== false) found.push(...parseCodexModels(codexModels)); // unknown login state: still list the catalog
-  found.sort((a, b) => a.provider.localeCompare(b.provider) || a.name.localeCompare(b.name));
+  // Claude's models keep their order (newest first per tier); the others are listed by name.
+  found.sort((a, b) => a.provider.localeCompare(b.provider) || (a.cli === "claude" && b.cli === "claude" ? 0 : a.name.localeCompare(b.name)));
   const needsLogin: Cli[] = [...(claude === false ? ["claude" as const] : []), ...(codexIn === false ? ["codex" as const] : [])];
   const installed: Cli[] = [...(which("claude") ? ["claude" as const] : []), ...(hasCodex ? ["codex" as const] : []), ...lists.map((l) => l.cli)];
   // Installed, but the login probe couldn't tell (timeout, unexpected output): not counted as signed in by the light.

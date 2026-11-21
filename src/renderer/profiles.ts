@@ -70,7 +70,7 @@ export async function profileEditor(saved: (text: string) => void) {
         : ["claude", "-p", "--output-format", "json", "--model", "{model}", "--effort", "{effort}"]
         : type === "codex" ? codex
         : type === "opencode" ? ["opencode", "run", "--format", "json", "-m", "{model}", "--variant", "{effort}", ...(agent ? ["--auto"] : [])] : ["your-cli"],
-      model: type === "claude" ? "sonnet" : "", effort: type === "claude" ? "high" : "", timeout_s: agent ? 7200 : 1800,
+      model: type === "claude" ? "claude-sonnet-5-5" : "", effort: type === "claude" ? "high" : "", timeout_s: agent ? 7200 : 1800,
       ...(agent ? { events: type === "claude" ? "claude-stream-json" : type === "codex" ? "codex-json" : type === "opencode" ? "opencode-json" : "text", tools: type === "claude" ? ["Read", "Write", "Edit", "Glob", "Grep"] : [], exec_tools: type === "claude" ? ["Bash(Rscript:*)", "Bash(python:*)", "Bash(python3:*)"] : [],
           no_exec_argv: type === "claude" ? ["--disallowedTools", "Bash"] : type === "codex" ? CODEX_NO_EXEC : [],
           no_exec_env: type === "opencode" ? { OPENCODE_PERMISSION: OPENCODE_NO_EXEC } : {} }

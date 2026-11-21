@@ -1,7 +1,7 @@
 // The LLM button in the header (start page and package view): a status light for the coding CLIs, and a dialog with
-// everything about them: which CLIs are installed and signed in, their logins, the models they offer (with the switches
-// that keep models out of the pickers), and the coding and extraction profiles.
-import { host, modelCompatible, type LlmModel } from "./api";
+// everything about them: which CLIs are installed and signed in, their logins, the models they offer, and the coding and
+// extraction profiles.
+import { cliModel, host, modelCompatible, type LlmModel } from "./api";
 import { cliStates, label, LOGIN, status, type Level, type Profile, type State } from "./llm-status";
 import { profileEditor } from "./profiles";
 import { esc, modal, showError } from "./util";
@@ -46,8 +46,8 @@ export function llmButton(className: string, changed: () => void): { button: HTM
 }
 
 async function llmDialog(closed: (changed: boolean) => void) {
-  let changed = false;
-  let saving = Promise.resolve(); // model choices are written in order; closing waits for the last one
+  let changed = false; // profiles saved, or Detect again found other models: the package view reloads its pickers
+  let first: string | undefined; // the models listed when the dialog opened
   const dlg = modal("dlg-llm", `<h3>LLM: coding CLIs and models</h3>
     <p class="hint">ReproCrowd runs its AI steps through command-line tools you install and sign into yourself; it never asks for API keys.
       Claude Code and Codex use your subscription unless an API key is set in the environment the app starts from.</p>
@@ -57,7 +57,7 @@ async function llmDialog(closed: (changed: boolean) => void) {
       <button type="button" class="llm-profiles">Coding and extraction profiles…</button>
       <span class="spacer"></span><button class="primary">Close</button>
     </menu></form>`);
-  dlg.addEventListener("close", () => void saving.then(() => closed(changed)));
+  dlg.addEventListener("close", () => closed(changed));
   const body = dlg.querySelector<HTMLElement>(".llm-body")!;
 
   let latest = 0; // renders can overlap (Detect again, a saved profile): only the newest fills the dialog
@@ -66,16 +66,17 @@ async function llmDialog(closed: (changed: boolean) => void) {
     body.innerHTML = `<p class="waiting muted"><span class="spinner" aria-hidden="true"></span> Looking for Claude Code, Codex, OpenCode and their models…</p>`;
     let s: State;
     try {
-      await saving; // a model choice still being written would otherwise be read back as it was
       s = await load(refresh);
     } catch (e) {
       if (mine === latest) body.innerHTML = `<p class="warn-inline">Could not check the coding CLIs: ${esc((e as Error).message)}</p>`;
       return;
     }
     if (mine !== latest) return;
+    const listed = s.models.available.map((m) => m.id).join("\n");
+    if (first === undefined) first = listed;
+    else if (listed !== first) changed = true;
     const clis = cliStates(s);
     const st = status(s);
-    const off = new Set(s.models.disabled);
     const byFamily = new Map<string, LlmModel[]>();
     for (const m of s.models.available) {
       if (!byFamily.has(m.provider)) byFamily.set(m.provider, []);
@@ -95,10 +96,11 @@ async function llmDialog(closed: (changed: boolean) => void) {
       </tr>`).join("")}</tbody></table>
       <p class="hint login-msg" aria-live="polite"></p>
       <h4>Models</h4>
-      <p class="hint">Models turned off here aren't offered in the model pickers. OpenCode lists its free models and the providers you signed in to.</p>
-      <div class="llm-families">${[...byFamily.entries()].map(([family, models]) => `<div class="llm-model-family" data-family="${esc(family)}">
-        <label class="llm-family"><input type="checkbox" data-family-toggle="${esc(family)}" /> <b>${esc(family)}</b> <span class="muted small">${models.length} model${models.length === 1 ? "" : "s"}</span></label>
-        <div class="llm-model-list">${models.map((m) => `<label class="inline llm-model"><input type="checkbox" data-model="${esc(m.id)}" ${off.has(m.id) ? "" : "checked"} /> <code>${esc(m.name)}</code> <span class="muted small">${esc(m.cli)}${!s.profiles || s.profiles.some((p) => modelCompatible(m, p.argv)) ? "" : " · no compatible profile"}</span></label>`).join("")}</div>
+      <p class="hint">Every model listed here is offered in the model pickers of the profiles that run its CLI. Claude Code's are its
+        versioned models; OpenCode lists its free models and the providers you signed in to.</p>
+      <div class="llm-families">${[...byFamily.entries()].map(([family, models]) => `<div class="llm-model-family">
+        <div class="llm-family"><b>${esc(family)}</b> <span class="muted small">${models.length} model${models.length === 1 ? "" : "s"}</span></div>
+        <ul class="llm-model-list">${models.map((m) => `<li class="llm-model"><span>${esc(m.name)}</span> <code class="muted small">${esc(cliModel(m.id))}</code>${!s.profiles || s.profiles.some((p) => modelCompatible(m, p.argv)) ? "" : ` <span class="muted small">· no compatible profile</span>`}</li>`).join("")}</ul>
       </div>`).join("") || `<p class="muted">No models found. Install and sign into a CLI, then Detect again.</p>`}</div>`;
 
     body.querySelectorAll<HTMLButtonElement>("[data-login]").forEach((b) => b.addEventListener("click", async () => {
@@ -107,36 +109,6 @@ async function llmDialog(closed: (changed: boolean) => void) {
       } catch (e) {
         showError("Logging in", e);
       }
-    }));
-    const syncFamilies = () => body.querySelectorAll<HTMLInputElement>("[data-family-toggle]").forEach((f) => {
-      const models = s.models.available.filter((m) => m.provider === f.dataset.familyToggle);
-      const on = models.filter((m) => !off.has(m.id)).length;
-      f.checked = on === models.length && models.length > 0;
-      f.indeterminate = on > 0 && on < models.length;
-    });
-    syncFamilies();
-    const save = () => {
-      changed = true;
-      const disabled = [...off];
-      saving = saving.then(() => host.setLlmModels(disabled)).catch((e) => showError("Saving the model choice", e));
-    };
-    body.querySelectorAll<HTMLInputElement>("[data-model]").forEach((cb) => cb.addEventListener("change", () => {
-      if (cb.checked) off.delete(cb.dataset.model!);
-      else off.add(cb.dataset.model!);
-      // A choice is per model id: the same id listed by two CLIs (OpenCode and T3 Code) shares one switch state.
-      body.querySelectorAll<HTMLInputElement>(`[data-model="${CSS.escape(cb.dataset.model!)}"]`).forEach((mc) => (mc.checked = cb.checked));
-      syncFamilies();
-      save();
-    }));
-    body.querySelectorAll<HTMLInputElement>("[data-family-toggle]").forEach((cb) => cb.addEventListener("change", () => {
-      const family = cb.dataset.familyToggle!;
-      for (const m of s.models.available) if (m.provider === family) {
-        if (cb.checked) off.delete(m.id);
-        else off.add(m.id);
-      }
-      body.querySelectorAll<HTMLInputElement>("[data-model]").forEach((mc) => (mc.checked = !off.has(mc.dataset.model!)));
-      syncFamilies();
-      save();
     }));
   };
 

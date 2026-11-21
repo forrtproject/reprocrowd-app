@@ -489,7 +489,7 @@ export class CurationStep implements Step {
       claudeLogin.hidden = !(m.needsLogin ?? (m.claudeNeedsLogin ? ["claude"] : [])).includes(cli as LlmModel["cli"]);
       claudeLogin.querySelector(".cli-name")!.textContent = CLI_LABELS[cli] ?? cli;
       const byProv = new Map<string, LlmModel[]>();
-      for (const x of m.available) if (!m.disabled.includes(x.id) && modelCompatible(x, this.profiles.find((p) => p.name === profileSel.value)?.argv)) {
+      for (const x of m.available) if (modelCompatible(x, this.profiles.find((p) => p.name === profileSel.value)?.argv)) {
         const a = byProv.get(x.provider) ?? [];
         a.push(x);
         byProv.set(x.provider, a);

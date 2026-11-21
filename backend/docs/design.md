@@ -348,7 +348,7 @@ argv = ["claude", "-p", "--output-format", "json", "--model", "{model}", "--effo
 read_files_argv = ["--allowedTools", "Read"]   # appended when the LLM must read package files (reconcile)
 json_schema_argv = ["--json-schema", "{schema}"]  # structured output: the task's output schema
 output = "claude-json"                         # read stdout as Claude's JSON envelope
-model = "sonnet"
+model = "claude-sonnet-5-5"
 effort = "medium"
 timeout_s = 1800
 ```

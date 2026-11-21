@@ -25,8 +25,6 @@ export interface Settings {
   github: { repo: string };
   /** Advanced: start the backend with this command instead of the bundled one ({host}, {port}). */
   backendCmd: string;
-  /** LLM models (from OpenCode / T3 Code) the user turned off, so they don't accidentally spend tokens on them. */
-  llmDisabled: string[];
   /** Look for a new version of ReproCrowd a little after start. */
   checkUpdates: boolean;
   /** Where ReproCrowd can update itself: download new versions in the background, and install them on quit too. */
@@ -43,7 +41,6 @@ export const DEFAULTS: Settings = {
   zenodo: { sandbox: true, community: "", creator: { name: "", orcid: "", affiliation: "" } },
   github: { repo: "forrtproject/reprocrowd-pilots" },
   backendCmd: "",
-  llmDisabled: [],
   checkUpdates: true,
   autoUpdate: false,
 };
@@ -89,7 +86,6 @@ export function loadSettings(): Settings {
     },
     github: { repo: str(s.github?.repo, "") || DEFAULTS.github.repo },
     backendCmd: str(s.backendCmd, ""),
-    llmDisabled: Array.isArray(s.llmDisabled) ? s.llmDisabled.map(String) : [],
     checkUpdates: typeof s.checkUpdates === "boolean" ? s.checkUpdates : DEFAULTS.checkUpdates,
     autoUpdate: typeof s.autoUpdate === "boolean" ? s.autoUpdate : DEFAULTS.autoUpdate,
   };
@@ -105,7 +101,6 @@ export function saveSettings(patch: Partial<Omit<Settings, "zenodo" | "github">>
   };
   next.github.repo = next.github.repo.trim() || DEFAULTS.github.repo;
   next.packagesRoot = next.packagesRoot.trim().replace(/^~(?=$|\/)/, os.homedir()) || DEFAULTS.packagesRoot;
-  next.llmDisabled = Array.isArray(next.llmDisabled) ? next.llmDisabled.filter(Boolean) : [];
   writeJson(settingsFile(), next);
   return next;
 }
