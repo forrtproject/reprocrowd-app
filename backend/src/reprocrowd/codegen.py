@@ -46,7 +46,7 @@ def plan(pkg: Package, *, profile: str | None, allow_exec: bool, instructions: s
     tools = prof.tools + (prof.exec_tools if allow_exec else [])
     restriction = exec_restriction(prof, tools)
     if not allow_exec and restriction == "unsupported":
-        raise conflict("exec_restriction_unsupported", f"Profile {name!r} has neither a tool allowlist ({{tools}} with editing and execution tools) nor no-analysis settings (no_exec_argv/no_exec_env); it cannot honor no-analysis mode. Re-apply its preset in the app (LLM button → Coding and extraction profiles; Claude Code, Codex and OpenCode presets support it) or explicitly allow execution.")
+        raise conflict("exec_restriction_unsupported", f"Profile {name!r} has neither a tool allowlist ({{tools}} with editing and execution tools) nor no-analysis settings (no_exec_argv/no_exec_env); it cannot honor no-analysis mode. Re-apply its preset in the app (LLM button → open the tool → Add profile or Edit; Claude Code, Codex and OpenCode presets support it) or explicitly allow execution.")
     argv = expand_argv(prof.argv, {"model": model or prof.model, "effort": prof.effort, "tools": ",".join(tools)})
     restricted = not allow_exec and restriction == "cli_settings"
     # {python}: the backend's interpreter, for helper servers such as reprocrowd.mcp_files (Codex's read-only file tools).

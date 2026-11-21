@@ -337,16 +337,22 @@ def test_no_exec_env_reaches_the_agent(client, pkg, monkeypatch):
 
 
 def test_app_default_config_matches_backend_defaults():
-    """New installs get backend.toml from src/main/backend.ts; its shipped agent/LLM profiles must equal the backend's."""
+    """New installs get backend.toml from src/main/backend.ts; its shipped agent/LLM profiles must run what the backend's
+    do. The app ships two Claude Code profiles (claude-opus, claude-sonnet: same command, other model) for the
+    backend's one (claude)."""
     import re, tomllib
     from pathlib import Path
     ts = (Path(__file__).parents[2] / "src/main/backend.ts").read_text()
     app_cfg = tomllib.loads(re.search(r"DEFAULT_USER_CONFIG = `([^`]*)`", ts).group(1))
+    app_names = {"claude": ("claude-opus", "claude-sonnet"), "opencode": ("opencode",), "codex": ("codex",)}
     for name, prof in _default_agents().items():
-        got = AgentProfile.model_validate(app_cfg["agent"]["profiles"][name])
-        assert (got.argv, got.no_exec_argv, got.no_exec_env, got.events) == (prof.argv, prof.no_exec_argv, prof.no_exec_env, prof.events), name
+        for app_name in app_names[name]:
+            got = AgentProfile.model_validate(app_cfg["agent"]["profiles"][app_name])
+            assert (got.argv, got.no_exec_argv, got.no_exec_env, got.events) == (prof.argv, prof.no_exec_argv, prof.no_exec_env, prof.events), app_name
     for name in ("claude", "opencode", "codex"):
-        assert LlmProfile.model_validate(app_cfg["llm"]["profiles"][name]).argv == _default_profiles()[name].argv, name
+        for app_name in app_names[name]:
+            assert LlmProfile.model_validate(app_cfg["llm"]["profiles"][app_name]).argv == _default_profiles()[name].argv, app_name
+    assert {app_cfg["llm"]["default_profile"], app_cfg["agent"]["default_profile"]} <= set(app_cfg["llm"]["profiles"]) & set(app_cfg["agent"]["profiles"])
     example = load_settings(Path(__file__).parents[1] / "config.example.toml")  # the documented example agrees too
     for name, prof in _default_agents().items():
         got = example.agent_profiles[name]

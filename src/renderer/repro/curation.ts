@@ -478,7 +478,7 @@ export class CurationStep implements Step {
     const showArgv = () => {
       const profile = this.profiles.find((p) => p.name === profileSel.value);
       form.querySelector(".argv")!.textContent = profile ? commandLine(profile.argv) : "";
-      form.querySelector(".availability")!.textContent = profile?.available === false ? "Executable not found. Install and sign into the CLI, or update its command (LLM button → Coding and extraction profiles…)." : "";
+      form.querySelector(".availability")!.textContent = profile?.available === false ? "Executable not found. Install and sign into the CLI, or update its command (LLM button → open the tool → Add profile or Edit…)." : "";
     };
     let models: LlmModels | undefined;
     const fillModels = () => {

@@ -7,7 +7,9 @@ export const CODEX_NO_EXEC = ["--disable", "shell_tool", "--disable", "unified_e
   "-c", 'mcp_servers.rc_files.args=["-I", "-m", "reprocrowd.mcp_files"]', "-c", 'mcp_servers.rc_files.default_tools_approval_mode="approve"'];
 /** OpenCode without command tools: every tool denied except reading and editing (its --auto approves only what is not denied). */
 export const OPENCODE_NO_EXEC = '{"*":"deny","read":"allow","edit":"allow","glob":"allow","grep":"allow","list":"allow","todowrite":"allow"}';
-export async function profileEditor(saved: (text: string) => void) {
+/** What the editor opens on: an existing profile (kind + name), or a new one from a preset (kind + preset + newName). */
+export type EditorStart = { kind?: Kind; name?: string; preset?: "claude" | "codex" | "opencode" | "text"; newName?: string };
+export async function profileEditor(saved: (text: string) => void, start: EditorStart = {}) {
   let profiles: Record<Kind, Record<string, ConfiguredProfile>>;
   try { profiles = await host.profileConfig(); } catch (e) { return showError("Opening profiles", e); }
   const dlg = modal("dlg-profiles", `<form method="dialog">
@@ -112,6 +114,9 @@ export async function profileEditor(saved: (text: string) => void) {
     if ((e.submitter as HTMLButtonElement)?.value !== "save") return;
     e.preventDefault();
     const button = e.submitter as HTMLButtonElement;
+    // A new profile under an existing name would replace that profile.
+    if (value("existing") !== value("name") && profiles[kind()][value("name")]
+      && !(await confirmDialog("Replace the profile?", `<p>A profile named “${esc(value("name"))}” exists already. Saving replaces it.</p>`, "Replace it"))) return;
     button.disabled = true;
     try {
       // A backend that is down has no jobs to interrupt; the form must still be able to repair its profiles.
@@ -124,5 +129,12 @@ export async function profileEditor(saved: (text: string) => void) {
     } catch (err) { dlg.querySelector(".profile-status")!.textContent = (err as Error).message; }
     finally { button.disabled = false; }
   });
+  if (start.kind) set("kind", start.kind);
   refresh();
+  if (start.name && profiles[kind()][start.name]) {
+    set("existing", start.name); load(start.name, profiles[kind()][start.name]); status();
+  } else if (start.preset) {
+    set("existing", ""); set("preset", start.preset); preset();
+    if (start.newName) set("name", start.newName);
+  }
 }

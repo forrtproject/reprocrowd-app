@@ -43,20 +43,24 @@ what the paper's analysis uses (R, Python, …).
    is installed, signed in and run by a profile (OpenCode must also list at least one
    model); yellow when CLIs are installed but none is usable yet (not signed in, sign-in
    not confirmed, no profile runs it), or when the backend couldn't list its profiles;
-   red when none is installed. It opens a dialog listing each CLI's state
-   (with a button that opens Claude Code's or Codex's login) and the models each offers;
-   the steps offer each of them wherever a profile runs its CLI. Claude Code's are listed by version
-   (Opus 5.5, Sonnet 5.5, Haiku 4.5, …), not as "opus"/"sonnet", so a run says which
-   version it asked for; Fable models need usage credits on top of a subscription.
-   OpenCode lists the providers it can use: its free models and those you have signed in to.
-2. In that dialog, open **Coding and extraction profiles…**. Pick the
+   red when none is installed. It opens a dialog listing each CLI's state, with a
+   button that opens Claude Code's or Codex's login.
+2. Open a CLI's row (▸) to see the profiles that run it: model, effort, and whether it
+   is the default for **text parsing** (extracting targets and analysis steps) or **code
+   generation**; tick a box to change the default. Out of the box there are two Claude
+   Code profiles, `claude-opus` (Opus 5.5) and `claude-sonnet` (Sonnet 5.5), both at
+   high effort: Sonnet parses text, Opus generates code. Claude Code's models are
+   offered by version (Opus 5.5, Sonnet 5.5, Haiku 4.5, …), not as "opus"/"sonnet", so a
+   run says which version it asked for; Fable models need usage credits on top of a
+   subscription. OpenCode offers its free models and the providers you signed in to.
+3. **+ Add profile** (or **Edit…**) opens the profile form. Pick the
    operation (code generation or extraction), choose a preset (**Claude Code**,
    **Codex CLI**, **OpenCode** or another plain-text CLI) and save. The form says
    whether the command was found, offers only that CLI's models, and states whether
    the profile can honour "don't run the analysis". Saving restarts the backend and
    restores the previous settings if that fails. Nothing is sent to a model while you
    edit.
-3. In a reproduction, choose the profile and model in step 2/3 ("Generate with LLM")
+4. In a reproduction, choose the profile and model in step 2/3 ("Generate with LLM")
    and in step 5 (coding agent). **Show prompt** shows the exact command and prompt
    without running it. Unticking "let it run the analysis" lets the agent read and
    edit files but not run code: Claude Code by denying its Bash tool
@@ -137,8 +141,8 @@ Apple silicon Macs runs ARM64 Linux, which works like any other Linux.
   coding-agent profiles, GROBID/Docling, OpenAlex key) as TOML.
 
 LLM calls and the coding agent run the commands configured in the backend
-configuration, by default Claude Code (`claude`) on your PATH. The **LLM** button →
-**Coding and extraction profiles…** adds or edits a profile without writing TOML.
+configuration, by default Claude Code (`claude`) on your PATH. The **LLM** button lists
+them under each CLI, where **+ Add profile** and **Edit…** change them without writing TOML.
 Profiles expose their output protocol and execution restrictions; model selection never
 switches the configured command. Runs of the
 master script use your R / Python.

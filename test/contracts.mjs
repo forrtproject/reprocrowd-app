@@ -46,6 +46,15 @@ const { status: llmStatus, cliStates } = await load('src/renderer/llm-status.ts'
   assert.deepEqual(cliStates({ models: models({}), profiles: [] }).map((c) => [c.cli, c.problem]), [['claude', 'not installed'], ['codex', 'not installed'], ['opencode', 'not installed']]);
 }
 const { parseCodexModels, CLAUDE_MODELS } = await load('src/main/models.ts');
+{ // the LLM dialog's profile rows: one per name a CLI runs, both tasks side by side; new names don't collide
+  const { profileRows, freeName } = await load('src/renderer/llm-status.ts');
+  const ps = [{ name: 'claude-opus', kind: 'llm', argv: ['claude', '-p'], default: false }, { name: 'claude-opus', kind: 'agent', argv: ['claude', '-p'], default: true },
+    { name: 'claude-sonnet', kind: 'llm', argv: ['/usr/bin/claude'], default: true }, { name: 'oc', kind: 'agent', argv: ['opencode', 'run'] }];
+  assert.deepEqual(profileRows(ps, 'claude').map((r) => [r.name, !!r.llm, !!r.agent]), [['claude-opus', true, true], ['claude-sonnet', true, false]]);
+  assert.deepEqual(profileRows(ps, 'opencode').map((r) => r.name), ['oc']);
+  assert.equal(freeName(ps, 'codex'), 'codex');
+  assert.equal(freeName([...ps, { name: 'opencode', argv: ['opencode'] }], 'opencode'), 'opencode-2');
+}
 // Claude Code's models are offered by version, never as a tier alias, so a run records the version it asked for.
 assert(CLAUDE_MODELS.length >= 3 && ['opus', 'sonnet', 'haiku'].every((t) => CLAUDE_MODELS.some(([m]) => m.startsWith(`claude-${t}-`))));
 for (const [model, name] of CLAUDE_MODELS) assert.match(`${model} ${name}`, /^claude-(opus|sonnet|haiku|fable)-\d+(-\d+)? (Opus|Sonnet|Haiku|Fable) \d+(\.\d+)?$/);
@@ -73,8 +82,26 @@ for (const kind of ['llm', 'agent']) assert.equal(configuredProfiles(DEFAULT_USE
 const { execRestriction } = await load('src/renderer/api.ts');
 const shipped = configuredProfiles(DEFAULT_USER_CONFIG).agent;
 assert.deepEqual(Object.fromEntries(Object.entries(shipped).map(([n, p]) => [n, execRestriction(p)])),
-  { claude: 'cli_settings', opencode: 'cli_settings', codex: 'cli_settings' });
-assert.equal(execRestriction({ ...shipped.claude, no_exec_argv: [] }), 'tool_allowlist'); // an older Claude profile: allowlist only
+  { 'claude-opus': 'cli_settings', 'claude-sonnet': 'cli_settings', opencode: 'cli_settings', codex: 'cli_settings' });
+assert.equal(execRestriction({ ...shipped['claude-opus'], no_exec_argv: [] }), 'tool_allowlist'); // an older Claude profile: allowlist only
+// Out of the box: Claude Code with Opus 5.5 and Sonnet 5.5 at high effort, for both tasks; Sonnet parses, Opus codes.
+{
+  const cfg = configuredProfiles(DEFAULT_USER_CONFIG), raw = parse(DEFAULT_USER_CONFIG);
+  for (const kind of ['llm', 'agent']) assert.deepEqual(['claude-opus', 'claude-sonnet'].map((n) => [cfg[kind][n].model, cfg[kind][n].effort]), [['claude-opus-5-5', 'high'], ['claude-sonnet-5-5', 'high']]);
+  assert.deepEqual([raw.llm.default_profile, raw.agent.default_profile], ['claude-sonnet', 'claude-opus']);
+}
+// Setting a task's default changes only its default_profile line; comments and other tables stay.
+{
+  const { setDefaultProfile } = await load('src/main/profiles.ts');
+  const cfg = '# top\n[llm]\n# which profile\ndefault_profile = "a" # note\n[llm.profiles.a]\nargv = ["a"]\n[llm.profiles.b]\nargv = ["b"]\n[agent.profiles.c]\nargv = ["c"]\n';
+  const next = setDefaultProfile(cfg, 'llm', 'b');
+  assert.equal(next, cfg.replace('default_profile = "a" # note', 'default_profile = "b"'));
+  const added = setDefaultProfile(cfg, 'agent', 'c'); // no [agent] table yet: written correctly, if not in place
+  assert.equal(parse(added).agent.default_profile, 'c'); assert.equal(parse(added).llm.default_profile, 'a');
+  assert.throws(() => setDefaultProfile(cfg, 'agent', 'a'), /no code-generation profile named/);
+  assert.equal(parse(setDefaultProfile(DEFAULT_USER_CONFIG, 'agent', 'claude-sonnet')).agent.default_profile, 'claude-sonnet');
+  assert(setDefaultProfile(DEFAULT_USER_CONFIG, 'agent', 'claude-sonnet').includes('# Code generation: the profile picked'));
+}
 const presets = await load('src/renderer/profiles.ts'); // the Settings presets agree with the shipped defaults
 assert.deepEqual([...shipped.codex.no_exec_argv], presets.CODEX_NO_EXEC);
 assert.equal(shipped.opencode.no_exec_env.OPENCODE_PERMISSION, presets.OPENCODE_NO_EXEC);

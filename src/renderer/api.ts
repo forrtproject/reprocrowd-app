@@ -187,6 +187,8 @@ export const host = {
   verifyZenodoToken: (sandbox: boolean, token?: string) => call<{ ok: boolean; url: string; sandbox: boolean }>("verifyZenodoToken", sandbox, token),
   profileConfig: () => call<Record<"llm" | "agent", Record<string, ConfiguredProfile>>>("profileConfig"),
   saveProfile: (kind: "llm" | "agent", name: string, profile: ConfiguredProfile) => call<string>("saveProfile", kind, name, profile),
+  /** Make a profile the default for text parsing (llm) or code generation (agent); restarts the backend. */
+  setDefaultProfile: (kind: "llm" | "agent", name: string) => call<void>("setDefaultProfile", kind, name),
   runningJobs: () => call<unknown[]>("runningJobs"),
   commandFound: (command: string) => call<boolean>("commandFound", command),
   checkGithubToken: (repo?: string) => call<GithubCheck>("checkGithubToken", repo),

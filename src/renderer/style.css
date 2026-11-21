@@ -334,15 +334,16 @@ textarea.big { width: 100%; height: 28vh; resize: vertical; }
 .llm-summary { display: flex; align-items: center; gap: 8px; font-weight: 600; margin: 8px 0 0; }
 .llm-clis td { vertical-align: middle; padding: 5px 8px; }
 .llm-clis td:first-child { white-space: nowrap; }
-.llm-families { max-height: 42vh; overflow: auto; padding-right: 4px; }
+.llm-expand { border: 0; background: none; padding: 0 4px 0 0; width: 18px; font-size: 12px; color: var(--muted); cursor: pointer; }
+.llm-expand:disabled { visibility: hidden; }
+.llm-clis tr.llm-cli-profiles > td { padding: 2px 8px 10px 30px; background: var(--bg); border-bottom: 1px solid var(--line-soft); }
+.llm-profile-table { width: 100%; margin: 4px 0 6px; }
+.llm-profile-table th { text-align: left; font-weight: 600; font-size: 12px; color: var(--muted); padding: 3px 8px; }
+.llm-profile-table td { padding: 4px 8px; vertical-align: middle; }
+.llm-defaults { display: flex; gap: 14px; flex-wrap: wrap; }
+.dlg-llm label.llm-default { flex-direction: row; align-items: center; gap: 5px; font-size: 13px; white-space: nowrap; }
+.llm-profile-msg { margin-left: 8px; }
 .claude-login { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--line-soft); display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.llm-model-family { margin-top: 10px; }
-.llm-model-family:first-child { margin-top: 0; }
-.llm-family { display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; }
-.llm-family .muted { font-weight: 400; }
-.llm-model-list { list-style: none; display: flex; flex-wrap: wrap; gap: 6px 22px; margin: 4px 0 0; padding: 0 0 0 12px; }
-.llm-model { font-size: 13px; }
-.llm-model code { font-size: 11.5px; }
 .cols { display: grid; gap: 10px; flex: 1; min-height: 0; }
 .cols > * { min-width: 0; min-height: 0; }
 .cols-script { grid-template-columns: minmax(320px, 0.75fr) minmax(0, 1.25fr); }

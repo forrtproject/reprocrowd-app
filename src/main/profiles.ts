@@ -74,6 +74,32 @@ function spliceProfile(text: string, path: string, block: string): string | null
   return [...lines.slice(0, first), ...content, ...lines.slice(last)].join(eol);
 }
 
+/** Make `name` the default profile of its task ([llm] text parsing, [agent] code generation). Only the
+ * default_profile line changes; if that can't be done in place, the whole file is rewritten. */
+export function setDefaultProfile(text: string, kind: ProfileKind, name: string): string {
+  if (!["llm", "agent"].includes(kind) || !/^[\w-]+$/.test(name)) throw new Error("Unknown profile.");
+  const data = parse(text) as Record<string, any>;
+  if (!data[kind]?.profiles?.[name]) throw new Error(`There is no ${kind === "llm" ? "text-parsing" : "code-generation"} profile named “${name}”.`);
+  data[kind].default_profile = name;
+  const eol = text.includes("\r\n") ? "\r\n" : "\n";
+  const lines = text.split(/\r?\n/);
+  const start = lines.findIndex((line) => tableKey(line) === kind);
+  const setting = `default_profile = ${JSON.stringify(name)}`; // names are [A-Za-z0-9_-]: a valid TOML string as well
+  let spliced: string | null = null;
+  if (start >= 0) {
+    let end = lines.findIndex((line, i) => i > start && tableKey(line) !== null);
+    if (end < 0) end = lines.length;
+    const at = lines.findIndex((line, i) => i > start && i < end && /^\s*default_profile\s*=/.test(line));
+    if (at >= 0) lines[at] = setting;
+    else lines.splice(start + 1, 0, setting);
+    spliced = lines.join(eol);
+  }
+  try {
+    if (spliced !== null && isDeepStrictEqual(parse(spliced), parse(stringify(data)))) return spliced;
+  } catch { /* fall back */ }
+  return stringify(data);
+}
+
 export function configuredProfiles(text: string): Record<ProfileKind, Record<string, Profile>> {
   const data = parse(text) as Record<string, any>;
   const defaults = (kind: ProfileKind) => ({ model: "", effort: "", timeout_s: kind === "agent" ? 7200 : 1800,
