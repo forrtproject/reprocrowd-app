@@ -1,15 +1,20 @@
 // Settings: you as the creator of Zenodo records, the Zenodo server and token, where packages go, the code editor,
 // the app's backend (status, output, its configuration: LLM and agent profiles, OpenAlex), and updates.
-import { profileEditor } from "./profiles";
 import { Config, host, UpdateStatus } from "./api";
-import { confirmDialog, esc, modal, showError } from "./util";
+import { esc, modal, showError } from "./util";
 
 const ZENODO = { zenodo: "https://zenodo.org", sandbox: "https://sandbox.zenodo.org" } as const;
 const tokenPage = (server: keyof typeof ZENODO) => `${ZENODO[server]}/account/settings/applications/tokens/new/`;
 const ORCID = /^\d{4}-\d{4}-\d{4}-\d{3}[\dX]$/;
 
-export async function settingsDialog(onSaved: (changed: boolean) => void, focus?: "zenodo" | "backend" | "github") {
+/** Fired on window when the dialog closes after the backend's configuration was saved (it may define other profiles),
+ * whichever way Settings was opened and however it was closed: the package view reloads, the start page rechecks. */
+export const BACKEND_CONFIG_SAVED = "reprocrowd-backend-config-saved";
+
+/** onSaved(reconnect): Save was pressed; reconnect when the backend command changed. */
+export async function settingsDialog(onSaved: (reconnect: boolean) => void, focus?: "zenodo" | "backend" | "github") {
   let cfg: Config;
+  let configSaved = false;
   // Reading the settings asks the system keyring and the backend; if that takes a moment, say so.
   let waiting: HTMLDialogElement | undefined;
   const slow = setTimeout(() => {
@@ -64,8 +69,9 @@ export async function settingsDialog(onSaved: (changed: boolean) => void, focus?
     </fieldset>
     <fieldset id="set-backend"><legend>Backend</legend>
       <p class="backend-line small"></p>
-      <div class="actions"><button type="button" id="be-restart">Restart</button><button type="button" id="be-log">Show output</button><button type="button" id="be-profiles">Coding and extraction profiles…</button></div>
+      <div class="actions"><button type="button" id="be-restart">Restart</button><button type="button" id="be-log">Show output</button></div>
       <pre class="log" id="be-log-text" hidden></pre>
+      <p class="hint">Coding CLIs, their models and the coding and extraction profiles: the <b>LLM</b> button in the header.</p>
       <details ${focus === "backend" ? "open" : ""}><summary>Configuration: LLM and coding-agent profiles, OpenAlex</summary>
         <p class="hint">TOML, as in the backend's <code>config.example.toml</code>, without <code>[server]</code> and <code>[database]</code> (the app sets those). LLM calls and the coding agent run the commands configured here, e.g. Claude Code (<code>claude</code>) on your PATH.</p>
         <textarea class="mono big" name="becfg" spellcheck="false">${esc(cfg.backendConfig)}</textarea>
@@ -158,18 +164,6 @@ export async function settingsDialog(onSaved: (changed: boolean) => void, focus?
     if (dir) q<HTMLInputElement>("[name=root]").value = dir;
   });
 
-  q("#be-profiles").addEventListener("click", async () => {
-    // The profile editor saves from the file on disk; unsaved edits in the raw editor would be overwritten.
-    if (q<HTMLTextAreaElement>("[name=becfg]").value !== cfg.backendConfig
-      && !(await confirmDialog("Discard unsaved configuration edits?", "<p>The raw backend configuration has unsaved changes. Saving a profile replaces them with the file on disk.</p>", "Discard and continue"))) return;
-    profileEditor((text) => {
-      cfg.backendConfig = text;
-      q<HTMLTextAreaElement>("[name=becfg]").value = text;
-      void showBackend();
-      onSaved(true);
-    });
-  });
-
   // ---------- backend ----------
   const showBackend = async () => {
     const st = await host.backendStatus().catch(() => cfg.backend);
@@ -205,6 +199,7 @@ export async function settingsDialog(onSaved: (changed: boolean) => void, focus?
     try {
       await host.saveBackendConfig(q<HTMLTextAreaElement>("[name=becfg]").value);
       cfg.backendConfig = q<HTMLTextAreaElement>("[name=becfg]").value;
+      configSaved = true;
     } catch (err) {
       showError("Saving the backend configuration", err);
     }
@@ -277,7 +272,10 @@ export async function settingsDialog(onSaved: (changed: boolean) => void, focus?
   });
   upd.install.addEventListener("click", () => host.installUpdate().catch((err) => showError("Installing the update", err)));
   upd.page.addEventListener("click", () => updUrl && host.openUrl(updUrl).catch((err) => showError("Opening the release page", err)));
-  dlg.addEventListener("close", () => window.clearTimeout(updPoll));
+  dlg.addEventListener("close", () => {
+    window.clearTimeout(updPoll);
+    if (configSaved) window.dispatchEvent(new Event(BACKEND_CONFIG_SAVED));
+  });
 
   if (focus) dlg.querySelector(`#set-${focus === "zenodo" ? "you" : focus}`)?.scrollIntoView();
 
@@ -301,7 +299,10 @@ export async function settingsDialog(onSaved: (changed: boolean) => void, focus?
       // New commands are confirmed for the whole save first: declining changes nothing.
       await host.confirmSettings(commands, becfg !== cfg.backendConfig ? becfg : undefined);
       if (token) await host.setZenodoToken(server(), token);
-      if (becfg !== cfg.backendConfig) await host.saveBackendConfig(becfg);
+      if (becfg !== cfg.backendConfig) {
+        await host.saveBackendConfig(becfg);
+        configSaved = true;
+      }
       await host.setConfig({
         packagesRoot: q<HTMLInputElement>("[name=root]").value.trim(),
         ...commands,

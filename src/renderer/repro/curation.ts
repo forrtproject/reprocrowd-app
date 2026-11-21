@@ -478,7 +478,7 @@ export class CurationStep implements Step {
     const showArgv = () => {
       const profile = this.profiles.find((p) => p.name === profileSel.value);
       form.querySelector(".argv")!.textContent = profile ? commandLine(profile.argv) : "";
-      form.querySelector(".availability")!.textContent = profile?.available === false ? "Executable not found. Install and sign into the CLI, or update its command in Settings." : "";
+      form.querySelector(".availability")!.textContent = profile?.available === false ? "Executable not found. Install and sign into the CLI, or update its command (LLM button → Coding and extraction profiles…)." : "";
     };
     let models: LlmModels | undefined;
     const fillModels = () => {
@@ -502,7 +502,7 @@ export class CurationStep implements Step {
       if (st.llmModel && [...modelSel.options].some((x) => x.value === st.llmModel)) modelSel.value = st.llmModel;
       else if (st.llmModel) {
         st.llmModel = "";
-        form.querySelector<HTMLElement>(".model-notice")!.textContent = "Saved model cleared: it is turned off on the start page or not offered for this profile's CLI. Choose a model for this profile.";
+        form.querySelector<HTMLElement>(".model-notice")!.textContent = "Saved model cleared: it is turned off in the LLM dialog or not offered for this profile's CLI. Choose a model for this profile.";
       }
       showArgv();
     };

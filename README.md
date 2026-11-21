@@ -39,10 +39,14 @@ what the paper's analysis uses (R, Python, …).
 
 ### Choosing an AI tool
 
-1. Start the app. The start page lists the models each installed CLI offers, and says
-   when Claude Code or Codex is installed but not signed in (with a button that opens
-   its login). OpenCode lists the providers it can use: its free models and those you have signed in to.
-2. Open **⚙ Settings → Backend → Coding and extraction profiles…**. Pick the
+1. Start the app. The **LLM** button next to Settings shows a light: green when a CLI
+   is installed, signed in and run by a profile; yellow when CLIs are installed but none
+   is usable yet (or the backend couldn't list its profiles, or a CLI's sign-in couldn't
+   be confirmed); red when none is installed. It opens a dialog listing each CLI's state
+   (with a button that opens Claude Code's or Codex's login) and the models each offers,
+   which you can turn off. OpenCode lists the providers it can use: its free models and
+   those you have signed in to.
+2. In that dialog, open **Coding and extraction profiles…**. Pick the
    operation (code generation or extraction), choose a preset (**Claude Code**,
    **Codex CLI**, **OpenCode** or another plain-text CLI) and save. The form says
    whether the command was found, offers only that CLI's models, and states whether
@@ -130,7 +134,7 @@ Apple silicon Macs runs ARM64 Linux, which works like any other Linux.
   coding-agent profiles, GROBID/Docling, OpenAlex key) as TOML.
 
 LLM calls and the coding agent run the commands configured in the backend
-configuration, by default Claude Code (`claude`) on your PATH. Settings → Backend →
+configuration, by default Claude Code (`claude`) on your PATH. The **LLM** button →
 **Coding and extraction profiles…** adds or edits a profile without writing TOML.
 Profiles expose their output protocol and execution restrictions; model selection never
 switches the configured command. Runs of the

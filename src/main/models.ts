@@ -18,8 +18,9 @@ export interface LlmModel {
 
 const TTL = 5 * 60_000; // the CLI's model list doesn't change often; re-detect at most every few minutes
 type Cli = LlmModel["cli"];
-/** needsLogin: installed CLIs that report no login. claudeNeedsLogin is kept for older renderer code. */
-interface ModelSet { available: LlmModel[]; claudeNeedsLogin: boolean; needsLogin: Cli[] }
+/** installed: the supported CLIs found on PATH. needsLogin: installed CLIs that report no login. loginUnknown: installed
+ * CLIs whose login check couldn't tell. claudeNeedsLogin is kept for older renderer code. */
+interface ModelSet { available: LlmModel[]; claudeNeedsLogin: boolean; needsLogin: Cli[]; installed: Cli[]; loginUnknown: Cli[] }
 let cache: { at: number; value: ModelSet } | undefined;
 
 function run(cmd: string): Promise<string> {
@@ -125,7 +126,10 @@ async function detect(): Promise<ModelSet> {
   if (codexIn !== false) found.push(...parseCodexModels(codexModels)); // unknown login state: still list the catalog
   found.sort((a, b) => a.provider.localeCompare(b.provider) || a.name.localeCompare(b.name));
   const needsLogin: Cli[] = [...(claude === false ? ["claude" as const] : []), ...(codexIn === false ? ["codex" as const] : [])];
-  const value: ModelSet = { available: found, claudeNeedsLogin: claude === false, needsLogin };
+  const installed: Cli[] = [...(which("claude") ? ["claude" as const] : []), ...(hasCodex ? ["codex" as const] : []), ...lists.map((l) => l.cli)];
+  // Installed, but the login probe couldn't tell (timeout, unexpected output): not counted as signed in by the light.
+  const loginUnknown: Cli[] = [...(which("claude") && claude === undefined ? ["claude" as const] : []), ...(hasCodex && codexIn === undefined ? ["codex" as const] : [])];
+  const value: ModelSet = { available: found, claudeNeedsLogin: claude === false, needsLogin, installed, loginUnknown };
   cache = { at: Date.now(), value };
   return value;
 }

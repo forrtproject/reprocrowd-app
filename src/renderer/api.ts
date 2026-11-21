@@ -63,7 +63,8 @@ export function modelCompatible(model: LlmModel | undefined, argv: string[] | un
 }
 export const CLI_LABELS: Record<string, string> = { claude: "Claude Code", codex: "Codex", opencode: "OpenCode" };
 
-export interface LlmModels { available: LlmModel[]; disabled: string[]; claudeNeedsLogin: boolean; needsLogin: LlmModel["cli"][] }
+/** installed: the supported CLIs found on PATH (absent from an older main process). */
+export interface LlmModels { available: LlmModel[]; disabled: string[]; claudeNeedsLogin: boolean; needsLogin: LlmModel["cli"][]; installed?: LlmModel["cli"][]; loginUnknown?: LlmModel["cli"][] }
 /** The model as its CLI takes it: Claude Code and Codex models are listed as `claude/<alias>` and `codex/<slug>` (each
  * its own family), but their --model/-m takes the bare name; OpenCode's ids (`provider/model`) are used as they are. */
 export const cliModel = (id: string) => id.replace(/^(claude|codex)\//, "");
