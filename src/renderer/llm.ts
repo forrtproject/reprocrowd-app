@@ -60,15 +60,18 @@ async function llmDialog(closed: (changed: boolean) => void) {
   dlg.addEventListener("close", () => void saving.then(() => closed(changed)));
   const body = dlg.querySelector<HTMLElement>(".llm-body")!;
 
+  let latest = 0; // renders can overlap (Detect again, a saved profile): only the newest fills the dialog
   const render = async (refresh = false) => {
+    const mine = ++latest;
     body.innerHTML = `<p class="waiting muted"><span class="spinner" aria-hidden="true"></span> Looking for Claude Code, Codex, OpenCode and their models…</p>`;
     let s: State;
     try {
       s = await load(refresh);
     } catch (e) {
-      body.innerHTML = `<p class="warn-inline">Could not check the coding CLIs: ${esc((e as Error).message)}</p>`;
+      if (mine === latest) body.innerHTML = `<p class="warn-inline">Could not check the coding CLIs: ${esc((e as Error).message)}</p>`;
       return;
     }
+    if (mine !== latest) return;
     const clis = cliStates(s);
     const st = status(s);
     const off = new Set(s.models.disabled);

@@ -5,7 +5,7 @@ import { backendProblem } from "./backend";
 import { brandHtml } from "./brand";
 import { llmButton } from "./llm";
 import { withProgress } from "./progress";
-import { settingsDialog } from "./settings";
+import { BACKEND_CONFIG_SAVED, settingsDialog } from "./settings";
 import type { ZenodoDeposit } from "./types";
 import { $, confirmDialog, esc, modal, pilotLabel, showError } from "./util";
 import sticker from "../../resources/hex-sticker.gif";
@@ -45,8 +45,8 @@ export async function start() {
 
   const llm = llmButton("ghost", () => {}); // models and profiles: see llm.ts
   $("#settings-btn").before(llm.button);
-  // A saved backend configuration may define other profiles: check the light again.
-  $("#settings-btn").addEventListener("click", () => settingsDialog(() => { llm.refresh(); void render(); }));
+  $("#settings-btn").addEventListener("click", () => settingsDialog(() => render()));
+  window.addEventListener(BACKEND_CONFIG_SAVED, llm.refresh); // it may define other profiles
   $("#about-link").addEventListener("click", (e) => {
     e.preventDefault();
     host.openUrl("https://forrt.org/reprocrowd/");

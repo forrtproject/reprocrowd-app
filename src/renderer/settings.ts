@@ -7,9 +7,12 @@ const ZENODO = { zenodo: "https://zenodo.org", sandbox: "https://sandbox.zenodo.
 const tokenPage = (server: keyof typeof ZENODO) => `${ZENODO[server]}/account/settings/applications/tokens/new/`;
 const ORCID = /^\d{4}-\d{4}-\d{4}-\d{3}[\dX]$/;
 
-/** onSaved(reconnect, backendConfig): reconnect when the backend command changed; backendConfig when the backend's
- * configuration was saved (it may define other profiles), also by Backend → Save and restart in a dialog then cancelled. */
-export async function settingsDialog(onSaved: (reconnect: boolean, backendConfig: boolean) => void, focus?: "zenodo" | "backend" | "github") {
+/** Fired on window when the dialog closes after the backend's configuration was saved (it may define other profiles),
+ * whichever way Settings was opened and however it was closed: the package view reloads, the start page rechecks. */
+export const BACKEND_CONFIG_SAVED = "reprocrowd-backend-config-saved";
+
+/** onSaved(reconnect): Save was pressed; reconnect when the backend command changed. */
+export async function settingsDialog(onSaved: (reconnect: boolean) => void, focus?: "zenodo" | "backend" | "github") {
   let cfg: Config;
   let configSaved = false;
   // Reading the settings asks the system keyring and the backend; if that takes a moment, say so.
@@ -271,7 +274,7 @@ export async function settingsDialog(onSaved: (reconnect: boolean, backendConfig
   upd.page.addEventListener("click", () => updUrl && host.openUrl(updUrl).catch((err) => showError("Opening the release page", err)));
   dlg.addEventListener("close", () => {
     window.clearTimeout(updPoll);
-    if (dlg.returnValue !== "save" && configSaved) onSaved(false, true); // saved with Save and restart, then cancelled
+    if (configSaved) window.dispatchEvent(new Event(BACKEND_CONFIG_SAVED));
   });
 
   if (focus) dlg.querySelector(`#set-${focus === "zenodo" ? "you" : focus}`)?.scrollIntoView();
@@ -318,6 +321,6 @@ export async function settingsDialog(onSaved: (reconnect: boolean, backendConfig
       return;
     }
     dlg.close("save");
-    onSaved(q<HTMLInputElement>("[name=becmd]").value.trim() !== cfg.backendCmd, configSaved);
+    onSaved(q<HTMLInputElement>("[name=becmd]").value.trim() !== cfg.backendCmd);
   });
 }

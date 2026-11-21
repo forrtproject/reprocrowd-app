@@ -6,7 +6,7 @@ import { backendProblem, TITLES } from "./backend";
 import { llmButton } from "./llm";
 import { withProgress } from "./progress";
 import { Wizard } from "./repro/wizard";
-import { settingsDialog } from "./settings";
+import { BACKEND_CONFIG_SAVED, settingsDialog } from "./settings";
 import { loadUiState, UiState } from "./state";
 import type { Document, PackageSummary, Resource } from "./types";
 import { $, esc } from "./util";
@@ -77,18 +77,18 @@ const wizard = new Wizard({
 // Changed models or profiles: save the workflow first (beforeunload's save isn't awaited), then reload, so the steps'
 // model pickers and profiles are read again.
 let leaving = false;
+let reloading = false;
 async function saveAndReload() {
+  if (reloading) return;
+  reloading = true;
   if (!restoring) await host.saveState(state).catch(() => {});
   leaving = true;
   location.reload();
 }
-const llm = llmButton("", () => void saveAndReload());
-$("#settings-btn").before(llm.button);
-$("#settings-btn").addEventListener("click", () => settingsDialog((reconnect, backendConfig) => {
-  if (reconnect) return location.reload();
-  if (backendConfig) return void saveAndReload(); // it may define other profiles
-  status("Settings saved");
-}));
+$("#settings-btn").before(llmButton("", () => void saveAndReload()).button);
+$("#settings-btn").addEventListener("click", () => settingsDialog((reconnect) => (reconnect ? void saveAndReload() : status("Settings saved"))));
+// A saved backend configuration may define other profiles, from any Settings link (header, report step, banner).
+window.addEventListener(BACKEND_CONFIG_SAVED, () => void saveAndReload());
 $("#library-btn").addEventListener("click", async () => {
   if (!restoring) await host.saveState(state).catch(() => {});
   leaving = true;
