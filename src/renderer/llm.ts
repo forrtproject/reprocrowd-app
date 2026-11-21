@@ -29,13 +29,15 @@ export function llmButton(className: string, changed: () => void): { button: HTM
     button.title = text;
     button.setAttribute("aria-label", `LLM: ${text}`);
   };
+  let latest = 0; // checks can overlap (e.g. one still running when the dialog closes): only the newest is shown
   const update = async (refresh = false) => {
+    const mine = ++latest;
     show("checking", "Looking for coding CLIs…");
     try {
       const st = status(await load(refresh));
-      show(st.level, st.text);
+      if (mine === latest) show(st.level, st.text);
     } catch (e) {
-      show("warn", `Could not check the coding CLIs: ${(e as Error).message}`);
+      if (mine === latest) show("warn", `Could not check the coding CLIs: ${(e as Error).message}`);
     }
   };
   button.addEventListener("click", () => llmDialog((didChange) => { void update(); if (didChange) changed(); }));

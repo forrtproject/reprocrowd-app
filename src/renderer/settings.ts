@@ -7,8 +7,11 @@ const ZENODO = { zenodo: "https://zenodo.org", sandbox: "https://sandbox.zenodo.
 const tokenPage = (server: keyof typeof ZENODO) => `${ZENODO[server]}/account/settings/applications/tokens/new/`;
 const ORCID = /^\d{4}-\d{4}-\d{4}-\d{3}[\dX]$/;
 
-export async function settingsDialog(onSaved: (changed: boolean) => void, focus?: "zenodo" | "backend" | "github") {
+/** onSaved(reconnect, backendConfig): reconnect when the backend command changed; backendConfig when the backend's
+ * configuration was saved (it may define other profiles), also by Backend → Save and restart in a dialog then cancelled. */
+export async function settingsDialog(onSaved: (reconnect: boolean, backendConfig: boolean) => void, focus?: "zenodo" | "backend" | "github") {
   let cfg: Config;
+  let configSaved = false;
   // Reading the settings asks the system keyring and the backend; if that takes a moment, say so.
   let waiting: HTMLDialogElement | undefined;
   const slow = setTimeout(() => {
@@ -193,6 +196,7 @@ export async function settingsDialog(onSaved: (changed: boolean) => void, focus?
     try {
       await host.saveBackendConfig(q<HTMLTextAreaElement>("[name=becfg]").value);
       cfg.backendConfig = q<HTMLTextAreaElement>("[name=becfg]").value;
+      configSaved = true;
     } catch (err) {
       showError("Saving the backend configuration", err);
     }
@@ -265,7 +269,10 @@ export async function settingsDialog(onSaved: (changed: boolean) => void, focus?
   });
   upd.install.addEventListener("click", () => host.installUpdate().catch((err) => showError("Installing the update", err)));
   upd.page.addEventListener("click", () => updUrl && host.openUrl(updUrl).catch((err) => showError("Opening the release page", err)));
-  dlg.addEventListener("close", () => window.clearTimeout(updPoll));
+  dlg.addEventListener("close", () => {
+    window.clearTimeout(updPoll);
+    if (dlg.returnValue !== "save" && configSaved) onSaved(false, true); // saved with Save and restart, then cancelled
+  });
 
   if (focus) dlg.querySelector(`#set-${focus === "zenodo" ? "you" : focus}`)?.scrollIntoView();
 
@@ -289,7 +296,10 @@ export async function settingsDialog(onSaved: (changed: boolean) => void, focus?
       // New commands are confirmed for the whole save first: declining changes nothing.
       await host.confirmSettings(commands, becfg !== cfg.backendConfig ? becfg : undefined);
       if (token) await host.setZenodoToken(server(), token);
-      if (becfg !== cfg.backendConfig) await host.saveBackendConfig(becfg);
+      if (becfg !== cfg.backendConfig) {
+        await host.saveBackendConfig(becfg);
+        configSaved = true;
+      }
       await host.setConfig({
         packagesRoot: q<HTMLInputElement>("[name=root]").value.trim(),
         ...commands,
@@ -308,6 +318,6 @@ export async function settingsDialog(onSaved: (changed: boolean) => void, focus?
       return;
     }
     dlg.close("save");
-    onSaved(q<HTMLInputElement>("[name=becmd]").value.trim() !== cfg.backendCmd);
+    onSaved(q<HTMLInputElement>("[name=becmd]").value.trim() !== cfg.backendCmd, configSaved);
   });
 }
