@@ -75,4 +75,7 @@ export function appendEvents(el: HTMLElement, events: JobEvent[], asText: boolea
 }
 
 export const statusBadge = (j?: Job) =>
-  j ? `<span class="badge job-${j.status}">${j.status}</span>${j.exit_code != null ? ` exit ${j.exit_code}` : ""}${j.duration_ms != null ? ` · ${Math.round(j.duration_ms / 1000)} s` : ""}${j.model_used ? ` · ${esc(j.model_used)}` : ""}` : "";
+  j ? `<span class="badge job-${j.status}">${j.status}</span>${j.exit_code != null ? ` exit ${j.exit_code}` : ""}${j.duration_ms != null ? ` · ${Math.round(j.duration_ms / 1000)} s` : ""}${j.model_used ? ` · <span title="${esc(askedFor(j.model_used, String(j.request.model ?? "")))}">${esc(j.model_used)}</span>` : ""}` : "";
+
+/** A tooltip for a reported model: what was asked for, when it differs (an alias or the CLI's default). */
+export const askedFor = (used: string, asked: string) => (used === asked ? "the model the CLI ran" : `the model the CLI ran; asked for ${asked || "the CLI's default"}`);

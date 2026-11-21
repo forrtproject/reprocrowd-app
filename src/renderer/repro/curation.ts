@@ -8,6 +8,7 @@ import { COMPARATORS, type Action, type CurationFile, type Document, type Item, 
 import { choose, commandLine, confirmDialog, esc, list, modal, seconds, showError, showPrompt, trunc, when } from "../util";
 import { ACTION_PRESETS, Preset, ScopeTree, TARGET_PRESETS } from "./scope";
 import { AlignedItem, AlignedView } from "./aligned";
+import { askedFor } from "./jobs";
 import type { Step, Wizard } from "./wizard";
 
 type Kind = "targets" | "actions";
@@ -133,7 +134,7 @@ export class CurationStep implements Step {
     const edited = run.entries.filter((e) => e.edit).length;
     const scope = run.request.scope;
     const scopeText = !scope || (!scope.sections?.length && !scope.items?.length) ? "whole document" : [scope.sections?.length && `${scope.sections.length} sections`, scope.items?.length && `${scope.items.length} items`].filter(Boolean).join(" + ");
-    return `${esc(run.request.extraction ?? "")} (${scopeText}) · ${esc(run.call.profile)}${run.call.model_used || run.call.model ? ` / ${esc(run.call.model_used || run.call.model)}` : ""} · ${esc(when(run.call.started_at))} · ${seconds(run.call.duration_ms)} · ${run.entries.length} ${NOUN[this.kind]}s${off ? `, ${off} not used` : ""}${edited ? `, ${edited} edited` : ""}${run.rejected?.length ? `, <span class="warn-inline">${run.rejected.length} rejected</span>` : ""}`;
+    return `${esc(run.request.extraction ?? "")} (${scopeText}) · ${esc(run.call.profile)}${run.call.model_used ? ` / <span title="${esc(askedFor(run.call.model_used, run.call.model))}">${esc(run.call.model_used)}</span>` : run.call.model ? ` / ${esc(run.call.model)}` : ""} · ${esc(when(run.call.started_at))} · ${seconds(run.call.duration_ms)} · ${run.entries.length} ${NOUN[this.kind]}s${off ? `, ${off} not used` : ""}${edited ? `, ${edited} edited` : ""}${run.rejected?.length ? `, <span class="warn-inline">${run.rejected.length} rejected</span>` : ""}`;
   }
 
   draw(body: HTMLElement) {

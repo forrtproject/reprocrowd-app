@@ -170,8 +170,8 @@ def _watch(pkg: Package, job: Job, proc: subprocess.Popen, stdin: str, timeout_s
             try:
                 with open(pkg.path(job.stdout), encoding="utf-8", errors="replace") as log_file:
                     job.model_used = providers.model_used(log_file, job.events_format, str(job.request.get("model") or ""))
-            except OSError:
-                pass
+            except OSError as e:  # model_used stays null, as when the output doesn't say; the log tells the two apart
+                log.warning("job %s: could not read its output for the model used: %s", job.id, e)
         try:
             job.result = finish(job)
         except Exception as e:  # the job ran; report the bookkeeping failure without losing the record
