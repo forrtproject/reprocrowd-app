@@ -242,7 +242,10 @@ pre.raw-src { tab-size: 2; margin: 0; padding: 12px 16px; font: 12px/1.5 var(--m
 .hx-key { color: var(--hx-key); } .hx-str { color: var(--hx-val); } .hx-num { color: var(--hx-num); } .hx-lit { color: var(--hx-attr); }
 
 /* ---------- dialogs ---------- */
-dialog { background: var(--panel); color: var(--ink); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 22px; box-shadow: var(--shadow); max-height: 92vh; overflow: auto; }
+/* Dialogs keep their top edge where it opened and grow downwards (not centred), so content that expands, loads or
+ * changes moves only what is below it. */
+dialog { background: var(--panel); color: var(--ink); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 22px; box-shadow: var(--shadow); max-height: 88vh; overflow: auto; }
+dialog[open] { margin: 6vh auto auto; }
 dialog h3 { margin: 0 0 10px; font-family: var(--serif); font-weight: 600; font-size: 19px; }
 dialog h4 { margin: 10px 0 4px; font-size: 13px; }
 dialog form { display: flex; flex-direction: column; gap: 6px; }
