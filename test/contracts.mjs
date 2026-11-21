@@ -9,7 +9,7 @@ async function load(file) {
 }
 globalThis.window = { reprocrowd: {} };
 const { modelCompatible } = await load('src/renderer/api.ts');
-const claude = { cli: 'claude', id: 'claude/sonnet' };
+const claude = { cli: 'claude', id: 'claude/claude-sonnet-5-5' };
 const open = { cli: 'opencode', id: 'vendor/model' };
 const t3 = { cli: 't3', id: 'vendor/model' };
 assert(modelCompatible(claude, ['/usr/local/bin/claude']));
@@ -21,8 +21,47 @@ assert(modelCompatible(open, ['opencode']) && modelCompatible(open, ['/other/ope
 const codex = { cli: 'codex', id: 'codex/gpt-x' };
 assert(modelCompatible(codex, ['codex']) && !modelCompatible(codex, ['opencode']) && !modelCompatible(open, ['codex']));
 const { cliModel } = await load('src/renderer/api.ts');
-assert.equal(cliModel('codex/gpt-x'), 'gpt-x'); assert.equal(cliModel('claude/opus'), 'opus'); assert.equal(cliModel('deepseek/deepseek-v4-pro'), 'deepseek/deepseek-v4-pro');
-const { parseCodexModels } = await load('src/main/models.ts');
+assert.equal(cliModel('codex/gpt-x'), 'gpt-x'); assert.equal(cliModel('claude/claude-opus-5-5'), 'claude-opus-5-5'); assert.equal(cliModel('deepseek/deepseek-v4-pro'), 'deepseek/deepseek-v4-pro');
+const { status: llmStatus, cliStates } = await load('src/renderer/llm-status.ts');
+{
+  const models = (o) => ({ available: [], claudeNeedsLogin: false, needsLogin: [], installed: [], ...o });
+  const claudeProfile = [{ name: 'claude', argv: ['claude', '-p'] }];
+  assert.equal(llmStatus({ models: models({}), profiles: claudeProfile }).level, 'none'); // red: nothing installed
+  assert.equal(llmStatus({ models: models({ installed: ['claude'], needsLogin: ['claude'] }), profiles: claudeProfile }).level, 'warn'); // yellow: not signed in
+  assert.equal(llmStatus({ models: models({ installed: ['codex'] }), profiles: claudeProfile }).level, 'warn'); // yellow: signed in, no profile runs it
+  assert.equal(llmStatus({ models: models({ installed: ['claude', 'codex'], needsLogin: ['codex'] }), profiles: claudeProfile }).level, 'ok'); // green: one is ready
+  assert.equal(llmStatus({ models: models({ installed: ['opencode'] }), profiles: [{ name: 'oc', argv: ['opencode', 'run'] }] }).level, 'warn'); // OpenCode listing no models
+  assert.equal(llmStatus({ models: models({ installed: ['claude'] }), profiles: null }).level, 'warn'); // backend down: no profile confirmed
+  assert.match(llmStatus({ models: models({ installed: ['claude'] }), profiles: null }).text, /profiles not checked/);
+  assert.equal(llmStatus({ models: models({ installed: ['claude'] }), profiles: [{ ...claudeProfile[0], available: false }] }).level, 'warn'); // its command is missing
+  assert.equal(llmStatus({ models: models({ installed: ['claude'] }), profiles: [{ ...claudeProfile[0], available: true }] }).level, 'ok');
+  assert.equal(llmStatus({ models: models({ installed: ['claude'], loginUnknown: ['claude'] }), profiles: claudeProfile }).level, 'warn'); // login probe couldn't tell
+  assert.match(llmStatus({ models: models({ installed: ['claude'], loginUnknown: ['claude'] }), profiles: claudeProfile }).text, /sign-in not confirmed/);
+  // An older main process reports no `installed`: CLIs are inferred from the models listed and the ones needing login.
+  const legacy = { available: [{ cli: 'claude', provider: 'claude', id: 'claude/claude-sonnet-5-5', name: 'Sonnet 5.5' }], claudeNeedsLogin: false, needsLogin: ['codex'] };
+  assert.equal(llmStatus({ models: legacy, profiles: claudeProfile }).level, 'ok');
+  assert.deepEqual(cliStates({ models: legacy, profiles: claudeProfile }).filter((c) => c.installed).map((c) => [c.cli, c.problem]), [['claude', undefined], ['codex', 'not signed in']]);
+  assert.equal(llmStatus({ models: { ...legacy, available: [] }, profiles: claudeProfile }).level, 'warn'); // only codex, not signed in
+  assert.match(llmStatus({ models: models({ installed: ['claude'], needsLogin: ['claude'] }), profiles: claudeProfile }).text, /Claude Code: installed, not signed in/);
+  assert.deepEqual(cliStates({ models: models({}), profiles: [] }).map((c) => [c.cli, c.problem]), [['claude', 'not installed'], ['codex', 'not installed'], ['opencode', 'not installed']]);
+}
+const { parseCodexModels, CLAUDE_MODELS } = await load('src/main/models.ts');
+{ // the LLM dialog's profile rows: one per name a CLI runs, both tasks side by side; new names don't collide
+  const { profileRows, freeName } = await load('src/renderer/llm-status.ts');
+  const ps = [{ name: 'claude-opus', kind: 'llm', argv: ['claude', '-p'], default: false }, { name: 'claude-opus', kind: 'agent', argv: ['claude', '-p'], default: true },
+    { name: 'claude-sonnet', kind: 'llm', argv: ['/usr/bin/claude'], default: true }, { name: 'oc', kind: 'agent', argv: ['opencode', 'run'] }];
+  assert.deepEqual(profileRows(ps, 'claude').map((r) => [r.name, !!r.llm, !!r.agent]), [['claude-opus', true, true], ['claude-sonnet', true, false]]);
+  // same name, other settings: two profiles, two rows
+  const split = [{ name: 'claude', kind: 'llm', argv: ['claude'], model: 'sonnet', effort: 'medium' }, { name: 'claude', kind: 'agent', argv: ['claude'], model: 'sonnet', effort: 'high' }];
+  assert.deepEqual(profileRows(split, 'claude').map((r) => [r.effort, !!r.llm, !!r.agent]), [['medium', true, false], ['high', false, true]]);
+  assert.deepEqual(profileRows(ps, 'opencode').map((r) => r.name), ['oc']);
+  assert.equal(freeName(ps, 'codex'), 'codex');
+  assert.equal(freeName([...ps, { name: 'opencode', argv: ['opencode'] }], 'opencode'), 'opencode-2');
+}
+// Claude Code's models are offered by version, never as a tier alias, so a run records the version it asked for.
+assert(CLAUDE_MODELS.length >= 3 && ['opus', 'sonnet', 'haiku'].every((t) => CLAUDE_MODELS.some(([m]) => m.startsWith(`claude-${t}-`))));
+for (const [model, name] of CLAUDE_MODELS) assert.match(`${model} ${name}`, /^claude-(opus|sonnet|haiku|fable)-\d+(-\d+)? (Opus|Sonnet|Haiku|Fable) \d+(\.\d+)?$/);
+assert.equal(new Set(CLAUDE_MODELS.map(([m]) => m)).size, CLAUDE_MODELS.length);
 assert.deepEqual(parseCodexModels(JSON.stringify({ models: [{ slug: 'gpt-x', display_name: 'GPT X', visibility: 'list' }, { slug: 'hidden', visibility: 'hide' }] })),
   [{ cli: 'codex', provider: 'codex', id: 'codex/gpt-x', name: 'GPT X' }]);
 assert.deepEqual(parseCodexModels('not json'), []);
@@ -46,8 +85,42 @@ for (const kind of ['llm', 'agent']) assert.equal(configuredProfiles(DEFAULT_USE
 const { execRestriction } = await load('src/renderer/api.ts');
 const shipped = configuredProfiles(DEFAULT_USER_CONFIG).agent;
 assert.deepEqual(Object.fromEntries(Object.entries(shipped).map(([n, p]) => [n, execRestriction(p)])),
-  { claude: 'cli_settings', opencode: 'cli_settings', codex: 'cli_settings' });
-assert.equal(execRestriction({ ...shipped.claude, no_exec_argv: [] }), 'tool_allowlist'); // an older Claude profile: allowlist only
+  { 'claude-opus': 'cli_settings', 'claude-sonnet': 'cli_settings', opencode: 'cli_settings', codex: 'cli_settings' });
+assert.equal(execRestriction({ ...shipped['claude-opus'], no_exec_argv: [] }), 'tool_allowlist'); // an older Claude profile: allowlist only
+// Out of the box: Claude Code with Opus 5.5 and Sonnet 5.5 at high effort, for both tasks; Sonnet parses, Opus codes.
+{
+  const cfg = configuredProfiles(DEFAULT_USER_CONFIG), raw = parse(DEFAULT_USER_CONFIG);
+  for (const kind of ['llm', 'agent']) assert.deepEqual(['claude-opus', 'claude-sonnet'].map((n) => [cfg[kind][n].model, cfg[kind][n].effort]), [['claude-opus-5-5', 'high'], ['claude-sonnet-5-5', 'high']]);
+  assert.deepEqual([raw.llm.default_profile, raw.agent.default_profile], ['claude-sonnet', 'claude-opus']);
+}
+// An earlier version's unedited Claude profiles become today's two; edited ones and everything else stay.
+{
+  const { upgradeShippedProfiles } = await load('src/main/profiles.ts');
+  const llmArgv = '["claude", "-p", "--output-format", "json", "--model", "{model}", "--effort", "{effort}"]';
+  const agentArgv = '["claude", "-p", "--output-format", "stream-json", "--verbose", "--permission-mode", "acceptEdits", "--model", "{model}", "--effort", "{effort}", "--allowedTools", "{tools}"]';
+  const old = `# mine\n[openalex]\nmailto = "a@b.c"\n\n[llm]\ndefault_profile = "claude-fast"\n\n[llm.profiles.claude]\nargv = ${llmArgv}\noutput = "claude-json"\nmodel = "sonnet"\neffort = "medium"\ntimeout_s = 1800\n\n[llm.profiles.claude-fast]\nargv = ${llmArgv}\noutput = "claude-json"\nmodel = "haiku"\neffort = "low"\ntimeout_s = 600\n\n# agents\n[agent]\ndefault_profile = "claude"\n\n[agent.profiles.claude]\nargv = ${agentArgv}\nmodel = "sonnet"\neffort = "high"\ntimeout_s = 7200\nevents = "claude-stream-json"\n`;
+  const up = upgradeShippedProfiles(old, DEFAULT_USER_CONFIG), cfg = parse(up);
+  for (const kind of ['llm', 'agent']) assert.deepEqual(Object.keys(cfg[kind].profiles).sort(), ['claude-opus', 'claude-sonnet']);
+  assert.deepEqual([cfg.llm.default_profile, cfg.agent.default_profile], ['claude-sonnet', 'claude-opus']);
+  assert(up.includes('# mine') && up.includes('# agents') && cfg.openalex.mailto === 'a@b.c');
+  assert.equal(upgradeShippedProfiles(up, DEFAULT_USER_CONFIG), null); // once is enough
+  const edited = old.replace('effort = "medium"', 'effort = "max"'); // a changed profile is the user's: kept, and stays the default it was
+  const kept = parse(upgradeShippedProfiles(edited, DEFAULT_USER_CONFIG));
+  assert.equal(kept.llm.profiles.claude.effort, 'max'); assert(!kept.llm.profiles['claude-fast']); assert(kept.llm.profiles['claude-opus']);
+  assert.equal(upgradeShippedProfiles(DEFAULT_USER_CONFIG, DEFAULT_USER_CONFIG), null);
+}
+// Setting a task's default changes only its default_profile line; comments and other tables stay.
+{
+  const { setDefaultProfile } = await load('src/main/profiles.ts');
+  const cfg = '# top\n[llm]\n# which profile\ndefault_profile = "a" # note\n[llm.profiles.a]\nargv = ["a"]\n[llm.profiles.b]\nargv = ["b"]\n[agent.profiles.c]\nargv = ["c"]\n';
+  const next = setDefaultProfile(cfg, 'llm', 'b');
+  assert.equal(next, cfg.replace('default_profile = "a" # note', 'default_profile = "b"'));
+  const added = setDefaultProfile(cfg, 'agent', 'c'); // no [agent] table yet: written correctly, if not in place
+  assert.equal(parse(added).agent.default_profile, 'c'); assert.equal(parse(added).llm.default_profile, 'a');
+  assert.throws(() => setDefaultProfile(cfg, 'agent', 'a'), /no code-generation profile named/);
+  assert.equal(parse(setDefaultProfile(DEFAULT_USER_CONFIG, 'agent', 'claude-sonnet')).agent.default_profile, 'claude-sonnet');
+  assert(setDefaultProfile(DEFAULT_USER_CONFIG, 'agent', 'claude-sonnet').includes('# Code generation: the profile picked'));
+}
 const presets = await load('src/renderer/profiles.ts'); // the Settings presets agree with the shipped defaults
 assert.deepEqual([...shipped.codex.no_exec_argv], presets.CODEX_NO_EXEC);
 assert.equal(shipped.opencode.no_exec_env.OPENCODE_PERMISSION, presets.OPENCODE_NO_EXEC);
@@ -106,4 +179,4 @@ for (const env of [{}, { OPENCODE_PERMISSION: '{"*":"deny"}' }]) {
 // A profile written as an inline table cannot be spliced; the whole file is rewritten, still correctly.
 const inline = '# lost\n[llm.profiles]\nother = { argv = ["other"], output = "text" }\n';
 assert.deepEqual({ ...parse(replaceProfile(inline, 'llm', 'other', profile)).llm.profiles.other }, profile);
-console.log('Model scoping, profile preservation/validation, failed-write/restart rollback and comment-preserving edits passed.');
+console.log('Model scoping, LLM status light, profile preservation/validation, failed-write/restart rollback and comment-preserving edits passed.');

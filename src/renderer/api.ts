@@ -63,7 +63,8 @@ export function modelCompatible(model: LlmModel | undefined, argv: string[] | un
 }
 export const CLI_LABELS: Record<string, string> = { claude: "Claude Code", codex: "Codex", opencode: "OpenCode" };
 
-export interface LlmModels { available: LlmModel[]; disabled: string[]; claudeNeedsLogin: boolean; needsLogin: LlmModel["cli"][] }
+/** installed: the supported CLIs found on PATH (absent from an older main process). */
+export interface LlmModels { available: LlmModel[]; claudeNeedsLogin: boolean; needsLogin: LlmModel["cli"][]; installed?: LlmModel["cli"][]; loginUnknown?: LlmModel["cli"][] }
 /** The model as its CLI takes it: Claude Code and Codex models are listed as `claude/<alias>` and `codex/<slug>` (each
  * its own family), but their --model/-m takes the bare name; OpenCode's ids (`provider/model`) are used as they are. */
 export const cliModel = (id: string) => id.replace(/^(claude|codex)\//, "");
@@ -180,13 +181,14 @@ export const host = {
     confirmSettings: (patch: { editorCmd?: string; backendCmd?: string }, backendConfig?: string) => call<void>("confirmSettings", patch, backendConfig),
     setConfig: (patch: { packagesRoot?: string; editorCmd?: string; backendCmd?: string; checkUpdates?: boolean; autoUpdate?: boolean; zenodo?: { sandbox?: boolean; community?: string; creator?: Partial<Creator> }; github?: { repo?: string } }) => call<void>("setConfig", patch),
     llmModels: (refresh?: boolean) => call<LlmModels>("llmModels", refresh),
-    setLlmModels: (disabled: string[]) => call<void>("setLlmModels", disabled),
     claudeLogin: () => call<string>("claudeLogin"),
     cliLogin: (cli: string) => call<string>("cliLogin", cli),
   setZenodoToken: (server: "zenodo" | "sandbox", token: string | null) => call<void>("setZenodoToken", server, token),
   verifyZenodoToken: (sandbox: boolean, token?: string) => call<{ ok: boolean; url: string; sandbox: boolean }>("verifyZenodoToken", sandbox, token),
   profileConfig: () => call<Record<"llm" | "agent", Record<string, ConfiguredProfile>>>("profileConfig"),
   saveProfile: (kind: "llm" | "agent", name: string, profile: ConfiguredProfile) => call<string>("saveProfile", kind, name, profile),
+  /** Make a profile the default for text parsing (llm) or code generation (agent); restarts the backend. */
+  setDefaultProfile: (kind: "llm" | "agent", name: string) => call<void>("setDefaultProfile", kind, name),
   runningJobs: () => call<unknown[]>("runningJobs"),
   commandFound: (command: string) => call<boolean>("commandFound", command),
   checkGithubToken: (repo?: string) => call<GithubCheck>("checkGithubToken", repo),

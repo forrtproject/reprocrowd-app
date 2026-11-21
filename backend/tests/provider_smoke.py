@@ -1,6 +1,6 @@
 """Dev-only live smoke check of one installed CLI profile, layer by layer. Explicit: it makes a few small model calls.
 
-    cd backend && uv run python tests/provider_smoke.py --live --profile claude --model haiku
+    cd backend && uv run python tests/provider_smoke.py --live --profile claude --model claude-haiku-5-5
     cd backend && uv run python tests/provider_smoke.py --live --profile codex --model gpt-6.1-terra --effort low
     cd backend && uv run python tests/provider_smoke.py --live --profile opencode --model deepseek/deepseek-v4-pro \\
         --spend-ledger ~/private/ledger.json --max-usd 0.10

@@ -442,10 +442,7 @@ export function makeApi(wc: WebContents) {
       // The backend gets the Zenodo choices and its start command at start.
       if (before.backendCmd !== after.backendCmd || before.zenodo.sandbox !== after.zenodo.sandbox || before.zenodo.community !== after.zenodo.community) await backend.restart().catch(() => {});
     },
-    llmModels: async (refresh?: boolean) => ({ ...(await detectLlmModels(refresh)), disabled: loadSettings().llmDisabled }),
-    setLlmModels: async (disabled: string[]) => {
-      saveSettings({ llmDisabled: disabled });
-    },
+    llmModels: async (refresh?: boolean) => detectLlmModels(refresh),
     claudeLogin: async () => cliLogin("claude"),
     cliLogin: async (cli: string) => cliLogin(cli),
     setZenodoToken: async (server: ZenodoServer, token: string | null) => {
@@ -474,6 +471,7 @@ export function makeApi(wc: WebContents) {
       return post("/v1/zenodo:verify-token", { zenodo_token: t, sandbox }, 20_000);
     },
     profileConfig: async () => backend.profileConfig(),
+    setDefaultProfile: async (kind: "llm" | "agent", name: string) => { await backend.setDefault(kind, name); },
     /** Whether a profile's command is installed; no model call. */
     commandFound: async (command: string) => !!which(String(command ?? "").trim()),
     saveProfile: (kind: Parameters<typeof backend.saveProfile>[0], name: string, profile: Parameters<typeof backend.saveProfile>[2]) => backend.saveProfile(kind, name, profile, (previous, next) => confirmCommands(win(), changedCommands(previous, next))),

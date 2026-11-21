@@ -110,7 +110,7 @@ def _default_agents() -> dict[str, AgentProfile]:
         "claude": AgentProfile(
             argv=["claude", "-p", "--output-format", "stream-json", "--verbose", "--permission-mode", "acceptEdits",
                   "--model", "{model}", "--effort", "{effort}", "--allowedTools", "{tools}"],
-            model="sonnet",
+            model="claude-sonnet-5-5",
             effort="high",
             # --allowedTools only pre-approves: Claude Code still runs commands it classes as read-only (ls, cat).
             # Denying Bash removes command execution when the analysis must not run (checked with Claude Code 2.1.322).
@@ -143,7 +143,7 @@ def _default_profiles() -> dict[str, LlmProfile]:
             read_files_argv=["--allowedTools", "Read"],
             json_schema_argv=["--json-schema", "{schema}"],
             output="claude-json",
-            model="sonnet",
+            model="claude-sonnet-5-5",
             effort="medium",
         ),
         # OpenCode (https://opencode.ai): the prompt goes to stdin; --format json emits one event per line and the

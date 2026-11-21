@@ -64,7 +64,7 @@ export class CodegenStep implements Step {
               <label>Model <select id="rp-model" ${running ? "disabled" : ""}><option value="">(the CLI's default)</option></select></label>
               <label class="inline" title="${esc(profile?.exec_tools.join(", ") ?? "")}"><input type="checkbox" id="rp-exec" ${st.allowExec ? "checked" : ""} ${running || unsupported ? "disabled" : ""} /> let it run the analysis (R, Python, Snakemake)</label>
             </div>
-            <p class="hint">${unsupported ? "This profile cannot run editing-only: with execution allowed, the agent can edit files and run commands in the package folder. A Codex or OpenCode profile saved before no-analysis settings existed regains it when its preset is re-applied in Settings." : profile ? `Without “let it run the analysis”: ${RESTRICTION_LABELS[profile.exec_restriction] ?? profile.exec_restriction}.` : ""}${profile?.available === false ? " The executable was not found; install it or update the command in Settings." : ""}</p>
+            <p class="hint">${unsupported ? "This profile cannot run editing-only: with execution allowed, the agent can edit files and run commands in the package folder. A Codex or OpenCode profile saved before no-analysis settings existed regains it when its preset is re-applied (LLM button → open the tool → Add profile or Edit…)." : profile ? `Without “let it run the analysis”: ${RESTRICTION_LABELS[profile.exec_restriction] ?? profile.exec_restriction}.` : ""}${profile?.available === false ? " The executable was not found; install it or update the command (LLM button → open the tool → Add profile or Edit…)." : ""}</p>
             ${this.models?.needsLogin?.includes(cliOf(profile?.argv) as LlmModel["cli"]) ? `<p class="hint warn-inline">${esc(CLI_LABELS[cliOf(profile?.argv)] ?? cliOf(profile?.argv))} is installed but not signed in. <button id="rp-login" type="button">Log in…</button> <button id="rp-login-check" type="button">Check again</button></p>` : ""}
             ${unsupported && !st.allowExec ? `<button id="rp-allow-exec" type="button">Let the agent run the analysis</button>` : ""}
             <div class="form-row"><button id="rp-prompt" ${ready ? "" : "disabled"}>Show prompt</button></div>
@@ -99,7 +99,7 @@ export class CodegenStep implements Step {
       const m = this.models;
       if (!m) return;
       const byProv = new Map<string, LlmModel[]>();
-      for (const x of m.available) if (!m.disabled.includes(x.id) && modelCompatible(x, this.profiles.find((p) => p.name === prof.value)?.argv)) {
+      for (const x of m.available) if (modelCompatible(x, this.profiles.find((p) => p.name === prof.value)?.argv)) {
         const a = byProv.get(x.provider) ?? [];
         a.push(x);
         byProv.set(x.provider, a);
@@ -110,7 +110,7 @@ export class CodegenStep implements Step {
       if (st.agentModel && [...modelSel.options].some((x) => x.value === st.agentModel)) modelSel.value = st.agentModel;
       else if (st.agentModel) {
         st.agentModel = "";
-        this.w.setStatus("The saved model was cleared: it is turned off on the start page or not offered for this profile's CLI.");
+        this.w.setStatus("The saved model was cleared: it is turned off in the LLM dialog or not offered for this profile's CLI.");
       }
     };
     fillModels();

@@ -15,7 +15,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import net from "node:net";
 import path from "node:path";
-import { applyProfileChange, replaceProfile, configuredProfiles, type ProfileKind, type Profile } from "./profiles";
+import { applyProfileChange, replaceProfile, setDefaultProfile, upgradeShippedProfiles, configuredProfiles, type ProfileKind, type Profile } from "./profiles";
 import { parse, stringify } from "smol-toml";
 import { searchPath, splitCommand, which } from "./processes";
 import { loadSettings, userData } from "./settings";
@@ -98,28 +98,29 @@ license = "cc-by-4.0"
 timeout_s = 7200
 
 [llm]
-default_profile = "claude"
+# Text parsing (extracting targets and analysis steps): the profile picked unless a step chooses another.
+default_profile = "claude-sonnet"
 
 # {model} and {effort} are substituted; the prompt is sent on stdin, in the package folder.
 # Each CLI gets only the environment any program needs plus its own and its model providers' variables;
 # env_pass = ["MY_GATEWAY_*"] in a profile passes on more.
-[llm.profiles.claude]
+[llm.profiles.claude-opus]
 argv = ["claude", "-p", "--output-format", "json", "--model", "{model}", "--effort", "{effort}"]
 read_files_argv = ["--allowedTools", "Read"]
 json_schema_argv = ["--json-schema", "{schema}"]
 output = "claude-json"
-model = "sonnet"
-effort = "medium"
+model = "claude-opus-5-5"
+effort = "high"
 timeout_s = 1800
 
-[llm.profiles.claude-fast]
+[llm.profiles.claude-sonnet]
 argv = ["claude", "-p", "--output-format", "json", "--model", "{model}", "--effort", "{effort}"]
 read_files_argv = ["--allowedTools", "Read"]
 json_schema_argv = ["--json-schema", "{schema}"]
 output = "claude-json"
-model = "haiku"
-effort = "low"
-timeout_s = 600
+model = "claude-sonnet-5-5"
+effort = "high"
+timeout_s = 1800
 
 # OpenCode (https://opencode.ai), with the models you have there. The prompt goes to stdin; output =
 # "opencode-json" reads its "run --format json" event stream. model = "" uses OpenCode's default; pick one of your
@@ -145,9 +146,10 @@ timeout_s = 1800
 
 # Coding agents for code generation. {tools}: the allowed tools, plus exec_tools when running the analysis is allowed.
 [agent]
-default_profile = "claude"
+# Code generation: the profile picked unless the step chooses another.
+default_profile = "claude-opus"
 
-[agent.profiles.claude]
+[agent.profiles.claude-opus]
 argv = ["claude", "-p", "--output-format", "stream-json", "--verbose", "--permission-mode", "acceptEdits",
         "--model", "{model}", "--effort", "{effort}", "--allowedTools", "{tools}"]
 # When the analysis must not run: --allowedTools only pre-approves tools (Claude Code still runs read-only commands
@@ -155,7 +157,18 @@ argv = ["claude", "-p", "--output-format", "stream-json", "--verbose", "--permis
 no_exec_argv = ["--disallowedTools", "Bash"]
 tools = ["Read", "Write", "Edit", "Glob", "Grep"]
 exec_tools = ["Bash(Rscript:*)", "Bash(R:*)", "Bash(python:*)", "Bash(python3:*)", "Bash(snakemake:*)", "Bash(pip:*)", "Bash(ls:*)"]
-model = "sonnet"
+model = "claude-opus-5-5"
+effort = "high"
+timeout_s = 7200
+events = "claude-stream-json"
+
+[agent.profiles.claude-sonnet]
+argv = ["claude", "-p", "--output-format", "stream-json", "--verbose", "--permission-mode", "acceptEdits",
+        "--model", "{model}", "--effort", "{effort}", "--allowedTools", "{tools}"]
+no_exec_argv = ["--disallowedTools", "Bash"]
+tools = ["Read", "Write", "Edit", "Glob", "Grep"]
+exec_tools = ["Bash(Rscript:*)", "Bash(R:*)", "Bash(python:*)", "Bash(python3:*)", "Bash(snakemake:*)", "Bash(pip:*)", "Bash(ls:*)"]
+model = "claude-sonnet-5-5"
 effort = "high"
 timeout_s = 7200
 events = "claude-stream-json"
@@ -194,7 +207,17 @@ export function readUserConfig(): string {
   } else if (process.platform !== "win32" && (fs.statSync(f).mode & 0o077) !== 0) {
     fs.chmodSync(f, 0o600); // written world-readable by older versions
   }
-  return fs.readFileSync(f, "utf8");
+  const text = fs.readFileSync(f, "utf8");
+  // Claude Code profiles an earlier version shipped and nobody edited become today's (claude-opus, claude-sonnet).
+  let upgraded: string | null = null;
+  try {
+    upgraded = upgradeShippedProfiles(text, DEFAULT_USER_CONFIG);
+  } catch { /* unparsable: the backend reports it */ }
+  if (upgraded === null) return text;
+  const backup = f + ".before-upgrade";
+  if (!fs.existsSync(backup)) fs.writeFileSync(backup, text, { mode: 0o600 });
+  fs.writeFileSync(f, upgraded, { mode: 0o600 });
+  return upgraded;
 }
 
 /** Check and save the user's part of the config; the caller restarts the backend. */
@@ -424,6 +447,17 @@ export async function saveProfile(kind: ProfileKind, name: string, profile: Prof
   const previous = readUserConfig();
   const next = replaceProfile(previous, kind, name, profile);
   await confirm?.(previous, next);
+  return applyConfig(previous, next);
+}
+
+/** Make a profile the default for its task (text parsing or code generation); restarts the backend like saveProfile. */
+export async function setDefault(kind: ProfileKind, name: string): Promise<string> {
+  const previous = readUserConfig();
+  const next = setDefaultProfile(previous, kind, name);
+  return next === previous ? previous : applyConfig(previous, next);
+}
+
+function applyConfig(previous: string, next: string): Promise<string> {
   return applyProfileChange(previous, next, {
     backup(text) {
       const backup = userConfigFile() + ".bak";
