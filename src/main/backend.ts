@@ -15,7 +15,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import net from "node:net";
 import path from "node:path";
-import { applyProfileChange, replaceProfile, setDefaultProfile, configuredProfiles, type ProfileKind, type Profile } from "./profiles";
+import { applyProfileChange, replaceProfile, setDefaultProfile, upgradeShippedProfiles, configuredProfiles, type ProfileKind, type Profile } from "./profiles";
 import { parse, stringify } from "smol-toml";
 import { searchPath, splitCommand, which } from "./processes";
 import { loadSettings, userData } from "./settings";
@@ -207,7 +207,17 @@ export function readUserConfig(): string {
   } else if (process.platform !== "win32" && (fs.statSync(f).mode & 0o077) !== 0) {
     fs.chmodSync(f, 0o600); // written world-readable by older versions
   }
-  return fs.readFileSync(f, "utf8");
+  const text = fs.readFileSync(f, "utf8");
+  // Claude Code profiles an earlier version shipped and nobody edited become today's (claude-opus, claude-sonnet).
+  let upgraded: string | null = null;
+  try {
+    upgraded = upgradeShippedProfiles(text, DEFAULT_USER_CONFIG);
+  } catch { /* unparsable: the backend reports it */ }
+  if (upgraded === null) return text;
+  const backup = f + ".before-upgrade";
+  if (!fs.existsSync(backup)) fs.writeFileSync(backup, text, { mode: 0o600 });
+  fs.writeFileSync(f, upgraded, { mode: 0o600 });
+  return upgraded;
 }
 
 /** Check and save the user's part of the config; the caller restarts the backend. */

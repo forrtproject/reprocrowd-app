@@ -100,6 +100,51 @@ export function setDefaultProfile(text: string, kind: ProfileKind, name: string)
   return stringify(data);
 }
 
+/** Remove one profile's table (and its sub-tables), keeping everything else; null if it can't be done in place. */
+function removeProfile(text: string, kind: ProfileKind, name: string): string | null {
+  const path = `${kind}.profiles.${name}`;
+  const eol = text.includes("\r\n") ? "\r\n" : "\n";
+  const lines = text.split(/\r?\n/);
+  const start = lines.findIndex((line) => tableKey(line) === path);
+  if (start < 0) return null;
+  const inside = (key: string | null) => key !== null && key.startsWith(path + ".");
+  let end = lines.findIndex((line, i) => i > start && tableKey(line) !== null && !inside(tableKey(line)));
+  if (end < 0) end = lines.length;
+  while (end > start && end <= lines.length && end - 1 > start && isComment(lines[end - 1]) && lines[end - 1].trim()) end--; // the next table's comments stay
+  return [...lines.slice(0, start), ...lines.slice(end)].join(eol).replace(/(\r?\n){3,}/g, eol + eol);
+}
+
+/** The Claude Code profiles earlier versions of the app shipped, unedited: same command, model, effort and timeout. */
+const OLD_SHIPPED: { kind: ProfileKind; name: string; models: string[]; effort: string; timeout_s: number; argv: string[] }[] = [
+  { kind: "llm", name: "claude", models: ["sonnet", "claude-sonnet-5-5"], effort: "medium", timeout_s: 1800, argv: ["claude", "-p", "--output-format", "json", "--model", "{model}", "--effort", "{effort}"] },
+  { kind: "llm", name: "claude-fast", models: ["haiku", "claude-haiku-5-5"], effort: "low", timeout_s: 600, argv: ["claude", "-p", "--output-format", "json", "--model", "{model}", "--effort", "{effort}"] },
+  { kind: "agent", name: "claude", models: ["sonnet", "claude-sonnet-5-5"], effort: "high", timeout_s: 7200,
+    argv: ["claude", "-p", "--output-format", "stream-json", "--verbose", "--permission-mode", "acceptEdits", "--model", "{model}", "--effort", "{effort}", "--allowedTools", "{tools}"] },
+];
+
+/** Replace the Claude Code profiles an earlier version shipped, if still unedited, with the current ones (from
+ * `shipped`, the app's starting configuration); a default that named a replaced profile moves to the current
+ * default. Edited profiles and everything else stay. Returns the new text, or null if nothing needed upgrading. */
+export function upgradeShippedProfiles(text: string, shipped: string): string | null {
+  const data = parse(text) as Record<string, any>, now = parse(shipped) as Record<string, any>;
+  const old = OLD_SHIPPED.filter((o) => {
+    const p = data[o.kind]?.profiles?.[o.name];
+    return p && isDeepStrictEqual(p.argv, o.argv) && o.models.includes(p.model) && p.effort === o.effort && (p.timeout_s ?? o.timeout_s) === o.timeout_s;
+  });
+  if (!old.length) return null;
+  let next = text;
+  for (const o of old) next = removeProfile(next, o.kind, o.name) ?? (() => { const d = parse(next) as Record<string, any>; delete d[o.kind].profiles[o.name]; return stringify(d); })();
+  for (const kind of new Set(old.map((o) => o.kind))) {
+    for (const [name, profile] of Object.entries(now[kind].profiles as Record<string, Profile>)) {
+      if (cliOf(profile.argv) === "claude" && !(parse(next) as Record<string, any>)[kind]?.profiles?.[name]) next = replaceProfile(next, kind, name, profile);
+    }
+    const current = (parse(next) as Record<string, any>)[kind];
+    if (!current.profiles?.[current.default_profile]) next = setDefaultProfile(next, kind, now[kind].default_profile);
+  }
+  return next;
+}
+const cliOf = (argv: string[]) => (argv[0] ?? "").split(/[\\/]/).pop()!.replace(/\.(cmd|exe|ps1)$/i, "");
+
 export function configuredProfiles(text: string): Record<ProfileKind, Record<string, Profile>> {
   const data = parse(text) as Record<string, any>;
   const defaults = (kind: ProfileKind) => ({ model: "", effort: "", timeout_s: kind === "agent" ? 7200 : 1800,

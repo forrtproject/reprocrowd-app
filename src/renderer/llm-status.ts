@@ -41,15 +41,17 @@ export function status(s: State): { level: Level; text: string } {
 }
 
 
-/** One row per profile name a CLI runs: its text-parsing (llm) and code-generation (agent) profiles of that name. */
-export type ProfileRow = { name: string; llm?: Profile; agent?: Profile };
+/** One row per profile a CLI runs: one model and effort. A text-parsing (llm) and a code-generation (agent) profile
+ * share a row only if they have the same name, model and effort; otherwise each gets its own. */
+export type ProfileRow = { name: string; model: string; effort: string; llm?: Profile; agent?: Profile };
 export function profileRows(profiles: Profile[], cli: string): ProfileRow[] {
   const rows = new Map<string, ProfileRow>();
   for (const p of profiles) {
     if (cliOf(p.argv) !== cli || !p.kind) continue;
-    const row = rows.get(p.name) ?? { name: p.name };
+    const key = JSON.stringify([p.name, p.model ?? "", p.effort ?? ""]);
+    const row = rows.get(key) ?? { name: p.name, model: p.model ?? "", effort: p.effort ?? "" };
     row[p.kind] = p;
-    rows.set(p.name, row);
+    rows.set(key, row);
   }
   return [...rows.values()];
 }

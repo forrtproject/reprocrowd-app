@@ -16,26 +16,31 @@ async function load(refresh = false): Promise<State> {
 
 const light = (level: Level) => `<span class="llm-light" data-level="${level}" aria-hidden="true"></span>`;
 const TASKS = { llm: "text parsing", agent: "code generation" } as const;
+/** The CLI whose profile rows hold this element: the nearest tool row above it. */
+const cliOfRow = (el: Element) => {
+  let tr = el.closest("tr")?.previousElementSibling;
+  while (tr && !tr.classList.contains("llm-cli")) tr = tr.previousElementSibling;
+  return (tr as HTMLElement | null)?.dataset.cli ?? "";
+};
 const PRESETS: Record<string, EditorStart["preset"]> = { claude: "claude", codex: "codex", opencode: "opencode" };
 
-/** A CLI's profiles: model and effort, and a checkbox per task making it that task's default. */
-function profilesHtml(rows: ProfileRow[], cli: string): string {
-  const model = (p?: Profile) => p ? `${p.model ? `<code>${esc(cliModel(p.model))}</code>` : `<span class="muted">CLI default</span>`}${p.effort ? ` · ${esc(p.effort)}` : ""}` : "";
+/** A CLI's profiles as rows of the tools table (same four columns): name, model · effort, a checkbox per task the
+ * profile serves making it that task's default, Edit…; then a row with + Add profile. */
+function profileRowsHtml(rows: ProfileRow[], cli: string): string {
   const box = (row: ProfileRow, kind: "llm" | "agent") => {
     const p = row[kind];
-    return `<label class="inline llm-default" title="${p ? `Use ${esc(row.name)} for ${TASKS[kind]} unless a step picks another profile` : `${esc(row.name)} has no ${TASKS[kind]} profile`}">
-      <input type="checkbox" data-default="${kind}" data-name="${esc(row.name)}" ${p?.default ? "checked" : ""} ${p ? "" : "disabled"} /> ${TASKS[kind]}</label>`;
+    if (!p) return `<span class="llm-default"></span>`; // keeps the checkboxes in columns
+    return `<label class="inline llm-default" title="Use ${esc(row.name)} for ${TASKS[kind]} unless a step picks another profile">
+      <input type="checkbox" data-default="${kind}" data-name="${esc(row.name)}" ${p.default ? "checked" : ""} /> ${TASKS[kind]}</label>`;
   };
-  return `<table class="tbl-list small llm-profile-table">
-    <thead><tr><th>Profile</th><th>Model · effort</th><th>Default for</th><th></th></tr></thead>
-    <tbody>${rows.map((r) => {
-      const same = r.llm && r.agent && r.llm.model === r.agent.model && r.llm.effort === r.agent.effort;
-      const models = same || !r.llm || !r.agent ? model(r.llm ?? r.agent) : `parsing: ${model(r.llm)}<br>coding: ${model(r.agent)}`;
-      return `<tr><td><b>${esc(r.name)}</b>${(r.llm ?? r.agent)?.available === false ? ` <span class="warn-inline small">command not found</span>` : ""}</td>
-        <td>${models}</td><td><div class="llm-defaults">${box(r, "llm")}${box(r, "agent")}</div></td>
-        <td><button type="button" class="ghost" data-edit="${esc(r.name)}" data-kind="${r.llm ? "llm" : "agent"}">Edit…</button></td></tr>`;
-    }).join("") || `<tr><td colspan="4" class="muted">No profile runs ${esc(label(cli))} yet.</td></tr>`}</tbody></table>
-    <p><button type="button" data-add="${esc(cli)}">+ Add profile</button> <span class="hint llm-profile-msg" aria-live="polite"></span></p>`;
+  return rows.map((r) => `<tr class="llm-profile">
+      <td><span class="llm-profile-name">${esc(r.name)}</span>${(r.llm ?? r.agent)?.available === false ? ` <span class="warn-inline">command not found</span>` : ""}</td>
+      <td>${r.model ? `<code>${esc(cliModel(r.model))}</code>` : `<span class="muted">CLI default model</span>`}${r.effort ? ` <span class="muted">· ${esc(r.effort)} effort</span>` : ""}</td>
+      <td class="llm-defaults">${box(r, "llm")}${box(r, "agent")}</td>
+      <td><button type="button" class="ghost small-btn" data-edit="${esc(r.name)}" data-kind="${r.llm ? "llm" : "agent"}">Edit…</button></td>
+    </tr>`).join("") + `<tr class="llm-profile llm-profile-add"><td colspan="4">
+      ${rows.length ? "" : `<span class="muted">No profile runs ${esc(label(cli))} yet.</span> `}<button type="button" class="ghost small-btn" data-add="${esc(cli)}">+ Add profile</button>
+      <span class="hint llm-profile-msg" aria-live="polite"></span></td></tr>`;
 }
 
 /** The header button. `changed` runs after the dialog closes if models or profiles were changed in it. `refresh`
@@ -114,15 +119,16 @@ async function llmDialog(closed: (changed: boolean) => void) {
         : !s.profiles ? "Not ready: the backend couldn't list its profiles, so nothing confirms that a profile runs a CLI."
         : "Not ready: no installed CLI is both signed in and run by a profile.")}</p>
       <p class="hint">Open a tool to see the profiles that run it, choose which one text parsing and code generation use by default, or add one.</p>
-      <table class="tbl-list small llm-clis"><tbody>${clis.map((c) => {
+      <table class="tbl-list small llm-clis"><thead><tr><th>Tool · profile</th><th>Status · model</th><th>Default for</th><th></th></tr></thead><tbody>${clis.map((c) => {
         const open = expanded.has(c.cli);
-        return `<tr class="llm-cli">
+        return `<tr class="llm-cli${open ? " open" : ""}" data-cli="${esc(c.cli)}">
         <td><button type="button" class="llm-expand" data-expand="${esc(c.cli)}" aria-expanded="${open}" ${s.profiles ? "" : "disabled"} title="${open ? "Hide" : "Show"} its profiles">${open ? "▾" : "▸"}</button>
           ${light(!c.installed ? "none" : c.problem ? "warn" : "ok")} <b>${esc(label(c.cli))}</b></td>
-        <td>${esc(!c.installed ? "not installed" : c.problem ? `installed, ${c.problem}` : "installed and signed in")}</td>
-        <td class="muted">${s.profiles ? `${c.profiles.length || "no"} profile${c.profiles.length === 1 ? "" : "s"}` : "profiles unknown"}${c.installed ? ` · ${c.models} model${c.models === 1 ? "" : "s"}` : ""}</td>
+        <td>${esc(!c.installed ? "not installed" : c.problem ? `installed, ${c.problem}` : "installed and signed in")}
+${!s.profiles ? `<span class="muted"> · profiles unknown</span>` : c.profiles.length ? `<span class="muted"> · ${c.profiles.length} profile${c.profiles.length === 1 ? "" : "s"}</span>` : ""}</td>
+        <td></td>
         <td>${c.installed && (!c.signedIn || c.loginUnknown) && LOGIN.has(c.cli) ? `<button type="button" data-login="${esc(c.cli)}">Log in…</button>` : ""}</td>
-      </tr>${open ? `<tr class="llm-cli-profiles"><td colspan="4">${profilesHtml(profileRows(profiles, c.cli), c.cli)}</td></tr>` : ""}`;
+      </tr>${open ? profileRowsHtml(profileRows(profiles, c.cli), c.cli) : ""}`;
       }).join("")}</tbody></table>
       <p class="hint login-msg" aria-live="polite"></p>`;
 
@@ -146,7 +152,7 @@ async function llmDialog(closed: (changed: boolean) => void) {
     }));
     body.querySelectorAll<HTMLInputElement>("[data-default]").forEach((cb) => cb.addEventListener("change", async () => {
       const kind = cb.dataset.default as "llm" | "agent";
-      const msg = cb.closest("td[colspan]")?.querySelector(".llm-profile-msg");
+      const msg = body.querySelector(`[data-add="${CSS.escape(cliOfRow(cb))}"]`)?.parentElement?.querySelector(".llm-profile-msg");
       if (!cb.checked) { // a task always has a default: another profile takes over by ticking it
         cb.checked = true;
         if (msg) msg.textContent = `Tick another profile to make it the default for ${TASKS[kind]}.`;

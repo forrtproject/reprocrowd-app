@@ -51,6 +51,9 @@ const { parseCodexModels, CLAUDE_MODELS } = await load('src/main/models.ts');
   const ps = [{ name: 'claude-opus', kind: 'llm', argv: ['claude', '-p'], default: false }, { name: 'claude-opus', kind: 'agent', argv: ['claude', '-p'], default: true },
     { name: 'claude-sonnet', kind: 'llm', argv: ['/usr/bin/claude'], default: true }, { name: 'oc', kind: 'agent', argv: ['opencode', 'run'] }];
   assert.deepEqual(profileRows(ps, 'claude').map((r) => [r.name, !!r.llm, !!r.agent]), [['claude-opus', true, true], ['claude-sonnet', true, false]]);
+  // same name, other settings: two profiles, two rows
+  const split = [{ name: 'claude', kind: 'llm', argv: ['claude'], model: 'sonnet', effort: 'medium' }, { name: 'claude', kind: 'agent', argv: ['claude'], model: 'sonnet', effort: 'high' }];
+  assert.deepEqual(profileRows(split, 'claude').map((r) => [r.effort, !!r.llm, !!r.agent]), [['medium', true, false], ['high', false, true]]);
   assert.deepEqual(profileRows(ps, 'opencode').map((r) => r.name), ['oc']);
   assert.equal(freeName(ps, 'codex'), 'codex');
   assert.equal(freeName([...ps, { name: 'opencode', argv: ['opencode'] }], 'opencode'), 'opencode-2');
@@ -89,6 +92,22 @@ assert.equal(execRestriction({ ...shipped['claude-opus'], no_exec_argv: [] }), '
   const cfg = configuredProfiles(DEFAULT_USER_CONFIG), raw = parse(DEFAULT_USER_CONFIG);
   for (const kind of ['llm', 'agent']) assert.deepEqual(['claude-opus', 'claude-sonnet'].map((n) => [cfg[kind][n].model, cfg[kind][n].effort]), [['claude-opus-5-5', 'high'], ['claude-sonnet-5-5', 'high']]);
   assert.deepEqual([raw.llm.default_profile, raw.agent.default_profile], ['claude-sonnet', 'claude-opus']);
+}
+// An earlier version's unedited Claude profiles become today's two; edited ones and everything else stay.
+{
+  const { upgradeShippedProfiles } = await load('src/main/profiles.ts');
+  const llmArgv = '["claude", "-p", "--output-format", "json", "--model", "{model}", "--effort", "{effort}"]';
+  const agentArgv = '["claude", "-p", "--output-format", "stream-json", "--verbose", "--permission-mode", "acceptEdits", "--model", "{model}", "--effort", "{effort}", "--allowedTools", "{tools}"]';
+  const old = `# mine\n[openalex]\nmailto = "a@b.c"\n\n[llm]\ndefault_profile = "claude-fast"\n\n[llm.profiles.claude]\nargv = ${llmArgv}\noutput = "claude-json"\nmodel = "sonnet"\neffort = "medium"\ntimeout_s = 1800\n\n[llm.profiles.claude-fast]\nargv = ${llmArgv}\noutput = "claude-json"\nmodel = "haiku"\neffort = "low"\ntimeout_s = 600\n\n# agents\n[agent]\ndefault_profile = "claude"\n\n[agent.profiles.claude]\nargv = ${agentArgv}\nmodel = "sonnet"\neffort = "high"\ntimeout_s = 7200\nevents = "claude-stream-json"\n`;
+  const up = upgradeShippedProfiles(old, DEFAULT_USER_CONFIG), cfg = parse(up);
+  for (const kind of ['llm', 'agent']) assert.deepEqual(Object.keys(cfg[kind].profiles).sort(), ['claude-opus', 'claude-sonnet']);
+  assert.deepEqual([cfg.llm.default_profile, cfg.agent.default_profile], ['claude-sonnet', 'claude-opus']);
+  assert(up.includes('# mine') && up.includes('# agents') && cfg.openalex.mailto === 'a@b.c');
+  assert.equal(upgradeShippedProfiles(up, DEFAULT_USER_CONFIG), null); // once is enough
+  const edited = old.replace('effort = "medium"', 'effort = "max"'); // a changed profile is the user's: kept, and stays the default it was
+  const kept = parse(upgradeShippedProfiles(edited, DEFAULT_USER_CONFIG));
+  assert.equal(kept.llm.profiles.claude.effort, 'max'); assert(!kept.llm.profiles['claude-fast']); assert(kept.llm.profiles['claude-opus']);
+  assert.equal(upgradeShippedProfiles(DEFAULT_USER_CONFIG, DEFAULT_USER_CONFIG), null);
 }
 // Setting a task's default changes only its default_profile line; comments and other tables stay.
 {
