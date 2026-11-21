@@ -9,6 +9,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import * as backend from "./backend";
+import { changedCommands, confirmCommands, confirmToolSettings, preconfirmCommands } from "./confirm";
 import { detectLlmModels, LlmModel } from "./models";
 import { openInTerminal, searchPath, spawnDetached, splitCommand, which } from "./processes";
 import { get, post, request, ResponseType, ServiceError } from "./service";
@@ -17,7 +18,7 @@ import * as updater from "./updater";
 
 /** Read-only backend endpoints any window may call. */
 const GLOBAL_GETS = new Set(["/v1/health", "/v1/templates", "/v1/llm-profiles", "/v1/agent-profiles", "/v1/zenodo"]);
-export const JATS_ONLY = "Only articles with JATS XML full text (the open-access subset of PubMed Central) are supported at this time.";
+export const JATS_ONLY = "Only articles with JATS XML full text (the open-access subset of PubMed Central, or PLOS journals) are supported at this time.";
 const EDITORS = ["code", "codium", "cursor", "zed", "subl", "xdg-open"];
 const LONG = 3 * 3600_000; // LLM calls and conversions are synchronous requests bounded by the backend's own timeouts
 
@@ -146,8 +147,8 @@ const STEPS = {
   open: "Opening the package",
   create: "Creating the package",
   metadata: "Fetching the paper's metadata from OpenAlex",
-  locate: "Finding the article's JATS XML on Europe PMC",
-  download: "Downloading the JATS XML from Europe PMC",
+  locate: "Finding the article's JATS XML",
+  download: "Downloading the article's JATS XML",
   parse: "Converting the JATS XML into the paper's text",
   upload: "Adding the paper file to the package",
   extract: "Extracting the text of the paper file",
@@ -203,18 +204,41 @@ export async function ensureText(id: string, progress?: Progress): Promise<strin
   // No full text: fetch the paper's JATS XML (a DOI package).
   progress?.to("locate");
   const { candidates, notes } = await get<{ candidates: any[]; notes: string[] }>(`${P}/fulltexts/candidates`, undefined, 60_000);
-  const c = candidates.find((x) => x.format === "jats");
-  if (!c) throw new ServiceError(`${JATS_ONLY} ${notes.find((n) => /PMCID/.test(n)) ?? "There is no JATS XML for this paper."}`, { status: 409, code: "jats_unavailable" });
-  try {
-    progress?.to("download");
-    const ftName = ((await request("POST", `${P}/fulltexts`, { json: { candidate: c.id, name: "ft-jats" }, timeout: 300_000 })).data as any).name;
-    progress?.to("parse");
-    return ((await request("POST", `${P}/extractions`, { json: { method: "parse", fulltext: ftName }, timeout: 300_000 })).data as any).name;
-  } catch (e) {
-    const code = (e as ServiceError).problem?.code;
-    if (code === "download_failed" || code === "integrity_check_failed") throw new ServiceError(`${JATS_ONLY} Europe PMC has no JATS XML for this paper (${(e as Error).message}).`, { status: 409, code: "jats_unavailable" });
-    throw e;
+  // Europe PMC first (its archive has the published figures), then the publisher's (PLOS).
+  const jats = candidates.filter((x) => x.format === "jats");
+  if (!jats.length) throw new ServiceError(`${JATS_ONLY} ${notes.find((n) => /PMCID/.test(n)) ?? "There is no JATS XML for this paper."}`, { status: 409, code: "jats_unavailable" });
+  // A source whose file can't be downloaded or parsed is skipped for the next one.
+  const failures: string[] = [];
+  for (const c of jats) {
+    let ftName: string;
+    try {
+      progress?.to("download");
+      ftName = ((await request("POST", `${P}/fulltexts`, { json: { candidate: c.id, name: "ft-jats" }, timeout: 300_000 })).data as any).name;
+    } catch (e) {
+      const code = (e as ServiceError).problem?.code;
+      if (code !== "download_failed" && code !== "integrity_check_failed") throw e;
+      failures.push((e as Error).message);
+      continue;
+    }
+    try {
+      progress?.to("parse");
+      return ((await request("POST", `${P}/extractions`, { json: { method: "parse", fulltext: ftName }, timeout: 300_000 })).data as any).name;
+    } catch (e) {
+      if ((e as ServiceError).problem?.code !== "parse_failed") throw e;
+      failures.push(`${c.label}: ${(e as Error).message}`);
+      // Not left in the package: opening it again would try to parse this file rather than the next source.
+      await request("DELETE", `${P}/fulltexts/${enc(ftName)}`);
+    }
   }
+  throw new ServiceError(`${JATS_ONLY} No JATS XML could be used for this paper (${failures.join("; ")}).`, { status: 409, code: "jats_unavailable" });
+}
+
+/** New editor/backend commands in a settings patch, as the confirmation lists them. Clearing one goes back to the
+ * built-in default and needs no confirmation. */
+function settingsCommands(before: ReturnType<typeof loadSettings>, patch: Parameters<typeof saveSettings>[0]): string[] {
+  return (["editorCmd", "backendCmd"] as const)
+    .filter((k) => typeof patch[k] === "string" && patch[k]!.trim() && patch[k]!.trim() !== before[k].trim())
+    .map((k) => `${k === "editorCmd" ? "Code editor" : "Backend"}: ${patch[k]!.trim()}`);
 }
 
 export function makeApi(wc: WebContents) {
@@ -234,8 +258,18 @@ export function makeApi(wc: WebContents) {
 
   async function pkg(method: string, sub: string, json?: unknown, query?: Record<string, string | number | boolean>, responseType: ResponseType = "json") {
     if (!/^([/:][\w./:%-]*)?$/.test(sub) || sub.split("/").includes("..")) throw new Error(`invalid package path ${sub}`);
+    // Percent-encoded dot segments (%2e%2e) are resolved by the URL parser: check where the request really goes.
+    const scope = base(), target = new URL(scope + sub, "http://backend").pathname;
+    if (target !== scope && !target.startsWith(scope + "/") && !target.startsWith(scope + ":")) throw new Error(`invalid package path ${sub}`);
     if (!["GET", "POST", "PUT", "PATCH", "DELETE"].includes(method)) throw new Error(`invalid method ${method}`);
-    if (method !== "GET" && /^\/(fulltexts|extractions)\b/.test(sub)) throw new Error("The paper's text is its JATS XML, retrieved by the app.");
+    // On the path as the backend sees it: /%66ulltexts or /a/%2e%2e/fulltexts are /fulltexts too.
+    let rest: string;
+    try {
+      rest = decodeURIComponent(target.slice(scope.length));
+    } catch {
+      throw new Error(`invalid package path ${sub}`);
+    }
+    if (method !== "GET" && /^\/(fulltexts|extractions)\b/.test(rest)) throw new Error("The paper's text is its JATS XML, retrieved by the app.");
     return request(method, base() + sub, { json, query, responseType, timeout: method === "GET" ? 120_000 : LONG });
   }
 
@@ -369,6 +403,7 @@ export function makeApi(wc: WebContents) {
       if (!fs.existsSync(path.join(dir, "datapackage.json"))) throw new Error(`${dir} has no datapackage.json, so it isn't a ReproCrowd package.`);
       const known = (await get<any[]>("/v1/packages")).find((p) => norm(p.path) === norm(dir));
       if (known) return known.id as string;
+      if (!(await confirmToolSettings(win(), dir))) return null;
       return ((await request("POST", "/v1/packages", { json: { path: dir, adopt: true } })).data as any).id as string;
     },
     removePackage: async (id: string) => {
@@ -401,6 +436,7 @@ export function makeApi(wc: WebContents) {
     },
     setConfig: async (patch: Parameters<typeof saveSettings>[0]) => {
       const before = loadSettings();
+      await confirmCommands(win(), settingsCommands(before, patch));
       const after = saveSettings(patch);
       if (before.autoUpdate !== after.autoUpdate) updater.applyUpdateSettings();
       // The backend gets the Zenodo choices and its start command at start.
@@ -412,7 +448,26 @@ export function makeApi(wc: WebContents) {
     },
     claudeLogin: async () => cliLogin("claude"),
     cliLogin: async (cli: string) => cliLogin(cli),
-    setZenodoToken: async (server: ZenodoServer, token: string | null) => setSecret(zenodoKey(server), token?.trim() || null),
+    setZenodoToken: async (server: ZenodoServer, token: string | null) => {
+      const value = token?.trim() || null;
+      const storage = value ? await secretStorageKind() : "secure";
+      if (storage === "secure") return setSecret(zenodoKey(server), value);
+      // No keyring (#91): saving the token with Electron's fixed key is only obfuscation, so it is the user's choice.
+      const weak = storage === "weak";
+      const { response } = await dialog.showMessageBox(win(), {
+        type: "warning",
+        title: "No keyring",
+        message: weak ? "This system has no keyring, so the token can't be saved securely." : "This system offers no secure storage for the token.",
+        detail: (weak ? "Saved unprotected, the token is only obfuscated, with a key that is the same on every computer: any program running as you can read it. " : "")
+          + "Kept for this session, it works until ReproCrowd quits, and you paste it again next time.",
+        buttons: weak ? ["Cancel", "Keep for this session", "Save unprotected"] : ["Cancel", "Keep for this session"],
+        defaultId: 1,
+        cancelId: 0,
+        noLink: true,
+      });
+      if (response === 0) throw new Error("The token was not saved.");
+      return setSecret(zenodoKey(server), value, { sessionOnly: response === 1 });
+    },
     verifyZenodoToken: async (sandbox: boolean, token?: string) => {
       const t = token?.trim() || (await zenodoToken(sandbox));
       if (!t) throw new ServiceError("No token stored for this server.", { status: 400, code: "zenodo_token_missing" });
@@ -421,7 +476,7 @@ export function makeApi(wc: WebContents) {
     profileConfig: async () => backend.profileConfig(),
     /** Whether a profile's command is installed; no model call. */
     commandFound: async (command: string) => !!which(String(command ?? "").trim()),
-    saveProfile: (kind: Parameters<typeof backend.saveProfile>[0], name: string, profile: Parameters<typeof backend.saveProfile>[2]) => backend.saveProfile(kind, name, profile),
+    saveProfile: (kind: Parameters<typeof backend.saveProfile>[0], name: string, profile: Parameters<typeof backend.saveProfile>[2]) => backend.saveProfile(kind, name, profile, (previous, next) => confirmCommands(win(), changedCommands(previous, next))),
     runningJobs: async () => get<any[]>("/v1/jobs"),
     /** `repo` as typed in Settings ("" = the default pilots repository, as Save would store it); omitted = the saved one. */
     checkGithubToken: async (repo?: string) => {
@@ -438,7 +493,11 @@ export function makeApi(wc: WebContents) {
       }
       return "GitHub's login opened in a terminal window. Finish it there (it opens your browser), then click Check.";
     },
+    /** Before a Settings save: one confirmation for its new commands, in the settings and the backend configuration. */
+    confirmSettings: async (patch: Parameters<typeof saveSettings>[0], backendConfig?: string) =>
+      preconfirmCommands(win(), [...settingsCommands(loadSettings(), patch), ...(backendConfig === undefined ? [] : changedCommands(backend.readUserConfig(), backendConfig))]),
     saveBackendConfig: async (text: string) => {
+      await confirmCommands(win(), changedCommands(backend.readUserConfig(), text));
       backend.writeUserConfig(text);
       await backend.restart();
     },
@@ -550,6 +609,23 @@ export function makeApi(wc: WebContents) {
         timeout: LONG,
       });
       return r.data;
+    },
+    /** A deposit's page, only on the configured Zenodo server: the record's url comes from datapackage.json, which a shared
+     *  package fills in at will (a fake login page, say). */
+    openDeposit: async (dep: string) => {
+      if (!/^zen-[0-9a-f]+$/.test(dep)) throw new Error("invalid deposit");
+      const d = await get<any>(`${base()}/deposits/${dep}`);
+      const { url: server } = await get<any>("/v1/zenodo", { sandbox: !!d.sandbox, probe: false }, 10_000);
+      let page: URL;
+      try {
+        page = new URL(d.url);
+      } catch {
+        throw new Error(`The deposit's address isn't a web address: ${d.url}`);
+      }
+      if (String(d.server).replace(/\/+$/, "") !== server || page.origin !== new URL(server).origin) {
+        throw new Error(`The deposit's page (${page.origin}) isn't on the configured ${d.sandbox ? "Zenodo sandbox" : "Zenodo"} server (${server}); not opening it.`);
+      }
+      await openOutside(page.href);
     },
     depositAction: async (dep: string, action: "refresh" | "publish" | "discard") => {
       if (!["refresh", "publish", "discard"].includes(action) || !/^zen-[0-9a-f]+$/.test(dep)) throw new Error("invalid deposit action");

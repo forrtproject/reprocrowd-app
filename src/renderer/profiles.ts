@@ -30,8 +30,10 @@ export async function profileEditor(saved: (text: string) => void) {
       <label>No-analysis environment (NAME=value per line; never credentials)<textarea name="noenv" class="mono" rows="2"></textarea></label>
       <label>Read-files arguments (extraction)<textarea name="read" rows="2"></textarea></label>
       <label>JSON Schema arguments (extraction; use {schema})<textarea name="schema" rows="2"></textarea></label>
+      <label>More environment variables for the CLI (one name per line; PREFIX_* for a group)<textarea name="envpass" class="mono" rows="2"></textarea></label>
+      <p class="hint">The CLI gets only what any program needs (paths, locale, proxies) and its own and its model providers' variables. Name others it needs here, such as a gateway's settings.</p>
     </details>
-    <p class="hint">Saving restarts the backend. The form preserves other settings but drops TOML comments; the original file is backed up once as backend.toml.bak. The advanced raw editor remains available.</p>
+    <p class="hint">Saving restarts the backend. The form rewrites only this profile's section and keeps other settings and comments outside it; comments between this profile's keys are dropped. If the profile cannot be edited in place (for example, it is written as dotted keys, an inline table or a quoted header), the whole file is rewritten without comments. The original file is backed up once as backend.toml.bak. The advanced raw editor remains available.</p>
     <p class="profile-status" aria-live="polite"></p>
     <menu><button type="button" class="cancel">Cancel</button><button value="save" class="primary">Save profile</button></menu>
   </form>`);
@@ -57,6 +59,7 @@ export async function profileEditor(saved: (text: string) => void) {
     set("protocol", kind() === "agent" ? p.events : p.output);
     set("tools", p.tools); set("exec", p.exec_tools); set("read", p.read_files_argv); set("schema", p.json_schema_argv);
     set("noexec", p.no_exec_argv); set("noenv", Object.entries(p.no_exec_env ?? {}).map(([k, v]) => `${k}=${v}`));
+    set("envpass", p.env_pass);
   };
   const preset = () => {
     const type = value("preset"), agent = kind() === "agent";
@@ -114,6 +117,7 @@ export async function profileEditor(saved: (text: string) => void) {
       // A backend that is down has no jobs to interrupt; the form must still be able to repair its profiles.
       if ((await host.runningJobs().catch(() => [])).length && !(await confirmDialog("Restart the backend?", "<p>Running jobs will stop and be recorded as interrupted.</p>", "Stop jobs and save"))) return;
       const p: ConfiguredProfile = { argv: [value("command").trim(), ...lines("args")], model: value("model"), effort: value("effort"), timeout_s: Number(value("timeout")),
+        ...(lines("envpass").length ? { env_pass: lines("envpass").map((l) => l.trim()) } : {}),
         ...(kind() === "agent" ? { events: value("protocol"), tools: lines("tools"), exec_tools: lines("exec"), no_exec_argv: lines("noexec"), no_exec_env: env() } : { output: value("protocol"), read_files_argv: lines("read"), json_schema_argv: lines("schema") }) };
       const text = await host.saveProfile(kind(), value("name"), p);
       saved(text); dlg.close();

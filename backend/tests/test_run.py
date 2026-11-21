@@ -1,4 +1,5 @@
 import json
+import pytest
 from pathlib import Path
 
 from conftest import FIXTURES
@@ -43,7 +44,10 @@ def test_run_and_compare(client, pkg):
     problem(client.get(P + "/comparison"), 409, "results_missing")
     (root / "analysis.py").write_text(SCRIPT)
     r = client.post(P + "/jobs", json={"type": "run"})
-    assert r.status_code == 202 and r.json()["argv"] == ["bash", "-c", "python3 analysis.py"]
+    from reprocrowd import run
+    # no shell (Windows has none): the Python found for the run, then the script
+    assert r.status_code == 202 and r.json()["argv"] == [*run.find_program("python3"), "analysis.py"], r.json()["argv"]
+    assert Path(r.json()["argv"][0]).name.startswith("py")
     job = wait(client, pkg, r.json()["id"])
     assert job["status"] == "succeeded", job
     res = job["result"]
@@ -107,3 +111,89 @@ def test_jobs_do_not_inherit_the_service_virtualenv(monkeypatch):
     monkeypatch.setenv("VIRTUAL_ENV", sys.prefix)
     env = job_env({"X": "1"})
     assert env["PATH"] == "/usr/local/bin:/usr/bin" and "VIRTUAL_ENV" not in env and env["X"] == "1"
+
+
+def test_child_environments_are_allowlisted():
+    """Issue #91: scripts and agents don't get the app's credentials or the path of the backend's token file."""
+    from reprocrowd import childenv
+
+    env = {"PATH": "/usr/bin", "HOME": "/home/u", "LC_ALL": "C", "https_proxy": "http://proxy:3128", "R_LIBS_USER": "/r",
+           "AWS_SECRET_ACCESS_KEY": "aws", "GITHUB_TOKEN": "gh", "ANTHROPIC_API_KEY": "ant", "OPENAI_API_KEY": "oai",
+           "REPROCROWD_CONFIG": "/cfg.toml", "REPROCROWD_TOKEN": "t", "MY_GATEWAY_URL": "g"}
+    assert set(childenv.for_script(env)) == {"PATH", "HOME", "LC_ALL", "https_proxy", "R_LIBS_USER"}
+    claude = childenv.for_cli(["/usr/local/bin/claude", "-p"], env=env)
+    assert {"ANTHROPIC_API_KEY", "AWS_SECRET_ACCESS_KEY", "PATH"} <= set(claude) and not {"GITHUB_TOKEN", "OPENAI_API_KEY", "R_LIBS_USER"} & set(claude)
+    codex = childenv.for_cli([r"C:\npm\codex.cmd", "exec"], env=env)
+    assert "OPENAI_API_KEY" in codex and "ANTHROPIC_API_KEY" not in codex
+    assert "MY_GATEWAY_URL" in childenv.for_cli(["mycli"], ["MY_GATEWAY_*"], env=env)
+    assert not any(k.startswith("REPROCROWD_") for k in childenv.for_cli(["mycli"], ["REPROCROWD_*", "*"], env=env))
+
+
+def test_template_commands_need_no_shell():
+    """Commands are started without a shell (Windows has no bash): a program and its arguments only."""
+    import shlex
+    import tomllib
+    from importlib import resources
+    for t in resources.files("reprocrowd.templates").iterdir():
+        if t.is_dir() and t.joinpath("template.toml").is_file():
+            command = tomllib.loads(t.joinpath("template.toml").read_text(encoding="utf-8"))["command"]
+            argv = shlex.split(command)
+            assert not any(a in {"&&", "||", "|", ";", ">", "<", "&"} for a in argv), command
+    assert shlex.split("Rscript -e 'targets::tar_make()'") == ["Rscript", "-e", "targets::tar_make()"]
+
+
+def test_programs_are_found_where_windows_and_r_put_them(monkeypatch):
+    from reprocrowd import run
+    from reprocrowd.errors import ApiError
+    on_path: dict[str, str] = {}
+    monkeypatch.setattr(run.shutil, "which", lambda name, path=None: on_path.get(name))
+    monkeypatch.setattr(run, "_store_stub", lambda p: "WindowsApps" in p)
+    stub_runs = False
+    monkeypatch.setattr(run, "_runs", lambda argv: stub_runs)
+    monkeypatch.setattr(run, "_r_installs", lambda: [])
+    # nothing installed: a clear error that says where to get it
+    with pytest.raises(ApiError) as e:
+        run.run_argv("python3 analysis.py")
+    assert e.value.code == "program_not_found" and "python.org" in e.value.message
+    # only the Store's stand-in: not a Python, so the same clear error
+    on_path["python3"] = r"C:\Users\a\AppData\Local\Microsoft\WindowsApps\python3.exe"
+    with pytest.raises(ApiError) as e:
+        run.run_argv("python3 analysis.py")
+    assert e.value.code == "program_not_found"
+    # but a Python installed from the Store is used
+    stub_runs = True
+    assert run.run_argv("python3 analysis.py")[0].endswith("WindowsApps\\python3.exe")
+    stub_runs = False
+    del on_path["python3"]
+    # Windows: no python3, but python, or only the py launcher
+    on_path["py"] = r"C:\Windows\py.exe"
+    assert run.run_argv("python3 analysis.py") == [r"C:\Windows\py.exe", "-3", "analysis.py"]
+    on_path["python"] = r"C:\Python313\python.exe"
+    assert run.run_argv("python3 analysis.py") == [r"C:\Python313\python.exe", "analysis.py"]
+    # the Microsoft Store's python3 stand-in is passed over for a real Python
+    on_path["python3"] = r"C:\Users\a\AppData\Local\Microsoft\WindowsApps\python3.exe"
+    assert run.run_argv("python3 analysis.py")[0] == r"C:\Python313\python.exe"
+    # R: not on the PATH, but where its installer put it
+    with pytest.raises(ApiError) as e:
+        run.run_argv("Rscript analysis.R")
+    assert "r-project.org" in e.value.message
+    monkeypatch.setattr(run, "_r_installs", lambda: [r"C:\Program Files\R\R-4.5.1\bin\Rscript.exe"])
+    assert run.run_argv("Rscript -e 'targets::tar_make()'") == [r"C:\Program Files\R\R-4.5.1\bin\Rscript.exe", "-e", "targets::tar_make()"]
+    # elsewhere, the program on the PATH as it is
+    on_path["snakemake"] = "/usr/bin/snakemake"
+    assert run.run_argv("snakemake --cores 1") == ["/usr/bin/snakemake", "--cores", "1"]
+
+
+def test_a_missing_program_changes_nothing(client, pkg, monkeypatch):
+    """Without Python, the run is refused before the old results are removed or anything is committed."""
+    from reprocrowd import gitrepo, run
+    root = package_with_targets(client, pkg)
+    (root / "outputs").mkdir(exist_ok=True)
+    (root / "outputs" / "results.json").write_text("{}")
+    head = gitrepo.head(run.Package(pkg, root)) if gitrepo.available() else None
+    monkeypatch.setattr(run, "find_program", lambda name: None)
+    problem(client.post(f"/v1/packages/{pkg}/jobs", json={"type": "run"}), 409, "program_not_found")
+    assert (root / "outputs" / "results.json").read_text() == "{}"
+    assert not (root / "jobs").exists() or not any((root / "jobs").iterdir())
+    if gitrepo.available():
+        assert gitrepo.head(run.Package(pkg, root)) == head

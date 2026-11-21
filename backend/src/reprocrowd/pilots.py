@@ -47,7 +47,7 @@ import httpx
 
 from . import __version__, identifiers, licensing, pilot_copy
 from .config import settings
-from .database import Prepared
+from .database import Prepared, verify_archive_contents
 from .errors import ApiError, conflict, invalid
 from .package import Package, sha256_file
 from .pilot_copy import ACTION_LOGIN, DISCLAIMER, MAX_RUN, doi_tag, doi_url, RUNS_END, RUNS_START, files_mark, issue_mark, refused_mark, release_mark, run_mark, summary_line
@@ -452,6 +452,7 @@ def _save(pkg: Package, rec: GithubPilot) -> GithubPilot:
 
 def submit(pkg: Package, *, token: str | None, repo: str | None, exclude: list[str] | None, note: str, synthetic: bool) -> GithubPilot:
     plan = _plan(pkg, repo, exclude, note, synthetic)
+    verify_archive_contents(pkg)
     gh = GitHub(token)
     with tempfile.TemporaryDirectory() as tmp:
         _build_files(plan, Path(tmp))  # size checks before anything is written on GitHub

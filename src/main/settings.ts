@@ -50,16 +50,26 @@ export const DEFAULTS: Settings = {
 
 function readJson(file: string): any {
   try {
+    if (process.platform !== "win32" && (fs.statSync(file).mode & 0o077) !== 0) {
+      // Written 0644 by older versions. Best effort: a failed chmod must not make the file read as empty (setSecret would
+      // then rewrite secrets.json without the other server's token).
+      try {
+        fs.chmodSync(file, 0o600);
+      } catch {}
+    }
     return JSON.parse(fs.readFileSync(file, "utf8"));
   } catch {
     return {};
   }
 }
 
-function writeJson(file: string, data: unknown, mode = 0o644) {
+/** On macOS and Linux only the user may read the app's settings (commands it runs, the GitHub repo) and secrets, whatever
+ *  the umask. (On Windows the mode is ignored; the files are in the user's own AppData, which other users can't read.) */
+function writeJson(file: string, data: unknown, mode = 0o600) {
   fs.mkdirSync(path.dirname(file), { recursive: true });
   const tmp = `${file}.tmp`;
-  fs.writeFileSync(tmp, JSON.stringify(data, null, 2), { mode });
+  fs.rmSync(tmp, { force: true }); // a stale .tmp would keep its own mode: create it afresh
+  fs.writeFileSync(tmp, JSON.stringify(data, null, 2), { mode, flag: "wx" });
   fs.renameSync(tmp, file);
 }
 
@@ -115,7 +125,11 @@ const available = async () => (ss.isAsyncEncryptionAvailable ? ss.isAsyncEncrypt
 const encrypt = async (v: string) => (ss.encryptStringAsync ? ss.encryptStringAsync(v) : safeStorage.encryptString(v));
 const decrypt = async (b: Buffer) => (ss.decryptStringAsync ? (await ss.decryptStringAsync(b)).result : safeStorage.decryptString(b));
 
+// Tokens kept for this session only (no keyring, and the user declined to save them unprotected); gone on quit.
+const sessionSecrets = new Map<string, string>();
+
 export async function getSecret(key: string): Promise<string | undefined> {
+  if (sessionSecrets.has(key)) return sessionSecrets.get(key);
   const v = readJson(secretsFile())[key];
   if (typeof v !== "string") return undefined;
   try {
@@ -125,9 +139,14 @@ export async function getSecret(key: string): Promise<string | undefined> {
   }
 }
 
-export async function setSecret(key: string, value: string | null) {
+/** sessionOnly: keep the value in memory until the app quits, and drop any saved copy. */
+export async function setSecret(key: string, value: string | null, { sessionOnly = false } = {}) {
+  sessionSecrets.delete(key);
   const all = readJson(secretsFile());
-  if (value) {
+  if (value && sessionOnly) {
+    sessionSecrets.set(key, value);
+    delete all[key];
+  } else if (value) {
     if (!(await available())) throw new Error("This system offers no secure storage for the token (no keyring).");
     all[key] = (await encrypt(value)).toString("base64");
   } else delete all[key];

@@ -93,3 +93,71 @@ def test_pagination(client, pkg):
     assert [v["item"]["id"] for v in client.get(links["next"]).json()] == ["T005"]
     assert "next" not in client.get(links["next"]).headers["link"]
     problem(client.get(P + "/targets", params={"limit": 0}), 422, "request_invalid")
+
+
+def _zip_with(*names: str) -> bytes:
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as z:
+        z.writestr("ok.csv", "a\n1\n")
+        for n in names:
+            z.writestr(n, "x")
+    return buf.getvalue()
+
+
+EVIL = 'data\nimport os; os.system("touch pwned")#.csv'  # a line break would end the comment in the master script
+
+
+@pytest.mark.parametrize("member", [EVIL, "data\rimport os#.csv", "a\u2028b.csv", "../outside.txt", "D:/evil.txt", "sub/C:x.txt"])
+def test_unsafe_names_in_zips_are_refused(client, pkg, member):
+    """Issue #91: nothing of the archive is unpacked, whichever member is unsafe."""
+    from pathlib import Path
+
+    P = f"/v1/packages/{pkg}"
+    problem(client.post(P + "/inputs", files={"file": ("rep.zip", _zip_with(member))}), 422, "invalid_archive")
+    root = Path(client.get(P).json()["path"])
+    assert not (root / "inputs" / "rep").exists()
+    assert client.get(P + "/inputs").json() == []
+
+
+def test_unsafe_file_names_are_refused(client, pkg, tmp_path):
+    from pathlib import Path
+
+    P = f"/v1/packages/{pkg}"
+    from reprocrowd.errors import ApiError
+    from reprocrowd.uploads import upload_name
+
+    with pytest.raises(ApiError, match="unusable file name"):  # (httpx percent-encodes line breaks in multipart names)
+        upload_name(EVIL)
+    d = tmp_path / "replication"
+    d.mkdir()
+    (d / "good.csv").write_text("a\n1\n")
+    (d / "bad\rname.csv").write_text("a\n1\n")
+    problem(client.post(P + "/inputs", json={"path": str(d)}), 400, "invalid_filename")
+    assert not (Path(client.get(P).json()["path"]) / "inputs" / "replication").exists()  # nothing copied
+    assert client.get(P + "/inputs").json() == []
+
+
+def test_package_paths_refuse_control_characters_and_drives(tmp_path):
+    from reprocrowd.errors import ApiError
+    from reprocrowd.package import Package
+
+    p = Package("p", tmp_path)
+    assert p.path("inputs/a b:c.csv") == tmp_path / "inputs" / "a b:c.csv"
+    for bad in ("inputs/a\nb.csv", "inputs/a\x00b", "D:/x", "inputs/C:x", "inputs/../x", "inputs\\x"):
+        with pytest.raises(ApiError):
+            p.path(bad)
+
+
+@pytest.mark.parametrize("path", ["http://192.168.1.1/admin", "https://example.org/data.csv", "s3://bucket/x.csv", "file:///etc/passwd"])
+def test_resource_paths_are_not_urls(path):
+    """Issue #91: validation would fetch a URL resource, so a package could make the app request any address."""
+    from pydantic import ValidationError
+    from reprocrowd.schemas.manifest import Resource
+
+    base = {"name": "x", "type": "file", "format": "csv", "mediatype": "text/csv", "bytes": 1, "hash": "sha256:" + "0" * 64,
+            "reprocrowd": {"kind": "output", "added_at": "2026-01-01T00:00:00Z"}}
+    with pytest.raises(ValidationError, match="not a package-relative path"):
+        Resource.model_validate(base | {"path": path})
+    with pytest.raises(ValidationError, match="not a package-relative path"):
+        Resource.model_validate(base | {"path": "outputs/x.csv", "jsonSchema": path})
+    assert Resource.model_validate(base | {"path": "outputs/notes:2.csv"}).path == "outputs/notes:2.csv"

@@ -23,9 +23,10 @@ from .errors import ApiError, conflict, not_found
 from .schemas import SCHEMAS, json_schema_text, schema_path
 from .schemas.common import Identifier, now
 from .schemas.curation import ActionsFile, TargetsFile
-from .schemas.manifest import Manifest, OtherMeta, PackageMeta, Resource
+from .schemas.manifest import CONTROL_CHARS, Manifest, OtherMeta, PackageMeta, Resource, unsafe_parts
 
 MANIFEST = "datapackage.json"
+CONTROL = re.compile(f"[{CONTROL_CHARS}]")
 _locks: dict[str, threading.RLock] = {}
 _locks_guard = threading.Lock()
 
@@ -94,7 +95,8 @@ class Package:
 
     def path(self, rel: str) -> Path:
         parts = [p for p in rel.split("/") if p not in ("", ".")]
-        if not parts or any(p == ".." or "\\" in p for p in parts):
+        # Also refused: control characters (see CONTROL_CHARS) and Windows drive prefixes ("D:x" joins to D:x, off the package).
+        if not parts or unsafe_parts(parts):
             raise ApiError(400, "invalid_path", f"invalid package path {rel!r}")
         return self.root.joinpath(*parts)
 

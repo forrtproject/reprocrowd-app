@@ -97,7 +97,7 @@ function offline(e: unknown) {
   $("#rp-foot").hidden = true;
   if (e instanceof ApiError && e.code === "jats_unavailable") {
     el.innerHTML = `<div class="offline-card"><h2>This article isn't supported</h2><p>${esc(e.message)}</p>
-      <p class="hint">ReproCrowd works from the article's JATS XML, which Europe PMC provides for the open-access subset of PubMed Central.</p>
+      <p class="hint">ReproCrowd works from the article's JATS XML, which Europe PMC provides for the open-access subset of PubMed Central, and PLOS for its own articles.</p>
       <div class="actions"><button class="primary" id="back-lib">← Library</button></div></div>`;
     $("#back-lib").addEventListener("click", () => $("#library-btn").click());
     return;

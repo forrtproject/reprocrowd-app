@@ -67,7 +67,8 @@ class XmlMapping:
 
 # ---------- loading ----------
 
-_PARSER = etree.XMLParser(resolve_entities=False, no_network=True, load_dtd=False, huge_tree=False, remove_comments=True, remove_pis=True)
+#: No entities, DTDs or network: for every XML file read from a package (full texts come from outside).
+PARSER = _PARSER = etree.XMLParser(resolve_entities=False, no_network=True, load_dtd=False, huge_tree=False, remove_comments=True, remove_pis=True)
 
 
 def load(path: Path) -> Element:

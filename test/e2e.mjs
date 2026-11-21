@@ -142,7 +142,13 @@ const step = (msg) => console.log(`• ${msg}`);
 try {
   step("library");
   await win.waitForSelector(".lib-list h2", { timeout: 180_000 });
+  // Without a keyring (CI) saving a token asks how to keep it: for this session.
+  await app.evaluate(({ dialog }) => {
+    globalThis.realShowMessageBox = dialog.showMessageBox;
+    dialog.showMessageBox = async () => ({ response: 1, checkboxChecked: false });
+  });
   await call("setZenodoToken", "sandbox", "test-token");
+  await app.evaluate(({ dialog }) => { dialog.showMessageBox = globalThis.realShowMessageBox; });
   assert.equal((await call("verifyZenodoToken", true)).ok, true);
   await win.reload();
   await win.waitForSelector(".lib-list h2");
@@ -161,12 +167,20 @@ try {
   assert.ok(await win.locator("#nd-create").isDisabled());
   await shot("02a-refused");
 
+  step("new reproduction: a PLOS paper outside PubMed Central has JATS XML from PLOS");
+  await win.fill(".dlg-new [name=doi]", "10.1371/journal.pcsy.0000125");
+  await win.click("#nd-lookup");
+  await win.waitForSelector("#nd-jats .ok", { timeout: 60_000 });
+  assert.match(await win.locator("#nd-jats").innerText(), /available from PLOS\./);
+  assert.ok(await win.locator("#nd-create").isEnabled());
+
   step("new reproduction: DOI lookup, JATS available");
   await win.fill(".dlg-new [name=doi]", `https://doi.org/${DOI}`);
   await win.click("#nd-lookup");
   await win.waitForSelector("#nd-jats .ok", { timeout: 60_000 });
   assert.match(await win.locator("#nd-work b").innerText(), /p-hacking/i);
-  assert.match(await win.locator("#nd-jats").innerText(), /PMC4359000/);
+  // Europe PMC first; when it is slow or down the app falls back to PLOS, which is also correct.
+  assert.match(await win.locator("#nd-jats").innerText(), /available from (Europe PMC \(PMC4359000\)|PLOS)\./);
   assert.equal(await win.inputValue(".dlg-new [name=folder]"), path.join(packagesRoot, "10-1371-journal-pbio-1002106"));
   await win.waitForSelector("#nd-records:not([hidden])", { timeout: 30_000 });
   assert.match(await win.locator("#nd-records").innerText(), /Pilots on GitHub \(unreviewed\): 1 reproduction of this paper — #7 by someone-else \(v2, 2026-11-03\)/);
@@ -186,7 +200,8 @@ try {
   await win.fill(".dlg-new [name=doi]", DOI);
   await win.click("#nd-lookup");
   await win.waitForSelector("#nd-jats .ok", { timeout: 60_000 });
-  await Promise.all([win.waitForEvent("load"), win.click("#nd-create:not([disabled])")]);
+  // Creating downloads the paper; Europe PMC sometimes takes most of a minute to send it.
+  await Promise.all([win.waitForEvent("load", { timeout: 120_000 }), win.click("#nd-create:not([disabled])")]);
   await win.waitForSelector("#route button", { timeout: 120_000 });
   await win.waitForFunction(() => document.querySelector("#paper-title")?.textContent?.match(/p-hacking/i));
   const pkgId = new URLSearchParams((await win.evaluate(() => location.hash)).slice(1)).get("pkg");

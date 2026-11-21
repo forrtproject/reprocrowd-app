@@ -3,6 +3,7 @@ import shutil
 from pathlib import Path
 
 import httpx
+import pytest
 import respx
 
 from conftest import FIXTURES
@@ -98,7 +99,8 @@ def test_fulltexts(client, pkg, tmp_path):
     client.post(f"/v1/packages/{pkg}/metadata", json={})
     c = client.get(f"/v1/packages/{pkg}/fulltexts/candidates").json()
     labels = {x["label"]: x for x in c["candidates"]}
-    assert set(labels) == {"best open-access location", "location: Mirror", "Europe PMC JATS (PMC4359000)"}
+    assert set(labels) == {"best open-access location", "location: Mirror", "Europe PMC JATS (PMC4359000)", "PLOS JATS"}
+    assert list(labels).index("Europe PMC JATS (PMC4359000)") < list(labels).index("PLOS JATS")  # its archive has the figures
     assert any("API key" in n for n in c["notes"])
     landing = labels["location: Mirror"]["id"]
     problem(client.post(f"/v1/packages/{pkg}/fulltexts", json={"candidate": landing}), 422, "integrity_check_failed")
@@ -211,6 +213,7 @@ def test_parse_and_reconcile(client, pkg):
 def test_inputs(client, pkg):
     r = client.post(f"/v1/packages/{pkg}/inputs", json={"path": str(FIXTURES / "data.csv"), "note": "raw RTs"})
     assert r.status_code == 201 and r.json()[0]["reprocrowd"]["role"] == "data"
+    assert r.json()[0]["reprocrowd"]["origin"] == {"type": "local", "path": "data.csv"}  # not the full path: it would be published
     r = client.post(f"/v1/packages/{pkg}/inputs", json={"path": str(FIXTURES / "replication.zip")})
     rs = r.json()
     assert [x["path"] for x in rs] == ["inputs/replication.zip", "inputs/replication/replication/analysis.R", "inputs/replication/replication/data/raw.csv"]
@@ -226,6 +229,38 @@ def test_inputs(client, pkg):
     assert left == ["inputs/data.csv"]
     root = Path(client.get(f"/v1/packages/{pkg}").json()["path"])
     assert not (root / "inputs" / "replication").exists()
+
+
+def test_zip_limits(client, pkg, tmp_path, monkeypatch):
+    """Zip bombs and huge archives are refused before anything is unpacked, and nothing is left behind."""
+    import zipfile
+    from reprocrowd.config import settings
+    P = f"/v1/packages/{pkg}"
+    bomb = tmp_path / "bomb.zip"
+    with zipfile.ZipFile(bomb, "w", zipfile.ZIP_DEFLATED) as z:
+        z.writestr("zeros.csv", b"0" * 50_000_000)  # 50 MB of one byte compresses about 1000:1
+    body = problem(client.post(P + "/inputs", json={"path": str(bomb)}), 422, "archive_too_large")
+    assert "zip bomb" in body["detail"]
+    many = tmp_path / "many.zip"
+    with zipfile.ZipFile(many, "w") as z:
+        for i in range(4):
+            z.writestr(f"f{i}.csv", "a,b\n1,2\n")
+    monkeypatch.setattr(settings(), "max_unpack_files", 3)
+    problem(client.post(P + "/inputs", json={"path": str(many)}), 422, "archive_too_large")
+    monkeypatch.setattr(settings(), "max_unpack_files", 20000)
+    monkeypatch.setattr(settings(), "max_unpack_mb", 0.000001)
+    problem(client.post(P + "/inputs", json={"path": str(many)}), 422, "archive_too_large")
+    assert client.get(P + "/inputs").json() == []
+    root = Path(client.get(P).json()["path"])
+    assert not any((root / "inputs").iterdir())
+
+
+def test_local_origin_keeps_only_the_name():
+    """Older packages recorded the full source path; it is cut to the name when they are loaded."""
+    from reprocrowd.schemas.manifest import LocalOrigin
+    assert LocalOrigin(path="/home/jane.doe/IRB/participants_raw.csv").path == "participants_raw.csv"
+    assert LocalOrigin(path=r"C:\Users\jane\study\data.xlsx").path == "data.xlsx"
+    assert LocalOrigin(path="data.csv").path == "data.csv"
 
 
 def test_inputs_bulk_delete(client, pkg, tmp_path):
@@ -520,6 +555,7 @@ def test_structured_output(client, pkg):
 # ---------- JATS availability (before a package exists) ----------
 
 JATS_URL = "https://www.ebi.ac.uk/europepmc/webservices/rest/PMC4359000/fullTextXML"
+PLOS_URL = "https://journals.plos.org/plosone/article/file?id=10.1371%2Fjournal.pbio.1002106&type=manuscript"
 
 
 @respx.mock
@@ -528,22 +564,127 @@ def test_jats_available(client):
     respx.get(JATS_URL).mock(return_value=httpx.Response(200, content=(FIXTURES / "paper.jats.xml").read_bytes()))
     r = client.get("/v1/jats", params={"doi": "https://doi.org/10.1371/journal.pbio.1002106"})
     assert r.status_code == 200, r.text
-    assert r.json() | {"title": None} == {"doi": "10.1371/journal.pbio.1002106", "available": True, "pmcid": "PMC4359000", "url": JATS_URL,
-                                          "title": None, "reason": None}
+    assert r.json() | {"title": None} == {"doi": "10.1371/journal.pbio.1002106", "available": True, "source": "Europe PMC", "pmcid": "PMC4359000",
+                                          "url": JATS_URL, "title": None, "reason": None}
 
 
 @respx.mock
 def test_jats_unavailable(client):
     xml = respx.get(JATS_URL).mock(return_value=httpx.Response(404))  # before mock_openalex's route for the same URL
+    respx.get(PLOS_URL).mock(return_value=httpx.Response(404))
     mock_openalex()
     j = client.get("/v1/jats", params={"doi": "10.1371/journal.pbio.1002106"}).json()
-    assert not j["available"] and "open-access subset" in j["reason"]
+    assert not j["available"] and "open-access subset" in j["reason"] and "PLOS has no JATS XML" in j["reason"]
+    assert j["pmcid"] == "PMC4359000" and j["url"] == JATS_URL and j["source"] is None
     xml.mock(return_value=httpx.Response(200, text="<html>error</html>"))
     assert "isn't JATS" in client.get("/v1/jats", params={"doi": "10.1371/journal.pbio.1002106"}).json()["reason"]
     xml.mock(side_effect=httpx.ConnectError("down"))
     problem(client.get("/v1/jats", params={"doi": "10.1371/journal.pbio.1002106"}), 502, "jats_check_failed")
     problem(client.get("/v1/jats", params={"doi": "10.1234/missing"}), 404, "openalex_not_found")
     problem(client.get("/v1/jats", params={"doi": "W123"}), 400, "invalid_identifier")
+
+
+@respx.mock
+def test_jats_from_plos(client):
+    """A PLOS article Europe PMC has no JATS XML for (issue 75): PLOS's own is used."""
+    epmc = respx.get(JATS_URL).mock(return_value=httpx.Response(404))
+    plos = respx.get(PLOS_URL).mock(return_value=httpx.Response(200, content=(FIXTURES / "paper.jats.xml").read_bytes()))
+    mock_openalex()
+    j = client.get("/v1/jats", params={"doi": "10.1371/journal.pbio.1002106"}).json()
+    assert j | {"title": None} == {"doi": "10.1371/journal.pbio.1002106", "available": True, "source": "PLOS", "pmcid": None, "url": PLOS_URL,
+                                   "title": None, "reason": None}
+    # Europe PMC can't be reached: PLOS is still asked
+    epmc.mock(side_effect=httpx.ConnectError("down"))
+    before = epmc.call_count, plos.call_count
+    assert client.get("/v1/jats", params={"doi": "10.1371/journal.pbio.1002106"}).json()["source"] == "PLOS"
+    assert (epmc.call_count, plos.call_count) == (before[0] + 1, before[1] + 1)  # Europe PMC was tried, then PLOS
+    # Europe PMC times out: PLOS is still asked
+    epmc.mock(side_effect=httpx.ReadTimeout("slow"))
+    assert client.get("/v1/jats", params={"doi": "10.1371/journal.pbio.1002106"}).json()["source"] == "PLOS"
+    # neither has it, and one couldn't be asked: not known, so not a refusal
+    plos.mock(return_value=httpx.Response(404))
+    e = problem(client.get("/v1/jats", params={"doi": "10.1371/journal.pbio.1002106"}), 502, "jats_check_failed")
+    assert "could not reach Europe PMC" in e["detail"] and "PLOS has no JATS XML" in e["detail"]
+    plos.mock(return_value=httpx.Response(200, content=(FIXTURES / "paper.jats.xml").read_bytes()))
+    # and without a PMCID at all
+    work = WORK | {"ids": {"openalex": "https://openalex.org/W3", "doi": "https://doi.org/10.1371/journal.pcsy.0000125"}}
+    respx.get(url__regex=r"https://api\.openalex\.org/works/doi:10\.1371/journal\.pcsy\.0000125.*").mock(return_value=httpx.Response(200, json=work))
+    respx.get(url__regex=r"https://www\.ebi\.ac\.uk/europepmc/webservices/rest/search.*").mock(return_value=httpx.Response(200, json={"resultList": {"result": []}}))
+    pcsy = respx.get("https://journals.plos.org/plosone/article/file", params={"id": "10.1371/journal.pcsy.0000125", "type": "manuscript"}).mock(
+        return_value=httpx.Response(200, content=(FIXTURES / "paper.jats.xml").read_bytes()))
+    j = client.get("/v1/jats", params={"doi": "10.1371/journal.pcsy.0000125"}).json()
+    assert j["available"] and j["source"] == "PLOS" and j["pmcid"] is None and pcsy.called
+
+
+@respx.mock
+def test_jats_check_keeps_to_its_budget(client, monkeypatch):
+    """Every step hangs as long as it may: Europe PMC is given up in time, PLOS gets what is left, and the whole check
+    ends within CHECK_BUDGET, below the app's 60-s limit (src/main/api.ts)."""
+    from reprocrowd import openalex
+    clock = [0.0]
+    monkeypatch.setattr(openalex, "_now", lambda: clock[0])
+    timeouts: list[float] = []
+    real = openalex._client
+
+    def hanging_client(timeout: float = 60):
+        timeouts.append(timeout)
+        clock[0] += timeout  # the step used all of its time
+        return real(timeout)
+    monkeypatch.setattr(openalex, "_client", hanging_client)
+    respx.get(JATS_URL).mock(return_value=httpx.Response(404))
+    respx.get(PLOS_URL).mock(return_value=httpx.Response(200, content=(FIXTURES / "paper.jats.xml").read_bytes()))
+    mock_openalex()
+    assert client.get("/v1/jats", params={"doi": "10.1371/journal.pbio.1002106"}).json()["source"] == "PLOS"
+    T, budget = openalex.CHECK_TIMEOUT, openalex.CHECK_BUDGET
+    assert timeouts == [T, T, budget - 2 * T], "OpenAlex and Europe PMC at most CHECK_TIMEOUT each; PLOS the rest"
+    assert clock[0] <= budget < 60
+
+
+@respx.mock
+def test_jats_check_gives_up_on_a_trickle(monkeypatch):
+    """httpx's timeout is per wait: a server sending a byte at a time is stopped by the check's own deadline."""
+    from reprocrowd import openalex
+    from reprocrowd.errors import ApiError
+    clock = [0.0]
+
+    def tick():
+        clock[0] += 1
+        return clock[0]
+    monkeypatch.setattr(openalex, "_now", tick)
+    respx.get(JATS_URL).mock(return_value=httpx.Response(200, content=iter([b"x"] * 1000)))
+    c = openalex.Candidate("c-1", "Europe PMC JATS (PMC4359000)", JATS_URL, "jats", "europepmc.jats.xml")
+    with pytest.raises(ApiError) as e:
+        openalex._jats_head(c, timeout=5)
+    assert e.value.code == "jats_check_failed" and "within 5 s" in e.value.message
+
+
+@respx.mock
+def test_small_requests_give_up_on_a_trickle(monkeypatch):
+    """The OpenAlex lookup and the PMCID search keep to their time too, however slowly the answer arrives."""
+    from reprocrowd import openalex
+    clock = [0.0]
+
+    def tick():
+        clock[0] += 1
+        return clock[0]
+    monkeypatch.setattr(openalex, "_now", tick)
+    respx.get(url__regex=r"https://www\.ebi\.ac\.uk/europepmc/webservices/rest/search.*").mock(
+        return_value=httpx.Response(200, content=iter([b" "] * 1000 + [b'{"resultList": {"result": [{"pmcid": "PMC1"}]}}'])))
+    assert openalex._europepmc_pmcid("10.1371/journal.pbio.1002106", timeout=5) is None  # gave up: no PMCID, PLOS next
+    clock[0] = 0.0
+    assert openalex._europepmc_pmcid("10.1371/journal.pbio.1002106", timeout=5000) == "PMC1"  # given the time, it is read
+
+
+@respx.mock
+def test_download_keeps_the_query_string(tmp_path):
+    """A candidate URL with a query string (PLOS's JATS and PDF URLs) is fetched as it is."""
+    from reprocrowd import openalex
+    route = respx.get("https://journals.plos.org/plosone/article/file", params={"id": "10.1371/journal.pone.1", "type": "manuscript"}).mock(
+        return_value=httpx.Response(200, content=b"<article/>"))
+    c = openalex.Candidate("c-1", "PLOS JATS", "https://journals.plos.org/plosone/article/file?id=10.1371/journal.pone.1&type=manuscript",
+                           "jats", "plos.jats.xml")
+    openalex.download(c, tmp_path / "x.xml", 2**20)
+    assert route.called and (tmp_path / "x.xml").read_bytes() == b"<article/>"
 
 
 @respx.mock
@@ -577,3 +718,39 @@ def test_acquire_preview_and_selection(client, pkg, monkeypatch):
     assert r.status_code == 200, r.text
     assert [x["name"] for x in r.json()["resources"]] == ["in-data.csv"]
     assert data.called and not big.called
+
+
+def test_typed_operator_on_llm_target(client, pkg):
+    """An LLM entry has no manual item: its type comes from the run (base plus edit), so a typed bound still applies."""
+    setup_paper(client, pkg)
+    T = f"/v1/packages/{pkg}/targets"
+    run = client.post(T + "/runs", json={"extraction": "ex-paper-tei", "scope": {"sections": ["sec3"]}}).json()
+    p_value = next(e["base"] for e in run["entries"] if e["base"]["description"] == "p value")
+    # A stored bound, as when the LLM read "p < .001" ...
+    r = client.patch(f"{T}/{p_value['id']}", json={"expected": "< .001", "comparator": "<"})
+    assert r.status_code == 200 and r.json()["item"]["comparator"] == "<", r.text
+    # ... then corrected by typing another operator with the value: it replaces the stored one.
+    r = client.patch(f"{T}/{p_value['id']}", json={"expected": "> .05"})
+    assert r.status_code == 200, r.text
+    assert (r.json()["item"]["comparator"], r.json()["item"]["printed"]) == (">", ".05")
+
+
+def test_script_headers_keep_package_text_in_comments():
+    """Issue #91: titles, summaries, notes, source text and paths are package data; whatever line breaks they hold
+    (\\r ends a line in Python and R too), every line of the header stays a comment."""
+    from types import SimpleNamespace
+
+    from reprocrowd.scripts import _env
+
+    evil = 'x\rimport os; os.system("touch pwned")\n\u2028print(1)\x0bq\x85r\x0cs\x1ct\x1du\x1ev\u2029w\r\nz\x00'
+    step = SimpleNamespace(id="A01", kind="analysis", summary=evil, refs=[SimpleNamespace(id="s1")], note=evil,
+                           inputs=[f"inputs/{evil}.csv"], depends_on=["L01"], produces=["T001"])
+    paper = SimpleNamespace(title=evil, identifiers={"doi": evil})
+    env = _env()
+    env.globals["passage_text"] = lambda r: evil
+    tpl = SimpleNamespace(label="Python")
+    for indent in ("", "  "):
+        out = env.from_string('{% import "_macros.j2" as m %}{{ m.header(paper, tpl, "TODO") }}\n{{ m.step_header(s, ind) }}').render(
+            paper=paper, tpl=tpl, s=step, ind=indent)
+        lines = out.splitlines()  # splits on every kind of line break, like the stricter readers
+        assert len(lines) > 10 and all(line.lstrip().startswith("#") for line in lines if line.strip()), out

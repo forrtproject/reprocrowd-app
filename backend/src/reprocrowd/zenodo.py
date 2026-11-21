@@ -24,6 +24,7 @@ The service never stores the user's Zenodo token: clients send it with each requ
 from __future__ import annotations
 
 import json
+import re
 import secrets
 import tempfile
 import zipfile
@@ -36,7 +37,7 @@ import httpx
 
 from . import __version__, identifiers
 from .config import settings
-from .database import Prepared
+from .database import Prepared, verify_archive_contents
 from .errors import ApiError, conflict, invalid, not_found
 from .package import MANIFEST, Package, sha256_file
 from .report import archive_path
@@ -97,10 +98,12 @@ def _request(method: str, url: str, token: str | None = None, ok: Iterable[int] 
 # ---------- service-level ----------
 
 
-def status(sandbox: bool | None = None) -> dict[str, Any]:
+def status(sandbox: bool | None = None, probe: bool = True) -> dict[str, Any]:
     url, sb = server(sandbox)
     out: dict[str, Any] = {"url": url, "sandbox": sb, "token_configured": bool(settings().zenodo_token),
-                           "community": settings().zenodo_community or None, "reachable": False, "error": None}
+                           "community": settings().zenodo_community or None, "reachable": False if probe else None, "error": None}
+    if not probe:
+        return out
     try:
         r = httpx.get(f"{url}/api/records", params={"size": 1}, timeout=5)
         out["reachable"] = r.status_code == 200
@@ -187,18 +190,95 @@ def paper_license(work: dict[str, Any]) -> str | None:
     return None
 
 
+# Files that should rarely be public (#91): flagged in the deposit dialog, never left out silently.
+_SECRET_NAME = re.compile(r"""(^\.env(\..*)?$|\.env$|^\.netrc$|^\.npmrc$|^\.pypirc$|^\.pgpass$|^\.git-credentials$|^\.Renviron$
+    |^id_(rsa|dsa|ecdsa|ed25519)$|\.(pem|key|p12|pfx|jks|keystore|kdbx|ppk|gpg|asc)$
+    |credential|secret|password|passwd|(access|auth|api|bearer)[_-]?token|apikey|api_key)""", re.I | re.X)
+_SECRET_TEXT = re.compile(rb"-----BEGIN [A-Z ]*PRIVATE KEY-----|\bAKIA[0-9A-Z]{16}\b|\bgh[pousr]_[A-Za-z0-9]{36}\b|\bgithub_pat_\w{40,}"
+                          rb"|\bsk-ant-[\w-]{20,}|\bsk-(proj-)?[A-Za-z0-9_-]{32,}|\bxox[abpr]-[\w-]{10,}|\bAIza[\w-]{35}\b")
+_SCAN_BYTES = 2 * 1024**2  # per file: the start of it
+_SCAN_TOTAL = 256 * 1024**2  # per preview: small files first; the rest is reported as not checked
+_KEY_SECRET = "contains what looks like a private key or access token"
+# Archive member hash → whether its start looks like a secret. The archive only holds files whose content matched
+# their recorded hash when it was made (validation), so the hash names exactly the bytes that are uploaded.
+_scanned: dict[str, bool] = {}
+
+
+def _name_flags(path: str) -> list[str]:
+    parts = path.split("/")
+    return (["hidden file"] if any(p.startswith(".") for p in parts) else []) + \
+        (["the name suggests keys or credentials"] if _SECRET_NAME.search(parts[-1]) else [])
+
+
+def _read_start(pkg: Package, path: str, z: zipfile.ZipFile | None) -> bytes | None:
+    """The first bytes of what is uploaded: the archive's member when there is an archive, else the file on disk.
+    None when it can't be read."""
+    try:
+        if z is not None:
+            with z.open(path) as f:
+                return f.read(_SCAN_BYTES)
+        with pkg.path(path).open("rb") as f:
+            return f.read(_SCAN_BYTES)
+    except (OSError, KeyError, zipfile.BadZipFile, ApiError):
+        return None
+
+
+def _looks_secret(pkg: Package, path: str, digest: str | None, z: zipfile.ZipFile | None = None) -> bool | None:
+    """Whether the start of the file looks like a key or token; None when it couldn't be read (not checked)."""
+    if digest and digest in _scanned:
+        return _scanned[digest]
+    data = _read_start(pkg, path, z)
+    if data is None:
+        return None
+    found = bool(_SECRET_TEXT.search(data))
+    if digest and z is not None:
+        _scanned[digest] = found
+    return found
+
+
+def file_flags(pkg: Package, r: Resource) -> list[str]:
+    """Why a file of the package may not belong in a public record: its name, or what looks like a key or token in it."""
+    return _name_flags(r.path) + ([_KEY_SECRET] if _looks_secret(pkg, r.path, None) else [])
+
+
+def _open_archive(pkg: Package) -> zipfile.ZipFile | None:
+    try:
+        return zipfile.ZipFile(archive_path(pkg))
+    except (ApiError, OSError, zipfile.BadZipFile):
+        return None
+
+
 def contents(pkg: Package, work: dict[str, Any] | None = None) -> dict[str, Any]:
-    """The groups that can be left out, their files, and which are left out by default."""
+    """The groups that can be left out, their files, which are left out by default, and every file of the upload
+    (group null: always uploaded) with the reasons it may not belong in a public record. The contents are read from the
+    archive, which is what is uploaded, for their first 2 MB; ``checked`` is false for a file that wasn't read (past
+    the per-preview limit, or unreadable)."""
     m = pkg.load()
     groups: dict[str, dict[str, Any]] = {g: {"description": d, "resources": [], "bytes": 0} for g, d in GROUPS.items()}
-    for r in m.resources:
+    found: dict[str, bool | None] = {}
+    z = _open_archive(pkg)
+    try:
+        budget = _SCAN_TOTAL
+        for r in sorted(m.resources, key=lambda r: r.bytes or 0):
+            if r.hash in _scanned or budget > 0:
+                budget -= 0 if r.hash in _scanned else min(r.bytes or 0, _SCAN_BYTES)
+                found[r.path] = _looks_secret(pkg, r.path, r.hash, z)
+        found[MANIFEST] = _looks_secret(pkg, MANIFEST, None, z)  # small, and it holds the notes people type
+    finally:
+        if z is not None:
+            z.close()
+    entry = lambda path, size, g: {"path": path, "bytes": size, "group": g, "checked": found.get(path) is not None,  # noqa: E731
+                                   "flags": _name_flags(path) + ([_KEY_SECRET] if found.get(path) else [])}
+    files = [entry(MANIFEST, pkg.path(MANIFEST).stat().st_size, None)]
+    for r in sorted(m.resources, key=lambda r: r.path):
         g = _group(r)
         if g:
             groups[g]["resources"].append(r.name)
             groups[g]["bytes"] += r.bytes or 0
+        files.append(entry(r.path, r.bytes, g))
     lic = paper_license(work) if work else None
     default = [] if lic in OPEN_LICENSES else ["paper"]
-    return {"groups": groups, "paper_license": lic, "default_exclude": [g for g in default if groups[g]["resources"]]}
+    return {"groups": groups, "paper_license": lic, "default_exclude": [g for g in default if groups[g]["resources"]], "files": files}
 
 
 def _publication_zip(pkg: Package, archive: Path, exclude: set[str], out_dir: Path) -> tuple[Path, list[Resource]]:
@@ -313,6 +393,7 @@ def create(pkg: Package, *, token: str | None, sandbox: bool | None, exclude: li
     tok = _token(token)
     creators = _creators(creators)
     p = Prepared(pkg)
+    verify_archive_contents(pkg)
     c = contents(pkg, p.work)
     ex = c["default_exclude"] if exclude is None else [g for g in exclude if c["groups"][g]["resources"]]
     community = community if community is not None else settings().zenodo_community or None
@@ -358,6 +439,17 @@ def _find(pkg: Package, dep_id: str) -> ZenodoDeposit:
     return d
 
 
+def _server_of(d: ZenodoDeposit) -> str:
+    """The configured server the deposit is on. The record's own ``server`` comes from datapackage.json, which a shared
+    package can fill in at will: the token is only ever sent to the configured zenodo.org or sandbox URL."""
+    url, _ = server(d.sandbox)
+    if d.server.rstrip("/") != url:
+        raise conflict("deposit_server_unknown", f"the deposit is recorded on {d.server}, which isn't the configured "
+                                                 f"{'Zenodo sandbox' if d.sandbox else 'Zenodo'} server ({url}); it can't be checked or changed from here",
+                       {"server": d.server, "configured": url})
+    return url
+
+
 def _update(pkg: Package, dep_id: str, **changes: Any) -> ZenodoDeposit:
     with pkg.edit() as m:
         d = next(d for d in m.reprocrowd.deposits if d.id == dep_id)
@@ -372,11 +464,12 @@ def refresh(pkg: Package, dep_id: str, token: str | None) -> ZenodoDeposit:
     d = _find(pkg, dep_id)
     if d.status in ("discarded", "gone"):
         return d
-    r = _request("GET", f"{d.server}/api/deposit/depositions/{d.deposition_id}", _token(token), ok=(200, 404, 410), timeout=15)
+    url = _server_of(d)
+    r = _request("GET", f"{url}/api/deposit/depositions/{d.deposition_id}", _token(token), ok=(200, 404, 410), timeout=15)
     if r.status_code in (404, 410):
         return _update(pkg, dep_id, status="gone")
     dep = _body(r)
-    page, doi = _links(d.server, dep)
+    page, doi = _links(url, dep)
     if dep.get("submitted"):
         return _update(pkg, dep_id, status="published", url=page, doi=doi or d.doi, published_at=d.published_at or now())
     return _update(pkg, dep_id, url=page, doi=doi or d.doi)
@@ -388,9 +481,10 @@ def publish_deposit(pkg: Package, dep_id: str, token: str | None) -> ZenodoDepos
         return d
     if d.status != "draft":
         raise conflict("deposit_not_draft", f"the deposit is {d.status}; only drafts can be published")
-    r = _request("POST", f"{d.server}/api/deposit/depositions/{d.deposition_id}/actions/publish", _token(token), timeout=120)
+    url = _server_of(d)
+    r = _request("POST", f"{url}/api/deposit/depositions/{d.deposition_id}/actions/publish", _token(token), timeout=120)
     dep = _body(r)
-    page, doi = _links(d.server, {**dep, "submitted": True})
+    page, doi = _links(url, {**dep, "submitted": True})
     return _update(pkg, dep_id, status="published", url=page, doi=doi or d.doi, published_at=now())
 
 
@@ -399,5 +493,5 @@ def discard(pkg: Package, dep_id: str, token: str | None) -> ZenodoDeposit:
     d = _find(pkg, dep_id)
     if d.status != "draft":
         raise conflict("deposit_not_draft", f"the deposit is {d.status}; only drafts can be discarded")
-    _request("DELETE", f"{d.server}/api/deposit/depositions/{d.deposition_id}", _token(token), ok=(201, 202, 204, 404, 410), timeout=30)
+    _request("DELETE", f"{_server_of(d)}/api/deposit/depositions/{d.deposition_id}", _token(token), ok=(201, 202, 204, 404, 410), timeout=30)
     return _update(pkg, dep_id, status="discarded")

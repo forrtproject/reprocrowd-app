@@ -1,10 +1,13 @@
-"""OpenAlex metadata and full-text download candidates (URLs named in the OpenAlex record, plus Europe PMC
-JATS when a PMCID is known)."""
+"""OpenAlex metadata and full-text download candidates (URLs named in the OpenAlex record, plus JATS XML from
+Europe PMC when a PMCID is known, and from the publisher for PLOS articles)."""
 from __future__ import annotations
 
 import hashlib
+import json
+import time
 from dataclasses import dataclass
 from typing import Any
+from urllib.parse import urlencode
 
 import httpx
 
@@ -16,11 +19,46 @@ from .schemas.common import Identifier
 API = "https://api.openalex.org"
 CONTENT = "https://content.openalex.org"
 EUROPEPMC = "https://www.ebi.ac.uk/europepmc/webservices/rest"
+# PLOS serves the JATS XML of every article it publishes, PubMed Central or not; the journal in the path doesn't matter.
+PLOS = "https://journals.plos.org/plosone/article/file"
 USER_AGENT = "reprocrowd-cli/0.1 (+https://github.com/)"
 
 
-def _client() -> httpx.Client:
-    return httpx.Client(timeout=60, follow_redirects=True, headers={"User-Agent": USER_AGENT})
+# The JATS check must answer within the app's 60-s limit (src/main/api.ts), so it has CHECK_BUDGET seconds in all. A
+# step with a fallback after it (OpenAlex, the PMCID search, Europe PMC's JATS) gets at most CHECK_TIMEOUT of that, so a
+# hanging Europe PMC still leaves time to ask PLOS, which gets whatever is left.
+CHECK_BUDGET = 50
+CHECK_TIMEOUT = 15
+
+
+_now = time.monotonic  # replaceable in tests
+
+
+class Deadline:
+    def __init__(self, seconds: float):
+        self.end = _now() + seconds
+
+    def left(self, cap: float | None = None) -> float:
+        """Seconds left (at least one, so a request can still be made), at most ``cap``."""
+        left = max(1.0, self.end - _now())
+        return min(left, cap) if cap else left
+
+
+def _client(timeout: float = 60) -> httpx.Client:
+    return httpx.Client(timeout=timeout, follow_redirects=True, headers={"User-Agent": USER_AGENT})
+
+
+def _get(url: str, params: dict[str, str], timeout: float) -> tuple[int, bytes]:
+    """GET (status, body), given up after ``timeout`` seconds in all: httpx's own timeout bounds each wait, so a server
+    sending a trickle could otherwise take far longer."""
+    deadline = Deadline(timeout)
+    with _client(timeout) as c, c.stream("GET", url, params=params) as r:
+        body = b""
+        for chunk in r.iter_bytes():
+            body += chunk
+            if _now() > deadline.end:
+                raise httpx.ReadTimeout(f"no complete answer within {timeout:.0f} s")
+        return r.status_code, body
 
 
 def _auth_params() -> dict[str, str]:
@@ -28,18 +66,17 @@ def _auth_params() -> dict[str, str]:
     return {k: v for k, v in {"api_key": cfg.openalex_api_key, "mailto": cfg.mailto}.items() if v}
 
 
-def fetch_work(ident: Identifier) -> dict[str, Any]:
+def fetch_work(ident: Identifier, timeout: float = 60) -> dict[str, Any]:
     url = f"{API}/works/{openalex_key(ident)}"
     try:
-        with _client() as c:
-            r = c.get(url, params=_auth_params())
+        status, body = _get(url, _auth_params(), timeout)
     except httpx.HTTPError as e:
         raise ApiError(502, "openalex_failed", f"could not reach OpenAlex: {e}")
-    if r.status_code == 404:
+    if status == 404:
         raise ApiError(404, "openalex_not_found", f"OpenAlex has no work for {ident.scheme}:{ident.value}")
-    if r.status_code != 200:
-        raise ApiError(502, "openalex_failed", f"OpenAlex returned HTTP {r.status_code}", {"body": r.text[:500]})
-    return r.json()
+    if status != 200:
+        raise ApiError(502, "openalex_failed", f"OpenAlex returned HTTP {status}", {"body": body[:500].decode("utf-8", "replace")})
+    return json.loads(body)
 
 
 def identifiers_of(work: dict[str, Any]) -> dict[str, str]:
@@ -70,16 +107,15 @@ class Candidate:
         return self.url, (_auth_params() if self.openalex_auth else {})
 
 
-def _europepmc_pmcid(doi: str) -> str | None:
+def _europepmc_pmcid(doi: str, timeout: float = CHECK_TIMEOUT) -> str | None:
     try:
-        with _client() as c:
-            r = c.get(f"{EUROPEPMC}/search", params={"query": f'DOI:"{doi}"', "format": "json", "resultType": "lite"})
-        return next((x["pmcid"] for x in r.json().get("resultList", {}).get("result", []) if x.get("pmcid")), None)
+        _, body = _get(f"{EUROPEPMC}/search", {"query": f'DOI:"{doi}"', "format": "json", "resultType": "lite"}, timeout)
+        return next((x["pmcid"] for x in json.loads(body).get("resultList", {}).get("result", []) if x.get("pmcid")), None)
     except (httpx.HTTPError, ValueError, KeyError):
         return None
 
 
-def candidates(work: dict[str, Any]) -> tuple[list[Candidate], list[str]]:
+def candidates(work: dict[str, Any], pmcid_timeout: float = CHECK_TIMEOUT) -> tuple[list[Candidate], list[str]]:
     """Download candidates and notes about sources that are known but unavailable."""
     out: list[Candidate] = []
     notes: list[str] = []
@@ -107,18 +143,20 @@ def candidates(work: dict[str, Any]) -> tuple[list[Candidate], list[str]]:
     oa_url = (work.get("open_access") or {}).get("oa_url")
     if oa_url and "pdf" in oa_url.lower():
         add("open_access.oa_url", oa_url, "pdf", "oa-url.pdf")
-    pmcid = ids.get("pmcid") or (_europepmc_pmcid(ids["doi"]) if ids.get("doi") else None)
+    pmcid = ids.get("pmcid") or (_europepmc_pmcid(ids["doi"], pmcid_timeout) if ids.get("doi") else None)
     if pmcid:
         add(f"Europe PMC JATS ({pmcid})", f"{EUROPEPMC}/{pmcid}/fullTextXML", "jats", "europepmc.jats.xml")
     else:
         notes.append("No PMCID known: no Europe PMC JATS candidate.")
+    if ids.get("doi", "").startswith("10.1371/journal."):  # after Europe PMC, whose archive has the published figures
+        add("PLOS JATS", f"{PLOS}?{urlencode({'id': ids['doi'], 'type': 'manuscript'})}", "jats", "plos.jats.xml")
     return out, notes
 
 
 def download(c: Candidate, dest, max_bytes: int) -> None:
-    url, params = c.download_url()
+    url, params = c.download_url()  # params=None: an empty dict would drop the query string already in the URL
     try:
-        with _client() as client, client.stream("GET", url, params=params, headers={"Accept": "application/pdf,application/xml;q=0.9,*/*;q=0.5"}) as r:
+        with _client() as client, client.stream("GET", url, params=params or None, headers={"Accept": "application/pdf,application/xml;q=0.9,*/*;q=0.5"}) as r:
             if r.status_code != 200:
                 raise ApiError(502, "download_failed", f"{c.label}: HTTP {r.status_code}", {"url": c.url})
             n = 0
@@ -132,32 +170,63 @@ def download(c: Candidate, dest, max_bytes: int) -> None:
         raise ApiError(502, "download_failed", f"{c.label}: {e}", {"url": c.url})
 
 
-def jats_availability(doi: str) -> dict[str, Any]:
-    """Can the paper's JATS XML be retrieved? Asks OpenAlex and Europe PMC for its PMCID, then fetches the start of
-    Europe PMC's fullTextXML: a PMCID alone isn't enough, since only the open-access subset has full-text XML."""
-    work = fetch_work(Identifier(scheme="doi", value=doi))
-    cands, _ = candidates(work)
-    jats = next((c for c in cands if c.format == "jats"), None)
-    out: dict[str, Any] = {"doi": doi, "available": False, "pmcid": None, "url": None, "title": work.get("title"), "reason": None}
-    if jats is None:
-        out["reason"] = "Europe PMC has no copy of this paper in PubMed Central (no PMCID)."
-        return out
-    out["pmcid"] = jats.label.split("(")[-1].rstrip(")")
-    out["url"] = jats.url
+def _pmcid_of(c: Candidate) -> str | None:
+    return c.label.split("(")[-1].rstrip(")") if c.label.startswith("Europe PMC") else None
+
+
+def _jats_head(c: Candidate, timeout: float = CHECK_TIMEOUT) -> str | None:
+    """Why the candidate's JATS XML can't be had, from the start of the download; None if it can. Raises
+    jats_check_failed if its source can't be reached, or doesn't answer within ``timeout`` seconds in all (httpx's own
+    timeout is per wait, so a server sending a trickle could otherwise take longer)."""
+    source = "Europe PMC" if _pmcid_of(c) else "PLOS"
+    deadline = Deadline(timeout)
     try:
-        with _client() as c, c.stream("GET", jats.url, headers={"Accept": "application/xml"}) as r:
+        with _client(timeout) as client, client.stream("GET", c.url, headers={"Accept": "application/xml"}) as r:
             head = b""
             if r.status_code == 200:
                 for chunk in r.iter_bytes():
                     head += chunk
                     if len(head) > 65536:
                         break
+                    if _now() > deadline.end:
+                        raise ApiError(502, "jats_check_failed", f"{source} didn't answer within {timeout:.0f} s")
     except httpx.HTTPError as e:
-        raise ApiError(502, "jats_check_failed", f"could not reach Europe PMC: {e}")
+        raise ApiError(502, "jats_check_failed", f"could not reach {source}: {e}")
     if r.status_code != 200:
-        out["reason"] = f"Europe PMC has no JATS XML for {out['pmcid']}: the paper isn't in the open-access subset of PubMed Central."
-    elif b"<article" not in head:
-        out["reason"] = f"Europe PMC's answer for {out['pmcid']} isn't JATS XML."
-    else:
-        out["available"] = True
-    return out
+        if _pmcid_of(c):
+            return f"Europe PMC has no JATS XML for {_pmcid_of(c)}: the paper isn't in the open-access subset of PubMed Central."
+        return f"PLOS has no JATS XML for this DOI (HTTP {r.status_code})."
+    if b"<article" not in head:
+        return f"{source}'s answer for {_pmcid_of(c) or 'this DOI'} isn't JATS XML."
+    return None
+
+
+def jats_availability(doi: str) -> dict[str, Any]:
+    """Can the paper's JATS XML be retrieved? Asks OpenAlex and Europe PMC for its PMCID, then fetches the start of
+    Europe PMC's fullTextXML: a PMCID alone isn't enough, since only the open-access subset has full-text XML. PLOS
+    articles also have it from PLOS, which is tried if Europe PMC has none. A source that can't be reached doesn't stop
+    the others from being tried, but if none has the XML, that is jats_check_failed: the answer isn't known."""
+    deadline = Deadline(CHECK_BUDGET)
+    work = fetch_work(Identifier(scheme="doi", value=doi), deadline.left(CHECK_TIMEOUT))
+    cands, _ = candidates(work, deadline.left(CHECK_TIMEOUT))
+    jats = [c for c in cands if c.format == "jats"]
+    out: dict[str, Any] = {"doi": doi, "available": False, "source": None, "pmcid": None, "url": None, "title": work.get("title"),
+                           "reason": None}
+    if not jats:
+        out["reason"] = "Europe PMC has no copy of this paper in PubMed Central (no PMCID)."
+        return out
+    reasons = [] if _pmcid_of(jats[0]) else ["Europe PMC has no copy of this paper in PubMed Central (no PMCID)."]
+    unreachable: list[str] = []
+    for i, c in enumerate(jats):
+        try:  # the last source gets all the time left; one with a fallback after it, at most CHECK_TIMEOUT
+            reason = _jats_head(c, deadline.left(None if i == len(jats) - 1 else CHECK_TIMEOUT))
+        except ApiError as e:
+            unreachable.append(e.message)
+            continue
+        if reason is None:
+            return out | {"available": True, "source": "Europe PMC" if _pmcid_of(c) else "PLOS", "pmcid": _pmcid_of(c), "url": c.url}
+        reasons.append(reason)
+    if unreachable:
+        raise ApiError(502, "jats_check_failed", "; ".join(unreachable) + (f" ({' '.join(reasons)})" if reasons else ""))
+    pmcid = next((_pmcid_of(c) for c in jats if _pmcid_of(c)), None)
+    return out | {"pmcid": pmcid, "url": jats[0].url, "reason": " ".join(reasons)}

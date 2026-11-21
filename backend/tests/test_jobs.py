@@ -172,7 +172,7 @@ def test_codegen_needs_script_and_interrupted_jobs(client, pkg, tmp_path):
 def test_poll_overlapping_the_end_of_a_job_keeps_its_outcome(tmp_path, monkeypatch):
     """A poll holding a "running" copy while the job ends must not report it interrupted, or save that over the outcome."""
     pkg = SimpleNamespace(root=tmp_path, path=lambda rel: tmp_path / rel)
-    jid = jobs.new_id()
+    jid = jobs.new_id(pkg)
     key = jobs._key(pkg, jid)
     read = jobs.Job.model_validate_json
 
@@ -206,3 +206,21 @@ def test_sync_registers_outside_changes(client, pkg):
     client.post(f"/v1/packages/{pkg}:sync")
     report = client.get(f"/v1/packages/{pkg}/validation").json()
     assert not report["valid"] and {e["stage"] for e in report["errors"]} >= {"jsonschema", "model"}
+
+
+def test_jobs_in_the_same_second_get_their_own_ids(tmp_path, monkeypatch):
+    """Two jobs started in the same second must not share a record and logs."""
+    from reprocrowd.package import Package, init_package
+
+    init_package(tmp_path / "pkg", "pkg", None)
+    pkg = Package("pkg", tmp_path / "pkg")
+    monkeypatch.setattr(jobs.time, "strftime", lambda fmt: "20260101-000000")
+    suffixes = iter(["abcd", "abcd", "ef01", "9999", "abcd", "ef01", "2345"])
+    monkeypatch.setattr(jobs.secrets, "token_hex", lambda n: next(suffixes))
+    first = jobs.new_id(pkg)
+    assert pkg.path(f"jobs/{first}").is_dir()  # reserved by its folder
+    second = jobs.new_id(pkg)  # abcd is taken by first's folder
+    pkg.path("jobs/job-20260101-000000-9999.json").write_text("{}")  # a record whose folder is gone
+    third = jobs.new_id(pkg)  # 9999 has a record, abcd and ef01 folders
+    assert (first, second, third) == ("job-20260101-000000-abcd", "job-20260101-000000-ef01", "job-20260101-000000-2345")
+    assert next(suffixes, None) is None  # every draw was needed

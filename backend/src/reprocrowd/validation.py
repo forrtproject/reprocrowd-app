@@ -16,7 +16,7 @@ from frictionless import validate as fl_validate
 from pydantic import BaseModel, ValidationError
 
 from .curation import CURATIONS, Context, Curation, find_cycle
-from .errors import pydantic_errors
+from .errors import ApiError, pydantic_errors
 from .files import untracked
 from .package import MANIFEST, Package
 from .schemas import SCHEMAS, schema_path
@@ -55,6 +55,22 @@ def validate_package(pkg: Package) -> ValidationReport:
         msgs = pydantic_errors(e) if isinstance(e, ValidationError) else [str(e)]
         for msg in msgs:
             err("manifest", msg)
+        return ValidationReport(valid=False, errors=errors, warnings=warnings)
+
+    # Every file must be a regular file inside the package: a symlink would put its target (an SSH key, say) into the archive.
+    root = pkg.root.resolve()
+    for r in m.resources:
+        for rel in filter(None, (r.path, r.jsonSchema)):
+            try:
+                p = pkg.path(rel)
+            except ApiError as e:
+                err("manifest", e.message, r.name)
+                continue
+            if p.is_symlink() or (p.exists() and not p.resolve().is_relative_to(root)):
+                err("manifest", f"{rel} is a symbolic link or lies outside the package; replace it with the file itself", r.name)
+            elif p.exists() and not p.is_file():  # a folder, or a FIFO that would hang the integrity check
+                err("manifest", f"{rel} is not a regular file", r.name)
+    if errors:
         return ValidationReport(valid=False, errors=errors, warnings=warnings)
 
     # 2. frictionless: integrity of every file

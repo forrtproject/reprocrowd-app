@@ -22,7 +22,7 @@ from .package import Package, atomic_write, sha256_file, slug
 from .schemas.common import now
 from .schemas.exports import AnalysisPlan, Paper, PlanStep, ResultsSchema
 from .schemas.jobs import TodoFile, TodoLine, TodoStatus
-from .schemas.manifest import OtherMeta, ScriptMeta
+from .schemas.manifest import CONTROL_CHARS, OtherMeta, ScriptMeta
 
 TODO_MARK = "TODO(LLM)"
 
@@ -48,9 +48,27 @@ def templates() -> dict[str, Template]:
     return dict(sorted(out.items()))
 
 
+_BREAKS = re.compile(r"\r\n?|[\x0b\x0c\x1c-\x1e\x85\u2028\u2029]")
+_CONTROL = re.compile(f"[{CONTROL_CHARS}]")
+
+
+def _nl(text: object) -> str:
+    """Line breaks of every kind as \\n, other control characters as spaces: the templates split on \\n and prefix every
+    line with the comment marker, so no other line break (Python and R also end lines at \\r) may slip through."""
+    return _CONTROL.sub(lambda c: c.group() if c.group() == "\n" else " ", _BREAKS.sub("\n", str(text)))
+
+
+def _oneline(text: object) -> str:
+    """For one-line values in code comments (title, identifiers, file names): no line breaks at all."""
+    return _CONTROL.sub(" ", _BREAKS.sub(" ", str(text)))
+
+
 def _env() -> Environment:
-    return Environment(loader=PackageLoader("reprocrowd", "templates"), undefined=StrictUndefined,
-                       keep_trailing_newline=True, trim_blocks=True, lstrip_blocks=True, autoescape=False)
+    env = Environment(loader=PackageLoader("reprocrowd", "templates"), undefined=StrictUndefined,
+                      keep_trailing_newline=True, trim_blocks=True, lstrip_blocks=True, autoescape=False)
+    env.filters["nl"] = _nl
+    env.filters["oneline"] = _oneline
+    return env
 
 
 def resolve_plan(pkg: Package) -> AnalysisPlan:
@@ -191,7 +209,7 @@ def agent_prompt(pkg: Package, tpl: Template, instructions: str = "", *, allow_e
     m = pkg.load()
     used = [r for r in m.by_kind("input") if r.reprocrowd.used and r.reprocrowd.role != "code"]
     by_role = {role: [r for r in used if r.reprocrowd.role == role] for role in ("data", "code", "other")}
-    text = _env().get_template("_AGENT_PROMPT.md.j2").render(tpl=tpl, inputs=by_role, marker=TODO_MARK, folder=str(pkg.root), allow_exec=allow_exec)
+    text = _env().get_template("_AGENT_PROMPT.md.j2").render(tpl=tpl, inputs=by_role, marker=TODO_MARK, allow_exec=allow_exec)
     if instructions.strip():
         text += f"\nAdditional instructions:\n{instructions.strip()}\n"
     return text

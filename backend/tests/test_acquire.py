@@ -9,6 +9,17 @@ from reprocrowd.errors import ApiError
 from reprocrowd.package import Package, init_package
 
 
+SHA = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+
+
+@pytest.fixture(autouse=True)
+def _public_dns(monkeypatch):
+    """No real DNS in tests: every name is public, except *.internal.test, which is on the local network."""
+    real = acquire._addresses
+    monkeypatch.setattr(acquire, "_addresses", lambda host, port: ["192.168.1.1"] if host.endswith(".internal.test")
+                        else real(host, port) if host[:1].isdigit() or ":" in host else ["93.184.216.34"])
+
+
 def _make_pkg(tmp_path) -> Package:
     root = tmp_path / "pkg"
     init_package(root, "pkg", None)
@@ -55,26 +66,30 @@ def test_fetch_zenodo(tmp_path):
     r = m.get("in-data.csv")
     assert r.reprocrowd.role == "data"
     assert r.reprocrowd.origin.model_dump() == {"type": "fetched", "url": "https://zenodo.org/api/files/123/data.csv",
-                                                "repo": "zenodo", "id": "123456", "label": "fetched from Zenodo record 123456"}
+                                                "repo": "zenodo", "id": "123456", "label": "fetched from Zenodo record 123456",
+                                                "path": "data.csv", "commit": None}
     assert (pkg.path(r.path)).read_bytes() == b"a,b\n1,2\n"
 
 
 @respx.mock
 def test_fetch_github(tmp_path):
     respx.get("https://api.github.com/repos/owner/repo").mock(return_value=httpx.Response(200, json={"default_branch": "main"}))
-    respx.get("https://api.github.com/repos/owner/repo/git/trees/main?recursive=1").mock(
+    respx.get("https://api.github.com/repos/owner/repo/branches/main").mock(return_value=httpx.Response(200, json={"commit": {"sha": SHA}}))
+    respx.get(f"https://api.github.com/repos/owner/repo/git/trees/{SHA}?recursive=1").mock(
         return_value=httpx.Response(200, json={"tree": [
             {"type": "blob", "path": "analysis.R", "size": 100},
             {"type": "tree", "path": "data"},
         ]}))
-    respx.get("https://raw.githubusercontent.com/owner/repo/main/analysis.R").mock(
+    respx.get(f"https://raw.githubusercontent.com/owner/repo/{SHA}/analysis.R").mock(
         return_value=httpx.Response(200, content=b"print('hi')\n"))
     pkg = _make_pkg(tmp_path)
     link = acquire.Link(repo="github", url="https://github.com/owner/repo", id="owner/repo", kind="code",
                         label="GitHub repository owner/repo")
     res = acquire.fetch(pkg, link)
     assert [r.name for r in res] == ["in-analysis.r"]
-    assert pkg.load().get("in-analysis.r").reprocrowd.role == "code"
+    r = pkg.load().get("in-analysis.r")
+    assert r.reprocrowd.role == "code"
+    assert r.reprocrowd.origin.commit == SHA and r.reprocrowd.origin.path == "analysis.R"  # pinned (#91)
 
 
 @respx.mock
@@ -82,15 +97,18 @@ def test_fetch_gitlab(tmp_path):
     import urllib.parse
     project = urllib.parse.quote("owner/repo", safe="")
     respx.get(f"https://gitlab.com/api/v4/projects/{project}").mock(return_value=httpx.Response(200, json={"default_branch": "main"}))
+    respx.get(f"https://gitlab.com/api/v4/projects/{project}/repository/branches/main").mock(return_value=httpx.Response(200, json={"commit": {"id": SHA}}))
     respx.get(f"https://gitlab.com/api/v4/projects/{project}/repository/tree").mock(
         return_value=httpx.Response(200, json=[{"type": "blob", "path": "analysis.py", "size": 50}]))
-    respx.get("https://gitlab.com/owner/repo/-/raw/main/analysis.py").mock(
+    respx.get(f"https://gitlab.com/owner/repo/-/raw/{SHA}/analysis.py").mock(
         return_value=httpx.Response(200, content=b"print('hi')\n"))
     pkg = _make_pkg(tmp_path)
     link = acquire.Link(repo="gitlab", url="https://gitlab.com/owner/repo", id="owner/repo", kind="code",
                         label="GitLab repository owner/repo")
     res = acquire.fetch(pkg, link)
     assert [r.name for r in res] == ["in-analysis.py"]
+    origin = pkg.load().get("in-analysis.py").reprocrowd.origin
+    assert origin.commit == SHA and origin.path == "analysis.py"  # pinned (#91)
 
 
 @respx.mock
@@ -407,13 +425,14 @@ def test_gitlab_follows_pages(tmp_path):
     project = "owner%2Frepo"
     tree = f"https://gitlab.com/api/v4/projects/{project}/repository/tree"
     respx.get(f"https://gitlab.com/api/v4/projects/{project}").mock(return_value=httpx.Response(200, json={"default_branch": "main"}))
+    respx.get(f"https://gitlab.com/api/v4/projects/{project}/repository/branches/main").mock(return_value=httpx.Response(200, json={"commit": {"id": SHA}}))
     respx.get(tree, params={"page_token": "p2"}).mock(return_value=httpx.Response(200, json=[
         {"type": "blob", "path": "data/my file.csv"}]))
     first = respx.get(tree).mock(return_value=httpx.Response(200, json=[
         {"type": "blob", "path": "analysis.py"}, {"type": "tree", "path": "data"}],
         headers={"Link": f'<{tree}?page_token=p2&per_page=100>; rel="next"'}))
-    respx.get("https://gitlab.com/owner/repo/-/raw/main/analysis.py").mock(return_value=httpx.Response(200, content=b"1"))
-    respx.get("https://gitlab.com/owner/repo/-/raw/main/data/my%20file.csv").mock(return_value=httpx.Response(200, content=b"2"))
+    respx.get(f"https://gitlab.com/owner/repo/-/raw/{SHA}/analysis.py").mock(return_value=httpx.Response(200, content=b"1"))
+    respx.get(f"https://gitlab.com/owner/repo/-/raw/{SHA}/data/my%20file.csv").mock(return_value=httpx.Response(200, content=b"2"))
     link = acquire.Link(repo="gitlab", url="https://gitlab.com/owner/repo", id="owner/repo", kind="code", label="")
     res = acquire.fetch(_make_pkg(tmp_path), link)
     assert sorted(r.name for r in res) == ["in-analysis.py", "in-my-file.csv"]
@@ -541,3 +560,60 @@ def test_preview_marks_files_already_fetched(tmp_path, monkeypatch):
 
     inputs.delete(pkg, "in-data.csv")
     assert not any(f["present"] for f in acquire.preview(pkg)["files"])
+
+
+@respx.mock
+@pytest.mark.parametrize("url", ["http://127.0.0.1:8080/x", "http://[::1]/x", "http://[::ffff:10.0.0.1]/x", "http://169.254.169.254/latest",
+                                 "http://router.internal.test/admin"])
+def test_download_refuses_local_addresses(tmp_path, url):
+    """Issue #91: a repository's download URL can't point the app at the user's own network."""
+    route = respx.get(url).mock(return_value=httpx.Response(200, content=b"secret"))
+    with pytest.raises(ApiError, match="local or private address"):
+        acquire._download(url, tmp_path / "f", 1000)
+    assert not route.called and not (tmp_path / "f").exists()
+
+
+@respx.mock
+def test_redirects_to_local_addresses_are_refused(tmp_path):
+    respx.get("https://figshare.com/ndownloader/files/1").mock(return_value=httpx.Response(302, headers={"Location": "http://192.168.0.1/cfg"}))
+    local = respx.get("http://192.168.0.1/cfg").mock(return_value=httpx.Response(200, content=b"router config"))
+    with pytest.raises(ApiError, match="local or private address"):
+        acquire._download("https://figshare.com/ndownloader/files/1", tmp_path / "f", 1000)
+    assert not local.called
+
+
+@respx.mock
+def test_github_refetch_at_a_new_commit_skips_known_files(tmp_path):
+    """The download URL names the commit, so a file fetched before is recognised by its path, also when it was
+    fetched by a version that recorded the branch URL and no path."""
+    respx.get("https://api.github.com/repos/owner/repo").mock(return_value=httpx.Response(200, json={"default_branch": "main"}))
+    branch = respx.get("https://api.github.com/repos/owner/repo/branches/main")
+    for sha in (SHA, "b" * 40):
+        respx.get(f"https://api.github.com/repos/owner/repo/git/trees/{sha}?recursive=1").mock(
+            return_value=httpx.Response(200, json={"tree": [{"type": "blob", "path": "analysis.R", "size": 2}]}))
+        respx.get(f"https://raw.githubusercontent.com/owner/repo/{sha}/analysis.R").mock(return_value=httpx.Response(200, content=b"1\n"))
+    pkg = _make_pkg(tmp_path)
+    link = acquire.Link(repo="github", url="https://github.com/owner/repo", id="owner/repo", kind="code", label="GitHub repository owner/repo")
+    branch.mock(return_value=httpx.Response(200, json={"commit": {"sha": SHA}}))
+    assert [r.name for r in acquire.fetch(pkg, link)] == ["in-analysis.r"]
+    branch.mock(return_value=httpx.Response(200, json={"commit": {"sha": "b" * 40}}))
+    assert acquire.fetch(pkg, link) == []
+    with pkg.edit() as m:  # as an older version recorded it
+        o = m.get("in-analysis.r").reprocrowd.origin
+        o.url, o.path, o.commit = "https://raw.githubusercontent.com/owner/repo/main/analysis.R", None, None
+    assert acquire.fetch(pkg, link) == []
+    assert len(pkg.load().by_kind("input")) == 1
+
+
+@respx.mock
+def test_new_url_for_a_name_outside_git_is_a_new_file(tmp_path):
+    """Matching by path is for commit-pinned git fetches only: a record whose file got a new URL is fetched again."""
+    record = respx.get("https://zenodo.org/api/records/123456")
+    pkg = _make_pkg(tmp_path)
+    link = acquire.Link(repo="zenodo", url="https://zenodo.org/records/123456", id="123456", kind="data", label="Zenodo record 123456")
+    for n in (1, 2):
+        record.mock(return_value=httpx.Response(200, json={"metadata": {"title": "t"}, "files": [
+            {"key": "data.csv", "size": 4, "links": {"self": f"https://zenodo.org/api/files/{n}/data.csv"}}]}))
+        respx.get(f"https://zenodo.org/api/files/{n}/data.csv").mock(return_value=httpx.Response(200, content=f"v{n}\n".encode()))
+        assert len(acquire.fetch(pkg, link)) == 1
+    assert len(pkg.load().by_kind("input")) == 2

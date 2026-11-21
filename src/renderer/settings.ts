@@ -44,7 +44,7 @@ export async function settingsDialog(onSaved: (changed: boolean) => void, focus?
         <label>Personal access token for <span id="z-host"></span> <input name="ztoken" type="password" autocomplete="off" spellcheck="false" /></label>
         <button type="button" id="z-verify">Check</button><button type="button" id="z-remove">Remove</button>
       </div>
-      <p class="hint"><a href="#" id="z-create">Create a token</a> on Zenodo with the scopes <code>deposit:write</code> and <code>deposit:actions</code>, and paste it here. zenodo.org and the sandbox have separate accounts, so each needs its own token. ${cfg.secretStorage === "secure" ? "Tokens are kept encrypted with your system's keyring." : cfg.secretStorage === "weak" ? `<span class="warn-inline">No system keyring was found, so tokens are only obfuscated on disk.</span>` : `<span class="warn-inline">This system offers no secure storage; tokens can't be saved.</span>`}</p>
+      <p class="hint"><a href="#" id="z-create">Create a token</a> on Zenodo with the scopes <code>deposit:write</code> and <code>deposit:actions</code>, and paste it here. zenodo.org and the sandbox have separate accounts, so each needs its own token. ${cfg.secretStorage === "secure" ? "Tokens are kept encrypted with your system's keyring." : cfg.secretStorage === "weak" ? `<span class="warn-inline">No system keyring was found: a token is kept for this session only, unless you choose to save it unprotected.</span>` : `<span class="warn-inline">This system offers no secure storage, so a token is kept for this session only.</span>`}</p>
       <p class="z-check small" aria-live="polite"></p>
       <label>Community <input name="zcommunity" value="${esc(z.community)}" placeholder="optional, e.g. reprocrowd" spellcheck="false" /></label>
       <p class="hint">Deposits are submitted to this Zenodo community, whose curators accept them.</p>
@@ -284,12 +284,15 @@ export async function settingsDialog(onSaved: (changed: boolean) => void, focus?
       const repo = q<HTMLInputElement>("[name=ghrepo]").value.trim();
       if (repo && !/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repo)) throw new Error(`“${repo}” isn't a GitHub repository (owner/name).`);
       const token = q<HTMLInputElement>("[name=ztoken]").value.trim();
+      const becfg = q<HTMLTextAreaElement>("[name=becfg]").value;
+      const commands = { editorCmd: q<HTMLInputElement>("[name=editor]").value.trim(), backendCmd: q<HTMLInputElement>("[name=becmd]").value.trim() };
+      // New commands are confirmed for the whole save first: declining changes nothing.
+      await host.confirmSettings(commands, becfg !== cfg.backendConfig ? becfg : undefined);
       if (token) await host.setZenodoToken(server(), token);
-      if (q<HTMLTextAreaElement>("[name=becfg]").value !== cfg.backendConfig) await host.saveBackendConfig(q<HTMLTextAreaElement>("[name=becfg]").value);
+      if (becfg !== cfg.backendConfig) await host.saveBackendConfig(becfg);
       await host.setConfig({
         packagesRoot: q<HTMLInputElement>("[name=root]").value.trim(),
-        editorCmd: q<HTMLInputElement>("[name=editor]").value.trim(),
-        backendCmd: q<HTMLInputElement>("[name=becmd]").value.trim(),
+        ...commands,
         checkUpdates: q<HTMLInputElement>("[name=checkupd]").checked,
         autoUpdate: q<HTMLInputElement>("[name=autoupd]").checked,
         github: { repo },

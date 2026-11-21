@@ -1,4 +1,5 @@
 // Pure validation/serialization for the trusted local profile editor. No IPC or process access here.
+import { isDeepStrictEqual } from "node:util";
 import { parse, stringify } from "smol-toml";
 
 export type ProfileKind = "llm" | "agent";
@@ -6,7 +7,7 @@ export type Profile = {
   argv: string[]; model: string; effort: string; timeout_s: number;
   output?: string; events?: string; tools?: string[]; exec_tools?: string[];
   read_files_argv?: string[]; json_schema_argv?: string[];
-  no_exec_argv?: string[]; no_exec_env?: Record<string, string>;
+  no_exec_argv?: string[]; no_exec_env?: Record<string, string>; env_pass?: string[];
 };
 const strings = (v: unknown): v is string[] => Array.isArray(v) && v.every((x) => typeof x === "string");
 
@@ -14,13 +15,14 @@ export function replaceProfile(text: string, kind: ProfileKind, name: string, pr
   if (!["llm", "agent"].includes(kind) || !/^[\w-]+$/.test(name)) throw new Error("Choose a profile name using letters, numbers, underscores or hyphens.");
   if (!strings(profile.argv) || !profile.argv.length || !profile.argv[0].trim()) throw new Error("A command and an argument list are required.");
   if (typeof profile.model !== "string" || typeof profile.effort !== "string" || !Number.isFinite(profile.timeout_s) || profile.timeout_s <= 0) throw new Error("Model/effort must be text and timeout must be positive.");
-  const allowed = new Set(["argv", "model", "effort", "timeout_s", ...(kind === "llm" ? ["output", "read_files_argv", "json_schema_argv"] : ["events", "tools", "exec_tools", "no_exec_argv", "no_exec_env"])]);
+  const allowed = new Set(["argv", "model", "effort", "timeout_s", "env_pass", ...(kind === "llm" ? ["output", "read_files_argv", "json_schema_argv"] : ["events", "tools", "exec_tools", "no_exec_argv", "no_exec_env"])]);
   if (Object.keys(profile).some((key) => !allowed.has(key))) throw new Error("Unrecognized profile field.");
   const protocols = kind === "llm" ? ["text", "claude-json", "opencode-json", "codex-json"] : ["text", "claude-stream-json", "opencode-json", "codex-json"];
   if (!protocols.includes(kind === "llm" ? profile.output ?? "" : profile.events ?? "")) throw new Error("Choose a supported output protocol.");
-  for (const key of ["tools", "exec_tools", "read_files_argv", "json_schema_argv", "no_exec_argv"] as const) {
+  for (const key of ["tools", "exec_tools", "read_files_argv", "json_schema_argv", "no_exec_argv", "env_pass"] as const) {
     if (profile[key] !== undefined && !strings(profile[key])) throw new Error(`${key} must be a list of text arguments.`);
   }
+  for (const n of profile.env_pass ?? []) if (!/^[A-Za-z_][A-Za-z0-9_]*\*?$/.test(n)) throw new Error(`“${n}” isn't an environment variable name (or a PREFIX_* group).`);
   if (profile.no_exec_env !== undefined) {
     const env = profile.no_exec_env;
     if (typeof env !== "object" || env === null || Array.isArray(env)) throw new Error("The no-analysis environment must be NAME=value lines.");
@@ -33,7 +35,43 @@ export function replaceProfile(text: string, kind: ProfileKind, name: string, pr
   data[kind] ??= {};
   data[kind].profiles ??= {};
   data[kind].profiles[name] = profile;
+  // Edit only this profile's [kind.profiles.name] table (and its sub-tables, e.g. no_exec_env) so
+  // comments elsewhere survive. Keep the splice only if it parses to exactly the intended
+  // configuration; otherwise rewrite the whole file.
+  const path = `${kind}.profiles.${name}`;
+  const spliced = spliceProfile(text, path, stringify({ [kind]: { profiles: { [name]: profile } } }));
+  try {
+    if (spliced !== null && isDeepStrictEqual(parse(spliced), parse(stringify(data)))) return spliced;
+  } catch { /* fall back */ }
   return stringify(data);
+}
+
+const isComment = (line: string) => /^\s*(#.*)?$/.test(line);
+/** The dotted key of a [table] header line, without whitespace (TOML allows [ a . b ]); null otherwise. */
+const tableKey = (line: string) => /^\s*\[[^\[]/.test(line) ? line.replace(/#.*$/, "").replace(/\s+/g, "").slice(1, -1) : /^\s*\[/.test(line) ? "" : null;
+
+/** Replace one table and its sub-tables with `block` (which starts with that table's header),
+ * keeping the comments just after the old header and before the next unrelated table. */
+function spliceProfile(text: string, path: string, block: string): string | null {
+  const eol = text.includes("\r\n") ? "\r\n" : "\n";
+  const lines = text.split(/\r?\n/);
+  const blockLines = block.trimEnd().split("\n");
+  const own = blockLines.findIndex((line) => tableKey(line) === path);
+  if (own < 0) return null;
+  const [header, ...content] = blockLines.slice(own);
+  const start = lines.findIndex((line) => tableKey(line) === path);
+  if (start < 0) {
+    const kept = text.replace(/\s*$/, "");
+    return `${kept}${kept ? eol + eol : ""}${[header, ...content].join(eol)}${eol}`;
+  }
+  const inside = (key: string | null) => key !== null && key.startsWith(path + ".");
+  let end = lines.findIndex((line, i) => i > start && tableKey(line) !== null && !inside(tableKey(line)));
+  if (end < 0) end = lines.length;
+  let first = start + 1;
+  while (first < end && isComment(lines[first]) && lines[first].trim()) first++;
+  let last = end;
+  while (last > first && isComment(lines[last - 1])) last--;
+  return [...lines.slice(0, first), ...content, ...lines.slice(last)].join(eol);
 }
 
 export function configuredProfiles(text: string): Record<ProfileKind, Record<string, Profile>> {

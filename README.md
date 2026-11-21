@@ -69,9 +69,11 @@ The installer checks these and tells you what to do:
   `sudo apt install libgtk-3-0 libnss3 libgbm1 libasound2` (`libasound2t64` on
   Ubuntu 24.04 and Debian 13).
 - **Ubuntu 23.10 and later** only allow the app's (Chromium's) sandbox with an
-  AppArmor profile. The installer adds `/etc/apparmor.d/reprocrowd` with sudo.
-  Without it the app stops at start with "The SUID sandbox helper binary was
-  found, but is not configured correctly".
+  AppArmor profile. There the installer asks for your password once, after
+  building, installs the app to `/opt/reprocrowd` (owned by root, so no other
+  program can take the place of the binary the profile trusts) and adds
+  `/etc/apparmor.d/reprocrowd`. Without the profile the app stops at start with
+  "The SUID sandbox helper binary was found, but is not configured correctly".
 - **`reprocrowd: command not found`**: the command is in `~/.local/bin`; add
   that folder to your `PATH`.
 
@@ -86,7 +88,8 @@ Apple silicon Macs runs ARM64 Linux, which works like any other Linux.
 - **Library**: your reproductions. **New reproduction** takes a DOI, looked up
   in OpenAlex. **Only articles with JATS XML are supported at this time**: the
   app checks that Europe PMC serves the article's full-text XML (the open-access
-  subset of PubMed Central) and refuses the paper otherwise. It also checks for
+  subset of PubMed Central), or for PLOS articles that PLOS does, and refuses
+  the paper otherwise. It also checks for
   ReproCrowd records of that paper already on Zenodo. The package goes in a
   folder (default `~/ReproCrowd/<doi>`); the JATS XML is downloaded and parsed
   right away. **Open a package folder…** adds an existing package.
@@ -156,6 +159,7 @@ resources/      the ReproCrowd hex sticker (app icon and logo)
 scripts/        build.mjs, bundle-backend.mjs, install.sh
 test/e2e.mjs    end-to-end check with a fake Zenodo and the backend tests' fake LLM
 test/quit-early.mjs  quitting while the backend starts closes the app and stops the backend
+test/smoke.mjs  offline check of a packaged app: start, example, new from file, run, report, ZIP, quit (CI, all systems)
 ```
 
 The backend is chosen at start: Settings → Advanced start command; else the
@@ -173,9 +177,25 @@ npm run bundle-backend    # build/backend: a standalone Python with reprocrowd i
 npm run dist              # installers for this system in dist/ (with the bundled backend)
 node test/e2e.mjs         # after npm run build
 node test/quit-early.mjs  # likewise; or give it a packaged app (dist/linux-unpacked/reprocrowd-app)
+node test/smoke.mjs       # after npm run dist: the offline check of the packaged app in dist/
 npm run test:backend      # the backend's tests (pytest)
 npm run schemas           # regenerate backend/schemas and docs after model or API changes
 ```
+
+## Checking Windows, macOS and Linux before merging
+
+The test workflow runs on every pull request, on Linux only. To check that the
+packaged app works on all three systems, add the label `build-all` to the pull
+request. The Release workflow then builds the installers on each system and runs
+`test/smoke.mjs` twice: on the unpacked app, and on the copy its installer puts in
+place (NSIS installer, dmg, AppImage). The check starts the app, opens a bundled
+example, creates a reproduction from a local paper, runs a small Python analysis,
+builds the report and ZIP, and quits, all without network access. It runs again
+after each later push and takes about 5 minutes.
+
+Do this before merging changes to packaging, `package.json` or the lock files,
+`src/main/`, `scripts/` or the backend's dependencies. You can also run the Release
+workflow by hand on any branch from the Actions tab; that builds without releasing.
 
 ## Releases and updates
 
@@ -185,12 +205,22 @@ attaches them to a GitHub Release. Installed copies check that release a little
 after start (Settings → Updates; Help → Check for Updates…):
 
 - Windows (installer) and Linux (AppImage) download the new version and install it on restart.
-- macOS (unsigned builds can't replace themselves) and Linux installs from `scripts/install.sh`
-  are told about the new version and where to get it.
-- The builds aren't code-signed yet. On Windows, SmartScreen asks first ("More info → Run
-  anyway"). On macOS (Apple silicon only), use System Settings → Privacy & Security → Open
-  Anyway, or, if the app is reported as "damaged", `xattr -cr /Applications/ReproCrowd.app`.
-  The release notes repeat this for users.
+- macOS and Linux installs from `scripts/install.sh` are told about the new version and where
+  to get it. On macOS the updater always works this way (`src/main/updater.ts`); installing
+  updates itself would need a Developer ID signature and a change to the updater.
+- The Windows installer isn't code-signed, and the macOS app is signed but not notarized. On
+  Windows, SmartScreen asks first ("More info → Run anyway"). On macOS (Apple silicon only), use
+  System Settings → Privacy & Security → Open Anyway, or, if the app is reported as "damaged",
+  `xattr -cr /Applications/ReproCrowd.app`. The release notes repeat this for users.
+- Released macOS apps are signed with an Apple Development certificate from a free Xcode Personal
+  Team (`scripts/sign-mac.sh`). Every release then has the same Team ID, so macOS lets updates read
+  the app's keychain item ("ReproCrowd Safe Storage") without asking again; ad-hoc builds would ask
+  after every update. The certificate is in the secrets `MAC_SIGNING_P12_BASE64` and
+  `MAC_SIGNING_P12_PASSWORD` of the `mac-signing` environment, which only `main` and `v*` tags may
+  use. Builds from other branches and pull requests stay ad-hoc signed, and a tag release fails
+  without the certificate. It expires on 20 November 2027: renew it in Xcode (Settings → Accounts →
+  Manage Certificates), export it with Apple's WWDR G3 intermediate as a `.p12`, and replace both
+  secrets. The Team ID stays the same, so users aren't asked again.
 - A development checkout doesn't check. `REPROCROWD_UPDATES=off` turns checks off;
   `REPROCROWD_UPDATE_SERVER=<url>` points them at a test server (see `src/main/updater.ts`).
 

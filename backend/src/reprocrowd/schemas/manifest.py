@@ -6,14 +6,27 @@ Standard Data Package properties (name, path, format, mediatype, bytes, hash) st
 """
 from __future__ import annotations
 
+import re
 from datetime import datetime
+from pathlib import PureWindowsPath
 from typing import Annotated, Literal, Union
 
-from pydantic import AliasChoices, ConfigDict, Field, model_validator
+from pydantic import AliasChoices, ConfigDict, Field, field_validator, model_validator
 
 from .common import Identifier, Model
 
 RESOURCE_NAME = r"^[a-z0-9][a-z0-9._-]*$"
+#: Line breaks and other control characters, which no package path may contain: paths end up in generated code (a
+#: line break in a comment would start a line of code) and in commands.
+CONTROL_CHARS = r"\x00-\x1f\x7f\x85\u2028\u2029"
+RESOURCE_PATH = rf"^[^{CONTROL_CHARS}]+$"
+_CONTROL = re.compile(f"[{CONTROL_CHARS}]")
+_URL = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*://")
+
+
+def unsafe_parts(parts: list[str]) -> bool:
+    """Path components that leave the package or misbehave: .., backslashes, control characters, Windows drive prefixes."""
+    return any(p == ".." or "\\" in p or _CONTROL.search(p) or PureWindowsPath(p).drive for p in parts)
 
 Flavor = Literal["pdf", "tei", "jats", "docling", "docx", "md"]
 Role = Literal["data", "code", "other"]
@@ -21,7 +34,15 @@ Role = Literal["data", "code", "other"]
 
 class LocalOrigin(Model):
     type: Literal["local"] = "local"
-    path: str = Field(description="absolute path the file was copied from")
+    path: str = Field(description="name of the local file or folder it was copied from. Only the name: a full path would publish the "
+                                  "user's folder layout (often their real name) with the package")
+
+    @field_validator("path")
+    @classmethod
+    def _name_only(cls, v: str) -> str:
+        # Older packages hold the absolute path; it is cut to the name when the package is next saved.
+        # PureWindowsPath splits on both / and \.
+        return PureWindowsPath(v).name or v
 
 
 class UrlOrigin(Model):
@@ -49,6 +70,9 @@ class FetchedOrigin(Model):
     repo: str = Field(description="repository type the file came from (zenodo, github, gitlab, osf, figshare, ...)")
     id: str = Field(description="repository-specific identifier (DOI, owner/repo, record id, ...)")
     label: str = Field(description="where the link was found, e.g. 'data availability statement'")
+    path: str | None = Field(default=None, description="repository-relative path of the file")
+    commit: str | None = Field(default=None, description="commit the file was fetched at (git repositories): the files of one fetch "
+                                                         "all come from the same commit, whatever is pushed meanwhile")
 
 
 class CheckResult(Model):
@@ -113,7 +137,7 @@ class Resource(Model):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
     name: str = Field(pattern=RESOURCE_NAME, description="unique id, e.g. ft-grobid, ex-grobid, in-data-csv")
-    path: str = Field(description="package-relative, /-separated")
+    path: str = Field(pattern=RESOURCE_PATH, description="package-relative, /-separated")
     type: Literal["file", "json"] = Field(description='"json" for JSON files (frictionless parses them), "file" otherwise')
     format: str
     mediatype: str
@@ -122,6 +146,16 @@ class Resource(Model):
     jsonSchema: str | None = Field(default=None, description="package-relative path of the JSON Schema the file must satisfy")
     # Packages made before the rename call it "metareader"; they load, and are saved under the new name.
     reprocrowd: ResourceMeta = Field(validation_alias=AliasChoices("reprocrowd", "metareader"))
+
+    @field_validator("path", "jsonSchema")
+    @classmethod
+    def _package_relative(cls, v: str | None) -> str | None:
+        # The plan and the master script take r.path as it is: the same rules as Package.path, and no leading /.
+        # No URLs either: validation (frictionless) would fetch them, so opening a package could make the app request
+        # any address, including ones on the user's own network (#91).
+        if v is not None and (v.startswith("/") or _URL.match(v) or unsafe_parts([p for p in v.split("/") if p not in ("", ".")])):
+            raise ValueError(f"not a package-relative path: {v!r}")
+        return v
 
 
 class ArchiveInfo(Model):

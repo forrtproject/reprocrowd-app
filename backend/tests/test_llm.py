@@ -51,3 +51,17 @@ def test_resolve_argv_leaves_a_real_executable_alone():
 def test_resolve_argv_handles_unknown_command_gracefully():
     # An executable that isn't found is left as-is, so Popen raises its usual error.
     assert llm.resolve_argv(["definitely-not-a-command-xyz", "x"]) == ["definitely-not-a-command-xyz", "x"]
+
+
+def test_calls_in_the_same_second_get_their_own_folders(tmp_path, monkeypatch):
+    """The folder name has the second and a short random suffix; a suffix already used that second is drawn again."""
+    from reprocrowd.package import Package, init_package
+
+    init_package(tmp_path / "pkg", "pkg", None)
+    pkg = Package("pkg", tmp_path / "pkg")
+    monkeypatch.setattr(llm.time, "strftime", lambda fmt: "20260101T000000")
+    suffixes = iter(["abcd", "abcd", "ef01"])
+    monkeypatch.setattr(llm.secrets, "token_hex", lambda n: next(suffixes))
+    first, second = llm._new_call_folder(pkg, "reconcile"), llm._new_call_folder(pkg, "reconcile")
+    assert [c for c, _ in (first, second)] == ["reconcile-20260101T000000-abcd", "reconcile-20260101T000000-ef01"]
+    assert first[1].is_dir() and second[1].is_dir()

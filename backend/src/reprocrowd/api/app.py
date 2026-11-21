@@ -398,7 +398,8 @@ def list_fulltexts(pkg: Pkg, page: Paged):
 
 @api.get("/jats", tags=["fulltexts"], response_model=M.JatsAvailability, summary="Is the paper's JATS XML available?",
          description="Looks the DOI up in OpenAlex and Europe PMC and fetches the start of Europe PMC's full-text XML, before "
-                     "any package exists. Only papers in the open-access subset of PubMed Central have it.",
+                     "any package exists. Only papers in the open-access subset of PubMed Central have it; for PLOS articles, "
+                     "the publisher's JATS XML is tried next.",
          responses=errors("openalex_not_found", "openalex_failed", "jats_check_failed"))
 def jats_availability(doi: Annotated[str, Query(min_length=3)]):
     ident = parse_identifier(doi)
@@ -409,7 +410,7 @@ def jats_availability(doi: Annotated[str, Query(min_length=3)]):
 
 @api.get("/packages/{pkg}/fulltexts/candidates", tags=["fulltexts"], response_model=M.CandidateList, summary="Download candidates from OpenAlex",
          description="URLs named in the OpenAlex record (PDF locations, OpenAlex cached content if an API key is configured) "
-                     "and Europe PMC JATS when a PMCID is known.", responses=errors("metadata_missing"))
+                     "Europe PMC JATS when a PMCID is known, and PLOS JATS for PLOS DOIs.", responses=errors("metadata_missing"))
 def candidates(pkg: Pkg):
     return fulltexts.list_candidates(pkg)
 
@@ -528,7 +529,7 @@ def list_inputs(pkg: Pkg, page: Paged):
                       "files and symlinks skipped). multipart/form-data: an uploaded `file`. Files go into `inputs/`; zip archives "
                       "are unpacked, the archive and every member become resources.",
           openapi_extra=json_or_multipart("InputCreate", M.InputCreate, M.InputUploadForm),
-          responses=errors("not_a_file", "path_not_allowed", "invalid_archive", "directory_too_large", "directory_empty", "invalid_filename", "upload_too_large"))
+          responses=errors("not_a_file", "path_not_allowed", "invalid_archive", "archive_too_large", "directory_too_large", "directory_empty", "invalid_filename", "upload_too_large"))
 async def add_input(pkg: Pkg, request: Request, response: Response):
     body, form = await json_or_upload(request, M.InputCreate, M.InputUploadForm)
     if form is not None:
@@ -719,7 +720,7 @@ def agent_profiles():
                       "`TODO(LLM):` markers. `type: run` runs the master script with the template's command (output and "
                       "errors as `log` events), then checks `outputs/results.json`. The package is committed to git before "
                       "and after. Returns 202 at once; follow the job at its `Location`, its progress at `…/events`.",
-          responses=errors("script_missing", "job_running", "unknown_profile", "exec_restriction_unsupported", "job_start_failed"))
+          responses=errors("script_missing", "job_running", "unknown_profile", "exec_restriction_unsupported", "job_start_failed", "program_not_found"))
 def create_job(pkg: Pkg, body: Annotated[M.JobCreate, Body()], response: Response):
     if isinstance(body, M.RunJobCreate):
         job = run.start(pkg)
@@ -970,8 +971,8 @@ def _tok(body: M.ZenodoAuth) -> str | None:
 
 
 @api.get("/zenodo", tags=["zenodo"], response_model=M.ZenodoStatus, summary="The Zenodo server deposits go to, and whether it is reachable")
-def zenodo_status(sandbox: bool | None = None):
-    return zenodo.status(sandbox)
+def zenodo_status(sandbox: bool | None = None, probe: bool = Query(True, description="false: only the configured server, without contacting it")):
+    return zenodo.status(sandbox, probe)
 
 
 @api.post("/zenodo:verify-token", tags=["zenodo"], response_model=M.ZenodoTokenResult, summary="Check a Zenodo access token",
@@ -1019,21 +1020,23 @@ def get_deposit(pkg: Pkg, dep: str):
 
 @api.post("/packages/{pkg}/deposits/{dep}:refresh", tags=["zenodo"], response_model=ZenodoDeposit, summary="Update a deposit's status from Zenodo",
           description="A draft may have been published or deleted on the website.",
-          responses=errors("not_found", "zenodo_token_missing", "zenodo_token_invalid", "zenodo_unreachable", "zenodo_error"))
+          responses=errors("not_found", "deposit_server_unknown", "zenodo_token_missing", "zenodo_token_invalid", "zenodo_unreachable",
+                           "zenodo_error"))
 def refresh_deposit(pkg: Pkg, dep: str, body: M.ZenodoAuth = Body(default_factory=M.ZenodoAuth)):
     return zenodo.refresh(pkg, dep, _tok(body))
 
 
 @api.post("/packages/{pkg}/deposits/{dep}:publish", tags=["zenodo"], response_model=ZenodoDeposit, summary="Publish a draft deposit",
           description="Registers the DOI. A published record can't be deleted, only versioned.",
-          responses=errors("not_found", "deposit_not_draft", "zenodo_token_missing", "zenodo_token_invalid", "zenodo_rejected",
-                           "zenodo_unreachable", "zenodo_error"))
+          responses=errors("not_found", "deposit_not_draft", "deposit_server_unknown", "zenodo_token_missing", "zenodo_token_invalid",
+                           "zenodo_rejected", "zenodo_unreachable", "zenodo_error"))
 def publish_deposit(pkg: Pkg, dep: str, body: M.ZenodoAuth = Body(default_factory=M.ZenodoAuth)):
     return zenodo.publish_deposit(pkg, dep, _tok(body))
 
 
 @api.post("/packages/{pkg}/deposits/{dep}:discard", tags=["zenodo"], response_model=ZenodoDeposit, summary="Delete a draft deposit on Zenodo",
-          responses=errors("not_found", "deposit_not_draft", "zenodo_token_missing", "zenodo_token_invalid", "zenodo_unreachable", "zenodo_error"))
+          responses=errors("not_found", "deposit_not_draft", "deposit_server_unknown", "zenodo_token_missing", "zenodo_token_invalid",
+                           "zenodo_unreachable", "zenodo_error"))
 def discard_deposit(pkg: Pkg, dep: str, body: M.ZenodoAuth = Body(default_factory=M.ZenodoAuth)):
     return zenodo.discard(pkg, dep, _tok(body))
 

@@ -14,6 +14,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, ValidationError
 
 from . import llm, providers
+from .numbers import parse_printed
 from .errors import ApiError, conflict, invalid, not_found, pydantic_errors
 from .extractions import Passages, Scope, check_scope, listing
 from .extractions import get as get_extraction
@@ -252,6 +253,19 @@ class Curation:
         with self.pkg.locked():
             f = self.load()
             item, run, entry = self._locate(f, item_id)
+            # The operator typed with a number's value ("< .05") replaces the stored comparator. Only for number
+            # targets (the type in this edit, else the stored one: a manual item's, or an LLM entry's base plus edit,
+            # since _locate returns no item for those): other types' text stays text.
+            if self.spec.kind == "targets" and "expected" in changes and "comparator" not in changes:
+                stored_type = item.type if run is None else (entry.edit or {}).get("type", entry.base.type)
+                typed = None
+                if changes.get("type", stored_type) == "number":
+                    try:
+                        typed = parse_printed(changes["expected"]).comparator
+                    except ValueError:
+                        pass  # validation reports the unparsable value
+                if typed is not None:
+                    changes["comparator"] = typed
             try:
                 if run is None:
                     if "disabled" in patch:

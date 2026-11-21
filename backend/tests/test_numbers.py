@@ -67,6 +67,30 @@ def test_api_normalization_and_contradictions(client, pkg):
     assert r.json()["item"]["printed"] == ".170" and r.json()["item"]["decimals"] == 3
 
 
+def test_edited_operator_replaces_stored_comparator(client, pkg):
+    url = f"/v1/packages/{pkg}/targets"
+    base = dict(type="number", description="bound", unreferenced=True, note="test")
+    assert client.post(url, json=base | {"expected": "> .10"}).status_code == 201
+    r = client.patch(url + "/T001", json={"expected": "< .05"})
+    assert r.status_code == 200, r.text
+    assert (r.json()["item"]["comparator"], r.json()["item"]["printed"]) == ("<", ".05")
+    r = client.patch(url + "/T001", json={"expected": ".04"})  # no operator typed: the stored one stays
+    assert (r.json()["item"]["comparator"], r.json()["item"]["printed"]) == ("<", ".04")
+    r = client.patch(url + "/T001", json={"expected": ">= .05", "printed": ".05"})  # a typed operator is never dropped
+    assert r.status_code == 200 and r.json()["item"]["comparator"] == ">=", r.text
+    r = client.patch(url + "/T001", json={"expected": "< .05", "comparator": ">"})
+    assert r.status_code == 422 and r.json()["code"] == "target_contradiction"
+    # Only number targets take a comparator from the typed value: a categorical value that looks like a bound stays text.
+    cat = dict(type="categorical", description="verdict", unreferenced=True, note="test", expected="significant")
+    tid = client.post(url, json=cat).json()["id"]
+    r = client.patch(f"{url}/{tid}", json={"expected": "< .05"})
+    assert r.status_code == 200, r.text
+    assert (r.json()["item"]["expected"], r.json()["item"]["comparator"]) == ("< .05", None)
+    # Changing the type to number in the same edit does take it.
+    r = client.patch(f"{url}/{tid}", json={"type": "number", "expected": "> .10"})
+    assert r.status_code == 200 and r.json()["item"]["comparator"] == ">", r.text
+
+
 def test_long_token_survives_model_roundtrip():
     target = Target(id="T001", type="number", description="long decimal", expected="0.12345678901234567890", unreferenced=True, note="test")
     assert Target.model_validate(target.model_dump()).printed == "0.12345678901234567890"

@@ -11,7 +11,7 @@ from typing import NamedTuple
 
 from . import files, gitrepo, jobs
 from .providers import exec_restriction, terminal_error
-from .config import AgentProfile, expand_argv, settings
+from .config import AgentProfile, expand_argv, isolate_argv, settings
 from .errors import ApiError, conflict
 from .package import Package
 from .schemas.jobs import CodegenResult, Job
@@ -51,13 +51,13 @@ def plan(pkg: Package, *, profile: str | None, allow_exec: bool, instructions: s
     restricted = not allow_exec and restriction == "cli_settings"
     # {python}: the backend's interpreter, for helper servers such as reprocrowd.mcp_files (Codex's read-only file tools).
     argv += expand_argv(prof.no_exec_argv, {"python": sys.executable, "model": model or prof.model, "effort": prof.effort}) if restricted else []
-    return Plan(name, prof, tpl, tools, argv, agent_prompt(pkg, tpl, instructions, allow_exec=allow_exec), dict(prof.no_exec_env) if restricted else {})
+    return Plan(name, prof, tpl, tools, isolate_argv(argv), agent_prompt(pkg, tpl, instructions, allow_exec=allow_exec), dict(prof.no_exec_env) if restricted else {})
 
 
 def start(pkg: Package, *, profile: str | None, allow_exec: bool, instructions: str, model: str | None = None) -> Job:
     name, prof, tpl, tools, argv, prompt, env = plan(pkg, profile=profile, allow_exec=allow_exec, instructions=instructions, model=model)
     jobs.ensure_idle(pkg)
-    jid = jobs.new_id()
+    jid = jobs.new_id(pkg)
 
     git_note, before = None, None
     if gitrepo.available():
@@ -85,4 +85,4 @@ def start(pkg: Package, *, profile: str | None, allow_exec: bool, instructions: 
                "exec_restriction": "none" if allow_exec else exec_restriction(prof, tools),
                "code_context": "excluded_from_prompt", "code_files_on_disk": [r.path for r in pkg.load().by_kind("input") if r.reprocrowd.role == "code" and pkg.path(r.path).exists()]}
     return jobs.start(pkg, jid=jid, type="codegen", argv=argv, stdin=prompt, timeout_s=prof.timeout_s, events_format=prof.events,
-                      profile=name, request=request, finish=finish, env=env)
+                      profile=name, request=request, finish=finish, env=env, env_pass=prof.env_pass)

@@ -2,6 +2,7 @@ import json
 import zipfile
 from pathlib import Path
 
+import respx
 from frictionless import validate
 
 from test_api import problem
@@ -84,3 +85,52 @@ def test_provenance_graph(client, pkg):
     assert "inputs/data.csv" in trace and "fulltext/paper.tei.xml" in trace and "doi:10.1371/journal.pbio.1002106" in trace
     lineage = json.loads(html.split('id="lineage">')[1].split("</script>")[0])
     assert "in:inputs/data.csv" in lineage["t:T001"] and "paper" in lineage["t:T001"]
+
+
+@respx.mock
+def test_symlinks_never_reach_the_archive(client, pkg, tmp_path):
+    """Issue #91: a symlink in the package (to an SSH key, say) is neither registered nor archived."""
+    import os
+
+    from reprocrowd.package import Registry, sha256_file
+
+    from test_api import mock_openalex
+    from test_submit import ready
+
+    mock_openalex()
+    P = f"/v1/packages/{pkg}"
+    root = ready(client, pkg)
+    secret = tmp_path / "id_ed25519"
+    secret.write_text("PRIVATE KEY")
+    os.symlink(secret, root / "outputs" / "log.txt")
+    assert client.post(f"{P}:sync").status_code == 200
+    assert "outputs/log.txt" not in {r["path"] for r in client.get(P + "/manifest").json()["resources"]}
+
+    # registered by hand (or by an older version): validation fails, so no archive
+    with Registry().get(pkg).edit() as m:
+        m.resources.append(m.resources[-1].model_copy(update={"name": "out-log", "path": "outputs/log.txt", "bytes": secret.stat().st_size,
+                                                              "hash": "sha256:" + sha256_file(secret)}))
+    report = client.get(P + "/validation").json()
+    assert not report["valid"] and any("symbolic link" in e["message"] for e in report["errors"]), report
+    problem(client.put(P + "/archive"), 409, "package_invalid")
+
+    # nor a FIFO, which would hang the integrity check
+    (root / "outputs" / "log.txt").unlink()
+    os.mkfifo(root / "outputs" / "log.txt")
+    report = client.get(P + "/validation").json()
+    assert any("not a regular file" in e["message"] for e in report["errors"]), report
+
+    # the same for the JSON Schema a resource names
+    (root / "outputs" / "log.txt").unlink()
+    with Registry().get(pkg).edit() as m:
+        m.resources = [r for r in m.resources if r.name != "out-log"]
+        schema_of = next(r for r in m.resources if r.jsonSchema)
+        schema_of.jsonSchema = "outputs/schema.json"
+    name = schema_of.name
+    os.symlink(secret, root / "outputs" / "schema.json")
+    report = client.get(P + "/validation").json()
+    assert any(e["resource"] == name and "outputs/schema.json is a symbolic link" in e["message"] for e in report["errors"]), report
+    (root / "outputs" / "schema.json").unlink()
+    os.mkfifo(root / "outputs" / "schema.json")
+    report = client.get(P + "/validation").json()
+    assert any(e["resource"] == name and "outputs/schema.json is not a regular file" in e["message"] for e in report["errors"]), report

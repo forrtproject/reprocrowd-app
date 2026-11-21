@@ -87,6 +87,8 @@ mailto = ""                # your e-mail for OpenAlex's polite pool (optional)
 [downloads]
 max_download_mb = 200
 max_upload_mb = 500
+max_unpack_mb = 20000      # a zip archive that unpacks to more is refused (zip bombs)
+max_unpack_files = 20000
 
 [zenodo]
 license = "cc-by-4.0"
@@ -99,6 +101,8 @@ timeout_s = 7200
 default_profile = "claude"
 
 # {model} and {effort} are substituted; the prompt is sent on stdin, in the package folder.
+# Each CLI gets only the environment any program needs plus its own and its model providers' variables;
+# env_pass = ["MY_GATEWAY_*"] in a profile passes on more.
 [llm.profiles.claude]
 argv = ["claude", "-p", "--output-format", "json", "--model", "{model}", "--effort", "{effort}"]
 read_files_argv = ["--allowedTools", "Read"]
@@ -186,7 +190,9 @@ export function readUserConfig(): string {
   const f = userConfigFile();
   if (!fs.existsSync(f)) {
     fs.mkdirSync(path.dirname(f), { recursive: true });
-    fs.writeFileSync(f, DEFAULT_USER_CONFIG);
+    fs.writeFileSync(f, DEFAULT_USER_CONFIG, { mode: 0o600 });
+  } else if (process.platform !== "win32" && (fs.statSync(f).mode & 0o077) !== 0) {
+    fs.chmodSync(f, 0o600); // written world-readable by older versions
   }
   return fs.readFileSync(f, "utf8");
 }
@@ -195,7 +201,8 @@ export function readUserConfig(): string {
 export function writeUserConfig(text: string) {
   const user = parse(text) as Record<string, any>;
   for (const k of ["server", "database"]) if (k in user) throw new Error(`[${k}] is set by the app; remove it from the backend configuration.`);
-  fs.writeFileSync(userConfigFile(), text);
+  fs.writeFileSync(userConfigFile(), text, { mode: 0o600 }); // it may hold API keys (OpenAlex)
+  fs.chmodSync(userConfigFile(), 0o600);
 }
 
 function remember(line: string) {
@@ -413,9 +420,10 @@ export async function restart() {
 export const profileConfig = () => configuredProfiles(readUserConfig());
 
 /** Local administrator operation. Restore the exact previous text on failed restart. */
-export async function saveProfile(kind: ProfileKind, name: string, profile: Profile): Promise<string> {
+export async function saveProfile(kind: ProfileKind, name: string, profile: Profile, confirm?: (previous: string, next: string) => Promise<void>): Promise<string> {
   const previous = readUserConfig();
   const next = replaceProfile(previous, kind, name, profile);
+  await confirm?.(previous, next);
   return applyProfileChange(previous, next, {
     backup(text) {
       const backup = userConfigFile() + ".bak";

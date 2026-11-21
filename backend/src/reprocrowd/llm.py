@@ -17,11 +17,13 @@ import signal
 import subprocess
 import time
 from importlib import resources
+from pathlib import Path
 from string import Template
 from typing import Any
 
 from . import providers
-from .config import LlmProfile, expand_argv, settings
+from . import childenv
+from .config import ISOLATION_ENV, LlmProfile, expand_argv, isolate_argv, settings
 from .errors import ApiError
 from .package import Package, atomic_write, dump_json
 from .schemas import json_schema
@@ -83,16 +85,27 @@ def command(profile_name: str | None, *, read_files: bool = False, schema: str |
     structured = schema if schema and p.json_schema_argv else None
     if structured:
         argv += expand_argv(p.json_schema_argv, {"schema": cli_schema(structured)})
-    return name, p, argv, structured
+    return name, p, isolate_argv(argv), structured
+
+
+def _new_call_folder(pkg: Package, task: str) -> tuple[str, Path]:
+    """A new folder for a call, named by its task and the second it started. Calls in the same second get different
+    suffixes; creating the folder reserves the name, so calls running at the same time can't share one either."""
+    while True:
+        call_id = f"{task}-{time.strftime('%Y%m%dT%H%M%S')}-{secrets.token_hex(2)}"
+        folder = pkg.path(f"llm-calls/{call_id}")
+        try:
+            folder.mkdir(parents=True)
+            return call_id, folder
+        except FileExistsError:
+            continue
 
 
 def run(pkg: Package, task: str, prompt: str, *, profile_name: str | None, template: str, instructions: str, read_files: bool = False,
         schema: str | None = None, model: str | None = None) -> LlmCall:
     name, p, argv, structured = command(profile_name, read_files=read_files, schema=schema, model=model)
     used_model = model if model is not None else p.model
-    call_id = f"{task}-{time.strftime('%Y%m%dT%H%M%S')}-{secrets.token_hex(2)}"
-    folder = pkg.path(f"llm-calls/{call_id}")
-    folder.mkdir(parents=True)
+    call_id, folder = _new_call_folder(pkg, task)
     (folder / "prompt.txt").write_text(prompt, encoding="utf-8")
     started, t0 = now(), time.monotonic()
 
@@ -107,7 +120,7 @@ def run(pkg: Package, task: str, prompt: str, *, profile_name: str | None, templ
 
     try:
         # PWD follows cwd: some CLIs (OpenCode) resolve relative paths from $PWD, which would otherwise be the service's folder.
-        proc = subprocess.Popen(resolve_argv(argv), cwd=pkg.root, env={**os.environ, "PWD": str(pkg.root)}, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        proc = subprocess.Popen(resolve_argv(argv), cwd=pkg.root, env={**childenv.for_cli(argv, p.env_pass), **ISOLATION_ENV, "PWD": str(pkg.root)}, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                 text=True, encoding="utf-8", errors="replace", start_new_session=True)
     except OSError as e:
         record("", str(e), None)

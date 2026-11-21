@@ -40,7 +40,7 @@ CATALOG: dict[str, tuple[int, str]] = {
     "integrity_check_failed": (422, "The file failed its format's integrity check"),
     "duplicate_fulltext": (409, "An identical full text is already in the package"),
     "download_failed": (502, "The candidate could not be downloaded"),
-    "jats_check_failed": (502, "Europe PMC could not be reached to check for JATS XML"),
+    "jats_check_failed": (502, "A source of JATS XML (Europe PMC, PLOS) could not be reached to check for it"),
     "in_use": (409, "Other items depend on this resource"),
     "unknown_converter": (400, "No such converter"),
     "converter_not_configured": (409, "The converter is not configured in the service"),
@@ -60,6 +60,7 @@ CATALOG: dict[str, tuple[int, str]] = {
     "llm_output_invalid": (422, "The LLM call succeeded but its output is not valid (see stage and errors)"),
     # inputs
     "invalid_archive": (422, "The zip archive is corrupt or unsafe"),
+    "archive_too_large": (422, "The zip archive unpacks to too many files or bytes"),
     "archive_member": (409, "Archive members can't be deleted; mark them unused"),
     # targets and actions
     "schema_invalid": (422, "The item doesn't satisfy its schema"),
@@ -101,6 +102,7 @@ CATALOG: dict[str, tuple[int, str]] = {
     "zenodo_unreachable": (502, "Zenodo could not be reached"),
     "zenodo_error": (502, "Zenodo returned an unexpected answer"),
     "deposit_not_draft": (409, "Only a draft deposit can be published or discarded"),
+    "deposit_server_unknown": (409, "The deposit is recorded on a server other than the configured Zenodo server"),
     # GitHub pilots
     "github_token_missing": (400, "A GitHub token is needed"),
     "github_token_invalid": (403, "GitHub didn't accept the token"),
@@ -116,6 +118,7 @@ CATALOG: dict[str, tuple[int, str]] = {
     "job_running": (409, "Another job is running in this package"),
     "job_finished": (409, "The job is not running"),
     "job_start_failed": (502, "The job's command could not be started"),
+    "program_not_found": (409, "The program the template runs (Python, R, Snakemake) isn't installed or can't be found"),
     # data & code acquisition (metacheck-style)
     "no_fulltext": (409, "Add a full text (JATS XML) to scan first"),
     "unknown_repository": (400, "No acquisition adapter for this repository"),

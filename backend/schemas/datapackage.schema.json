@@ -186,6 +186,32 @@
           "description": "where the link was found, e.g. 'data availability statement'",
           "title": "Label",
           "type": "string"
+        },
+        "path": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "repository-relative path of the file",
+          "title": "Path"
+        },
+        "commit": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "commit the file was fetched at (git repositories): the files of one fetch all come from the same commit, whatever is pushed meanwhile",
+          "title": "Commit"
         }
       },
       "required": [
@@ -597,7 +623,7 @@
           "type": "string"
         },
         "path": {
-          "description": "absolute path the file was copied from",
+          "description": "name of the local file or folder it was copied from. Only the name: a full path would publish the user's folder layout (often their real name) with the package",
           "title": "Path",
           "type": "string"
         }
@@ -851,6 +877,7 @@
         },
         "path": {
           "description": "package-relative, /-separated",
+          "pattern": "^[^\\x00-\\x1f\\x7f\\x85\\u2028\\u2029]+$",
           "title": "Path",
           "type": "string"
         },

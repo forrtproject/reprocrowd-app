@@ -1321,7 +1321,7 @@
           "fulltexts"
         ],
         "summary": "Is the paper's JATS XML available?",
-        "description": "Looks the DOI up in OpenAlex and Europe PMC and fetches the start of Europe PMC's full-text XML, before any package exists. Only papers in the open-access subset of PubMed Central have it.",
+        "description": "Looks the DOI up in OpenAlex and Europe PMC and fetches the start of Europe PMC's full-text XML, before any package exists. Only papers in the open-access subset of PubMed Central have it; for PLOS articles, the publisher's JATS XML is tried next.",
         "operationId": "jats_availability_v1_jats_get",
         "security": [
           {
@@ -1393,7 +1393,7 @@
                 }
               }
             },
-            "description": "`openalex_failed`: OpenAlex could not be reached or returned an error; `jats_check_failed`: Europe PMC could not be reached to check for JATS XML"
+            "description": "`openalex_failed`: OpenAlex could not be reached or returned an error; `jats_check_failed`: A source of JATS XML (Europe PMC, PLOS) could not be reached to check for it"
           }
         }
       }
@@ -1404,7 +1404,7 @@
           "fulltexts"
         ],
         "summary": "Download candidates from OpenAlex",
-        "description": "URLs named in the OpenAlex record (PDF locations, OpenAlex cached content if an API key is configured) and Europe PMC JATS when a PMCID is known.",
+        "description": "URLs named in the OpenAlex record (PDF locations, OpenAlex cached content if an API key is configured) Europe PMC JATS when a PMCID is known, and PLOS JATS for PLOS DOIs.",
         "operationId": "candidates_v1_packages__pkg__fulltexts_candidates_get",
         "security": [
           {
@@ -2526,7 +2526,7 @@
                 }
               }
             },
-            "description": "`invalid_archive`: The zip archive is corrupt or unsafe; `directory_too_large`: Too many files in the directory; `directory_empty`: The directory contains no regular files"
+            "description": "`invalid_archive`: The zip archive is corrupt or unsafe; `archive_too_large`: The zip archive unpacks to too many files or bytes; `directory_too_large`: Too many files in the directory; `directory_empty`: The directory contains no regular files"
           },
           "400": {
             "content": {
@@ -5676,7 +5676,7 @@
                 }
               }
             },
-            "description": "`script_missing`: Create the master script first; `job_running`: Another job is running in this package; `exec_restriction_unsupported`: This profile cannot restrict analysis execution"
+            "description": "`script_missing`: Create the master script first; `job_running`: Another job is running in this package; `exec_restriction_unsupported`: This profile cannot restrict analysis execution; `program_not_found`: The program the template runs (Python, R, Snakemake) isn't installed or can't be found"
           },
           "400": {
             "content": {
@@ -7633,6 +7633,18 @@
               ],
               "title": "Sandbox"
             }
+          },
+          {
+            "name": "probe",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "false: only the configured server, without contacting it",
+              "default": true,
+              "title": "Probe"
+            },
+            "description": "false: only the configured server, without contacting it"
           }
         ],
         "responses": {
@@ -8326,6 +8338,17 @@
             },
             "description": "`not_found`: No such resource"
           },
+          "409": {
+            "content": {
+              "application/problem+json": {},
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description": "`deposit_server_unknown`: The deposit is recorded on a server other than the configured Zenodo server"
+          },
           "400": {
             "content": {
               "application/problem+json": {},
@@ -8459,7 +8482,7 @@
                 }
               }
             },
-            "description": "`deposit_not_draft`: Only a draft deposit can be published or discarded"
+            "description": "`deposit_not_draft`: Only a draft deposit can be published or discarded; `deposit_server_unknown`: The deposit is recorded on a server other than the configured Zenodo server"
           },
           "400": {
             "content": {
@@ -8593,7 +8616,7 @@
                 }
               }
             },
-            "description": "`deposit_not_draft`: Only a draft deposit can be published or discarded"
+            "description": "`deposit_not_draft`: Only a draft deposit can be published or discarded; `deposit_server_unknown`: The deposit is recorded on a server other than the configured Zenodo server"
           },
           "400": {
             "content": {
@@ -11315,7 +11338,7 @@
             "additionalProperties": true,
             "type": "object",
             "title": "Contents",
-            "description": "groups of files that can be left out, the paper's license and the default"
+            "description": "groups of files that can be left out, the paper's license and the default; files: every file of the package {path, bytes, group (null: always uploaded), flags: reasons it may not belong in a public record, e.g. a hidden file or what looks like a key in its first 2 MB, checked: false when its contents weren't looked at (past the per-preview limit)}"
           },
           "exclude": {
             "items": {
@@ -11751,6 +11774,30 @@
             "type": "string",
             "title": "Label",
             "description": "where the link was found, e.g. 'data availability statement'"
+          },
+          "path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Path",
+            "description": "repository-relative path of the file"
+          },
+          "commit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Commit",
+            "description": "commit the file was fetched at (git repositories): the files of one fetch all come from the same commit, whatever is pushed meanwhile"
           }
         },
         "additionalProperties": false,
@@ -12577,7 +12624,23 @@
           "available": {
             "type": "boolean",
             "title": "Available",
-            "description": "Europe PMC serves the paper's JATS XML"
+            "description": "Europe PMC or the publisher (PLOS) serves the paper's JATS XML"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "Europe PMC",
+                  "PLOS"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source",
+            "description": "where the JATS XML is served, if available"
           },
           "pmcid": {
             "anyOf": [
@@ -12600,7 +12663,7 @@
               }
             ],
             "title": "Url",
-            "description": "the JATS XML at Europe PMC"
+            "description": "the JATS XML (if unavailable, the first place looked)"
           },
           "title": {
             "anyOf": [
@@ -13210,7 +13273,7 @@
           "path": {
             "type": "string",
             "title": "Path",
-            "description": "absolute path the file was copied from"
+            "description": "name of the local file or folder it was copied from. Only the name: a full path would publish the user's folder layout (often their real name) with the package"
           }
         },
         "additionalProperties": false,
@@ -14266,6 +14329,7 @@
           },
           "path": {
             "type": "string",
+            "pattern": "^[^\\x00-\\x1f\\x7f\\x85\\u2028\\u2029]+$",
             "title": "Path",
             "description": "package-relative, /-separated"
           },
@@ -16176,8 +16240,16 @@
             "title": "Community"
           },
           "reachable": {
-            "type": "boolean",
-            "title": "Reachable"
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reachable",
+            "description": "null when not checked (probe=false)"
           },
           "error": {
             "anyOf": [
