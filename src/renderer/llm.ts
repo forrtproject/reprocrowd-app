@@ -66,6 +66,7 @@ async function llmDialog(closed: (changed: boolean) => void) {
     body.innerHTML = `<p class="waiting muted"><span class="spinner" aria-hidden="true"></span> Looking for Claude Code, Codex, OpenCode and their models…</p>`;
     let s: State;
     try {
+      await saving; // a model choice still being written would otherwise be read back as it was
       s = await load(refresh);
     } catch (e) {
       if (mine === latest) body.innerHTML = `<p class="warn-inline">Could not check the coding CLIs: ${esc((e as Error).message)}</p>`;
@@ -76,7 +77,10 @@ async function llmDialog(closed: (changed: boolean) => void) {
     const st = status(s);
     const off = new Set(s.models.disabled);
     const byFamily = new Map<string, LlmModel[]>();
-    for (const m of s.models.available) byFamily.set(m.provider, [...(byFamily.get(m.provider) ?? []), m]);
+    for (const m of s.models.available) {
+      if (!byFamily.has(m.provider)) byFamily.set(m.provider, []);
+      byFamily.get(m.provider)!.push(m);
+    }
     body.innerHTML = `
       <p class="llm-summary">${light(st.level)} ${esc(st.level === "ok" ? "Ready: at least one CLI is installed, signed in and run by a profile."
         : st.level === "none" ? "No coding CLI is installed."
