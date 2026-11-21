@@ -40,11 +40,12 @@ what the paper's analysis uses (R, Python, …).
 ### Choosing an AI tool
 
 1. Start the app. The **LLM** button next to Settings shows a light: green when a CLI
-   is installed, signed in and run by a profile; yellow when CLIs are installed but none
-   is usable yet (or the backend couldn't list its profiles, or a CLI's sign-in couldn't
-   be confirmed); red when none is installed. It opens a dialog listing each CLI's state
+   is installed, signed in and run by a profile (OpenCode must also list at least one
+   model); yellow when CLIs are installed but none is usable yet (not signed in, sign-in
+   not confirmed, no profile runs it), or when the backend couldn't list its profiles;
+   red when none is installed. It opens a dialog listing each CLI's state
    (with a button that opens Claude Code's or Codex's login) and the models each offers;
-   every one of them can be picked in the steps. Claude Code's are listed by version
+   the steps offer each of them wherever a profile runs its CLI. Claude Code's are listed by version
    (Opus 5.5, Sonnet 5.5, Haiku 4.5, …), not as "opus"/"sonnet", so a run says which
    version it asked for; Fable models need usage credits on top of a subscription.
    OpenCode lists the providers it can use: its free models and those you have signed in to.

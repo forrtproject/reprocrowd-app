@@ -59,7 +59,6 @@ function parseModels(out: string): string[] {
     .filter((l) => /^[^\s]+\/[^\s]+$/.test(l));
 }
 
-/** Claude Code has no command that lists its models; it takes these aliases, each the newest model of its tier. */
 /** Claude Code's models by full name, newest first per tier; `--model` takes these as they are. Update when Anthropic
  * releases a model. Fable needs usage credits on top of a subscription; without them Claude Code says so at run time. */
 export const CLAUDE_MODELS: [string, string][] = [

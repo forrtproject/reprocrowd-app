@@ -47,6 +47,7 @@ const { status: llmStatus, cliStates } = await load('src/renderer/llm-status.ts'
 }
 const { parseCodexModels, CLAUDE_MODELS } = await load('src/main/models.ts');
 // Claude Code's models are offered by version, never as a tier alias, so a run records the version it asked for.
+assert(CLAUDE_MODELS.length >= 3 && ['opus', 'sonnet', 'haiku'].every((t) => CLAUDE_MODELS.some(([m]) => m.startsWith(`claude-${t}-`))));
 for (const [model, name] of CLAUDE_MODELS) assert.match(`${model} ${name}`, /^claude-(opus|sonnet|haiku|fable)-\d+(-\d+)? (Opus|Sonnet|Haiku|Fable) \d+(\.\d+)?$/);
 assert.equal(new Set(CLAUDE_MODELS.map(([m]) => m)).size, CLAUDE_MODELS.length);
 assert.deepEqual(parseCodexModels(JSON.stringify({ models: [{ slug: 'gpt-x', display_name: 'GPT X', visibility: 'list' }, { slug: 'hidden', visibility: 'hide' }] })),

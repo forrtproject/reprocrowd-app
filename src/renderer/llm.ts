@@ -57,7 +57,8 @@ async function llmDialog(closed: (changed: boolean) => void) {
       <button type="button" class="llm-profiles">Coding and extraction profiles…</button>
       <span class="spacer"></span><button class="primary">Close</button>
     </menu></form>`);
-  dlg.addEventListener("close", () => closed(changed));
+  let rendering: Promise<void> = Promise.resolve(); // the newest render: closing waits for it, as it may find other models
+  dlg.addEventListener("close", () => void rendering.then(() => closed(changed)));
   const body = dlg.querySelector<HTMLElement>(".llm-body")!;
 
   let latest = 0; // renders can overlap (Detect again, a saved profile): only the newest fills the dialog
@@ -112,7 +113,8 @@ async function llmDialog(closed: (changed: boolean) => void) {
     }));
   };
 
-  dlg.querySelector(".llm-refresh")!.addEventListener("click", () => void render(true));
-  dlg.querySelector(".llm-profiles")!.addEventListener("click", () => profileEditor(() => { changed = true; void render(); }));
-  await render();
+  const rerender = (refresh = false) => (rendering = render(refresh).catch(() => {}));
+  dlg.querySelector(".llm-refresh")!.addEventListener("click", () => void rerender(true));
+  dlg.querySelector(".llm-profiles")!.addEventListener("click", () => profileEditor(() => { changed = true; void rerender(); }));
+  await rerender();
 }
