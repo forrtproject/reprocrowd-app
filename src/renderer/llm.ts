@@ -16,8 +16,9 @@ async function load(refresh = false): Promise<State> {
 
 const light = (level: Level) => `<span class="llm-light" data-level="${level}" aria-hidden="true"></span>`;
 
-/** The header button. `changed` runs after the dialog closes if models or profiles were changed in it. */
-export function llmButton(className: string, changed: () => void): HTMLButtonElement {
+/** The header button. `changed` runs after the dialog closes if models or profiles were changed in it. `refresh`
+ * checks again, e.g. after Settings saved a backend configuration that may define other profiles. */
+export function llmButton(className: string, changed: () => void): { button: HTMLButtonElement; refresh: () => void } {
   const button = document.createElement("button");
   button.id = "llm-btn";
   button.type = "button";
@@ -39,11 +40,12 @@ export function llmButton(className: string, changed: () => void): HTMLButtonEle
   };
   button.addEventListener("click", () => llmDialog((didChange) => { void update(); if (didChange) changed(); }));
   void update();
-  return button;
+  return { button, refresh: () => void update() };
 }
 
 async function llmDialog(closed: (changed: boolean) => void) {
   let changed = false;
+  let saving = Promise.resolve(); // model choices are written in order; closing waits for the last one
   const dlg = modal("dlg-llm", `<h3>LLM: coding CLIs and models</h3>
     <p class="hint">ReproCrowd runs its AI steps through command-line tools you install and sign into yourself; it never asks for API keys.
       Claude Code and Codex use your subscription unless an API key is set in the environment the app starts from.</p>
@@ -53,7 +55,7 @@ async function llmDialog(closed: (changed: boolean) => void) {
       <button type="button" class="llm-profiles">Coding and extraction profiles…</button>
       <span class="spacer"></span><button class="primary">Close</button>
     </menu></form>`);
-  dlg.addEventListener("close", () => closed(changed));
+  dlg.addEventListener("close", () => void saving.then(() => closed(changed)));
   const body = dlg.querySelector<HTMLElement>(".llm-body")!;
 
   const render = async (refresh = false) => {
@@ -71,13 +73,16 @@ async function llmDialog(closed: (changed: boolean) => void) {
     const byFamily = new Map<string, LlmModel[]>();
     for (const m of s.models.available) byFamily.set(m.provider, [...(byFamily.get(m.provider) ?? []), m]);
     body.innerHTML = `
-      <p class="llm-summary">${light(st.level)} ${esc(st.level === "ok" ? "Ready: at least one CLI is installed, signed in and run by a profile." : st.level === "warn" ? "Not ready: no installed CLI is both signed in and run by a profile." : "No coding CLI is installed.")}</p>
+      <p class="llm-summary">${light(st.level)} ${esc(st.level === "ok" ? "Ready: at least one CLI is installed, signed in and run by a profile."
+        : st.level === "none" ? "No coding CLI is installed."
+        : !s.profiles ? "Not ready: the backend couldn't list its profiles, so nothing confirms that a profile runs a CLI."
+        : "Not ready: no installed CLI is both signed in and run by a profile.")}</p>
       <h4>Command-line tools</h4>
       <table class="tbl-list small llm-clis"><tbody>${clis.map((c) => `<tr>
         <td>${light(!c.installed ? "none" : c.problem ? "warn" : "ok")} <b>${esc(label(c.cli))}</b></td>
         <td>${esc(!c.installed ? "not installed" : c.problem ? `installed, ${c.problem}` : "installed and signed in")}</td>
         <td class="muted">${c.installed ? `${c.models} model${c.models === 1 ? "" : "s"} · ${s.profiles ? (c.profiles.length ? `profiles: ${esc(c.profiles.join(", "))}` : "no profile") : "profiles unknown"}` : ""}</td>
-        <td>${c.installed && !c.signedIn && LOGIN.has(c.cli) ? `<button type="button" data-login="${esc(c.cli)}">Log in…</button>` : ""}</td>
+        <td>${c.installed && (!c.signedIn || c.loginUnknown) && LOGIN.has(c.cli) ? `<button type="button" data-login="${esc(c.cli)}">Log in…</button>` : ""}</td>
       </tr>`).join("")}</tbody></table>
       <p class="hint login-msg" aria-live="polite"></p>
       <h4>Models</h4>
@@ -101,7 +106,11 @@ async function llmDialog(closed: (changed: boolean) => void) {
       f.indeterminate = on > 0 && on < models.length;
     });
     syncFamilies();
-    const save = () => { changed = true; host.setLlmModels([...off]).catch((e) => showError("Saving the model choice", e)); };
+    const save = () => {
+      changed = true;
+      const disabled = [...off];
+      saving = saving.then(() => host.setLlmModels(disabled)).catch((e) => showError("Saving the model choice", e));
+    };
     body.querySelectorAll<HTMLInputElement>("[data-model]").forEach((cb) => cb.addEventListener("change", () => {
       if (cb.checked) off.delete(cb.dataset.model!);
       else off.add(cb.dataset.model!);

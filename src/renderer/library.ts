@@ -43,8 +43,10 @@ export async function start() {
     <section class="container lib-list"><div id="lib-body"><p class="muted">Loading…</p></div></section>
   </main>`;
 
-  $("#settings-btn").before(llmButton("ghost", () => {})); // models and profiles: see llm.ts
-  $("#settings-btn").addEventListener("click", () => settingsDialog(() => render()));
+  const llm = llmButton("ghost", () => {}); // models and profiles: see llm.ts
+  $("#settings-btn").before(llm.button);
+  // A saved backend configuration may define other profiles: check the light again.
+  $("#settings-btn").addEventListener("click", () => settingsDialog(() => { llm.refresh(); void render(); }));
   $("#about-link").addEventListener("click", (e) => {
     e.preventDefault();
     host.openUrl("https://forrt.org/reprocrowd/");

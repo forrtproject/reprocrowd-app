@@ -31,7 +31,17 @@ const { status: llmStatus, cliStates } = await load('src/renderer/llm-status.ts'
   assert.equal(llmStatus({ models: models({ installed: ['codex'] }), profiles: claudeProfile }).level, 'warn'); // yellow: signed in, no profile runs it
   assert.equal(llmStatus({ models: models({ installed: ['claude', 'codex'], needsLogin: ['codex'] }), profiles: claudeProfile }).level, 'ok'); // green: one is ready
   assert.equal(llmStatus({ models: models({ installed: ['opencode'] }), profiles: [{ name: 'oc', argv: ['opencode', 'run'] }] }).level, 'warn'); // OpenCode listing no models
-  assert.equal(llmStatus({ models: models({ installed: ['claude'] }), profiles: null }).level, 'ok'); // backend down: judged on install and login
+  assert.equal(llmStatus({ models: models({ installed: ['claude'] }), profiles: null }).level, 'warn'); // backend down: no profile confirmed
+  assert.match(llmStatus({ models: models({ installed: ['claude'] }), profiles: null }).text, /profiles not checked/);
+  assert.equal(llmStatus({ models: models({ installed: ['claude'] }), profiles: [{ ...claudeProfile[0], available: false }] }).level, 'warn'); // its command is missing
+  assert.equal(llmStatus({ models: models({ installed: ['claude'] }), profiles: [{ ...claudeProfile[0], available: true }] }).level, 'ok');
+  assert.equal(llmStatus({ models: models({ installed: ['claude'], loginUnknown: ['claude'] }), profiles: claudeProfile }).level, 'warn'); // login probe couldn't tell
+  assert.match(llmStatus({ models: models({ installed: ['claude'], loginUnknown: ['claude'] }), profiles: claudeProfile }).text, /sign-in not confirmed/);
+  // An older main process reports no `installed`: CLIs are inferred from the models listed and the ones needing login.
+  const legacy = { available: [{ cli: 'claude', provider: 'claude', id: 'claude/sonnet', name: 'Sonnet' }], disabled: [], claudeNeedsLogin: false, needsLogin: ['codex'] };
+  assert.equal(llmStatus({ models: legacy, profiles: claudeProfile }).level, 'ok');
+  assert.deepEqual(cliStates({ models: legacy, profiles: claudeProfile }).filter((c) => c.installed).map((c) => [c.cli, c.problem]), [['claude', undefined], ['codex', 'not signed in']]);
+  assert.equal(llmStatus({ models: { ...legacy, available: [] }, profiles: claudeProfile }).level, 'warn'); // only codex, not signed in
   assert.match(llmStatus({ models: models({ installed: ['claude'], needsLogin: ['claude'] }), profiles: claudeProfile }).text, /Claude Code: installed, not signed in/);
   assert.deepEqual(cliStates({ models: models({}), profiles: [] }).map((c) => [c.cli, c.problem]), [['claude', 'not installed'], ['codex', 'not installed'], ['opencode', 'not installed']]);
 }

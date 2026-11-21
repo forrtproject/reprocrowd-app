@@ -74,10 +74,20 @@ const wizard = new Wizard({
   status,
 });
 
-// Changed models or profiles: reload, so the steps' model pickers and profiles are read again.
-$("#settings-btn").before(llmButton("", () => location.reload()));
-$("#settings-btn").addEventListener("click", () => settingsDialog((reconnect) => (reconnect ? location.reload() : status("Settings saved"))));
+// Changed models or profiles: save the workflow first (beforeunload's save isn't awaited), then reload, so the steps'
+// model pickers and profiles are read again.
 let leaving = false;
+const llm = llmButton("", async () => {
+  if (!restoring) await host.saveState(state).catch(() => {});
+  leaving = true;
+  location.reload();
+});
+$("#settings-btn").before(llm.button);
+$("#settings-btn").addEventListener("click", () => settingsDialog((reconnect) => {
+  if (reconnect) return location.reload();
+  llm.refresh(); // a saved backend configuration may define other profiles
+  status("Settings saved");
+}));
 $("#library-btn").addEventListener("click", async () => {
   if (!restoring) await host.saveState(state).catch(() => {});
   leaving = true;
