@@ -119,6 +119,8 @@ async function llmDialog(closed: (changed: boolean) => void) {
     body.querySelectorAll<HTMLInputElement>("[data-model]").forEach((cb) => cb.addEventListener("change", () => {
       if (cb.checked) off.delete(cb.dataset.model!);
       else off.add(cb.dataset.model!);
+      // A choice is per model id: the same id listed by two CLIs (OpenCode and T3 Code) shares one switch state.
+      body.querySelectorAll<HTMLInputElement>(`[data-model="${CSS.escape(cb.dataset.model!)}"]`).forEach((mc) => (mc.checked = cb.checked));
       syncFamilies();
       save();
     }));
@@ -128,7 +130,7 @@ async function llmDialog(closed: (changed: boolean) => void) {
         if (cb.checked) off.delete(m.id);
         else off.add(m.id);
       }
-      body.querySelectorAll<HTMLInputElement>(`[data-family="${CSS.escape(family)}"] [data-model]`).forEach((mc) => (mc.checked = cb.checked));
+      body.querySelectorAll<HTMLInputElement>("[data-model]").forEach((mc) => (mc.checked = !off.has(mc.dataset.model!)));
       syncFamilies();
       save();
     }));
