@@ -71,6 +71,7 @@ def test_codegen_job(client, pkg):
     assert "Bash(Rscript:*)" not in job["argv"][-1] and job["argv"][-1] == "Read,Write,Edit,Glob,Grep"
     job = wait(client, pkg, job["id"])
     assert job["status"] == "succeeded" and job["exit_code"] == 0, job
+    assert job["model_used"] == "fake-agent-1"  # from the CLI's session-start event, not the requested model
 
     res = job["result"]
     # the fake agent leaves the package-loading marker and the last step

@@ -153,6 +153,7 @@ def test_previews_show_what_a_call_sends_and_store_nothing(client, pkg):
 
     call = client.post(P + "/targets/runs", json=body).json()["call"]
     assert (call["prompt"], call["argv"]) == (target_preview["prompt"], target_preview["argv"])
+    assert (call["model"], call["model_used"]) == ("fake-1", "fake-1-2026")  # asked for, and what the CLI says it ran
     assert client.post(P + "/extractions", json=reconcile).status_code == 201
     calls = [json.loads(p.read_text(encoding="utf-8")) for p in (root / "llm-calls").glob("reconcile-*/call.json")]
     assert [(c["prompt"], c["argv"]) for c in calls] == [(reconcile_preview["prompt"], reconcile_preview["argv"])]

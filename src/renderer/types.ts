@@ -95,6 +95,8 @@ export interface LlmCall {
   profile: string;
   argv: string[];
   model: string;
+  /** The model the CLI reports having run (Claude Code: claude-sonnet-5-5 for "sonnet"); null if it doesn't say. */
+  model_used?: string | null;
   effort: string;
   template: "default" | "custom";
   instructions: string;
@@ -142,6 +144,8 @@ export interface Job {
   exit_code?: number | null;
   stdout: string;
   stderr: string;
+  /** The model the agent CLI reports having run; null if it doesn't say. */
+  model_used?: string | null;
   result?:
     | { type: "codegen"; commit_before?: string | null; commit_after?: string | null; changed_files: string[]; todo: TodoStatus; git_note?: string | null }
     | { type: "run"; command: string; log: string; results_file: boolean; output_errors: string[]; output_warnings: string[]; commit_after?: string | null }

@@ -46,6 +46,8 @@ class LlmCall(Model):
     profile: str = Field(description="name of the LLM profile in the service config")
     argv: list[str] = Field(description="the exact command line that was run (prompt goes to stdin)")
     model: str = Field(description='model passed to the CLI; "" = the CLI default')
+    model_used: str | None = Field(default=None, description="the model the CLI reports having run, by its full name (Claude Code: claude-sonnet-5-5 "
+                                                             "for --model sonnet or its default); null if its output doesn't say (OpenCode, Codex, text)")
     effort: str = Field(description='effort level passed to the CLI; "" = the CLI default')
     template: Literal["default", "custom"] = Field(description="whether the built-in prompt template or a caller-supplied one was used")
     instructions: str = Field(default="", description="extra instructions appended to the template")

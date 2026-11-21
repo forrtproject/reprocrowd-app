@@ -75,4 +75,4 @@ export function appendEvents(el: HTMLElement, events: JobEvent[], asText: boolea
 }
 
 export const statusBadge = (j?: Job) =>
-  j ? `<span class="badge job-${j.status}">${j.status}</span>${j.exit_code != null ? ` exit ${j.exit_code}` : ""}${j.duration_ms != null ? ` · ${Math.round(j.duration_ms / 1000)} s` : ""}` : "";
+  j ? `<span class="badge job-${j.status}">${j.status}</span>${j.exit_code != null ? ` exit ${j.exit_code}` : ""}${j.duration_ms != null ? ` · ${Math.round(j.duration_ms / 1000)} s` : ""}${j.model_used ? ` · ${esc(j.model_used)}` : ""}` : "";

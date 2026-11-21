@@ -112,7 +112,7 @@ def run(pkg: Package, task: str, prompt: str, *, profile_name: str | None, templ
     def record(out: str, err: str, code: int | None) -> LlmCall:
         (folder / "stdout.txt").write_text(out, encoding="utf-8")
         (folder / "stderr.txt").write_text(err, encoding="utf-8")
-        call = LlmCall(id=call_id, task=task, profile=name, argv=argv, model=used_model, effort=p.effort, template=template,
+        call = LlmCall(id=call_id, task=task, profile=name, argv=argv, model=used_model, model_used=providers.model_used(out, p.output, used_model), effort=p.effort, template=template,
                        instructions=instructions, prompt=prompt, output=out, output_format=p.output, output_schema=structured, started_at=started,
                        duration_ms=int((time.monotonic() - t0) * 1000), exit_code=code)
         atomic_write(folder / "call.json", dump_json(call))

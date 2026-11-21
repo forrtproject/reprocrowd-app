@@ -369,6 +369,19 @@
       "title": "Events Format",
       "type": "string"
     },
+    "model_used": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "the model the agent CLI reports having run, by its full name (Claude Code: claude-sonnet-5-5 for --model sonnet or its default); null if its output doesn't say",
+      "title": "Model Used"
+    },
     "result": {
       "anyOf": [
         {

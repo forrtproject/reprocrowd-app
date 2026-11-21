@@ -24,7 +24,7 @@ from typing import Any, Callable, Iterable, Mapping
 from pydantic import BaseModel
 
 from .errors import ApiError, conflict, not_found
-from . import childenv
+from . import childenv, providers
 from .config import ISOLATION_ENV
 from .llm import resolve_argv
 from .package import Package, atomic_write, dump_json
@@ -166,6 +166,12 @@ def _watch(pkg: Package, job: Job, proc: subprocess.Popen, stdin: str, timeout_s
         out.close(), err.close()
         job.status, job.exit_code = status, code
         job.duration_ms = int((time.monotonic() - t0) * 1000)
+        if job.events_format != "text":
+            try:
+                with open(pkg.path(job.stdout), encoding="utf-8", errors="replace") as log_file:
+                    job.model_used = providers.model_used(log_file, job.events_format, str(job.request.get("model") or ""))
+            except OSError:
+                pass
         try:
             job.result = finish(job)
         except Exception as e:  # the job ran; report the bookkeeping failure without losing the record

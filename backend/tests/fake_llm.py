@@ -58,7 +58,9 @@ else:
 if mode == "structured":  # like claude --output-format json --json-schema: an envelope with structured_output
     assert schema and "$defs" in schema or "properties" in schema, "no usable schema passed"
     print(json.dumps({"type": "result", "subtype": "success", "is_error": False, "result": "(see structured_output)",
-                      "structured_output": out, "schema_title": schema.get("title")}))
+                      "structured_output": out, "schema_title": schema.get("title"),
+                      # like Claude Code: the version behind the requested alias, plus its housekeeping model
+                      "modelUsage": {"fake-housekeeper": {"outputTokens": 3}, "fake-1-2026": {"outputTokens": 400}}}))
 elif mode == "structured-error":
     print(json.dumps({"type": "result", "subtype": "error_max_turns", "is_error": True, "result": "ran out of turns"}))
 else:

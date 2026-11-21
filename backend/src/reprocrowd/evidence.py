@@ -51,7 +51,7 @@ def get(pkg: Package) -> ExecutionEvidence:
         ev.log_path = run.stdout if pkg.path(run.stdout).is_file() and (ev.log_sha256 is None or digest(pkg, run.stdout) == ev.log_sha256) else None
     cg = next((j for j in reversed(jobs.list_jobs(pkg)) if j.type == "codegen"), None)
     if cg:
-        ev.codegen = {"profile": cg.profile, "model": cg.request.get("model"), "allow_exec": cg.request.get("allow_exec"),
+        ev.codegen = {"profile": cg.profile, "model": cg.request.get("model"), "model_used": cg.model_used, "allow_exec": cg.request.get("allow_exec"),
                       "exec_restriction": cg.request.get("exec_restriction", "unknown"),
                       "code_context": cg.request.get("code_context", "unknown"),
                       "code_files_on_disk": cg.request.get("code_files_on_disk", [])}
