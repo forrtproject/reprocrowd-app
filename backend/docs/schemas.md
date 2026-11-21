@@ -487,6 +487,7 @@ Everything needed to understand (and repeat) one LLM call.
 | `profile` | string | yes | name of the LLM profile in the service config |
 | `argv` | list of string | yes | the exact command line that was run (prompt goes to stdin) |
 | `model` | string | yes | model passed to the CLI; "" = the CLI default |
+| `model_used` | string \| null |  | the model the CLI reports having run, by its full name (Claude Code: claude-sonnet-5-5 for --model sonnet or its default); null if its output doesn't say (OpenCode, Codex, text) |
 | `effort` | string | yes | effort level passed to the CLI; "" = the CLI default |
 | `template` | `"default"` \| `"custom"` | yes | whether the built-in prompt template or a caller-supplied one was used |
 | `instructions` | string |  | extra instructions appended to the template; default `` |
@@ -784,6 +785,7 @@ jobs/<id>.json
 | `stdout` | string | yes | package-relative path of the raw stdout |
 | `stderr` | string | yes |  |
 | `events_format` | `"claude-stream-json"` \| `"opencode-json"` \| `"codex-json"` \| `"text"` | yes |  |
+| `model_used` | string \| null |  | the model the agent CLI reports having run, by its full name (Claude Code: claude-sonnet-5-5 for --model sonnet or its default); null if its output doesn't say |
 | `result` | [CodegenResult](#codegenresult) \| [RunResult](#runresult) \| null |  |  |
 | `error` | string \| null |  |  |
 

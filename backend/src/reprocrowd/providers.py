@@ -111,6 +111,32 @@ def _message(part: Any, fallback: str) -> str:
     return str(part or fallback)[:1000]
 
 
+def model_used(out: "str | Iterable[str]", protocol: str, requested: str = "") -> str | None:
+    """The model the CLI reports having run, by its full name: Claude Code resolves an alias or its default
+    (``--model sonnet`` runs claude-sonnet-5-5) and says which. None when the output doesn't say (OpenCode, Codex,
+    text); the requested model is then all there is. ``out`` may be an open log file: it is read line by line."""
+    if protocol == "claude-stream-json":
+        for ev in _events(out):  # the session's model is in the first event
+            if ev.get("type") == "system" and ev.get("subtype") == "init":
+                return ev.get("model") if isinstance(ev.get("model"), str) and ev.get("model") else None
+        return None
+    if protocol != "claude-json":
+        return None
+    usage = (envelope(out if isinstance(out, str) else "".join(out)) or {}).get("modelUsage")
+    names = [n for n in usage if isinstance(n, str) and n] if isinstance(usage, dict) else []
+    if not names:
+        return None
+    # Claude Code also runs a small model (Haiku) for its own housekeeping, so modelUsage can list two: take the
+    # requested one, else the one its tier alias names, else the one that wrote the most.
+    req = requested.strip()
+    if req in names:
+        return req
+    tier = [n for n in names if req and req.split("[")[0] in n]
+    if len(tier) == 1:
+        return tier[0]
+    return max(names, key=lambda n: usage[n].get("outputTokens", 0) if isinstance(usage[n], dict) and isinstance(usage[n].get("outputTokens"), (int, float)) else 0)
+
+
 def terminal_error(out: "str | Iterable[str]", protocol: str) -> str | None:
     """A failure the CLI declared in its output, which can happen at exit 0. Recoverable events don't count: failed
     tool results (the agent retries), Codex's ``error`` items (warnings) and its ``error`` events followed by a

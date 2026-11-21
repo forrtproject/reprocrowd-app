@@ -61,7 +61,7 @@ def write_report(pkg: Package, st: CompareSettings) -> dict[str, Any]:
 
     for kind in ("targets", "actions"):
         for run in Curation(pkg, kind).load().llm_runs:
-            llm_runs.append({"kind": kind, "id": run.id, "model": run.call.model, "effort": run.call.effort, "profile": run.call.profile,
+            llm_runs.append({"kind": kind, "id": run.id, "model": run.call.model, "model_used": run.call.model_used, "effort": run.call.effort, "profile": run.call.profile,
                              "entries": len(run.entries), "rejected": len(run.rejected), "disabled": run.disabled})
     codegen = [j for j in jobs.list_jobs(pkg) if j.type == "codegen"]
     docs = {}

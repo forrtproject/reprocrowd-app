@@ -119,6 +119,19 @@
           "title": "Model",
           "type": "string"
         },
+        "model_used": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "the model the CLI reports having run, by its full name (Claude Code: claude-sonnet-5-5 for --model sonnet or its default); null if its output doesn't say (OpenCode, Codex, text)",
+          "title": "Model Used"
+        },
         "effort": {
           "description": "effort level passed to the CLI; \"\" = the CLI default",
           "title": "Effort",

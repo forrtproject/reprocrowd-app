@@ -85,5 +85,7 @@ class Job(Model):
     stdout: str = Field(description="package-relative path of the raw stdout")
     stderr: str
     events_format: Literal["claude-stream-json", "opencode-json", "codex-json", "text"]
+    model_used: str | None = Field(default=None, description="the model the agent CLI reports having run, by its full name (Claude Code: "
+                                                             "claude-sonnet-5-5 for --model sonnet or its default); null if its output doesn't say")
     result: JobResult | None = None
     error: str | None = None

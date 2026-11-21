@@ -12811,6 +12811,18 @@
             ],
             "title": "Events Format"
           },
+          "model_used": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Used",
+            "description": "the model the agent CLI reports having run, by its full name (Claude Code: claude-sonnet-5-5 for --model sonnet or its default); null if its output doesn't say"
+          },
           "result": {
             "anyOf": [
               {
@@ -12955,6 +12967,18 @@
             "type": "string",
             "title": "Model",
             "description": "model passed to the CLI; \"\" = the CLI default"
+          },
+          "model_used": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Used",
+            "description": "the model the CLI reports having run, by its full name (Claude Code: claude-sonnet-5-5 for --model sonnet or its default); null if its output doesn't say (OpenCode, Codex, text)"
           },
           "effort": {
             "type": "string",

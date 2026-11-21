@@ -64,13 +64,14 @@ def test_codegen_job(client, pkg):
     P = f"/v1/packages/{pkg}"
     problem(client.post(P + "/jobs", json={"type": "codegen", "argv": ["sh"]}), 422, "request_invalid")
     problem(client.post(P + "/jobs", json={"type": "codegen", "profile": "nope"}), 400, "unknown_profile")
-    r = client.post(P + "/jobs", json={"type": "codegen", "allow_exec": False, "instructions": "Use base R only."})
+    r = client.post(P + "/jobs", json={"type": "codegen", "allow_exec": False, "instructions": "Use base R only.", "model": "fake-alias"})
     assert r.status_code == 202, r.text
     job = r.json()
     assert r.headers["location"] == f"{P}/jobs/{job['id']}" and job["status"] == "running"
     assert "Bash(Rscript:*)" not in job["argv"][-1] and job["argv"][-1] == "Read,Write,Edit,Glob,Grep"
     job = wait(client, pkg, job["id"])
     assert job["status"] == "succeeded" and job["exit_code"] == 0, job
+    assert (job["request"]["model"], job["model_used"]) == ("fake-alias", "fake-agent-1")  # asked for; what the CLI's session-start event says ran
 
     res = job["result"]
     # the fake agent leaves the package-loading marker and the last step

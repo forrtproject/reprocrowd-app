@@ -6,7 +6,7 @@ import json
 import sys
 from datetime import datetime, timezone
 
-from reprocrowd import llm
+from reprocrowd import llm, providers
 from reprocrowd.schemas.common import LlmCall
 
 
@@ -65,3 +65,32 @@ def test_calls_in_the_same_second_get_their_own_folders(tmp_path, monkeypatch):
     first, second = llm._new_call_folder(pkg, "reconcile"), llm._new_call_folder(pkg, "reconcile")
     assert [c for c, _ in (first, second)] == ["reconcile-20260101T000000-abcd", "reconcile-20260101T000000-ef01"]
     assert first[1].is_dir() and second[1].is_dir()
+
+
+def _envelope(usage: dict) -> str:
+    return json.dumps({"type": "result", "subtype": "success", "is_error": False, "result": "{}", "modelUsage": usage})
+
+
+def test_model_used_claude_json_names_the_version_behind_an_alias():
+    # Claude Code's own housekeeping model (Haiku) shows up next to the one that answered.
+    out = _envelope({"claude-haiku-5-5": {"outputTokens": 12}, "claude-sonnet-5-5": {"outputTokens": 900}})
+    assert providers.model_used(out, "claude-json", "sonnet") == "claude-sonnet-5-5"
+    assert providers.model_used(out, "claude-json", "claude-sonnet-5-5") == "claude-sonnet-5-5"
+    assert providers.model_used(out, "claude-json", "") == "claude-sonnet-5-5"  # the CLI's default: the one that wrote the most
+    assert providers.model_used(out, "claude-json", "haiku") == "claude-haiku-5-5"
+    assert providers.model_used(_envelope({"claude-haiku-5-5": {"outputTokens": 5}}), "claude-json", "haiku") == "claude-haiku-5-5"
+
+
+def test_model_used_is_none_when_the_output_does_not_say():
+    assert providers.model_used(_envelope({}), "claude-json", "sonnet") is None
+    assert providers.model_used("not json", "claude-json", "sonnet") is None
+    assert providers.model_used(json.dumps({"type": "text", "part": {"text": "{}"}}), "opencode-json", "x/y") is None
+    assert providers.model_used("{}", "codex-json", "gpt-x") is None
+    assert providers.model_used("hello", "text", "") is None
+
+
+def test_model_used_claude_stream_json_reads_the_session_start():
+    events = [{"type": "system", "subtype": "init", "model": "claude-opus-5-5"}, {"type": "result", "subtype": "success"}]
+    lines = [json.dumps(e) + "\n" for e in events]
+    assert providers.model_used(iter(lines), "claude-stream-json", "opus") == "claude-opus-5-5"
+    assert providers.model_used("".join(lines[1:]), "claude-stream-json", "opus") is None
