@@ -1,4 +1,4 @@
-// Step 7: run the master script (a job of the backend, with its log streaming in), then compare the reproduced
+// Step 6: run the master script (a job of the backend, with its log streaming in), then compare the reproduced
 // results with the targets: numbers by the reported rounding and a tolerance, tables cell by cell, figures side by
 // side with crops of the originals.
 import { ApiError, pkg } from "../api";
@@ -7,6 +7,25 @@ import { FIGURE_HEIGHT } from "../state";
 import { blobUrl, esc, showError, trunc, when } from "../util";
 import { appendEvents, JobFollower, statusBadge } from "./jobs";
 import type { Step, Wizard } from "./wizard";
+
+const IMAGE_TYPES: Record<string, string> = { png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", gif: "image/gif", webp: "image/webp", svg: "image/svg+xml", bmp: "image/bmp", avif: "image/avif" };
+
+/**
+ * The media type to show a package image as: the one the backend serves it with if that is an image type, else one
+ * from the file's extension, else PNG (the original figures, served without one). An SVG needs its own type to show.
+ */
+export function imageType(path: string, served?: string | null): string {
+  const t = served?.split(";")[0].trim().toLowerCase();
+  if (t?.startsWith("image/")) return t;
+  const ext = /\.([a-z0-9]+)$/i.exec(path.split("?")[0])?.[1]?.toLowerCase();
+  return (ext && IMAGE_TYPES[ext]) || "image/png";
+}
+
+/** A package image's bytes with its media type. */
+export async function packageImage(sub: string): Promise<{ data: ArrayBuffer; type: string }> {
+  const f = await pkg.file(sub);
+  return { data: f.data, type: imageType(sub, f.type) };
+}
 
 export const STATUS_LABEL: Record<Status, string> = { match: "match", within: "within tolerance", deviation: "deviation", missing: "missing", figure: "compare visually", unparsable: "unparsable" };
 
@@ -34,7 +53,7 @@ export class RunStep implements Step {
       this.cmpError = undefined;
     } catch (e) {
       this.cmp = undefined;
-      this.cmpError = e instanceof ApiError && e.code === "results_missing" ? "No outputs/results.json yet: run the master script." : e instanceof ApiError && e.code === "script_missing" ? "No master script yet (step 5)." : (e as Error).message;
+      this.cmpError = e instanceof ApiError && e.code === "results_missing" ? "No outputs/results.json yet: run the master script." : e instanceof ApiError && e.code === "script_missing" ? "No master script yet (step 4)." : (e as Error).message;
     }
   }
 
@@ -117,7 +136,8 @@ export class RunStep implements Step {
     this.urls = [];
     for (const img of body.querySelectorAll<HTMLImageElement>("img[data-src]")) {
       try {
-        const url = blobUrl(await pkg.bytes(img.dataset.src!), "image/png");
+        const { data, type } = await packageImage(img.dataset.src!);
+        const url = blobUrl(data, type);
         this.urls.push(url);
         img.src = url;
       } catch {

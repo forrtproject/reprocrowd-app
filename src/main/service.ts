@@ -25,6 +25,8 @@ export interface Reply {
   etag: string | null;
   location: string | null;
   total: number | null;
+  /** The response's media type (Content-Type), e.g. to show a package file as the image it is. */
+  type: string | null;
   data: unknown;
 }
 
@@ -79,7 +81,7 @@ export async function request(method: string, path: string, opts: RequestOptions
   const rt = opts.responseType ?? "json";
   const data = r.status === 204 ? null : rt === "bytes" ? await r.arrayBuffer() : rt === "text" ? await r.text() : await r.json();
   const total = r.headers.get("x-total-count");
-  return { status: r.status, etag: r.headers.get("etag"), location: r.headers.get("location"), total: total === null ? null : Number(total), data };
+  return { status: r.status, etag: r.headers.get("etag"), location: r.headers.get("location"), total: total === null ? null : Number(total), type: type || null, data };
 }
 
 export const get = async <T>(path: string, query?: RequestOptions["query"], timeout?: number) => (await request("GET", path, { query, timeout })).data as T;

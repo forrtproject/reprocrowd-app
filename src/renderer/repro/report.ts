@@ -1,4 +1,4 @@
-// Step 8: the report, the package archive, and the deposit on Zenodo. A deposit is uploaded as a draft (with a
+// Step 7: the report, the package archive, and the deposit on Zenodo. A deposit is uploaded as a draft (with a
 // reserved DOI) that you can look at on Zenodo; publishing registers the DOI for good and is a separate step here or
 // on Zenodo. What goes into the upload can be chosen: the paper's own material only when its license allows.
 // A GitHub pilot is the lighter, unreviewed alternative: an issue per reproduction, the files of each run in a release.
@@ -6,7 +6,7 @@ import { ApiError, DepositPreview, host, PilotAccount, PilotPreview, PilotRecord
 import { settingsDialog } from "../settings";
 import type { ArchiveInfo, GithubPilot, Job, PackageSummary, ReportResult, ValidationReport, ZenodoDeposit } from "../types";
 import { confirmDialog, dataUrl, esc, modal, pilotLabel, showError, sizeText, when } from "../util";
-import { STATUS_LABEL } from "./run";
+import { packageImage, STATUS_LABEL } from "./run";
 import type { Step, Wizard } from "./wizard";
 
 /**
@@ -20,7 +20,7 @@ async function inlineImages(html: string): Promise<string> {
     local.map(async (img) => {
       const path = img.getAttribute("src")!.split("/").map(encodeURIComponent).join("/");
       // An image that can't be read shows as its alt text, as it would in report.html itself.
-      img.src = await pkg.bytes(`/files/${path}`).then((b) => dataUrl(b, "image/png")).catch(() => "");
+      img.src = await packageImage(`/files/${path}`).then((f) => dataUrl(f.data, f.type)).catch(() => "");
     }),
   );
   return `<!doctype html>${doc.documentElement.outerHTML}`;
@@ -43,6 +43,10 @@ function localFulltexts(resources: any[]): string[] {
 }
 
 const DEPOSIT_STATUS: Record<ZenodoDeposit["status"], string> = { draft: "Draft", published: "Published", discarded: "Discarded", gone: "Deleted on Zenodo" };
+const LOCAL_PAPER = {
+  zenodo: "The paper's text comes from a file on your computer. Only reproductions of published papers, started from their DOI, can be deposited on Zenodo; the report and the ZIP are yours to keep.",
+  github: "The paper's text comes from a file on your computer. Only reproductions of published papers, started from their DOI, can be submitted as GitHub pilots; the report and the ZIP are yours to keep.",
+};
 const GROUP_LABEL: Record<string, string> = { paper: "The paper's full texts, extractions and original figures", inputs: "The input files (the original data and code)" };
 
 export class ReportStep implements Step {
@@ -65,6 +69,9 @@ export class ReportStep implements Step {
   /** Groups left out, as chosen here (undefined: the default from the preview). */
   private exclude?: Set<string>;
   private note = "";
+  /** The pilot preview follows the choice of files (#rp-pilot waits for it); only the latest request's answer counts. */
+  private pilotSeq = 0;
+  private pilotPending = false;
 
   constructor(private w: Wizard) {}
 
@@ -84,16 +91,30 @@ export class ReportStep implements Step {
     this.validation = validation;
     this.report = report && (await inlineImages(report));
     const doi = this.doi();
+    // A preview for an earlier choice of files that is still on its way is superseded by this one.
+    const seq = ++this.pilotSeq;
+    let pilotPreview: PilotPreview | Error | undefined;
     // Account, preview and existing records are shown, but never block the step.
-    [this.account, this.preview, this.records, this.pilotAccount, this.pilotPreview, this.paperPilots] = await Promise.all([
+    [this.account, this.preview, this.records, this.pilotAccount, pilotPreview, this.paperPilots] = await Promise.all([
       host.zenodoAccount().catch(() => undefined),
       this.manifest?.reprocrowd.archive ? host.depositPreview({ note: "" }).catch((e) => e as Error) : Promise.resolve(undefined),
       doi ? host.zenodoRecords(doi).catch((e) => e as Error) : Promise.resolve([]),
       host.pilotAccount().catch(() => undefined),
-      this.manifest?.reprocrowd.archive ? host.pilotPreview({ note: "" }).catch((e) => e as Error) : Promise.resolve(undefined),
+      this.manifest?.reprocrowd.archive ? host.pilotPreview({ note: "", exclude: this.excludeList() }).catch((e) => e as Error) : Promise.resolve(undefined),
       doi ? host.pilotRecords(doi).catch((e) => e as Error) : Promise.resolve([]),
     ]);
+    if (seq === this.pilotSeq) [this.pilotPreview, this.pilotPending] = [pilotPreview, false];
     if (!this.exclude && this.preview && !(this.preview instanceof Error)) this.exclude = new Set(this.preview.exclude);
+  }
+
+  /** The pilot preview for the files chosen now: the backend checks the size limit and what may be published. */
+  private async refreshPilot() {
+    const seq = ++this.pilotSeq;
+    this.pilotPending = true;
+    const pv = await host.pilotPreview({ note: "", exclude: this.excludeList() }).catch((e) => e as Error);
+    if (seq !== this.pilotSeq) return;
+    [this.pilotPreview, this.pilotPending] = [pv, false];
+    if (this.w.steps[this.w.step] === this) this.w.draw();
   }
 
   private doi(): string {
@@ -111,9 +132,9 @@ export class ReportStep implements Step {
     const local = localFulltexts(this.manifest?.resources ?? []);
     const checks: [boolean, string, string?][] = [
       local.length
-        ? [false, "The paper's text comes from a file on your computer. Only reproductions of published papers, started from their DOI, can be deposited on Zenodo; the report and the ZIP are yours to keep."]
+        ? [false, LOCAL_PAPER.zenodo]
         : [!!doi, doi ? `DOI ${doi}` : "The paper has a DOI (the record links to it, and OpenAlex provides its metadata)"],
-      [this.lastRun?.status === "succeeded", this.lastRun ? `Last run: ${this.lastRun.status}${this.lastRun.status === "succeeded" ? "" : " (step 7)"}` : "The master script ran successfully (step 7)"],
+      [this.lastRun?.status === "succeeded", this.lastRun ? `Last run: ${this.lastRun.status}${this.lastRun.status === "succeeded" ? "" : " (step 6)"}` : "The master script ran successfully (step 6)"],
       [!!this.report, "Report created"],
       [!!archive, archive ? `ZIP created ${when(archive.created_at)}` : "ZIP created"],
       [!!a?.creator.name, a?.creator.name ? `Signed as ${a.creator.name}${a.creator.orcid ? ` (ORCID ${a.creator.orcid})` : ""}` : "Your name for the record (Settings)", "you"],
@@ -121,6 +142,9 @@ export class ReportStep implements Step {
     ];
     const pv = this.preview instanceof Error ? undefined : this.preview;
     const stale = this.preview instanceof ApiError && this.preview.code === "archive_stale";
+    // The package or its results changed after the report was made: the deposit and the pilot refuse it until both the
+    // report and then the ZIP are made again.
+    const reportStale = [this.preview, this.pilotPreview].find((p): p is ApiError => p instanceof ApiError && p.code === "report_stale");
     // The same archive with the same files left out is already on Zenodo (the backend would refuse it).
     const exNow = [...(this.exclude ?? [])].sort().join();
     const already = archive && this.deposits.find((d) => (d.status === "draft" || d.status === "published") && d.archive_sha256 === archive.sha256 && [...d.exclude].sort().join() === exNow);
@@ -134,8 +158,9 @@ export class ReportStep implements Step {
       <div class="col-flex">
         <section class="card">
           <h3>Report</h3>
-          <p class="hint">The comparison (rounding ${c.rounding === "reported" ? "as reported" : `${c.rounding} decimals`}, tolerance ${c.threshold} %, as set in step 7), the provenance of every target, the sources, LLM calls, inputs, plan and every file with its hash.</p>
+          <p class="hint">The comparison (rounding ${c.rounding === "reported" ? "as reported" : `${c.rounding} decimals`}, tolerance ${c.threshold} %, as set in step 6), the provenance of every target, the sources, LLM calls, inputs, plan and every file with its hash.</p>
           <div class="actions"><button id="rp-report" class="primary" ${this.w.running.has("report") ? "disabled" : ""}>${this.report ? "Regenerate report" : "Create report"}</button>${this.report ? `<button id="rp-report-show">Show file</button>` : ""}</div>
+          ${reportStale ? `<p class="warn-inline">The package or its results changed since this report was generated (${esc(reportStale.message.split(";")[0])}). Regenerate the report, then recreate the ZIP, before depositing or submitting a pilot.</p>` : ""}
           ${this.reportResult ? `<p class="ok">✓ ${this.reportResult.matched} of ${esc(this.reportResult.reproduced.split("/")[1] ?? "?")} match; ${this.reportResult.within} more within tolerance (exploratory) · ${Object.entries(this.reportResult.summary).map(([k, v]) => `${STATUS_LABEL[k as keyof typeof STATUS_LABEL] ?? k}: ${v}`).join(", ")}</p>` : ""}
         </section>
         <section class="card">
@@ -143,7 +168,7 @@ export class ReportStep implements Step {
           ${errs.length ? `<details class="warn" open><summary>The package doesn't validate (${errs.length} problem${errs.length > 1 ? "s" : ""}); the ZIP needs a valid package</summary><ul>${errs.slice(0, 40).map((e) => `<li><code>${esc(e.stage)}</code> ${esc(e.resource ?? "")} ${esc(e.message)}</li>`).join("")}</ul></details>` : this.validation ? `<p class="ok">✓ The package validates (manifest, file hashes, schemas, references).</p>` : ""}
           <div class="actions"><button id="rp-zip" ${this.report && !this.w.running.has("zip") ? "" : "disabled"}>${archive ? "Recreate ZIP" : "Create ZIP"}</button>${archive ? `<button id="rp-zip-show">Show file</button>` : ""}</div>
           ${archive ? `<p class="small"><code>${esc(archive.path)}</code> · ${sizeText(archive.bytes)} · ${archive.files} files · SHA-256 <code title="${esc(archive.sha256)}">${esc(archive.sha256.slice(0, 12))}…</code></p>` : `<p class="hint">A Frictionless zipped data package: <code>datapackage.json</code> and every file it lists.</p>`}
-          ${stale ? `<p class="warn-inline small">The package changed since the ZIP was made; recreate it before depositing.</p>` : ""}
+          ${reportStale ? `<p class="warn-inline small">The report is out of date: regenerate it first, then recreate the ZIP.</p>` : stale ? `<p class="warn-inline small">The package changed since the ZIP was made; recreate it before depositing.</p>` : ""}
         </section>
         <section class="card submit-card">
           <h3>Deposit on Zenodo ${a?.sandbox ? `<span class="badge sandbox" title="sandbox.zenodo.org: for testing, DOIs aren't real">Sandbox</span>` : `<span class="badge live">zenodo.org</span>`}</h3>
@@ -158,11 +183,11 @@ export class ReportStep implements Step {
           <label>Note for the record (optional) <textarea id="rp-note" rows="2" placeholder="e.g. what didn't reproduce and why">${esc(this.note)}</textarea></label>
           <div class="actions"><button id="rp-deposit" class="primary big" ${ready ? "" : "disabled"}>${this.w.running.has("deposit") ? "Uploading…" : `Upload to ${server} as a draft`}</button><button id="rp-metadata">Show metadata</button></div>
           ${already ? `<p class="hint">This ZIP is already on Zenodo (${already.status === "draft" ? "as a draft" : "published"}). A changed package (new run or report, then a new ZIP) or another choice of files makes a new deposit.</p>` : ""}
-          ` : this.preview instanceof Error && !stale && !local.length ? `<p class="hint">${esc(this.preview.message)}</p>` : ""}
+          ` : this.preview instanceof Error && !stale && !reportStale && !local.length ? `<p class="hint">${esc(this.preview.message)}</p>` : ""}
           ${this.deposits.length ? `<h4>Deposits of this package</h4><ul class="deposits">${this.deposits.map((d) => this.depositRow(d)).join("")}</ul>` : ""}
           ${others.length ? `<h4>Other ReproCrowd records for this paper</h4><ul class="small">${others.map((r) => `<li><a href="#" data-open="${esc(r.url)}">${esc(r.creators.join("; ") || "unknown")}, ${esc(r.published ?? "")}</a>${r.doi ? ` · <code>${esc(r.doi)}</code>` : ""}</li>`).join("")}</ul>` : this.records instanceof Error ? `<p class="warn-soft small">Couldn't search ${server} for other records of this paper.</p>` : ""}
         </section>
-        ${this.pilotCard(checks.slice(0, 4), exNow)}
+        ${this.pilotCard([local.length ? [false, LOCAL_PAPER.github] : checks[0], ...checks.slice(1, 4)], exNow)}
       </div>
       <iframe id="rp-preview" class="preview" sandbox="" title="Report preview"></iframe>
     </div>`;
@@ -182,6 +207,7 @@ export class ReportStep implements Step {
         this.exclude ??= new Set();
         if (cb.checked) this.exclude.delete(cb.dataset.group!);
         else this.exclude.add(cb.dataset.group!);
+        void this.refreshPilot(); // marks the pilot preview pending before the redraw
         this.w.draw();
       }),
     );
@@ -232,14 +258,14 @@ export class ReportStep implements Step {
     const checks: [boolean, string, string?][] = [...base, [!!acct?.hasToken, acct?.hasToken ? `GitHub CLI login (submits to ${acct.repo})` : "A GitHub login: run “gh auth login” (Settings)", "github"]];
     const same = archive && this.pilots.find((p) => p.repo === acct?.repo && p.archive_sha256 === archive.sha256 && [...p.exclude].sort().join() === exNow);
     const busy = this.w.running.has("pilot");
-    const ready = checks.every(([ok]) => ok) && !!pv && (!same || same.status === "partial") && !this.pilotsError && !busy;
+    const ready = checks.every(([ok]) => ok) && !!pv && !this.pilotPending && (!same || same.status === "partial") && !this.pilotsError && !busy;
     const refused = (p?: GithubPilot | false | null) => !!p && p.status === "submitted" && !!p.error?.startsWith("the pilots repository refused");
     const label = busy ? "Submitting…" : same?.status === "partial" ? "Resume the submission" : "Submit this run as a GitHub pilot";
     return `<section class="card submit-card">
       <h3>Pilot on GitHub <span class="badge sandbox" title="public, unreviewed; not a certificate">Unreviewed</span></h3>
       <p class="hint">A public record to discuss before anything goes to Zenodo: one issue per reproduction in <code>${esc(acct?.repo ?? "")}</code>, and for each run a release with the ZIP, report, comparison, evidence, licences and their SHA-256 hashes. A numeric match is not a scientific certificate. The files left out above are left out here too.</p>
       <ul class="checklist">${checks.map(([ok, l, fix]) => `<li class="${ok ? "ok" : "no"}">${ok ? "✓" : "✗"} ${esc(l)}${!ok && fix ? ` <a href="#" data-settings="${fix}">Settings…</a>` : ""}</li>`).join("")}</ul>
-      ${pv ? `<p class="small">${esc(pv.summary)}. Licences: metadata ${esc(pv.licenses.metadata)}, report and outputs ${esc(pv.licenses.outputs)}, new code ${esc(pv.licenses.code)}; third-party material keeps its own (<code>licenses.json</code>).</p>` : this.pilotPreview instanceof Error ? `<p class="hint">${esc(this.pilotPreview.message)}</p>` : ""}
+      ${this.pilotPending ? `<p class="hint">Checking the files for this choice…</p>` : pv ? `<p class="small">${esc(pv.summary)}. Licences: metadata ${esc(pv.licenses.metadata)}, report and outputs ${esc(pv.licenses.outputs)}, new code ${esc(pv.licenses.code)}; third-party material keeps its own (<code>licenses.json</code>).</p>` : this.pilotPreview instanceof Error && !(this.pilotPreview instanceof ApiError && this.pilotPreview.code === "report_stale") ? `<p class="hint">${esc(this.pilotPreview.message)}</p>` : ""}
       ${this.pilotsError ? `<p class="warn-inline small">Couldn't read this package's pilot records: ${esc(this.pilotsError.message)}</p>` : ""}
       <div class="actions"><button id="rp-pilot" class="primary" ${ready ? "" : "disabled"}>${label}</button></div>
       ${same?.status === "published" ? `<p class="hint">This ZIP is pilot run v${same.version}. A new run (then report and ZIP) becomes the next version on the same issue.</p>` : ""}

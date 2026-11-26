@@ -541,6 +541,11 @@ export function makeApi(wc: WebContents) {
     }),
     pkg,
     pkgBytes: async (sub: string) => (await pkg("GET", sub, undefined, undefined, "bytes")).data as ArrayBuffer,
+    /** A package file's bytes with the media type the backend serves it as (e.g. image/svg+xml for a figure). */
+    pkgFile: async (sub: string) => {
+      const r = await pkg("GET", sub, undefined, undefined, "bytes");
+      return { data: r.data as ArrayBuffer, type: r.type };
+    },
     pkgText: async (sub: string) => (await pkg("GET", sub, undefined, undefined, "text")).data as string,
     service: async <T>(p: string, query?: Record<string, string>) => {
       if (!GLOBAL_GETS.has(p)) throw new Error(`not allowed: ${p}`);

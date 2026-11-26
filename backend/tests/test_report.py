@@ -50,6 +50,38 @@ def test_report_and_archive(client, pkg, tmp_path):
     assert e["errors"]
 
 
+def test_report_names_added_files_and_survives_an_unknown_template(client, pkg):
+    """Files added after the run are reported apart from changed ones; the provenance legend has every status; a script
+    whose template this version doesn't know (none to name its command) still gets a report that says so."""
+    from reprocrowd.package import Registry
+    root = package_with_targets(client, pkg)
+    P = f"/v1/packages/{pkg}"
+    (root / "analysis.py").write_text(SCRIPT)
+    assert wait(client, pkg, client.post(P + "/jobs", json={"type": "run"}).json()["id"])["status"] == "succeeded"
+    assert client.put(P + "/report", json={}).status_code == 201
+    html = (root / "report.html").read_text()
+    assert "Changed inputs/scripts: none since the recorded run. Files added since the run: none." in html
+    legend = html.split('<p class="legend">')[1].split("</p>")[0]
+    assert all(f">{s}</span>" in legend for s in ("match", "within", "deviation", "missing", "figure", "unparsable"))
+    assert "Re-run with <code>" in html and "Pipeline: Monolithic Python script, <code>" in html
+
+    (root / "helper.py").write_text("x = 1\n")
+    assert client.post(f"{P}:sync").status_code == 200  # registered as code: not in the run's snapshot
+    assert client.put(P + "/report", json={}).status_code == 200
+    html = (root / "report.html").read_text()
+    assert "Changed inputs/scripts: none since the recorded run. Files added since the run: helper.py." in html
+
+    with Registry().get(pkg).edit() as m:
+        next(r for r in m.resources if r.reprocrowd.kind == "script").reprocrowd.template = "retired-template"
+    from reprocrowd.scripts import current_template
+    assert current_template(Registry().get(pkg)) is None
+    r = client.put(P + "/report", json={})
+    assert r.status_code == 200, r.text
+    html = (root / "report.html").read_text()
+    assert "Pipeline: template unavailable (the master script&#39;s template isn&#39;t one this version of ReproCrowd knows), <code>command unknown</code>" in html
+    assert "Re-run with" not in html and "The command to re-run it is unavailable" in html
+
+
 def test_archive_missing(client, pkg):
     problem(client.get(f"/v1/packages/{pkg}/archive"), 409, "archive_missing")
     problem(client.get(f"/v1/packages/{pkg}/report"), 409, "report_missing")

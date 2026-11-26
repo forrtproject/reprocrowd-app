@@ -6,6 +6,7 @@
 //   node test/e2e.mjs
 import { _electron as electron } from "playwright-core";
 import assert from "node:assert/strict";
+import crypto from "node:crypto";
 import fs from "node:fs";
 import http from "node:http";
 import os from "node:os";
@@ -352,6 +353,44 @@ json.dump({"results": [{"id": "T001", "value": 2.3149}, {"id": "T002", "value": 
   await win.waitForSelector(".deposit.published", { timeout: 30_000 });
   assert.equal(zenodo.depositions.get(dep.id).submitted, true);
   await shot("06-published");
+  // Package files come with the media type they are served as (an SVG figure shows only as image/svg+xml).
+  assert.match((await call("pkgFile", "/files/report.html")).type, /^text\/html/);
+
+  step("an input added after the report: the report is stale; a pilot over 200 MiB passes without the inputs");
+  // Incompressible (a random MiB, repeated), so the ZIP and the pilot's files really are over GitHub's 200 MiB.
+  const big = path.join(userData, "big-input.bin");
+  const chunk = crypto.randomBytes(1024 ** 2);
+  const fd = fs.openSync(big, "w");
+  for (let i = 0; i < 205; i++) fs.writeSync(fd, chunk);
+  fs.closeSync(fd);
+  await call("upload", "inputs", { name: "big-input.bin", path: big });
+  fs.rmSync(big);
+  await win.reload();
+  await win.waitForSelector("#rp-report");
+  await win.waitForSelector("text=changed since this report was generated", { timeout: 60_000 });
+  assert.match(await win.locator(".card", { hasText: "Package archive" }).innerText(), /regenerate it first, then recreate the ZIP/);
+  await shot("06a-report-stale");
+  await win.click("#rp-report");
+  await win.waitForSelector("text=The package changed since the ZIP was made", { timeout: 60_000 });
+  await win.click("#rp-zip");
+  const pilot = win.locator(".submit-card", { hasText: "Pilot on GitHub" });
+  const tooLarge = /must total at most 200 MiB/;
+  await pilot.getByText(tooLarge).waitFor({ timeout: 180_000 });
+  assert.ok(await win.locator("#rp-pilot").isDisabled());
+  assert.equal(await win.locator("[data-group=inputs]").isChecked(), true, "the inputs are in by default");
+  // Until the preview for the new choice is back, the card says so (and #rp-pilot waits): same task as the click.
+  const pendingShown = await win.evaluate(() => {
+    document.querySelector("[data-group=inputs]").click();
+    return [...document.querySelectorAll(".submit-card")].some((c) => c.textContent.includes("Checking the files for this choice"));
+  });
+  assert.ok(pendingShown, "the pilot card waits for the preview of the new choice");
+  assert.equal(await win.locator("[data-group=inputs]").isChecked(), false);
+  await pilot.getByText("Licences: metadata").waitFor({ timeout: 120_000 });
+  assert.doesNotMatch(await pilot.innerText(), tooLarge, "without the inputs the run is under the limit");
+  await shot("06b-pilot-without-inputs");
+  await win.locator("[data-group=inputs]").check();
+  await pilot.getByText(tooLarge).waitFor({ timeout: 180_000 });
+  assert.ok(await win.locator("#rp-pilot").isDisabled());
 
   step("settings and the library afterwards");
   await win.click("#settings-btn");
@@ -435,4 +474,6 @@ json.dump({"results": [{"id": "T001", "value": 2.3149}, {"id": "T002", "value": 
 } finally {
   await app.close();
   fake.close();
+  // The packages hold a few hundred MB (the large input): kept only when the check failed, to look into.
+  if (!process.exitCode) fs.rmSync(userData, { recursive: true, force: true });
 }
