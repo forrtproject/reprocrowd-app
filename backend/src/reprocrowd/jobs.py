@@ -120,11 +120,16 @@ def job_env(extra: dict[str, str] | None = None, base: Mapping[str, str] | None 
 
 def start(pkg: Package, *, jid: str, type: JobType, argv: list[str], stdin: str, timeout_s: int, events_format: str,
           profile: str | None, request: dict[str, Any], finish: Callable[[Job], BaseModel | None], merge_stderr: bool = False, env: dict[str, str] | None = None,
-          env_pass: Iterable[str] = ()) -> Job:
+          env_pass: Iterable[str] = (), runs: int = 1, between_runs: Callable[[], None] | None = None,
+          exec_argv: list[str] | None = None, cleanup: Callable[[], None] | None = None) -> Job:
     """merge_stderr: write stderr into stdout too (pipeline runs: errors belong in the log, in order).
-    env: extra environment variables."""
+    env: extra environment variables. runs > 1 repeats the command sequentially (stopping if an earlier run fails),
+    calling ``between_runs`` before each repeat. ``exec_argv`` overrides the OS command spawned while keeping
+    ``job.argv`` as the logical command; ``cleanup`` always runs when the job ends or fails to start."""
     # Analysis scripts get the scripts' allowlist; agents their CLI's, plus the profile's env_pass (#91).
     base = childenv.for_script() if type == "run" else childenv.for_cli(argv, env_pass)
+    proc_env = job_env({**(env or {}), "PWD": str(pkg.root)}, base)  # PWD: some CLIs (OpenCode) resolve relative paths from it
+    resolved_argv = resolve_argv(exec_argv or argv)
     folder = pkg.path(f"jobs/{jid}")
     folder.mkdir(parents=True, exist_ok=True)
     (folder / "stdin.txt").write_text(stdin, encoding="utf-8")
@@ -132,37 +137,74 @@ def start(pkg: Package, *, jid: str, type: JobType, argv: list[str], stdin: str,
               stdout=f"jobs/{jid}/stdout.log", stderr=f"jobs/{jid}/stderr.log", events_format=events_format)
     with _guard:
         if any(k.startswith(f"{pkg.root}::") for k in _procs):
+            if cleanup is not None:
+                cleanup()
             raise conflict("job_running", "another job is running in this package")
         out, err = open(pkg.path(job.stdout), "wb"), open(pkg.path(job.stderr), "wb")
         try:
-            proc = subprocess.Popen(resolve_argv(argv), cwd=pkg.root, stdin=subprocess.PIPE, stdout=out, stderr=subprocess.STDOUT if merge_stderr else err,
-                                    start_new_session=True, env=job_env({**(env or {}), "PWD": str(pkg.root)}, base))  # PWD: some CLIs (OpenCode) resolve relative paths from it
+            proc = subprocess.Popen(resolved_argv, cwd=pkg.root, stdin=subprocess.PIPE, stdout=out, stderr=subprocess.STDOUT if merge_stderr else err,
+                                    start_new_session=True, env=proc_env)
         except OSError as e:
             out.close(), err.close()
+            if cleanup is not None:
+                cleanup()
             job.status, job.finished_at, job.error = "failed", now(), f"could not start: {e}"
             save(pkg, job)
             raise ApiError(502, "job_start_failed", f"could not start {argv[0]}: {e}", {"job": jid})
         _procs[_key(pkg, jid)] = proc
         save(pkg, job)
-    threading.Thread(target=_watch, args=(pkg, job, proc, stdin, timeout_s, finish, out, err), daemon=True).start()
+    threading.Thread(target=_watch, args=(pkg, job, proc, stdin, timeout_s, finish, out, err),
+                     kwargs={"resolved_argv": resolved_argv, "proc_env": proc_env, "merge_stderr": merge_stderr,
+                             "runs": max(1, runs), "between_runs": between_runs, "cleanup": cleanup}, daemon=True).start()
     return job
 
 
-def _watch(pkg: Package, job: Job, proc: subprocess.Popen, stdin: str, timeout_s: int, finish, out, err) -> None:
+def _watch(pkg: Package, job: Job, proc: subprocess.Popen, stdin: str, timeout_s: int, finish, out, err, *,
+           resolved_argv: list[str] | None = None, proc_env: dict[str, str] | None = None,
+           merge_stderr: bool = False, runs: int = 1, between_runs: Callable[[], None] | None = None,
+           cleanup: Callable[[], None] | None = None) -> None:
     key = _key(pkg, job.id)
     t0 = time.monotonic()
     try:
-        try:
-            proc.stdin.write(stdin.encode())
-            proc.stdin.close()
-        except (BrokenPipeError, OSError):
-            pass  # the process exited early; its exit code says why
-        try:
-            code = proc.wait(timeout=timeout_s)
-            status = "interrupted" if key in _interrupted else "cancelled" if key in _cancelled else ("succeeded" if code == 0 else "failed")
-        except subprocess.TimeoutExpired:
-            _kill(proc)
-            code, status = proc.wait(), "timeout"
+        def wait_one(p: subprocess.Popen, rem: float) -> tuple[str, int]:
+            try:
+                p.stdin.write(stdin.encode())
+                p.stdin.close()
+            except (BrokenPipeError, OSError):
+                pass  # the process exited early; its exit code says why
+            try:
+                c = p.wait(timeout=max(0.1, rem))
+                s = "interrupted" if key in _interrupted else "cancelled" if key in _cancelled else ("succeeded" if c == 0 else "failed")
+            except subprocess.TimeoutExpired:
+                _kill(p)
+                c, s = p.wait(), "timeout"
+            return s, c
+
+        status, code = wait_one(proc, timeout_s)
+        for idx in range(2, runs + 1):
+            if status != "succeeded":
+                break
+            if between_runs is not None:
+                between_runs()
+            rem = timeout_s - (time.monotonic() - t0)
+            if rem <= 0:
+                status, code = "timeout", -1
+                break
+            out.write(f"\n=== Determinism check: run {idx} of {runs} ===\n".encode("utf-8"))
+            out.flush()
+            with _guard:
+                if key in _interrupted:
+                    status = "interrupted"
+                    break
+                if key in _cancelled:
+                    status = "cancelled"
+                    break
+                proc = subprocess.Popen(resolved_argv or resolve_argv(job.argv), cwd=pkg.root, stdin=subprocess.PIPE,
+                                        stdout=out, stderr=subprocess.STDOUT if merge_stderr else err,
+                                        start_new_session=True, env=proc_env)
+                _procs[key] = proc
+            status, code = wait_one(proc, rem)
+
         out.close(), err.close()
         job.status, job.exit_code = status, code
         job.duration_ms = int((time.monotonic() - t0) * 1000)
@@ -176,6 +218,11 @@ def _watch(pkg: Package, job: Job, proc: subprocess.Popen, stdin: str, timeout_s
         job.status = "failed" if job.status == "running" else job.status
         job.error = job.error or f"{type(e).__name__}: {e}"
     finally:
+        if cleanup is not None:
+            try:
+                cleanup()
+            except Exception:
+                log.exception("job %s: cleanup failed", job.id)
         job.finished_at = now()
         try:
             save(pkg, job)

@@ -52,6 +52,53 @@ class CodegenResult(Model):
     git_note: str | None = Field(default=None, description="why git was skipped, if it was")
 
 
+DeterminismStatus = Literal["identical", "numerically_close", "different", "failed"]
+
+
+class DeterminismDiff(Model):
+    """One difference observed between two consecutive runs of the master script."""
+
+    target: str | None = Field(default=None, description="target id in outputs/results.json, if applicable")
+    path: str | None = Field(default=None, description="package-relative output file path, if applicable")
+    kind: Literal["missing_in_run", "value_changed", "table_changed", "file_changed", "parse_error"]
+    detail: str
+    max_rel_diff: float | None = Field(default=None, description="largest relative numeric change between runs, if numeric")
+    looks_like_clock: bool = Field(default=False, description="heuristic: the difference looks like a clock/timestamp reading")
+
+
+class DeterminismCheck(Model):
+    """Outcome of running the master script twice and comparing outputs/results.json and produced output files."""
+
+    runs: int = Field(ge=2)
+    status: DeterminismStatus
+    run1_results_sha256: str | None = None
+    run2_results_sha256: str | None = None
+    differences: list[DeterminismDiff] = Field(default_factory=list)
+    summary: str
+
+
+class RunIsolation(Model):
+    """Clean-room settings applied to the script run (honest record, not an OS container)."""
+
+    network_denied_by: Literal["namespace", "sandbox", "proxy"] = Field(
+        description="how network access was denied: Linux network namespace, macOS sandbox-exec, or dead-proxy env vars only")
+    clean_home: bool = Field(default=True, description="private empty HOME/TMPDIR and scratch R library (user libraries stay readable)")
+    tz: str = Field(default="UTC")
+    locale: str = Field(default="C.UTF-8")
+    runtime_caches: list[str] = Field(default_factory=list, description="runtime cache files left behind in the package by the run")
+
+
+FailureHintKind = Literal["missing_package", "path", "network", "encoding", "session_state", "permission", "syntax", "memory"]
+
+
+class FailureHint(Model):
+    """Actionable hint parsed from a failed run's log."""
+
+    kind: FailureHintKind
+    detail: str
+    suggestion: str
+
+
 class RunResult(Model):
     commit_before: str | None = Field(default=None, description="git commit of the package just before the run")
     snapshot: dict[str, str] | None = Field(default=None, description='package path -> "sha256:<hex>" of the targets, plan, scripts/code and used inputs at launch; null for older runs')
@@ -64,6 +111,10 @@ class RunResult(Model):
     output_errors: list[str] = Field(default_factory=list, description="outputs/results.json problems (format, unknown ids)")
     output_warnings: list[str] = Field(default_factory=list, description="coverage problems (targets missing from the output)")
     commit_after: str | None = None
+    runs: int = Field(default=1, ge=1, description="number of script runs requested (2 = determinism check)")
+    determinism: DeterminismCheck | None = Field(default=None, description="two-run determinism check result when runs=2")
+    isolation: RunIsolation | None = Field(default=None, description="clean-room environment and network isolation applied to the run")
+    failure_hints: list[FailureHint] = Field(default_factory=list, description="structured failure hints parsed from the run log when a run fails")
 
 
 JobResult = Annotated[Union[CodegenResult, RunResult], Field(discriminator="type")]

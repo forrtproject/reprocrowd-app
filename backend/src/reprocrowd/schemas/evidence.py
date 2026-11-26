@@ -3,6 +3,7 @@ from typing import Any, Literal
 from pydantic import Field
 from .common import Model
 from .curation import Ref
+from .jobs import DeterminismCheck, RunIsolation
 
 
 class TargetEvidence(Model):
@@ -23,6 +24,8 @@ class ExecutionEvidence(Model):
     stale_hashes: dict[str, str | None] = Field(default_factory=dict, description=(
         "current hash of each stale or added file (null if deleted), so a later edit to an already stale file is detected"))
     results_match_run: bool | None = None
+    determinism: DeterminismCheck | None = Field(default=None, description="two-run determinism check recorded by the latest run, if run twice")
+    isolation: RunIsolation | None = Field(default=None, description="clean-room isolation recorded by the latest run")
     codegen: dict[str, Any] | None = None
     targets: list[TargetEvidence] = Field(default_factory=list)
     log_path: str | None = None

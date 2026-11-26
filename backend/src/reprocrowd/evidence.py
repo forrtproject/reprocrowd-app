@@ -43,6 +43,8 @@ def get(pkg: Package) -> ExecutionEvidence:
             ev.stale_hashes = {p: current.get(p) for p in sorted(set(ev.stale) | set(ev.added_since_run))}
             ev.stale_reason = None
             ev.results_match_run = digest(pkg, RESULTS) == result.results_sha256 if result.results_sha256 else False
+            ev.determinism = result.determinism
+            ev.isolation = result.isolation
             ev.log_sha256 = result.log_sha256
         else:
             ev.stale_reason = ("run in progress" if run.status == "running" else

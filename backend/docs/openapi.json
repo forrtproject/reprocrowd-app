@@ -11527,6 +11527,136 @@
         ],
         "title": "DepositPreview"
       },
+      "DeterminismCheck": {
+        "properties": {
+          "runs": {
+            "type": "integer",
+            "minimum": 2.0,
+            "title": "Runs"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "identical",
+              "numerically_close",
+              "different",
+              "failed"
+            ],
+            "title": "Status"
+          },
+          "run1_results_sha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run1 Results Sha256"
+          },
+          "run2_results_sha256": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run2 Results Sha256"
+          },
+          "differences": {
+            "items": {
+              "$ref": "#/components/schemas/DeterminismDiff"
+            },
+            "type": "array",
+            "title": "Differences"
+          },
+          "summary": {
+            "type": "string",
+            "title": "Summary"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "runs",
+          "status",
+          "summary"
+        ],
+        "title": "DeterminismCheck",
+        "description": "Outcome of running the master script twice and comparing outputs/results.json and produced output files."
+      },
+      "DeterminismDiff": {
+        "properties": {
+          "target": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Target",
+            "description": "target id in outputs/results.json, if applicable"
+          },
+          "path": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Path",
+            "description": "package-relative output file path, if applicable"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "missing_in_run",
+              "value_changed",
+              "table_changed",
+              "file_changed",
+              "parse_error"
+            ],
+            "title": "Kind"
+          },
+          "detail": {
+            "type": "string",
+            "title": "Detail"
+          },
+          "max_rel_diff": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Rel Diff",
+            "description": "largest relative numeric change between runs, if numeric"
+          },
+          "looks_like_clock": {
+            "type": "boolean",
+            "title": "Looks Like Clock",
+            "description": "heuristic: the difference looks like a clock/timestamp reading",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "detail"
+        ],
+        "title": "DeterminismDiff",
+        "description": "One difference observed between two consecutive runs of the master script."
+      },
       "Document": {
         "properties": {
           "schema_version": {
@@ -11720,6 +11850,28 @@
               }
             ],
             "title": "Results Match Run"
+          },
+          "determinism": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DeterminismCheck"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "two-run determinism check recorded by the latest run, if run twice"
+          },
+          "isolation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RunIsolation"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "clean-room isolation recorded by the latest run"
           },
           "codegen": {
             "anyOf": [
@@ -11932,6 +12084,41 @@
           "sources"
         ],
         "title": "ExtractionReconcile"
+      },
+      "FailureHint": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "missing_package",
+              "path",
+              "network",
+              "encoding",
+              "session_state",
+              "permission",
+              "syntax",
+              "memory"
+            ],
+            "title": "Kind"
+          },
+          "detail": {
+            "type": "string",
+            "title": "Detail"
+          },
+          "suggestion": {
+            "type": "string",
+            "title": "Suggestion"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "detail",
+          "suggestion"
+        ],
+        "title": "FailureHint",
+        "description": "Actionable hint parsed from a failed run's log."
       },
       "FetchedOrigin": {
         "properties": {
@@ -14671,12 +14858,67 @@
         ],
         "title": "RunCreate"
       },
+      "RunIsolation": {
+        "properties": {
+          "network_denied_by": {
+            "type": "string",
+            "enum": [
+              "namespace",
+              "sandbox",
+              "proxy"
+            ],
+            "title": "Network Denied By",
+            "description": "how network access was denied: Linux network namespace, macOS sandbox-exec, or dead-proxy env vars only"
+          },
+          "clean_home": {
+            "type": "boolean",
+            "title": "Clean Home",
+            "description": "private empty HOME/TMPDIR and scratch R library (user libraries stay readable)",
+            "default": true
+          },
+          "tz": {
+            "type": "string",
+            "title": "Tz",
+            "default": "UTC"
+          },
+          "locale": {
+            "type": "string",
+            "title": "Locale",
+            "default": "C.UTF-8"
+          },
+          "runtime_caches": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Runtime Caches",
+            "description": "runtime cache files left behind in the package by the run"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "network_denied_by"
+        ],
+        "title": "RunIsolation",
+        "description": "Clean-room settings applied to the script run (honest record, not an OS container)."
+      },
       "RunJobCreate": {
         "properties": {
           "type": {
             "type": "string",
             "const": "run",
             "title": "Type"
+          },
+          "runs": {
+            "type": "integer",
+            "enum": [
+              1,
+              2
+            ],
+            "title": "Runs",
+            "description": "1 (default): single run. 2: run the master script twice sequentially and compare outputs/results.json and produced output files for determinism.",
+            "default": 1
           }
         },
         "additionalProperties": false,
@@ -14800,6 +15042,43 @@
               }
             ],
             "title": "Commit After"
+          },
+          "runs": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Runs",
+            "description": "number of script runs requested (2 = determinism check)",
+            "default": 1
+          },
+          "determinism": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DeterminismCheck"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "two-run determinism check result when runs=2"
+          },
+          "isolation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RunIsolation"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "clean-room environment and network isolation applied to the run"
+          },
+          "failure_hints": {
+            "items": {
+              "$ref": "#/components/schemas/FailureHint"
+            },
+            "type": "array",
+            "title": "Failure Hints",
+            "description": "structured failure hints parsed from the run log when a run fails"
           }
         },
         "additionalProperties": false,
