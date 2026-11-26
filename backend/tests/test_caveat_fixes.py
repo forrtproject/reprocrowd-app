@@ -21,6 +21,7 @@ FIG = Target(id="T004", type="figure", description="RT plot", refs=REF)
     (b"", "outputs/figures/T004.png", "figure file is empty"),
     (None, "../outside.png", "figure path outside package"),
     (None, "/etc/hosts", "figure path outside package"),
+    (None, "outputs/figures/bad\x00.png", "invalid figure path"),
     ("dir", "outputs/figures", "figure file not found"),
 ])
 def test_figure_file_problems(tmp_path, setup, file, problem_text):
@@ -59,12 +60,19 @@ def test_figure_missing_after_run(client, pkg):
     assert "results[2] (T004): figure file not found: outputs/figures/T004.png" in c["output_warnings"]
 
 
+def test_figure_result_without_file_warns(tmp_path):
+    _, warnings, _ = check_output({"results": [{"id": "T004", "value": None}]}, [FIG], root=tmp_path)
+    assert warnings == ['results[0] (T004): figure target has no "file"']
+    res = compare([FIG], {"results": [{"id": "T004", "value": None}]}, CompareSettings(), root=tmp_path)
+    assert res.rows[0].status == "missing" and res.output_warnings == warnings
+
+
 def test_table_text_cells():
-    t = Target(id="T003", type="table", description="d", refs=REF, expected=[["Group", "Effect"], ["A", "Positive"], ["B", "Negative"]])
-    row = compare_target(t, OutputResult(id="T003", table=[["A", "Negative"], ["B"]]), CompareSettings())
-    assert [[c.status for c in r] for r in row.cells] == [["match", "match"], ["match", "deviation"], ["match", "missing"]]
+    t = Target(id="T003", type="table", description="d", refs=REF, expected=[["Group", "Effect"], ["A", "Positive"], ["B", "Negative"], ["C", "Neutral"]])
+    row = compare_target(t, OutputResult(id="T003", table=[["A", "Negative"], ["B"], ["C", ""]]), CompareSettings())
+    assert [[c.status for c in r] for r in row.cells] == [["match", "match"], ["match", "deviation"], ["match", "missing"], ["match", "missing"]]
     assert row.status == "deviation"
-    ok = compare_target(t, OutputResult(id="T003", table=[["A", " positive "], ["B", "NEGATIVE"]]), CompareSettings())
+    ok = compare_target(t, OutputResult(id="T003", table=[["A", " positive "], ["B", "NEGATIVE"], ["C", "neutral"]]), CompareSettings())
     assert ok.status == "match"
 
 
@@ -100,7 +108,7 @@ def test_r_templates_write_unrounded_json(client, pkg, template, master):
     assert client.put(P + "/script", json={"template": template}).status_code == 200
     script = (root / master).read_text()
     assert "write_reprocrowd_results <- function(results, path = \"outputs/results.json\")" in script
-    assert "jsonlite::write_json(list(results = results), path, auto_unbox = TRUE, digits = NA, pretty = TRUE)" in script
+    assert 'jsonlite::write_json(list(results = I(norm)), path, auto_unbox = TRUE, digits = NA, null = "null", pretty = TRUE)' in script
     assert "dir.create(dirname(path), recursive = TRUE" in script
     markers = len(re.findall(r"TODO\(LLM\):", script))
     st = client.get(P + "/script").json()

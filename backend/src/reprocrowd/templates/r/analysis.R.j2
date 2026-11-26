@@ -6,7 +6,13 @@
 # Writes outputs/results.json at full precision: jsonlite rounds to 4 decimals unless digits = NA.
 write_reprocrowd_results <- function(results, path = "outputs/results.json") {
   dir.create(dirname(path), recursive = TRUE, showWarnings = FALSE)
-  jsonlite::write_json(list(results = results), path, auto_unbox = TRUE, digits = NA, pretty = TRUE)
+  norm <- lapply(results, function(r) {
+    if (is.list(r) && !is.null(r$table) && is.list(r$table) && !is.data.frame(r$table)) {
+      r$table <- I(lapply(r$table, function(row) I(as.list(unname(row)))))
+    }
+    r
+  })
+  jsonlite::write_json(list(results = I(norm)), path, auto_unbox = TRUE, digits = NA, null = "null", pretty = TRUE)
   invisible(path)
 }
 {% for s in plan.steps %}

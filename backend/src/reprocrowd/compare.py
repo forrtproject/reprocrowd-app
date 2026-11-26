@@ -91,17 +91,25 @@ def _compare_table(exp: list[list[str]], rep: list[list[Any]], st: CompareSettin
 
 def figure_problem(root: Path, file: str) -> str | None:
     """Why a reproduced figure file can't be shown, or None if it is a non-empty file inside the package folder."""
+    if "\x00" in file:
+        return "invalid figure path"
     rel = Path(file)
     base = root.resolve()
     if rel.is_absolute() or rel.drive or rel.anchor:
         return "figure path outside package"
-    path = (base / rel).resolve()
+    try:
+        path = (base / rel).resolve()
+    except (OSError, ValueError):
+        return "invalid figure path"
     if not path.is_relative_to(base):
         return "figure path outside package"
-    if not path.is_file():
+    try:
+        if not path.is_file():
+            return "figure file not found"
+        if path.stat().st_size == 0:
+            return "figure file is empty"
+    except (OSError, ValueError):
         return "figure file not found"
-    if path.stat().st_size == 0:
-        return "figure file is empty"
     return None
 
 
@@ -177,6 +185,8 @@ def check_output(raw: Any, targets: list[Target], plan=None, root: Path | None =
             errors.append(f"{at}: table target needs \"table\"")
         elif t.type == "figure" and r.value is not None and not r.file:
             errors.append(f"{at}: figure target needs \"file\"")
+        elif t.type == "figure" and not r.file:
+            warnings.append(f"{at}: figure target has no \"file\"")
         elif t.type == "figure" and r.file and root is not None and (problem := figure_problem(root, r.file)):
             warnings.append(f"{at}: {problem}: {r.file}")
     warnings += [f"{t.id}: precision inferred from an older numeric target; original trailing zeroes are unknown" for t in targets if t.type == "number" and t.printed is None and t.decimals is None]
