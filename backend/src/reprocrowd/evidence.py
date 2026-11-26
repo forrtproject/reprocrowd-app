@@ -40,6 +40,7 @@ def get(pkg: Package) -> ExecutionEvidence:
             current = snapshot(pkg)
             ev.stale = [p for p, h in result.snapshot.items() if current.get(p) != h]
             ev.added_since_run = sorted(set(current) - set(result.snapshot))
+            ev.stale_hashes = {p: current.get(p) for p in sorted(set(ev.stale) | set(ev.added_since_run))}
             ev.stale_reason = None
             ev.results_match_run = digest(pkg, RESULTS) == result.results_sha256 if result.results_sha256 else False
             ev.log_sha256 = result.log_sha256

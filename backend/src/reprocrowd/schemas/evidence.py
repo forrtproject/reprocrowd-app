@@ -20,6 +20,8 @@ class ExecutionEvidence(Model):
     stale: list[str] | None = None
     stale_reason: str | None = None
     added_since_run: list[str] = Field(default_factory=list)
+    stale_hashes: dict[str, str | None] = Field(default_factory=dict, description=(
+        "current hash of each stale or added file (null if deleted), so a later edit to an already stale file is detected"))
     results_match_run: bool | None = None
     codegen: dict[str, Any] | None = None
     targets: list[TargetEvidence] = Field(default_factory=list)

@@ -15,6 +15,7 @@ from .numbers import parse_printed, reproduced_decimal, rounded_both, compare_nu
 
 import math
 import re
+from pathlib import Path
 from typing import Any
 
 from pydantic import ValidationError
@@ -79,7 +80,8 @@ def _compare_table(exp: list[list[str]], rep: list[list[Any]], st: CompareSettin
                 if status == "match":
                     matched += 1
             else:
-                status = "match" if not _norm(e) or _norm(e) == _norm(rv) else "unparsable"
+                status = ("match" if not _norm(e) or _norm(e) == _norm(rv) else
+                          "missing" if rv is None or not _norm(rv) else "deviation")
             out_row.append(Cell(expected=e, reproduced=_fmt(rv), status=status, deviation=_finite(deviation),
                                  printed=parse_printed(e).token if en is not None else None, comparator=parse_printed(e).comparator if en is not None else None,
                                  quantum=quantum(e) if en is not None else None))
@@ -87,7 +89,31 @@ def _compare_table(exp: list[list[str]], rep: list[list[Any]], st: CompareSettin
     return cells, matched, total
 
 
-def compare_target(t: Target, out: OutputResult | None, st: CompareSettings) -> CompareRow:
+def figure_problem(root: Path, file: str) -> str | None:
+    """Why a reproduced figure file can't be shown, or None if it is a non-empty file inside the package folder."""
+    if "\x00" in file:
+        return "invalid figure path"
+    rel = Path(file)
+    base = root.resolve()
+    if rel.is_absolute() or rel.drive or rel.anchor:
+        return "figure path outside package"
+    try:
+        path = (base / rel).resolve()
+    except (OSError, ValueError):
+        return "invalid figure path"
+    if not path.is_relative_to(base):
+        return "figure path outside package"
+    try:
+        if not path.is_file():
+            return "figure file not found"
+        if path.stat().st_size == 0:
+            return "figure file is empty"
+    except (OSError, ValueError):
+        return "figure file not found"
+    return None
+
+
+def compare_target(t: Target, out: OutputResult | None, st: CompareSettings, root: Path | None = None) -> CompareRow:
     if t.type == "table":
         expected_text = f"{len(t.expected or [])} rows"
     elif t.type == "figure":
@@ -96,7 +122,13 @@ def compare_target(t: Target, out: OutputResult | None, st: CompareSettings) -> 
         expected_text = f"{t.comparator + ' ' if t.comparator and t.comparator != '=' else ''}{t.printed or _fmt(t.expected)}{' ' + t.unit if t.unit else ''}"
     base = {"target": t.id, "type": t.type, "description": t.description, "expected_text": expected_text, "note": out.note if out else None, "refs": t.refs}
     if t.type == "figure":
-        return CompareRow(**base, status="figure" if out and out.file else "missing", reproduced_text=out.file if out and out.file else "—")
+        if not (out and out.file):
+            return CompareRow(**base, status="missing", reproduced_text="—")
+        problem = figure_problem(root, out.file) if root is not None else None
+        if problem:
+            base["note"] = f"{out.note}; {problem}" if out.note else problem
+            return CompareRow(**base, status="missing", reproduced_text=out.file)
+        return CompareRow(**base, status="figure", reproduced_text=out.file)
     if out is None:
         return CompareRow(**base, status="missing", reproduced_text="—")
     if t.type == "table":
@@ -125,8 +157,9 @@ def compare_target(t: Target, out: OutputResult | None, st: CompareSettings) -> 
 
 
 
-def check_output(raw: Any, targets: list[Target], plan=None) -> tuple[list[str], list[str], ReproducedOutput | None]:
-    """Errors: the file doesn't have the required format; warnings: targets not covered, unknown ids."""
+def check_output(raw: Any, targets: list[Target], plan=None, root: Path | None = None) -> tuple[list[str], list[str], ReproducedOutput | None]:
+    """Errors: the file doesn't have the required format; warnings: targets not covered, unknown ids, figure files
+    that aren't non-empty files in the package folder (checked only if ``root`` is given)."""
     try:
         output = ReproducedOutput.model_validate(raw)
     except ValidationError as e:
@@ -152,15 +185,19 @@ def check_output(raw: Any, targets: list[Target], plan=None) -> tuple[list[str],
             errors.append(f"{at}: table target needs \"table\"")
         elif t.type == "figure" and r.value is not None and not r.file:
             errors.append(f"{at}: figure target needs \"file\"")
+        elif t.type == "figure" and not r.file:
+            warnings.append(f"{at}: figure target has no \"file\"")
+        elif t.type == "figure" and r.file and root is not None and (problem := figure_problem(root, r.file)):
+            warnings.append(f"{at}: {problem}: {r.file}")
     warnings += [f"{t.id}: precision inferred from an older numeric target; original trailing zeroes are unknown" for t in targets if t.type == "number" and t.printed is None and t.decimals is None]
     warnings += [f"{t}: missing from the output" for t in by_id if t not in seen]
     return errors, warnings, output
 
 
-def compare(targets: list[Target], raw_output: Any, st: CompareSettings) -> Comparison:
-    errors, warnings, output = check_output(raw_output, targets)
+def compare(targets: list[Target], raw_output: Any, st: CompareSettings, root: Path | None = None) -> Comparison:
+    errors, warnings, output = check_output(raw_output, targets, root=root)
     outs = {r.id: r for r in (output.results if output else [])}
-    rows = [compare_target(t, outs.get(t.id), st) for t in targets]
+    rows = [compare_target(t, outs.get(t.id), st, root) for t in targets]
     summary: dict[str, int] = {}
     for r in rows:
         summary[r.status] = summary.get(r.status, 0) + 1
