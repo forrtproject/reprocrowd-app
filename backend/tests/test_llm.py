@@ -72,6 +72,13 @@ def test_extract_json_skips_braces_in_prose():
     assert llm.extract_json(text) == {"targets": [{"id": "T1"}]}
 
 
+def test_extract_json_skips_placeholder_objects_in_prose():
+    assert llm.extract_json('Use {} as a placeholder; result: {"targets": [{"id": "T1"}]}') == {"targets": [{"id": "T1"}]}
+    assert llm.extract_json('{"targets": [{"id": "T1"}]}\nNote: {} means empty.') == {"targets": [{"id": "T1"}]}
+    assert llm.extract_json('```json\n{}\n```\n```json\n{"targets": [{"id": "T1"}]}\n```') == {"targets": [{"id": "T1"}]}
+    assert llm.extract_json("{}") == {}
+
+
 def test_extract_json_reads_fenced_blocks_first():
     text = 'Use {} as the default.\n```json\n{"a": 1, "b": {"c": [1, 2]}}\n```\nThe set {x} is unused.'
     assert llm.extract_json(text) == {"a": 1, "b": {"c": [1, 2]}}

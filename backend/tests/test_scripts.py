@@ -28,8 +28,11 @@ def test_switch_template_keeping_edited_shared_files(client, pkg):
         assert (root / name).read_bytes() == data
     assert not (root / "analysis.R").exists() and (root / "analysis.py").exists()
 
-    tpl = current_template(Package(pkg, root))
+    p = Package(pkg, root)
+    tpl = current_template(p)
     assert tpl is not None and (tpl.id, tpl.master) == ("python", "analysis.py")
+    by_path = {r.path: r.reprocrowd.template for r in p.load().by_kind("script")}
+    assert by_path["README.md"] == "python" and by_path["AGENT_PROMPT.md"] == "python"
     state = client.get(P + "/script").json()
     assert (state["template"], state["master"], state["command"]) == ("python", "analysis.py", "python3 analysis.py")
     # The kept files are still known as edited: a plain regeneration asks again.

@@ -123,11 +123,10 @@ class Prepared:
             raise conflict("openalex_record_missing", f"can't submit without the OpenAlex record for doi:{doi}: {e.message}")
         if not work.get("title"):
             raise conflict("openalex_record_missing", f"the OpenAlex record for doi:{doi} has no title")
-        template = next((r.reprocrowd.template for r in m.by_kind("script")), None)
-        from .scripts import templates
+        from .scripts import current_template
 
         self.m, self.doi, self.work = m, doi, work
-        self.template = templates().get(template or "")
+        self.template = current_template(pkg)
         self.authors = [a["author"].get("display_name", "") for a in work.get("authorships") or [] if a.get("author")]
         self.year = work.get("publication_year") if isinstance(work.get("publication_year"), int) else None
         self.venue = ((work.get("primary_location") or {}).get("source") or {}).get("display_name")

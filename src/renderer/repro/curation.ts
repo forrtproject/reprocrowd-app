@@ -681,16 +681,35 @@ const tableSize = (t: Target) => `${(t.expected as string[][] | null)?.length ??
 const TABLE_HINT = "One row per line. Separate cells with tabs (paste from a spreadsheet), | or commas; with commas, quote a cell that contains one (\"1,234\").";
 const TABLE_PLACEHOLDER = "Model\tb\tp\nA\t0.52\t< .001";
 
-/** Table rows typed or pasted as text: one row per line (blank lines skipped), cells split on tabs if there are any,
- * else on |, else on commas (CSV quoting, so "1,234" stays one cell). Cells are trimmed. */
+/** Table rows typed or pasted as text: one row per line (blank lines skipped, while tab-separated rows of empty cells
+ * are kept), cells split on tabs if there are any, else on unquoted |, else on commas (CSV quoting, so "1,234" stays
+ * one cell). Cells are trimmed. */
 export function parseTableRows(text: string): string[][] {
-  const lines = text.split(/\r\n?|\n/).filter((l) => l.trim());
-  const sep = lines.some((l) => l.includes("\t")) ? "\t" : lines.some((l) => l.includes("|")) ? "|" : ",";
+  const raw = text.split(/\r\n?|\n/);
+  const hasTab = raw.some((l) => l.includes("\t"));
+  const lines = raw.filter((l) => l.trim() || (hasTab && l.includes("\t")));
+  const sep = hasTab ? "\t" : lines.some(hasUnquotedPipe) ? "|" : ",";
   const rows = lines
     .filter((l) => !(sep === "|" && /^[\s|:]*-[\s|:-]*$/.test(l))) // a Markdown header rule
     .map((l) => (sep === "," ? csvCells(l) : (sep === "|" ? l.trim().replace(/^\|/, "").replace(/\|$/, "") : l).split(sep)).map((c) => c.trim()));
   if (!rows.length) throw new Error(`A table target needs at least one row. ${TABLE_HINT}`);
   return rows;
+}
+
+function hasUnquotedPipe(line: string): boolean {
+  let quoted = false;
+  let cellStart = true;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (quoted) {
+      if (ch === '"' && line[i + 1] === '"') i++;
+      else if (ch === '"') quoted = false;
+    } else if (ch === '"' && cellStart) quoted = true;
+    else if (ch === "|") return true;
+    else if (ch === ",") cellStart = true;
+    else if (ch.trim()) cellStart = false;
+  }
+  return false;
 }
 
 function csvCells(line: string): string[] {
@@ -707,19 +726,24 @@ function csvCells(line: string): string[] {
     else if (ch === ",") out.push(cell), (cell = "");
     else cell += ch;
   }
+  if (quoted) throw new Error("Unclosed quoted cell in table row.");
   out.push(cell);
   return out;
 }
 
-/** Rows as editable text: tab-separated, one row per line. */
-const tableText = (rows: string[][]) => rows.map((r) => r.join("\t")).join("\n");
+const csvQuote = (c: string) => (c === "" || /[,"|]/.test(c) ? `"${c.replace(/"/g, '""')}"` : c);
+
+/** Rows as editable text: tab-separated when multi-column, or CSV-quoted single-column lines so round-tripping
+ * preserves commas, pipes, quotes and empty rows. */
+export const tableText = (rows: string[][]) =>
+  rows.some((r) => r.length > 1) ? rows.map((r) => r.join("\t")).join("\n") : rows.map((r) => csvQuote(r[0] ?? "")).join("\n");
 
 /** Ask for a target's expected value in the form its type takes: the number as printed (with an operator if the paper
  * states a bound), text, or table rows; a figure has none (null, without asking). Undefined when cancelled. */
 function expectedDialog(type: string, id: string, t: Target): Promise<unknown> {
   if (type === "figure") return Promise.resolve(null);
   const table = type === "table";
-  const bound = t.type === "number" && t.comparator && t.comparator !== "=" ? `${t.comparator} ` : "";
+  const bound = type === "number" && t.type === "number" && t.comparator && t.comparator !== "=" ? `${t.comparator} ` : "";
   const initial = table ? (Array.isArray(t.expected) ? tableText(t.expected) : "") : Array.isArray(t.expected) ? "" : `${bound}${t.printed ?? t.expected ?? ""}`;
   const hint = table ? TABLE_HINT : type === "number" ? "The number as printed, with its trailing zeroes (they set the precision) and an operator if the paper states a bound, e.g. < .001." : "The result as the paper states it.";
   return new Promise((resolve) => {
