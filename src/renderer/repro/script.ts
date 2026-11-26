@@ -1,4 +1,4 @@
-// Step 5: the master script. The templates are listed vertically as the backend reports them (GET /v1/templates), so
+// Step 4: the master script. The templates are listed vertically as the backend reports them (GET /v1/templates), so
 // templates added to the backend show up here without changes to the plugin. Creating the script writes the
 // resolved plan (load steps → actions → results step), results_schema.json and the template's files.
 import { ApiError, host, pkg } from "../api";
@@ -43,7 +43,7 @@ export class ScriptStep implements Step {
     const chosen = this.chosen;
     const current = s.template;
     const busy = this.w.running.has("script");
-    const issues = [!this.counts.targets && "No targets in use (step 3).", !this.counts.actions && "No analysis steps in use (step 4)."].filter(Boolean) as string[];
+    const issues = [!this.counts.targets && "No targets in use (step 2).", !this.counts.actions && "No analysis steps in use (step 3)."].filter(Boolean) as string[];
     const errs = this.validation?.errors ?? [];
     const masterHtml = this.master
       ? this.master
@@ -68,7 +68,7 @@ export class ScriptStep implements Step {
         ${errs.length ? `<details class="warn-soft"><summary>${errs.length} validation problem(s) in the package</summary><ul>${errs.slice(0, 40).map((e) => `<li><code>${esc(e.stage)}</code> ${esc(e.resource ?? "")} ${esc(e.message)}</li>`).join("")}</ul></details>` : this.validation ? `<p class="ok">✓ The package validates.</p>` : ""}
         <p>Folder: <code class="path">${esc(this.w.app.summary().path)}</code></p>
         <div class="actions">
-          <button id="rp-script" class="primary" ${busy || !this.counts.targets || !chosen ? "disabled" : ""}>${current ? (current === chosen ? "Update master script" : "Switch template") : "Create master script"}</button>
+          <button id="rp-script" class="primary" ${busy || !this.counts.targets || !this.counts.actions || !chosen ? "disabled" : ""}>${current ? (current === chosen ? "Update master script" : "Switch template") : "Create master script"}</button>
           <button id="rp-editor">Open in editor</button><button id="rp-reveal">Show folder</button>
         </div>
         <p class="hint">Creating the script also writes <code>analysis_plan.json</code>, <code>results_schema.json</code>, a README and <code>AGENT_PROMPT.md</code>. Files edited since they were generated (e.g. by the coding agent) are protected: you'll be asked whether to keep or overwrite them.</p>
@@ -77,7 +77,7 @@ export class ScriptStep implements Step {
       <section class="card editor">
         <div class="card-head"><h3>${esc(s.master ?? "Master script")}</h3>
           ${s.todo ? `<span class="badge ${s.todo.remaining ? "warn-badge" : "ok-badge"}">${s.todo.remaining} × TODO(LLM)</span>` : ""}<span class="spacer"></span>
-          ${s.master ? `<span class="muted small">read-only here; edit it in your editor or let the agent implement it (step 6)</span>` : ""}</div>
+          ${s.master ? `<span class="muted small">read-only here; edit it in your editor or let the agent implement it (step 5)</span>` : ""}</div>
         ${this.master ? `<pre class="code-view"><code>${masterHtml}</code></pre>` : `<p class="muted">No master script yet. Choose a template and create it.</p>`}
       </section>
     </div>`;

@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import secrets
 import shutil
 import signal
@@ -162,18 +163,26 @@ def output_json(call: LlmCall) -> Any:
 
 
 def extract_json(text: str) -> Any:
-    """The first JSON object in the output (tolerates prose and ``` fences around it)."""
-    t = text.replace("```json", "").replace("```", "")
-    start = t.find("{")
-    if start < 0:
+    """The first JSON object in the output. Tolerates prose and ``` fences around it, and braces in the prose before it:
+    fenced blocks are tried first, then every ``{`` in turn until one starts a valid object."""
+    decoder = json.JSONDecoder()
+    fenced = [m.group(1) for m in _FENCE.finditer(text)]
+    for chunk in (*fenced, text):
+        start = chunk.find("{")
+        while start >= 0:
+            try:
+                found, _ = decoder.raw_decode(chunk, start)
+            except json.JSONDecodeError:
+                found = None
+            if isinstance(found, dict):
+                return found
+            start = chunk.find("{", start + 1)
+    if "{" not in text:
         raise ValueError("the output contains no JSON object")
-    end = t.rfind("}")
-    while end > start:
-        try:
-            return json.loads(t[start:end + 1])
-        except json.JSONDecodeError:
-            end = t.rfind("}", start, end)
     raise ValueError("the output contains no parseable JSON object")
+
+
+_FENCE = re.compile(r"```[A-Za-z0-9_-]*[ \t]*\r?\n?(.*?)```", re.S)
 
 
 def output_invalid(call: LlmCall, stage: str, errors: list[str]) -> ApiError:

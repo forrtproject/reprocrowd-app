@@ -25,6 +25,8 @@ const valueOf = (e: LlmEntry<Item>) => ({ ...e.base, ...(e.edit ?? {}) }) as Ite
 export class CurationStep implements Step {
   title: string;
   private file?: CurationFile<Item>;
+  /** Every item as the backend applies it (LLM edits merged and normalized: printed precision, comparator), by id. */
+  private effective = new Map<string, Item>();
   private inputs: Resource[] = [];
   private targets: Target[] = [];
   private profiles: LlmProfile[] = [];
@@ -37,16 +39,23 @@ export class CurationStep implements Step {
   }
 
   async load() {
-    const [file, inputs, targets] = await Promise.all([
-      pkg.get<CurationFile<Item>>(`/${this.kind}`, { view: "raw" }),
+    const [, inputs, targets] = await Promise.all([
+      this.refresh(),
       this.kind === "actions" ? pkg.get<Resource[]>("/inputs") : Promise.resolve([]),
       this.kind === "actions" ? pkg.get<{ item: Target }[]>("/targets").then((v) => v.map((x) => x.item)) : Promise.resolve([]),
     ]);
-    this.file = file;
     this.inputs = inputs;
     this.targets = targets;
     this.doc = await this.w.app.loadDoc(this.w.app.jats()).catch(() => undefined);
     if (!this.profiles.length) this.profiles = await host.service<LlmProfile[]>("/v1/llm-profiles").catch(() => []);
+  }
+
+  /** The raw file (runs, entries, edit overlays) and the canonical effective items, disabled ones included. */
+  private async refresh() {
+    const P = `/${this.kind}`;
+    const [file, items] = await Promise.all([pkg.get<CurationFile<Item>>(P, { view: "raw" }), pkg.get<{ item: Item }[]>(P, { include_disabled: true })]);
+    this.file = file;
+    this.effective = new Map(items.map((x) => [x.item.id, x.item]));
   }
 
   private get state() {
@@ -68,7 +77,7 @@ export class CurationStep implements Step {
     const source = (text ? `<div class="source">“${esc(trunc(text, 240))}”</div>` : "") + (other ? `<div class="small muted">${other} reference${other > 1 ? "s" : ""} to another text</div>` : "");
     if (this.kind === "targets") {
       const t = v as Target;
-      const exp = t.type === "table" ? `<span class="muted">${(t.expected as string[][] | null)?.length ?? 0}×${(t.expected as string[][] | null)?.[0]?.length ?? 0} table</span>` : t.type === "figure" ? `<span class="muted">figure</span>` : `<input data-f="expected" value="${esc(t.printed ?? t.expected ?? "")}" size="8" ${d} />`;
+      const exp = t.type === "table" ? `<button type="button" data-act="rows" title="Edit the table's rows" ${d}>${tableSize(t)} table…</button>` : t.type === "figure" ? `<span class="muted">figure</span>` : `<input data-f="expected" value="${esc(this.fieldValue(t, "expected"))}" size="8" ${d} />`;
       const num = t.type === "number";
       return [
         `<select data-f="type" ${d}>${["number", "categorical", "table", "figure"].map((x) => `<option ${x === t.type ? "selected" : ""}>${x}</option>`).join("")}</select>`,
@@ -91,6 +100,31 @@ export class CurationStep implements Step {
     ];
   }
 
+  /** What a field's control shows for an item. */
+  private fieldValue(v: Item, field: string): string {
+    if (this.kind === "targets") {
+      const t = v as Target;
+      if (field === "expected") return Array.isArray(t.expected) ? "" : String(t.printed ?? t.expected ?? "");
+      if (field === "comparator") return t.comparator ?? "=";
+      if (field === "decimals") return t.decimals === null || t.decimals === undefined ? "" : String(t.decimals);
+      if (field === "unit") return t.unit ?? "";
+    }
+    const x = (v as unknown as Record<string, unknown>)[field];
+    return Array.isArray(x) ? x.join(", ") : String(x ?? "");
+  }
+
+  /** Show the canonical item `v` in the controls of a row or the edit dialog, after a change was saved. A field the
+   * user has typed into since (it no longer shows `before`, or for the saved field what was sent) keeps its text. */
+  private syncControls(box: HTMLElement, v: Item, before: Item, saved: { el: HTMLElement; raw: string }) {
+    box.querySelectorAll<HTMLInputElement>("[data-f]").forEach((el) => {
+      const field = el.dataset.f!;
+      const untouched = el === saved.el ? el.value.trim() === saved.raw : el.value === this.fieldValue(before, field);
+      if (el === document.activeElement && !untouched) return;
+      el.value = this.fieldValue(v, field);
+      if (field === "decimals") el.readOnly = !!(v as Target).printed;
+    });
+  }
+
   private parse(field: string, raw: string, v: Item): unknown {
     if (this.kind === "targets") {
       const t = v as Target;
@@ -106,8 +140,8 @@ export class CurationStep implements Step {
   private rows(): { manual: Row[]; runs: { run: LlmRun<Item>; rows: Row[] }[] } {
     const f = this.file!;
     return {
-      manual: f.manual.map((value) => ({ value, manual: true })),
-      runs: f.llm_runs.map((run) => ({ run, rows: run.entries.map((entry) => ({ value: valueOf(entry), manual: false, entry, run })) })),
+      manual: f.manual.map((value) => ({ value: this.effective.get(value.id) ?? value, manual: true })),
+      runs: f.llm_runs.map((run) => ({ run, rows: run.entries.map((entry) => ({ value: this.effective.get(entry.base.id) ?? valueOf(entry), manual: false, entry, run })) })),
     };
   }
 
@@ -290,25 +324,62 @@ export class CurationStep implements Step {
   /** All fields of one item, saved as they change (the same editors as the table). */
   private editDialog(r: Row) {
     const id = r.value.id;
-    const head = this.head();
-    const cells = this.cells(r.value, false);
+    const grid = (v: Item) => {
+      const head = this.head();
+      const cells = this.cells(v, false);
+      return head.map((h, i) => (cells[i] ? `<span class="edit-label">${esc(h)}</span><div>${cells[i]}</div>` : "")).join("");
+    };
     const dlg = modal("dlg-edit", `<h3>${this.kind === "targets" ? "Target" : "Step"} ${esc(id)}</h3>
-      <div class="edit-grid">${head.map((h, i) => (cells[i] ? `<span class="edit-label">${esc(h)}</span><div>${cells[i]}</div>` : "")).join("")}</div>
+      <div class="edit-grid">${grid(r.value)}</div>
       <p class="hint">Changes are saved as you make them${r.manual ? "" : "; ↺ restores the LLM's version"}.</p>
       <form method="dialog"><menu><button class="primary">Done</button></menu></form>`);
-    dlg.addEventListener("change", async (ev) => {
-      const el = ev.target as HTMLInputElement;
-      if (!el.dataset.f) return;
-      const now = this.find(id);
-      if (!now) return;
+    const box = dlg.querySelector<HTMLElement>(".edit-grid")!;
+    /** Rebuild the fields (a type change adds or drops some), keeping focus on the field that had it. */
+    const redraw = (v: Item) => {
+      const focused = (document.activeElement as HTMLElement | null)?.dataset?.f;
+      box.innerHTML = grid(v);
+      if (focused) box.querySelector<HTMLElement>(`[data-f="${focused}"]`)?.focus();
+    };
+    const save = async (patch: Record<string, unknown>, before: Item, saved?: { el: HTMLElement; raw: string }) => {
       try {
-        await pkg.patch(`/${this.kind}/${encodeURIComponent(id)}`, { [el.dataset.f]: this.parse(el.dataset.f, el.value.trim(), now.value) });
-        this.file = await pkg.get<CurationFile<Item>>(`/${this.kind}`, { view: "raw" });
+        await pkg.patch(`/${this.kind}/${encodeURIComponent(id)}`, patch);
+        await this.refresh();
       } catch (e) {
         showError(`Changing ${id}`, e);
       }
+      const now = this.find(id);
+      if (!now) return;
+      if (saved) this.syncControls(box, now.value, before, saved);
+      else redraw(now.value);
+    };
+    dlg.addEventListener("change", async (ev) => {
+      const el = ev.target as HTMLInputElement;
+      const field = el.dataset.f;
+      const now = this.find(id);
+      if (!field || !now) return;
+      if (field === "type") {
+        const patch = await this.typePatch(now.value as Target, el.value);
+        return patch ? save(patch, now.value) : redraw(now.value); // cancelled: show the stored type again
+      }
+      const raw = el.value.trim();
+      await save({ [field]: this.parse(field, raw, now.value) }, now.value, { el, raw });
+    });
+    box.addEventListener("click", async (ev) => {
+      const b = (ev.target as HTMLElement).closest<HTMLButtonElement>("button[data-act=rows]");
+      const now = this.find(id);
+      if (!b || !now) return;
+      const rows = await expectedDialog("table", id, now.value as Target);
+      if (rows !== undefined) await save({ expected: rows }, now.value);
     });
     dlg.addEventListener("close", () => this.w.render());
+  }
+
+  /** A type change, with an expected value that fits the new type (asked for; none for a figure), as one patch.
+   * Undefined when the user cancels. */
+  private async typePatch(t: Target, type: string): Promise<Record<string, unknown> | undefined> {
+    if (type === t.type) return undefined;
+    const expected = await expectedDialog(type, t.id, t);
+    return expected === undefined ? undefined : { type, expected };
   }
 
   private find(id: string): Row | undefined {
@@ -324,17 +395,24 @@ export class CurationStep implements Step {
       const r = tr && this.find(tr.dataset.id!);
       if (!tr || !r) return;
       const id = r.value.id;
-      const patch = el.dataset.act === "toggle" ? { disabled: !el.checked } : el.dataset.f ? { [el.dataset.f]: this.parse(el.dataset.f, el.value.trim(), r.value) } : undefined;
+      const raw = el.value.trim();
+      let patch: Record<string, unknown> | undefined;
+      if (el.dataset.act === "toggle") patch = { disabled: !el.checked };
+      else if (el.dataset.f === "type") {
+        patch = await this.typePatch(r.value as Target, el.value);
+        if (!patch) return this.w.draw(); // cancelled: show the stored type again
+      } else if (el.dataset.f) patch = { [el.dataset.f]: this.parse(el.dataset.f, raw, r.value) };
       if (!patch) return;
       try {
         await pkg.patch(`${P}/${encodeURIComponent(id)}`, patch);
-        this.file = await pkg.get<CurationFile<Item>>(P, { view: "raw" });
+        await this.refresh();
         // Redraw only for changes that alter the row's layout; otherwise keep focus on the next field.
         if (el.dataset.act === "toggle" || el.dataset.f === "type") return this.w.draw();
         const now = this.find(id);
         if (now) {
           tr.querySelector(".rp-id")!.innerHTML = this.idCell(now);
           tr.querySelector(".rp-row-actions")!.innerHTML = this.rowActions(now);
+          this.syncControls(tr, now.value, r.value, { el, raw });
         }
       } catch (e) {
         showError(`Changing ${id}`, e);
@@ -361,6 +439,12 @@ export class CurationStep implements Step {
         if (act === "run-delete") return this.deleteRun(run, runId);
       }
       if (!id) return;
+      if (act === "rows") {
+        const r = this.find(id);
+        const rows = r && (await expectedDialog("table", id, r.value as Target));
+        if (rows !== undefined) return void this.w.busy("edit", `Changing ${id}`, () => pkg.patch(`${P}/${encodeURIComponent(id)}`, { expected: rows }));
+        return;
+      }
       if (act === "restore") return void this.w.busy("edit", `Restoring ${id}`, () => pkg.del(`${P}/${encodeURIComponent(id)}/edit`));
       if (act === "remove") return this.remove(id);
     });
@@ -397,9 +481,10 @@ export class CurationStep implements Step {
     const isT = this.kind === "targets";
     const fields = isT
       ? `<div class="form-row"><label>Type <select name="type"><option>number</option><option>categorical</option><option>table</option><option>figure</option></select></label>
-           <label>Expected <input name="expected" placeholder="as reported" /></label>
-           <label>Comparator <select name="comparator">${COMPARATORS.map((c) => `<option>${c}</option>`).join("")}</select></label>
-           <span class="hint">Precision comes from the printed number, including trailing zeroes.</span><label>Unit <input name="unit" size="6" /></label></div>
+           <label class="exp-value">Expected <input name="expected" placeholder="as reported" /></label>
+           <label class="exp-number">Comparator <select name="comparator">${COMPARATORS.map((c) => `<option>${c}</option>`).join("")}</select></label>
+           <span class="hint exp-number">Precision comes from the printed number, including trailing zeroes.</span><label>Unit <input name="unit" size="6" /></label></div>
+         <label class="exp-table" hidden>Rows <textarea name="rows" rows="5" class="mono" placeholder="${esc(TABLE_PLACEHOLDER)}"></textarea><span class="hint">${TABLE_HINT}</span></label>
          <label>Description <textarea name="description" rows="2" placeholder="self-contained: variable, model/test, subgroup" required></textarea></label>`
       : `<div class="form-row"><label>Kind <select name="kind"><option>analysis</option><option>transform</option></select></label>
            <label>Inputs <input name="inputs" list="rp-input-names" placeholder="input names, comma-separated" /></label>
@@ -414,6 +499,15 @@ export class CurationStep implements Step {
       <section class="picker"></section></div>
       <menu><button value="cancel" formnovalidate>Cancel</button><button value="ok" class="primary">Add</button></menu></form>`);
     const form = dlg.querySelector("form")!;
+    const typeSel = form.querySelector<HTMLSelectElement>("[name=type]");
+    // The value fields that fit the chosen type: a number (with comparator), text, table rows, or none for a figure.
+    const showType = () => {
+      const type = typeSel!.value;
+      form.querySelectorAll<HTMLElement>(".exp-value").forEach((x) => (x.hidden = type === "table" || type === "figure"));
+      form.querySelectorAll<HTMLElement>(".exp-number").forEach((x) => (x.hidden = type !== "number"));
+      form.querySelector<HTMLElement>(".exp-table")!.hidden = type !== "table";
+    };
+    typeSel?.addEventListener("change", showType);
     // `picker` is filled in once the text source has loaded; the handlers below are attached before that.
     let picker: Awaited<ReturnType<CurationStep["sourcePicker"]>> | undefined;
     form.addEventListener("submit", async (e) => {
@@ -426,10 +520,16 @@ export class CurationStep implements Step {
       const body: Record<string, unknown> = { refs, unreferenced: unref || undefined, note: v("note") || undefined };
       if (isT) {
         const type = v("type");
+        let expected: unknown;
+        try {
+          expected = type === "table" ? parseTableRows((form.elements.namedItem("rows") as HTMLTextAreaElement).value) : type === "figure" ? undefined : v("expected") || undefined;
+        } catch (err) {
+          return showError(`Adding the ${NOUN[this.kind]}`, err);
+        }
         Object.assign(body, {
           type,
           description: v("description"),
-          expected: v("expected") || undefined,
+          expected,
           comparator: type === "number" && v("comparator") !== "=" ? v("comparator") : undefined,
           unit: v("unit") || undefined,
         });
@@ -459,7 +559,7 @@ export class CurationStep implements Step {
     const dlg = modal("dlg-wide", `<form method="dialog"><h3>Generate ${NOUN[this.kind]}s with an LLM</h3>
       <div class="grid2"><section class="picker"></section>
       <section>
-        <p class="hint">${isT ? "The LLM reads the marked part of the text source (nothing marked: the whole document) and returns one target per reported result, with references to the sentences, tables and figures it comes from." : "The LLM turns the marked methods text (nothing marked: the whole document) into ordered analysis steps, linked to the input files of step 2 and the targets of step 3."}</p>
+        <p class="hint">${isT ? "The LLM reads the marked part of the text source (nothing marked: the whole document) and returns one target per reported result, with references to the sentences, tables and figures it comes from." : "The LLM turns the marked methods text (nothing marked: the whole document) into ordered analysis steps, linked to the input files of step 1 and the targets of step 2."}</p>
         <label>LLM profile <select name="profile">${this.profiles.map((p) => `<option value="${esc(p.name)}" ${p.name === defaultProfile ? "selected" : ""}>${esc(p.name)}: ${esc(p.model || "default model")}${p.effort ? `, effort ${esc(p.effort)}` : ""}</option>`).join("")}</select></label>
         <label class="model-row" hidden>Model <select name="model"><option value="">(the CLI's default)</option></select></label>
         <p class="hint model-notice"></p>
@@ -574,4 +674,74 @@ function callDetails(run: LlmRun<Item>, kind: Kind) {
     <h4>Answer</h4><textarea class="mono big" readonly>${esc(c.output)}</textarea>
     ${run.rejected?.length ? `<h4>Rejected items</h4>${rejectedHtml(run)}` : ""}
     <form method="dialog"><menu><button class="primary">Close</button></menu></form>`);
+}
+
+const tableSize = (t: Target) => `${(t.expected as string[][] | null)?.length ?? 0}×${(t.expected as string[][] | null)?.[0]?.length ?? 0}`;
+
+const TABLE_HINT = "One row per line. Separate cells with tabs (paste from a spreadsheet), | or commas; with commas, quote a cell that contains one (\"1,234\").";
+const TABLE_PLACEHOLDER = "Model\tb\tp\nA\t0.52\t< .001";
+
+/** Table rows typed or pasted as text: one row per line (blank lines skipped), cells split on tabs if there are any,
+ * else on |, else on commas (CSV quoting, so "1,234" stays one cell). Cells are trimmed. */
+export function parseTableRows(text: string): string[][] {
+  const lines = text.split(/\r\n?|\n/).filter((l) => l.trim());
+  const sep = lines.some((l) => l.includes("\t")) ? "\t" : lines.some((l) => l.includes("|")) ? "|" : ",";
+  const rows = lines
+    .filter((l) => !(sep === "|" && /^[\s|:]*-[\s|:-]*$/.test(l))) // a Markdown header rule
+    .map((l) => (sep === "," ? csvCells(l) : (sep === "|" ? l.trim().replace(/^\|/, "").replace(/\|$/, "") : l).split(sep)).map((c) => c.trim()));
+  if (!rows.length) throw new Error(`A table target needs at least one row. ${TABLE_HINT}`);
+  return rows;
+}
+
+function csvCells(line: string): string[] {
+  const out: string[] = [];
+  let cell = "";
+  let quoted = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (quoted) {
+      if (ch === '"' && line[i + 1] === '"') (cell += '"'), i++;
+      else if (ch === '"') quoted = false;
+      else cell += ch;
+    } else if (ch === '"' && !cell.trim()) (quoted = true), (cell = "");
+    else if (ch === ",") out.push(cell), (cell = "");
+    else cell += ch;
+  }
+  out.push(cell);
+  return out;
+}
+
+/** Rows as editable text: tab-separated, one row per line. */
+const tableText = (rows: string[][]) => rows.map((r) => r.join("\t")).join("\n");
+
+/** Ask for a target's expected value in the form its type takes: the number as printed (with an operator if the paper
+ * states a bound), text, or table rows; a figure has none (null, without asking). Undefined when cancelled. */
+function expectedDialog(type: string, id: string, t: Target): Promise<unknown> {
+  if (type === "figure") return Promise.resolve(null);
+  const table = type === "table";
+  const bound = t.type === "number" && t.comparator && t.comparator !== "=" ? `${t.comparator} ` : "";
+  const initial = table ? (Array.isArray(t.expected) ? tableText(t.expected) : "") : Array.isArray(t.expected) ? "" : `${bound}${t.printed ?? t.expected ?? ""}`;
+  const hint = table ? TABLE_HINT : type === "number" ? "The number as printed, with its trailing zeroes (they set the precision) and an operator if the paper states a bound, e.g. < .001." : "The result as the paper states it.";
+  return new Promise((resolve) => {
+    let result: unknown;
+    const dlg = modal("dlg-confirm", `<form method="dialog"><h3>${esc(id)}: expected ${esc(type === "categorical" ? "text" : type === "table" ? "table" : "number")}</h3>
+      <p class="hint">${esc(hint)}</p>
+      ${table ? `<textarea name="v" rows="8" cols="50" class="mono" placeholder="${esc(TABLE_PLACEHOLDER)}">${esc(initial)}</textarea>` : `<input name="v" value="${esc(initial)}" size="30" />`}
+      <p class="warn-inline err"></p>
+      <menu><button value="cancel" formnovalidate>Cancel</button><button value="ok" class="primary">Save</button></menu></form>`);
+    const form = dlg.querySelector("form")!;
+    form.addEventListener("submit", (e) => {
+      if ((e.submitter as HTMLButtonElement | null)?.value !== "ok") return;
+      const raw = (form.elements.namedItem("v") as HTMLInputElement).value;
+      try {
+        if (table) result = parseTableRows(raw);
+        else if (raw.trim()) result = raw.trim();
+        else throw new Error(type === "number" ? "Enter the number as printed." : "Enter the expected text.");
+      } catch (err) {
+        e.preventDefault();
+        form.querySelector(".err")!.textContent = (err as Error).message;
+      }
+    });
+    dlg.addEventListener("close", () => resolve(result));
+  });
 }

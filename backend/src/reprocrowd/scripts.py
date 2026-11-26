@@ -156,6 +156,8 @@ def write(pkg: Package, template_id: str, on_modified: OnModified = "refuse") ->
                         r.reprocrowd = OtherMeta(kind="code", added_at=r.reprocrowd.added_at)
                     else:
                         pkg.remove(m, r.name)
+                elif r.path in kept:  # an edited shared file (README, agent prompt): now belongs to this template; its old hash
+                    r.reprocrowd = r.reprocrowd.model_copy(update={"template": tpl.id})  # keeps it marked as edited
             rendered = {f["dest"]: env.get_template(f"{tpl.id}/{f['src']}").render(ctx) for f in tpl.files}
             rendered["README.md"] = env.get_template("_README.md.j2").render(ctx)
             rendered[AGENT_PROMPT] = agent_prompt(pkg, tpl)
@@ -189,8 +191,17 @@ TODO_RE = re.compile(re.escape(TODO_MARK) + r":")
 
 
 def current_template(pkg: Package) -> Template | None:
+    """The template whose master script is registered. Shared files (README, agent prompt) kept across a template switch
+    may still name the previous template in older packages, so they don't decide; without a registered master, the
+    template is used only if all script files agree on it."""
     scripts = pkg.load().by_kind("script")
-    return templates().get(scripts[0].reprocrowd.template) if scripts else None
+    tpls = templates()
+    for r in scripts:
+        tpl = tpls.get(r.reprocrowd.template)
+        if tpl is not None and r.path == tpl.master:
+            return tpl
+    named = {r.reprocrowd.template for r in scripts}
+    return tpls.get(named.pop()) if len(named) == 1 else None
 
 
 def todo_status(pkg: Package, tpl: Template) -> TodoStatus:
