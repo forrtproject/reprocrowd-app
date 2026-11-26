@@ -38,15 +38,19 @@ export class RunStep implements Step {
   private cmpError?: string;
   private originals: FigureOriginal[] = [];
   private urls: string[] = [];
+  private codeChecksSeq = 0;
 
   constructor(private w: Wizard) {}
 
   async load() {
-    [this.script, this.codeChecks] = await Promise.all([
-      pkg.get<ScriptState>("/script"),
-      pkg.get<CodeCheckReport>("/code-checks").catch(() => undefined),
-      this.job.load(),
-    ]);
+    [this.script] = await Promise.all([pkg.get<ScriptState>("/script"), this.job.load()]);
+    // Load advisory static checks asynchronously so large text inputs never block Step 6 or /comparison.
+    const seq = ++this.codeChecksSeq;
+    pkg.get<CodeCheckReport>("/code-checks").then((cc) => {
+      if (seq !== this.codeChecksSeq) return;
+      this.codeChecks = cc;
+      if (this.w.steps[this.w.step] === this) this.w.draw();
+    }).catch(() => {});
     await this.loadComparison();
     this.originals = await pkg.get<FigureOriginal[]>("/figures").catch(() => []);
   }

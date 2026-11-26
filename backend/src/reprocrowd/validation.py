@@ -39,7 +39,7 @@ class ValidationReport(BaseModel):
 
 
 
-def validate_package(pkg: Package) -> ValidationReport:
+def validate_package(pkg: Package, *, code_checks: lint.CodeCheckReport | None = None) -> ValidationReport:
     errors: list[Issue] = []
     warnings: list[Issue] = []
 
@@ -133,7 +133,8 @@ def validate_package(pkg: Package) -> ValidationReport:
     for rel in untracked(pkg, m):
         warn("semantic", f"untracked file {rel} (POST /packages/{{pkg}}:sync registers it)")
     # 6. code: confidence-gated static code and portability warnings (never block validation)
-    for f in lint.check_package(pkg).findings:
+    cc = code_checks if code_checks is not None else lint.check_package(pkg)
+    for f in cc.findings:
         loc = f"{f.file}:{f.line}" if f.file and f.line else f.file
         warn("code", f"[{f.rule}] {f.message}", loc)
     return ValidationReport(valid=not errors, errors=errors, warnings=warnings)

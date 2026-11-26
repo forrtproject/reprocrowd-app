@@ -74,8 +74,8 @@ def write_report(pkg: Package, st: CompareSettings) -> dict[str, Any]:
     target_refs = {t.id: [(ref.extraction, ref.id) for ref in t.refs] for t in targets}
     graph = provenance.build(m, passages, plan, cmp, outputs, target_refs)
     traces = {t.id: provenance.trace(graph, t.id) for t in targets}
-    validation = validate_package(pkg)
     code_checks = lint.check_package(pkg)
+    validation = validate_package(pkg, code_checks=code_checks)
     numeric = [r for r in cmp.rows if r.type != "figure"]
     env = Environment(loader=PackageLoader("reprocrowd", "templates"), undefined=StrictUndefined, autoescape=True, trim_blocks=True, lstrip_blocks=True)
     html = env.get_template("_report.html.j2").render(

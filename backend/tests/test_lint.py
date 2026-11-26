@@ -54,18 +54,18 @@ def test_undeclared_dependency_python_positive_and_negative(client, pkg):
 def test_undeclared_dependency_r_positive_and_negative(client, pkg):
     _setup_py(
         client, pkg,
-        "library(stats)\nlibrary(dplyr)\njsonlite::write_json(list(), 'outputs/results.json')\n# library(fake_in_comment)\n",
-        extra_files={"install.R": 'install.packages(c("jsonlite"))\n'},
+        "library(stats)\nlibrary(dplyr)\nlibrary(httpuv)\njsonlite::write_json(list(), 'outputs/results.json')\n# library(fake_in_comment)\n",
+        extra_files={"install.R": 'install.packages(c("jsonlite", "httpuv"))\n'},
         template="r",
     )
     cc = client.get(f"/v1/packages/{pkg}/code-checks").json()
-    assert cc["detected_libraries"]["r"] == ["dplyr", "jsonlite"]  # stats is base R; comment ignored
+    assert cc["detected_libraries"]["r"] == ["dplyr", "httpuv", "jsonlite"]  # stats is base R; comment ignored
     undeclared = [f for f in cc["findings"] if f["rule"] == "undeclared_dependency"]
-    assert len(undeclared) == 1 and "dplyr" in undeclared[0]["message"] and "jsonlite" not in undeclared[0]["message"]
+    assert len(undeclared) == 1 and "dplyr" in undeclared[0]["message"] and "httpuv" not in undeclared[0]["message"]
 
     # Negative: adding dplyr to install.R clears it
     root = Path(client.get(f"/v1/packages/{pkg}").json()["path"])
-    (root / "install.R").write_text('install.packages(c("jsonlite", "dplyr"))\n', encoding="utf-8")
+    (root / "install.R").write_text('install.packages(c("jsonlite", "httpuv", "dplyr"))\n', encoding="utf-8")
     assert not [f for f in _rules(client, pkg) if f["rule"] == "undeclared_dependency"]
 
 
@@ -140,37 +140,50 @@ def test_external_path_positive_and_negative(client, pkg):
 def test_external_path_r_ignores_regex_and_comments(client, pkg):
     _setup_py(
         client, pkg,
-        'setwd("/home/alice/proj")\nx <- read.csv("~/data.csv")\n',
+        'setwd("/home/alice/proj")\nx <- read.csv(\n  "~/data.csv"\n)\ny <- read.csv(\n  "https://example.org/x.csv"\n)\n',
         template="r",
     )
-    hits = [f for f in _rules(client, pkg) if f["rule"] == "external_path"]
-    assert len(hits) == 2
+    rules = _rules(client, pkg)
+    assert len([f for f in rules if f["rule"] == "external_path"]) == 2
+    assert len([f for f in rules if f["rule"] == "network_read"]) == 1
 
     root = Path(client.get(f"/v1/packages/{pkg}").json()["path"])
-    (root / "analysis.R").write_text('# setwd("/home/alice/proj")\nx <- read.csv("inputs/data.csv")\ny <- gsub("/Users/", "", "a")\n')
-    assert not [f for f in _rules(client, pkg) if f["rule"] == "external_path"]
+    (root / "analysis.R").write_text('# setwd("/home/alice/proj")\nx <- read.csv("inputs/data.csv")\ny <- gsub("/Users/", "", "a")\nmessage("rnorm(10)")\n')
+    assert not _rules(client, pkg)
 
 
 # ---------- 5. unseeded_stochastic & 6. parallel_rng_hazard ----------
 
 def test_unseeded_stochastic_python_positive_and_negative(client, pkg):
+    # Unseeded draw
     _setup_py(client, pkg, "import random\nx = random.sample([1, 2, 3], 2)\n")
     assert any(f["rule"] == "unseeded_stochastic" for f in _rules(client, pkg))
 
+    # Seed AFTER draw still fires
     root = Path(client.get(f"/v1/packages/{pkg}").json()["path"])
+    (root / "analysis.py").write_text("import random\nx = random.sample([1, 2, 3], 2)\nrandom.seed(42)\n")
+    assert any(f["rule"] == "unseeded_stochastic" for f in _rules(client, pkg))
+
+    # random.seed() / random.seed(None) does not count as explicit seed
+    (root / "analysis.py").write_text("import random\nrandom.seed(None)\nx = random.sample([1, 2, 3], 2)\n")
+    assert any(f["rule"] == "unseeded_stochastic" for f in _rules(client, pkg))
+
+    # Explicit seed BEFORE draw clears it
     (root / "analysis.py").write_text("import random\nrandom.seed(42)\nx = random.sample([1, 2, 3], 2)\n")
     assert not [f for f in _rules(client, pkg) if f["rule"] == "unseeded_stochastic"]
 
 
 def test_r_stochastic_and_parallel_rng_positive_and_negative(client, pkg):
+    # Seed and L'Ecuyer placed AFTER draws/mclapply still fire
     _setup_py(
         client, pkg,
-        "library(parallel)\nx <- rnorm(10)\nres <- mclapply(1:4, function(i) mean(rnorm(5)))\n",
+        'library(parallel)\nx <- rnorm(10)\nres <- mclapply(1:4, function(i) mean(rnorm(5)))\nRNGkind("L\'Ecuyer-CMRG")\nset.seed(123)\n',
         template="r",
     )
     rules = {f["rule"] for f in _rules(client, pkg)}
     assert {"unseeded_stochastic", "parallel_rng_hazard"} <= rules
 
+    # Placed BEFORE draws/mclapply clears both
     root = Path(client.get(f"/v1/packages/{pkg}").json()["path"])
     (root / "analysis.R").write_text('library(parallel)\nRNGkind("L\'Ecuyer-CMRG")\nset.seed(123)\nres <- mclapply(1:4, function(i) mean(rnorm(5)))\n')
     rules = {f["rule"] for f in _rules(client, pkg)}
@@ -185,10 +198,11 @@ def test_non_utf8_input_encoding_positive_and_negative(client, pkg, tmp_path):
     root = package_with_targets(client, pkg)
     P = f"/v1/packages/{pkg}"
     assert client.post(P + "/inputs", json={"path": str(latin_csv)}).status_code == 201
-    (root / "analysis.py").write_text('open("inputs/latin.csv").read()\n')
+    # Unrelated call with encoding= must NOT exempt the read of latin.csv
+    (root / "analysis.py").write_text('open("outputs/out.txt", "w", encoding="utf-8").write("hi")\nopen("inputs/latin.csv").read()\n')
     assert any(f["rule"] == "non_utf8_input_encoding" for f in _rules(client, pkg))
 
-    # Negative: explicit encoding= clears the warning
+    # Negative: explicit encoding= on the matching read clears the warning
     (root / "analysis.py").write_text('open("inputs/latin.csv", encoding="latin-1").read()\n')
     assert not [f for f in _rules(client, pkg) if f["rule"] == "non_utf8_input_encoding"]
 

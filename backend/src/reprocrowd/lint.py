@@ -3,11 +3,12 @@
 Checks only the package's own scripts and code (never original author code in ``inputs/``),
 plus cross-platform package hygiene (case/Unicode filename clashes, runtime startup files).
 Every rule emits advisory warnings rather than blocking errors; false positives are avoided by
-parsing Python with ``ast`` and stripping comments/strings accurately in R.
+parsing Python with ``ast`` and stripping comments/masking strings accurately in R.
 """
 from __future__ import annotations
 
 import ast
+import codecs
 import os
 import re
 import sys
@@ -55,8 +56,9 @@ _STARTUP_FILENAMES = frozenset({
 })
 
 _TEXT_DATA_SUFFIXES = frozenset({".csv", ".tsv", ".txt"})
+_UTF8_CHUNK = 64 * 1024
 
-# --- R regexes (applied only to comment-stripped R code) ---
+# --- R regexes (applied to comment-stripped, string-masked R code unless noted) ---
 _R_LIB_CALL = re.compile(r"""\b(?:library|require)\s*\(\s*["']?([A-Za-z][A-Za-z0-9.]*)["']?\s*(?:,|\))""")
 _R_PACMAN = re.compile(r"""\bp_load\s*\(([^)]*)\)""")
 _R_NAMESPACED = re.compile(r"""(?<![\w.])([A-Za-z][A-Za-z0-9.]*)::[A-Za-z.]""")
@@ -175,8 +177,33 @@ def _strip_r_comment(line: str) -> str:
     return "".join(out)
 
 
+def _mask_r_strings(code: str) -> str:
+    """Replace contents of quoted strings with spaces so call regexes never match inside literals."""
+    out: list[str] = []
+    quote: str | None = None
+    i = 0
+    while i < len(code):
+        ch = code[i]
+        if quote:
+            if ch == "\\" and i + 1 < len(code):
+                out.extend((" ", " "))
+                i += 2
+                continue
+            if ch == quote:
+                out.append(ch)
+                quote = None
+            else:
+                out.append(" ")
+        else:
+            if ch in ("'", '"'):
+                quote = ch
+            out.append(ch)
+        i += 1
+    return "".join(out)
+
+
 def _extract_quoted_strings(text: str) -> list[str]:
-    """Return unescaped contents of single/double-quoted literals in a line of R code."""
+    """Return unescaped contents of single/double-quoted literals in R code."""
     results: list[str] = []
     i = 0
     n = len(text)
@@ -203,6 +230,36 @@ def _extract_quoted_strings(text: str) -> list[str]:
     return results
 
 
+def _r_call_unit(code_lines: list[str], masked_lines: list[str], start_idx: int, col: int) -> tuple[str, str]:
+    """Collect a balanced-paren R call starting at ``(start_idx, col)`` across physical lines.
+
+    Returns ``(unmasked_call, masked_call)`` so callers can inspect syntax on masked text and extract
+    string literals from the unmasked text.
+    """
+    raw_parts: list[str] = []
+    mask_parts: list[str] = []
+    depth = 0
+    started = False
+    for idx in range(start_idx, len(code_lines)):
+        raw = code_lines[idx][col:] if idx == start_idx else code_lines[idx]
+        msk = masked_lines[idx][col:] if idx == start_idx else masked_lines[idx]
+        cut = len(msk)
+        for j, ch in enumerate(msk):
+            if ch == "(":
+                depth += 1
+                started = True
+            elif ch == ")":
+                depth -= 1
+                if started and depth <= 0:
+                    cut = j + 1
+                    break
+        raw_parts.append(raw[:cut])
+        mask_parts.append(msk[:cut])
+        if started and depth <= 0:
+            break
+    return "\n".join(raw_parts), "\n".join(mask_parts)
+
+
 def _is_external_path(s: str, script_dir: Path, pkg_root: Path) -> bool:
     """High-confidence check that a literal path points outside the package root."""
     val = s.strip()
@@ -210,7 +267,6 @@ def _is_external_path(s: str, script_dir: Path, pkg_root: Path) -> bool:
         return False
     if _ABS_OR_HOME_PATH.match(val):
         return True
-    # Relative climb with '..': check whether resolving from package root OR script dir stays inside root.
     if val == ".." or val.startswith(("../", "..\\")) or "/../" in val or "\\..\\" in val:
         norm = val.replace("\\", "/")
         root_resolved = pkg_root.resolve()
@@ -230,7 +286,6 @@ def _declared_python_packages(root: Path) -> tuple[bool, set[str]]:
         line = raw.split("#", 1)[0].strip()
         if not line or line.startswith("-"):
             continue
-        # Strip extras, version specifiers, markers, direct URLs.
         m = re.match(r"^([A-Za-z0-9][A-Za-z0-9._-]*)", line)
         if m:
             declared.add(_norm_py_name(m.group(1)))
@@ -248,9 +303,6 @@ def _declared_r_packages(root: Path) -> tuple[bool, set[str]]:
             continue
         for m in _R_INSTALL_R_PKG.finditer(code):
             pkg_name = m.group(1)
-            # Ignore common repos URLs or options inside install.packages(..., repos = "...")
-            if "/" in pkg_name or pkg_name.startswith("http"):
-                continue
             if pkg_name.lower() in {"cran", "true", "false", "source", "binary", "both"}:
                 continue
             declared.add(pkg_name)
@@ -265,6 +317,16 @@ def _local_py_modules(root: Path, script_paths: list[str]) -> set[str]:
     return names
 
 
+def _is_valid_utf8(path: Path) -> bool:
+    """Stream-validate a file as UTF-8 in 64 KiB chunks so large CSVs never exhaust memory."""
+    dec = codecs.getincrementaldecoder("utf-8")()
+    with path.open("rb") as fh:
+        while chunk := fh.read(_UTF8_CHUNK):
+            dec.decode(chunk, final=False)
+        dec.decode(b"", final=True)
+    return True
+
+
 def _non_utf8_text_inputs(pkg: Package) -> list[str]:
     """Return used .csv/.tsv/.txt input paths whose bytes are not valid UTF-8."""
     m = pkg.load()
@@ -276,7 +338,7 @@ def _non_utf8_text_inputs(pkg: Package) -> list[str]:
         if p.suffix.lower() not in _TEXT_DATA_SUFFIXES or not p.is_file():
             continue
         try:
-            p.read_bytes().decode("utf-8")
+            _is_valid_utf8(p)
         except UnicodeDecodeError:
             bad.append(r.path)
         except OSError:
@@ -293,15 +355,25 @@ def _attr_chain(node: ast.AST) -> str:
     return ""
 
 
+def _has_explicit_non_none_seed(node: ast.Call, kw_names: tuple[str, ...]) -> bool:
+    """True when ``seed(...)`` passes an explicit non-``None`` seed argument."""
+    if node.args:
+        arg0 = node.args[0]
+        return not (isinstance(arg0, ast.Constant) and arg0.value is None)
+    for kw in node.keywords:
+        if kw.arg in kw_names:
+            return not (isinstance(kw.value, ast.Constant) and kw.value.value is None)
+    return False
+
+
 def _check_python_file(rel: str, text: str, pkg_root: Path, non_utf8_inputs: list[str],
                        py_imports: set[str], findings: list[CodeFinding]) -> None:
     try:
         tree = ast.parse(text, filename=rel)
     except SyntaxError:
-        return  # invalid Python will be caught immediately when run; avoid noisy guesses
+        return
 
     script_dir = (pkg_root / rel).parent
-    # Track aliases for random / numpy.random / subprocess / os / requests / httpx / urllib / webbrowser / pdb
     aliases: dict[str, str] = {}
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
@@ -325,11 +397,10 @@ def _check_python_file(rel: str, text: str, pkg_root: Path, non_utf8_inputs: lis
             return ".".join([aliases[parts[0]], *parts[1:]])
         return chain
 
-    has_random_seed = False
-    has_np_seed = False
-    has_encoding_kw = False
+    first_random_seed_line: int | None = None
+    first_np_seed_line: int | None = None
     stochastic_hits: list[tuple[int, str, str]] = []  # (line, kind, expr)
-    read_literals: list[tuple[int, str]] = []
+    read_calls: list[tuple[int, str, bool]] = []      # (line, literal, has_encoding_kw)
 
     for node in ast.walk(tree):
         if not isinstance(node, ast.Call):
@@ -338,13 +409,11 @@ def _check_python_file(rel: str, text: str, pkg_root: Path, non_utf8_inputs: lis
         leaf = fq.rsplit(".", 1)[-1]
         lineno = getattr(node, "lineno", 1)
 
-        if fq == "random.seed":
-            has_random_seed = True
-        if fq in {"numpy.random.seed", "np.random.seed"}:
-            has_np_seed = True
-        for kw in node.keywords:
-            if kw.arg == "encoding":
-                has_encoding_kw = True
+        if fq == "random.seed" and _has_explicit_non_none_seed(node, ("a",)):
+            first_random_seed_line = lineno if first_random_seed_line is None else min(first_random_seed_line, lineno)
+        if fq in {"numpy.random.seed", "np.random.seed"} and _has_explicit_non_none_seed(node, ("seed",)):
+            first_np_seed_line = lineno if first_np_seed_line is None else min(first_np_seed_line, lineno)
+        call_has_encoding = any(kw.arg == "encoding" for kw in node.keywords)
 
         # Interactive calls
         if leaf in _PY_INTERACTIVE_FUNCS and (
@@ -391,12 +460,12 @@ def _check_python_file(rel: str, text: str, pkg_root: Path, non_utf8_inputs: lis
             stochastic_hits.append((lineno, "random", fq))
         elif fq.startswith("numpy.random.") and leaf in _PY_STOCHASTIC_NUMPY:
             stochastic_hits.append((lineno, "numpy", fq))
-        elif fq == "numpy.random.default_rng" and not node.args and not any(kw.arg == "seed" for kw in node.keywords):
+        elif fq == "numpy.random.default_rng" and not _has_explicit_non_none_seed(node, ("seed",)):
             findings.append(CodeFinding(
                 rule="unseeded_stochastic",
                 file=rel,
                 line=lineno,
-                message="`numpy.random.default_rng()` called without a seed",
+                message="`numpy.random.default_rng()` called without an explicit seed",
                 suggestion="Pass an explicit integer seed, e.g. `np.random.default_rng(12345)`.",
             ))
         elif fq == "scipy.stats.bootstrap" and not any(kw.arg in {"random_state", "rng"} for kw in node.keywords):
@@ -408,7 +477,7 @@ def _check_python_file(rel: str, text: str, pkg_root: Path, non_utf8_inputs: lis
                 suggestion="Pass `random_state=np.random.default_rng(12345)` for reproducible resampling.",
             ))
 
-        # String literal arguments for path & network checks
+        # String literal arguments for path, network & per-call encoding checks
         str_args = [a.value for a in node.args if isinstance(a, ast.Constant) and isinstance(a.value, str)]
         str_args += [kw.value.value for kw in node.keywords
                      if kw.arg in {"file", "path", "filepath_or_buffer", "url", "io", "fname"}
@@ -423,7 +492,7 @@ def _check_python_file(rel: str, text: str, pkg_root: Path, non_utf8_inputs: lis
                     suggestion="Download the file into `inputs/` and read it via a package-relative path.",
                 ))
             elif leaf in _PY_IO_FUNCS:
-                read_literals.append((lineno, s))
+                read_calls.append((lineno, s, call_has_encoding))
                 if _is_external_path(s, script_dir, pkg_root):
                     findings.append(CodeFinding(
                         rule="external_path",
@@ -433,36 +502,37 @@ def _check_python_file(rel: str, text: str, pkg_root: Path, non_utf8_inputs: lis
                         suggestion="Use a path relative to the package root (e.g. `inputs/...` or `outputs/...`).",
                     ))
 
-    # Summarize unseeded random / numpy draws once per RNG family per file
-    for kind, seeded, fix in (
-        ("random", has_random_seed, "Call `random.seed(<int>)` before drawing random values."),
-        ("numpy", has_np_seed, "Call `np.random.seed(<int>)` or use `np.random.default_rng(<int>)`."),
+    # Require the seed to precede the first stochastic draw for each RNG family
+    for kind, seed_line, fix in (
+        ("random", first_random_seed_line, "Call `random.seed(<int>)` before the first random draw."),
+        ("numpy", first_np_seed_line, "Call `np.random.seed(<int>)` before the first draw or use `np.random.default_rng(<int>)`."),
     ):
-        if not seeded:
-            hits = [h for h in stochastic_hits if h[1] == kind]
-            if hits:
-                line, _, expr = min(hits)
+        hits = [h for h in stochastic_hits if h[1] == kind]
+        if hits:
+            draw_line, _, expr = min(hits)
+            if seed_line is None or seed_line > draw_line:
+                detail = "with no preceding" if seed_line is not None else "with no"
                 findings.append(CodeFinding(
                     rule="unseeded_stochastic",
                     file=rel,
-                    line=line,
-                    message=f"stochastic call `{expr}()` with no `{kind}` seed in this script",
+                    line=draw_line,
+                    message=f"stochastic call `{expr}()` {detail} `{kind}` seed in this script",
                     suggestion=fix,
                 ))
 
-    # Non-UTF-8 text inputs read without explicit encoding=
-    if non_utf8_inputs and not has_encoding_kw:
-        for bad in non_utf8_inputs:
-            bname = Path(bad).name
-            matched_line = next((ln for ln, s in read_literals if bad in s or bname in s), None)
-            if matched_line is not None:
+    # Non-UTF-8 text inputs read without explicit encoding= on the matching read call
+    for bad in non_utf8_inputs:
+        bname = Path(bad).name
+        for ln, s, has_enc in read_calls:
+            if (bad in s or bname in s) and not has_enc:
                 findings.append(CodeFinding(
                     rule="non_utf8_input_encoding",
                     file=rel,
-                    line=matched_line,
+                    line=ln,
                     message=f"reads non-UTF-8 text input `{bad}` without specifying `encoding=`",
                     suggestion="Specify the file's encoding explicitly, e.g. `encoding='latin-1'` or `encoding='cp1252'`.",
                 ))
+                break
 
 
 def _extract_subprocess_text(node: ast.Call) -> str:
@@ -483,16 +553,16 @@ def _check_r_file(rel: str, text: str, pkg_root: Path, non_utf8_inputs: list[str
     script_dir = (pkg_root / rel).parent
     raw_lines = text.splitlines()
     code_lines = [_strip_r_comment(ln) for ln in raw_lines]
-    full_code = "\n".join(code_lines)
+    masked_lines = [_mask_r_strings(ln) for ln in code_lines]
 
-    has_seed = bool(_R_SEED.search(full_code))
-    has_lecuyer = "L'Ecuyer-CMRG" in full_code or 'L\\"Ecuyer-CMRG' in full_code
-    has_encoding_opt = bool(_R_ENCODING_OPT.search(full_code))
+    first_seed_line: int | None = None
+    first_lecuyer_line: int | None = None
     first_stochastic: tuple[int, str] | None = None
     first_fork: tuple[int, str] | None = None
-    io_literals: list[tuple[int, str]] = []
+    io_calls: list[tuple[int, list[str], bool]] = []  # (line, literals, has_encoding_opt)
+    seen_io_findings: set[tuple[str, int, str]] = set()
 
-    for idx, code in enumerate(code_lines, start=1):
+    for idx, (code, masked) in enumerate(zip(code_lines, masked_lines), start=1):
         if not code.strip():
             continue
 
@@ -500,7 +570,7 @@ def _check_r_file(rel: str, text: str, pkg_root: Path, non_utf8_inputs: list[str
         if not is_install_r:
             for m in _R_LIB_CALL.finditer(code):
                 r_libs.add(m.group(1))
-            for m in _R_NAMESPACED.finditer(code):
+            for m in _R_NAMESPACED.finditer(masked):
                 r_libs.add(m.group(1))
             for m in _R_PACMAN.finditer(code):
                 for item in m.group(1).split(","):
@@ -509,7 +579,7 @@ def _check_r_file(rel: str, text: str, pkg_root: Path, non_utf8_inputs: list[str
                         r_libs.add(item)
 
         # Runtime installs (skip install.R)
-        if not is_install_r and _R_INSTALL.search(code):
+        if not is_install_r and _R_INSTALL.search(masked):
             findings.append(CodeFinding(
                 rule="runtime_install",
                 file=rel,
@@ -519,7 +589,7 @@ def _check_r_file(rel: str, text: str, pkg_root: Path, non_utf8_inputs: list[str
             ))
 
         # Runtime cache writes (save.image / savehistory)
-        if _R_SAVE_CACHE.search(code):
+        if _R_SAVE_CACHE.search(masked):
             findings.append(CodeFinding(
                 rule="runtime_startup_file",
                 file=rel,
@@ -529,7 +599,7 @@ def _check_r_file(rel: str, text: str, pkg_root: Path, non_utf8_inputs: list[str
             ))
 
         # Interactive calls (ignore if guarded by `interactive()` on the same line)
-        if _R_INTERACTIVE.search(code) and "interactive()" not in code:
+        if _R_INTERACTIVE.search(masked) and "interactive()" not in masked:
             findings.append(CodeFinding(
                 rule="interactive_call",
                 file=rel,
@@ -538,77 +608,94 @@ def _check_r_file(rel: str, text: str, pkg_root: Path, non_utf8_inputs: list[str
                 suggestion="Remove the interactive call or guard it with `if (interactive()) { ... }`.",
             ))
 
-        # Stochasticity & forked parallel RNG
+        # Seed & L'Ecuyer-CMRG ordering
+        if first_seed_line is None and _R_SEED.search(masked):
+            first_seed_line = idx
+        if first_lecuyer_line is None and ("L'Ecuyer-CMRG" in code or 'L\\"Ecuyer-CMRG' in code):
+            first_lecuyer_line = idx
+
+        # Stochasticity & forked parallel RNG (matched on masked code so strings don't false-fire)
         if first_stochastic is None and not is_install_r:
-            ms = _R_STOCHASTIC.search(code)
+            ms = _R_STOCHASTIC.search(masked)
             if ms:
-                first_stochastic = (idx, ms.group(0).rstrip("(").strip())
+                # An inline `seed = ...` on the stochastic call itself (e.g. mice(..., seed = 1)) counts as seeded
+                _, m_unit = _r_call_unit(code_lines, masked_lines, idx - 1, ms.start())
+                if not _R_SEED.search(m_unit):
+                    first_stochastic = (idx, ms.group(0).rstrip("(").strip())
         if first_fork is None and not is_install_r:
-            mf = _R_FORK_PARALLEL.search(code)
+            mf = _R_FORK_PARALLEL.search(masked)
             if mf:
                 first_fork = (idx, mf.group(0).rstrip("(").strip())
 
-        # Path and network URL checks (only inside I/O calls to avoid regex/caption false positives)
-        has_io = bool(_R_IO_CALL.search(code))
-        has_url_io = bool(_R_URL_IO_CALL.search(code))
-        if has_io or has_url_io:
-            for s in _extract_quoted_strings(code):
-                if has_url_io and _URL_RE.match(s.strip()):
-                    findings.append(CodeFinding(
-                        rule="network_read",
-                        file=rel,
-                        line=idx,
-                        message=f"script fetches a remote URL at runtime (`{s[:80]}`)",
-                        suggestion="Download the file into `inputs/` and read it via a package-relative path.",
-                    ))
-                elif has_io:
-                    io_literals.append((idx, s))
-                    if _is_external_path(s, script_dir, pkg_root):
-                        findings.append(CodeFinding(
-                            rule="external_path",
-                            file=rel,
-                            line=idx,
-                            message=f"path points outside the package folder (`{s}`)",
-                            suggestion="Use a path relative to the package root (e.g. `inputs/...` or `outputs/...`).",
-                        ))
+        # Multiline R I/O & URL checks
+        for pat, is_url in ((_R_URL_IO_CALL, True), (_R_IO_CALL, False)):
+            for m in pat.finditer(masked):
+                raw_unit, mask_unit = _r_call_unit(code_lines, masked_lines, idx - 1, m.start())
+                lits = _extract_quoted_strings(raw_unit)
+                if not is_url:
+                    io_calls.append((idx, lits, bool(_R_ENCODING_OPT.search(mask_unit))))
+                for s in lits:
+                    if is_url and _URL_RE.match(s.strip()):
+                        key = ("network_read", idx, s)
+                        if key not in seen_io_findings:
+                            seen_io_findings.add(key)
+                            findings.append(CodeFinding(
+                                rule="network_read",
+                                file=rel,
+                                line=idx,
+                                message=f"script fetches a remote URL at runtime (`{s[:80]}`)",
+                                suggestion="Download the file into `inputs/` and read it via a package-relative path.",
+                            ))
+                    elif not is_url and _is_external_path(s, script_dir, pkg_root):
+                        key = ("external_path", idx, s)
+                        if key not in seen_io_findings:
+                            seen_io_findings.add(key)
+                            findings.append(CodeFinding(
+                                rule="external_path",
+                                file=rel,
+                                line=idx,
+                                message=f"path points outside the package folder (`{s}`)",
+                                suggestion="Use a path relative to the package root (e.g. `inputs/...` or `outputs/...`).",
+                            ))
 
-    if first_stochastic and not has_seed:
+    if first_stochastic and (first_seed_line is None or first_seed_line > first_stochastic[0]):
+        detail = "with no preceding" if first_seed_line is not None else "with no"
         findings.append(CodeFinding(
             rule="unseeded_stochastic",
             file=rel,
             line=first_stochastic[0],
-            message=f"stochastic call `{first_stochastic[1]}()` with no `set.seed()` in this script",
+            message=f"stochastic call `{first_stochastic[1]}()` {detail} `set.seed()` in this script",
             suggestion="Set an explicit seed (`set.seed(<int>)`) before the first random draw.",
         ))
 
-    if first_fork and not has_lecuyer:
+    if first_fork and (first_lecuyer_line is None or first_lecuyer_line > first_fork[0]):
+        detail = "without a preceding" if first_lecuyer_line is not None else "without"
         findings.append(CodeFinding(
             rule="parallel_rng_hazard",
             file=rel,
             line=first_fork[0],
-            message=f"forked parallel call `{first_fork[1]}()` without `RNGkind(\"L'Ecuyer-CMRG\")`",
-            suggestion="Call `RNGkind(\"L'Ecuyer-CMRG\")` before `set.seed(<int>)` so forked workers use reproducible independent RNG streams.",
+            message=f"forked parallel call `{first_fork[1]}()` {detail} `RNGkind(\"L'Ecuyer-CMRG\")`",
+            suggestion="Call `RNGkind(\"L'Ecuyer-CMRG\")` before `set.seed(<int>)` and before forked workers start.",
         ))
 
-    if non_utf8_inputs and not has_encoding_opt:
-        for bad in non_utf8_inputs:
-            bname = Path(bad).name
-            matched_line = next((ln for ln, s in io_literals if bad in s or bname in s), None)
-            if matched_line is not None:
+    for bad in non_utf8_inputs:
+        bname = Path(bad).name
+        for ln, lits, has_enc in io_calls:
+            if any(bad in s or bname in s for s in lits) and not has_enc:
                 findings.append(CodeFinding(
                     rule="non_utf8_input_encoding",
                     file=rel,
-                    line=matched_line,
+                    line=ln,
                     message=f"reads non-UTF-8 text input `{bad}` without specifying `fileEncoding=` / `encoding=`",
                     suggestion="Pass `fileEncoding = \"latin1\"` (base R) or `locale = locale(encoding = \"latin1\")` (readr).",
                 ))
+                break
 
 
 def _check_package_hygiene(pkg: Package, findings: list[CodeFinding]) -> None:
     root = pkg.root.resolve()
     m = pkg.load()
 
-    # 1. Runtime startup files (anywhere in package tree except .git / jobs / llm-calls / archive)
     skip_dirs = {".git", "jobs", "llm-calls", "archive"}
     for current, dirs, names in os.walk(root):
         dirs[:] = sorted(d for d in dirs if d not in skip_dirs)
@@ -622,7 +709,6 @@ def _check_package_hygiene(pkg: Package, findings: list[CodeFinding]) -> None:
                     suggestion="Remove startup files from the package and put required configuration directly in the analysis script.",
                 ))
 
-    # 2. Case-only / Unicode NFC filename collisions across tracked resources
     seen: dict[str, str] = {}
     for r in sorted(m.resources, key=lambda x: x.path):
         norm = unicodedata.normalize("NFC", r.path).casefold()
@@ -673,7 +759,6 @@ def check_package(pkg: Package) -> CodeCheckReport:
         elif suffix == ".r":
             _check_r_file(r.path, text, root, non_utf8, r_libs, findings)
 
-    # Filter detected libraries to non-stdlib / non-base / non-local
     stdlib = set(getattr(sys, "stdlib_module_names", ()))
     local_py = _local_py_modules(root, script_paths)
     detected_py = sorted(n for n in py_imports if n and n not in stdlib and n not in local_py and n != "__future__")
@@ -682,8 +767,6 @@ def check_package(pkg: Package) -> CodeCheckReport:
     has_req, declared_py = _declared_python_packages(root)
     has_install_r, declared_r = _declared_r_packages(root)
 
-    # Cross-check undeclared dependencies. Avoid noisy warnings on untouched templates that still
-    # have TODO(LLM): markers and no requirements.txt / install.R yet.
     if detected_py and (has_req or not has_pending_todos):
         missing_py = []
         for imp in detected_py:
