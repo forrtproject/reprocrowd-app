@@ -199,9 +199,14 @@ def _watch(pkg: Package, job: Job, proc: subprocess.Popen, stdin: str, timeout_s
                 if key in _cancelled:
                     status = "cancelled"
                     break
-                proc = subprocess.Popen(resolved_argv or resolve_argv(job.argv), cwd=pkg.root, stdin=subprocess.PIPE,
-                                        stdout=out, stderr=subprocess.STDOUT if merge_stderr else err,
-                                        start_new_session=True, env=proc_env)
+                try:
+                    proc = subprocess.Popen(resolved_argv or resolve_argv(job.argv), cwd=pkg.root, stdin=subprocess.PIPE,
+                                            stdout=out, stderr=subprocess.STDOUT if merge_stderr else err,
+                                            start_new_session=True, env=proc_env)
+                except OSError as e:
+                    status, code = "failed", -1
+                    job.error = f"could not start run {idx}: {e}"
+                    break
                 _procs[key] = proc
             status, code = wait_one(proc, rem)
 

@@ -541,7 +541,8 @@ def evidence_cmd(pkg: str, json_: bool = typer.Option(False, "--json", help="mac
         if det := data.get("determinism"):
             typer.echo(f"Determinism ({det['runs']} runs): {det['status']} — {det['summary']}")
         if iso := data.get("isolation"):
-            typer.echo(f"Isolation: network denied via {iso['network_denied_by']}, TZ={iso['tz']}, locale={iso['locale']}, clean HOME={'yes' if iso['clean_home'] else 'no'}")
+            net = "best-effort via proxy env vars" if iso["network_denied_by"] == "proxy" else f"denied via {iso['network_denied_by']}"
+            typer.echo(f"Isolation: network {net}, TZ={iso['tz']}, locale={iso['locale']}, clean HOME={'yes' if iso['clean_home'] else 'no'}")
         typer.echo(f"Added since run: {', '.join(data['added_since_run']) or 'none'}; targets: {len(data['targets'])} (process-level evidence)")
 
 

@@ -175,7 +175,10 @@ export class RunStep implements Step {
 
 function isolationHtml(iso: RunIsolation): string {
   const caches = iso.runtime_caches.length ? ` · <span class="warn-inline">caches left: ${esc(iso.runtime_caches.join(", "))}</span>` : "";
-  return `<p class="small muted">Clean-room run: network denied via <code>${esc(iso.network_denied_by)}</code> · <code>TZ=${esc(iso.tz)}</code> · locale <code>${esc(iso.locale)}</code>${iso.clean_home ? " · private <code>HOME</code>/<code>TMPDIR</code>" : ""}${caches}</p>`;
+  const net = iso.network_denied_by === "proxy"
+    ? `network restricted best-effort via <code>proxy</code> env vars`
+    : `network denied via <code>${esc(iso.network_denied_by)}</code>`;
+  return `<p class="small muted">Clean-room run: ${net} · <code>TZ=${esc(iso.tz)}</code> · locale <code>${esc(iso.locale)}</code>${iso.clean_home ? " · private <code>HOME</code>/<code>TMPDIR</code>" : ""}${caches}</p>`;
 }
 
 function failureHintsHtml(hints: FailureHint[]): string {

@@ -276,6 +276,33 @@ json.dump({'results': [{'id': 'T001', 'value': 2.31, 'step': 'A01'}]}, open('out
     assert job["status"] == "failed" and job["result"]["determinism"]["status"] == "failed"
     assert "Determinism check: run 2 of 2" not in client.get(f"{P}/jobs/{job['id']}/stdout").text
 
+    # 7. Metadata-only change (e.g. note) between runs must NOT report identical
+    (root / "analysis.py").write_text("""import json, os, pathlib
+c = pathlib.Path('.counter4')
+n = int(c.read_text()) + 1 if c.exists() else 1
+c.write_text(str(n))
+os.makedirs('outputs', exist_ok=True)
+json.dump({'results': [{'id': 'T001', 'value': 2.31, 'step': 'A01', 'note': f'run {n}'}]}, open('outputs/results.json', 'w'))
+""")
+    job = wait(client, pkg, client.post(P + "/jobs", json={"type": "run", "runs": 2}).json()["id"])
+    assert job["status"] == "succeeded" and job["result"]["determinism"]["status"] == "different"
+    assert any("metadata" in d["detail"] for d in job["result"]["determinism"]["differences"])
+
+    # 8. Pre-existing output file must not mask a conditional writer that skips writing on run 2
+    (root / "outputs" / "fig.png").write_bytes(b"stale-before-run")
+    (root / "analysis.py").write_text("""import json, os, pathlib
+c = pathlib.Path('.counter5')
+n = int(c.read_text()) + 1 if c.exists() else 1
+c.write_text(str(n))
+os.makedirs('outputs', exist_ok=True)
+if n == 1:
+    pathlib.Path('outputs/fig.png').write_bytes(b'run1-only')
+json.dump({'results': [{'id': 'T001', 'value': 2.31, 'step': 'A01'}]}, open('outputs/results.json', 'w'))
+""")
+    job = wait(client, pkg, client.post(P + "/jobs", json={"type": "run", "runs": 2}).json()["id"])
+    assert job["status"] == "succeeded" and job["result"]["determinism"]["status"] == "different"
+    assert any(d["path"] == "outputs/fig.png" and d["kind"] == "missing_in_run" for d in job["result"]["determinism"]["differences"])
+
 
 def test_clean_room_isolation_and_runtime_caches(client, pkg):
     root = package_with_targets(client, pkg)
@@ -305,6 +332,13 @@ json.dump({"results": [{"id": "T001", "value": 2.31, "step": "A01"}]}, open("out
     assert not Path(env_seen["home"]).exists()  # temporary scratch home cleaned up on finish
     assert env_seen["pyutf8"] == "1" and env_seen["pyhash"] == "0" and env_seen["mpl"] == "Agg"
     assert env_seen["proxy"] == "http://127.0.0.1:9"
+    # Verify site-level R_PROFILE / R_ENVIRON and Windows USERPROFILE isolation
+    from reprocrowd import run as run_mod
+    import tempfile as _tf
+    with _tf.TemporaryDirectory() as td:
+        clean, _ = run_mod._prepare_clean_env(["python3", "analysis.py"], Path(td))
+        assert clean["R_PROFILE"].endswith(".Rprofile-site-none") and clean["R_ENVIRON"].endswith(".Renviron-site-none")
+        assert clean["R_PROFILE_USER"].endswith(".Rprofile-none") and clean["R_ENVIRON_USER"].endswith(".Renviron-none")
 
     iso = job["result"]["isolation"]
     assert iso["network_denied_by"] in ("namespace", "sandbox", "proxy")

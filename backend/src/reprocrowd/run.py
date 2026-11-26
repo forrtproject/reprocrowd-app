@@ -179,6 +179,8 @@ def _prepare_clean_env(argv: list[str], scratch: Path) -> tuple[dict[str, str], 
         "TMPDIR": str(tmp),
         "TMP": str(tmp),
         "TEMP": str(tmp),
+        "R_PROFILE": str(scratch / ".Rprofile-site-none"),
+        "R_ENVIRON": str(scratch / ".Renviron-site-none"),
         "R_PROFILE_USER": str(scratch / ".Rprofile-none"),
         "R_ENVIRON_USER": str(scratch / ".Renviron-none"),
         "R_LIBS_USER": str(r_lib),
@@ -188,7 +190,7 @@ def _prepare_clean_env(argv: list[str], scratch: Path) -> tuple[dict[str, str], 
         env["XDG_CACHE_HOME"] = str(cache)
         env["XDG_CONFIG_HOME"] = str(config)
     else:
-        env["HOME"] = str(home)
+        env["HOME"] = env["USERPROFILE"] = str(home)
     if "PYTHONUSERBASE" in preserved:
         env["PYTHONUSERBASE"] = preserved["PYTHONUSERBASE"]
     existing_r_libs = preserved.get("R_LIBS") or base.get("R_LIBS", "")
@@ -409,6 +411,31 @@ def _compare_runs(run1_bytes: bytes | None, run1_outputs: dict[str, str],
                 if a.get("file") != b.get("file"):
                     diffs.append(DeterminismDiff(target=tid, path=RESULTS, kind="file_changed",
                                                  detail=f"file reference changed: {a.get('file')!r} vs {b.get('file')!r}"))
+                # Any other metadata fields (e.g. step, note, custom keys)
+                meta_a = {k: v for k, v in a.items() if k not in ("value", "table", "file")}
+                meta_b = {k: v for k, v in b.items() if k not in ("value", "table", "file")}
+                if meta_a != meta_b:
+                    changed_keys = sorted(k for k in set(meta_a) | set(meta_b) if meta_a.get(k) != meta_b.get(k))
+                    clock = any(_TIME_OF_DAY.search(str(meta_a.get(k))) or _TIME_OF_DAY.search(str(meta_b.get(k))) for k in changed_keys)
+                    diffs.append(DeterminismDiff(
+                        target=tid, path=RESULTS, kind="value_changed",
+                        detail=f"metadata field(s) changed ({', '.join(changed_keys)})",
+                        looks_like_clock=clock,
+                    ))
+            # Top-level JSON fields outside "results"
+            if isinstance(j1, dict) and isinstance(j2, dict):
+                top1 = {k: v for k, v in j1.items() if k != "results"}
+                top2 = {k: v for k, v in j2.items() if k != "results"}
+                if top1 != top2:
+                    changed_top = sorted(k for k in set(top1) | set(top2) if top1.get(k) != top2.get(k))
+                    clock = any(_TIME_OF_DAY.search(str(top1.get(k))) or _TIME_OF_DAY.search(str(top2.get(k))) for k in changed_top)
+                    diffs.append(DeterminismDiff(
+                        path=RESULTS, kind="value_changed",
+                        detail=f"top-level field(s) changed ({', '.join(changed_top)})",
+                        looks_like_clock=clock,
+                    ))
+            elif j1 != j2 and not diffs:
+                diffs.append(DeterminismDiff(path=RESULTS, kind="value_changed", detail="results.json content differed between runs"))
 
     # Compare all other files produced under outputs/ (e.g. figures)
     for rel in sorted(set(run1_outputs) | set(run2_outputs)):
@@ -440,7 +467,10 @@ def start(pkg: Package, runs: int = 1) -> Job:
     argv = run_argv(tpl.command)  # before anything is cleaned up or committed: a missing program changes nothing
     jid = jobs.new_id(pkg)
     pkg.path(RESULTS).unlink(missing_ok=True)
-    pre_outputs = set(_snapshot_outputs(pkg.root))
+    if runs >= 2:
+        # Start run 1 from a clean outputs/ directory too so neither run can silently reuse stale outputs.
+        for rel in _snapshot_outputs(pkg.root):
+            pkg.path(rel).unlink(missing_ok=True)
     pre_caches = set(_runtime_caches(pkg.root))
     files.sync(pkg)
     before_snapshot = evidence.snapshot(pkg)
@@ -461,9 +491,9 @@ def start(pkg: Package, runs: int = 1) -> Job:
         run1_state["outputs"] = _snapshot_outputs(pkg.root)
         run1_state["t_end"] = time.monotonic()
         run1_state["captured"] = True
-        # Clean run-1 outputs so run 2 must regenerate everything from scratch.
+        # Clean every run-1 output so run 2 must regenerate all artifacts from scratch.
         res_path.unlink(missing_ok=True)
-        for rel in set(run1_state["outputs"]) - pre_outputs:
+        for rel in run1_state["outputs"]:
             pkg.path(rel).unlink(missing_ok=True)
 
     def finish(job: Job) -> RunResult:
