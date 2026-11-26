@@ -82,20 +82,26 @@ Apple silicon Macs runs ARM64 Linux, which works like any other Linux.
 
 ## Using it
 
-- **Library**: your reproductions. **New reproduction** takes a DOI, looked up
+- **Library**: your reproductions. **New from DOI** takes a DOI, looked up
   in OpenAlex. **Only articles with JATS XML are supported at this time**: the
   app checks that Europe PMC serves the article's full-text XML (the open-access
   subset of PubMed Central), or for PLOS articles that PLOS does, and refuses
   the paper otherwise. It also checks for
   ReproCrowd records of that paper already on Zenodo. The package goes in a
   folder (default `~/ReproCrowd/<doi>`); the JATS XML is downloaded and parsed
-  right away. **Open a package folder…** adds an existing package.
+  right away. **New from file** starts from a paper you already have (a local
+  PDF, DOCX or Markdown file) and needs no DOI or JATS XML; its text is
+  extracted, and the reproduction stays on your computer (it can't be deposited
+  on Zenodo). **Open a package folder…** adds an existing package.
 - **A reproduction** is a numbered workflow: 1 Inputs, 2 Targets, 3 Analysis
   plan, 4 Master script, 5 Code generation, 6 Run & compare, 7 Report &
-  deposit. The paper's text is its JATS XML; there is no PDF view. The study's
-  published data are added as input files from this computer (file dialogs, drag
-  and drop, folders). The analysis is rebuilt from the procedures described in
-  the paper; the authors' code is not used in this version.
+  deposit. For a DOI, the paper's text is its JATS XML; there is no PDF view.
+  The study's published data are added as input files from this computer (file
+  dialogs, drag and drop, folders). In step 1, **Fetch supplemental
+  materials…** finds data and code links (Zenodo, OSF, GitHub, GitLab,
+  Figshare) in the paper's text, including its link targets, and downloads the
+  files you pick. The analysis is rebuilt from the procedures described in the
+  paper; the authors' code is not used in this version.
 - **Steps 2 and 3, Reader view**: the paper, with each target (or analysis
   step) as a card in a sidebar, level with the passage it comes from and joined
   to it by a line. Hovering a card lights up its passage, and the other way

@@ -10,7 +10,7 @@ import { $, confirmDialog, esc, modal, pilotLabel, showError } from "./util";
 import sticker from "../../resources/hex-sticker.gif";
 
 const STEPS: [string, string][] = [
-  ["Choose an article", "A paper with open data and code. Start from its DOI (ReproCrowd fetches the metadata and its JATS XML) or from a local PDF, DOCX or Markdown file (kept local, not deposited)."],
+  ["Choose an article", "A paper with open data. Start from its DOI (ReproCrowd fetches the metadata and its JATS XML, which Europe PMC or PLOS must serve) or from a local PDF, DOCX or Markdown file (kept local, not deposited)."],
   ["Run the reproducibility check", "Extract the results to reproduce, plan the analysis, let a coding agent write the script, run it and compare."],
   ["Check and sign it", "Look at every number and its provenance in the report. The deposit carries your name and ORCID."],
   ["Deposit on Zenodo", "For a published paper, the package becomes a citable record with a DOI that links to the paper, for anyone to find, re-run or compare."],
@@ -33,7 +33,7 @@ export async function start() {
     <section class="hero"><div class="hero-grid container">
       <div class="hero-copy">
         <h1 class="hero-title">Crowdsourcing AI reproductions</h1>
-        <p class="hero-sub">Check whether a paper's numbers reproduce from its own data and code, with an AI-assisted workflow you stay in control of. Sign the result with your name and deposit it on Zenodo, so the community can find it.</p>
+        <p class="hero-sub">Check whether a paper's numbers reproduce from its published data: an AI-assisted workflow you stay in control of rebuilds the analysis from the methods the paper describes. Sign the result with your name and deposit it on Zenodo, so the community can find it.</p>
         <div class="hero-actions"><button id="new-btn" class="btn-primary">New from DOI</button><button id="file-btn" class="btn-secondary">New from file</button><button id="examples-btn" class="btn-secondary">Try an example</button><button id="adopt-btn" class="btn-secondary">Open a package folder…</button></div>
         <p id="setup-note" class="notice" hidden></p>
       </div>
@@ -362,7 +362,7 @@ async function render() {
   if (!all.length) {
     body.innerHTML = `<h2 class="section-title">How it works</h2>
        <ol class="process-cards">${STEPS.map(([t, d], i) => `<li class="card"><span class="card-step">${i + 1}</span><h3>${esc(t)}</h3><p>${esc(d)}</p></li>`).join("")}</ol>
-       <p class="note">Your reproductions will be listed here. Start with <b>New reproduction</b>.</p>
+       <p class="note">Your reproductions will be listed here. Start with <b>New from DOI</b> or <b>New from file</b>.</p>
        ${examplesHtml(examples)}`;
     bindExamples(body);
     return;

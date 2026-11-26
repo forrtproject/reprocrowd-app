@@ -63,6 +63,18 @@ def test_markdown(tmp_path: Path):
     assert [s.text for s in d.sections[0].paragraphs[0].sentences] == ["We ran a t-test on 40 participants.", "Data were cleaned first."]
 
 
+def test_markdown_extension_alias(tmp_path: Path):
+    """A .markdown file is Markdown by its name, even plain prose without Markdown syntax."""
+    for name in ("paper.markdown", "PAPER.MARKDOWN"):
+        p = tmp_path / name
+        p.write_text("A Test Paper\n\nWe ran a t-test on 40 participants. Data were cleaned first.\n", encoding="utf-8")
+        assert formats.detect(p) is None  # nothing to sniff
+        fmt, report = formats.check(p, p.name)
+        assert fmt.name == "md" and fmt.extension == ".md" and report.passed, report.problems
+        d = build_document(fmt.parse(p), DocumentSource(method="parse", format=fmt.name, fulltexts=["ft"]))
+        assert [s.text for par in d.sections[0].paragraphs for s in par.sentences][-2:] == [
+            "We ran a t-test on 40 participants.", "Data were cleaned first."]
+
 def test_docx(tmp_path: Path):
     import docx
 

@@ -477,6 +477,57 @@ def test_manuscript_text_from_local_files(tmp_path):
     assert any(l.repo == "zenodo" for l in acquire.detect(text))
 
 
+def _fulltext(pkg: Package, path: Path) -> str:
+    from reprocrowd import fulltexts
+    fulltexts.add_local(pkg, str(path))
+    return acquire.manuscript_text(pkg)
+
+
+def test_manuscript_text_jats_link_only_in_xlink_href(tmp_path):
+    xml = (FIXTURES / "paper.jats.xml").read_text(encoding="utf-8").replace(
+        "</body>", '<p>The data are <ext-link xmlns:xlink="http://www.w3.org/1999/xlink" ext-link-type="uri" '
+        'xlink:href="https://zenodo.org/records/777">online</ext-link>.</p></body>', 1)
+    p = tmp_path / "paper.jats.xml"
+    p.write_text(xml, encoding="utf-8")
+    text = _fulltext(_make_pkg(tmp_path), p)
+    assert [(l.repo, l.id) for l in acquire.detect(text)] == [("zenodo", "777")]
+
+
+def test_manuscript_text_tei_link_only_in_target(tmp_path):
+    xml = (FIXTURES / "paper.tei.xml").read_text(encoding="utf-8")
+    assert "</body>" in xml
+    xml = xml.replace("</body>", '<p>Code: <ref type="url" target="https://github.com/forrt/b">here</ref>.</p></body>', 1)
+    p = tmp_path / "paper.tei.xml"
+    p.write_text(xml, encoding="utf-8")
+    text = _fulltext(_make_pkg(tmp_path), p)
+    assert [(l.repo, l.id) for l in acquire.detect(text)] == [("github", "forrt/b")]
+
+
+def test_manuscript_text_docx_hyperlinks_and_tables(tmp_path):
+    import docx
+    from docx.opc.constants import RELATIONSHIP_TYPE as RT
+    from docx.oxml import OxmlElement
+    from docx.oxml.ns import qn
+
+    d = docx.Document()
+    d.add_paragraph("A paper.")
+    para = d.add_paragraph("The data are ")
+    link = OxmlElement("w:hyperlink")
+    link.set(qn("r:id"), d.part.relate_to("https://zenodo.org/records/888", RT.HYPERLINK, is_external=True))
+    run = OxmlElement("w:r")
+    t = OxmlElement("w:t")
+    t.text = "on Zenodo"
+    run.append(t)
+    link.append(run)
+    para._p.append(link)
+    d.add_table(rows=1, cols=2).cell(0, 1).text = "Code: https://osf.io/ab3cd"
+    p = tmp_path / "paper.docx"
+    d.save(str(p))
+    text = _fulltext(_make_pkg(tmp_path), p)
+    assert "on Zenodo" in text
+    assert [(l.repo, l.id) for l in acquire.detect(text)] == [("zenodo", "888"), ("osf", "ab3cd")]
+
+
 # ---------------------------------------------------------------- preview & selection
 
 @respx.mock
