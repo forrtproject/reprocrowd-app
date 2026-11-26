@@ -183,8 +183,12 @@ def test_r_stochastic_and_parallel_rng_positive_and_negative(client, pkg):
     rules = {f["rule"] for f in _rules(client, pkg)}
     assert {"unseeded_stochastic", "parallel_rng_hazard"} <= rules
 
-    # Placed BEFORE draws/mclapply clears both
+    # set.seed(NULL) does not count as a reproducible seed
     root = Path(client.get(f"/v1/packages/{pkg}").json()["path"])
+    (root / "analysis.R").write_text("set.seed(NULL)\nx <- rnorm(10)\n")
+    assert any(f["rule"] == "unseeded_stochastic" for f in _rules(client, pkg))
+
+    # Placed BEFORE draws/mclapply clears both
     (root / "analysis.R").write_text('library(parallel)\nRNGkind("L\'Ecuyer-CMRG")\nset.seed(123)\nres <- mclapply(1:4, function(i) mean(rnorm(5)))\n')
     rules = {f["rule"] for f in _rules(client, pkg)}
     assert not ({"unseeded_stochastic", "parallel_rng_hazard"} & rules)

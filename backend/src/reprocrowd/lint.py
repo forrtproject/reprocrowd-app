@@ -82,7 +82,7 @@ _R_STOCHASTIC = re.compile(
     r"""\b(?:sample|sample\.int|rnorm|runif|rbinom|rpois|rexp|rgamma|rbeta|rchisq|rt|rf|"""
     r"""rmultinom|mvrnorm|rmvnorm|boot|mice|amelia|kmeans|randomForest|ranger)\s*\("""
 )
-_R_SEED = re.compile(r"""\b(?:set\.seed|clusterSetRNGStream)\s*\(|\bfuture\.seed\s*=|\bseed\s*=""")
+_R_SEED = re.compile(r"""\bset\.seed\s*\(\s*(?!NULL\b|\))|\bclusterSetRNGStream\s*\(|\bfuture\.seed\s*=\s*(?!NULL\b|FALSE\b)|\bseed\s*=\s*(?!NULL\b)""")
 _R_FORK_PARALLEL = re.compile(r"""\b(?:mclapply|mcmapply|mcMap|pvec|mcparallel|makeForkCluster)\s*\(""")
 _R_INTERACTIVE = re.compile(
     r"""\b(?:View|file\.choose|choose\.files|choose\.dir|readline|menu|askYesNo|select\.list|winDialog)\s*\(|"""

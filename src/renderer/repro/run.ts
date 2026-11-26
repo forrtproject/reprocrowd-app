@@ -46,11 +46,18 @@ export class RunStep implements Step {
     [this.script] = await Promise.all([pkg.get<ScriptState>("/script"), this.job.load()]);
     // Load advisory static checks asynchronously so large text inputs never block Step 6 or /comparison.
     const seq = ++this.codeChecksSeq;
-    pkg.get<CodeCheckReport>("/code-checks").then((cc) => {
-      if (seq !== this.codeChecksSeq) return;
-      this.codeChecks = cc;
-      if (this.w.steps[this.w.step] === this) this.w.draw();
-    }).catch(() => {});
+    pkg.get<CodeCheckReport>("/code-checks").then(
+      (cc) => {
+        if (seq !== this.codeChecksSeq) return;
+        this.codeChecks = cc;
+        if (this.w.steps[this.w.step] === this) this.w.draw();
+      },
+      () => {
+        if (seq !== this.codeChecksSeq) return;
+        this.codeChecks = undefined;
+        if (this.w.steps[this.w.step] === this) this.w.draw();
+      },
+    );
     await this.loadComparison();
     this.originals = await pkg.get<FigureOriginal[]>("/figures").catch(() => []);
   }
