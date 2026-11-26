@@ -9,6 +9,8 @@ from .base import CheckReport, Format
 
 FORMATS: list[Format] = [pdf.FORMAT, tei.FORMAT, jats.FORMAT, docling.FORMAT, docx.FORMAT, md.FORMAT]
 BY_NAME: dict[str, Format] = {f.name: f for f in FORMATS}
+# Other extensions a format's files go by. Stored files keep the format's own extension (``.md``).
+ALIASES: dict[str, Format] = {".markdown": md.FORMAT}
 
 
 def detect(path: Path) -> Format | None:
@@ -21,8 +23,9 @@ def by_extension(name: str) -> Format | None:
     """The format a file's name declares, by its extension. Used before content sniffing, because text formats
     (Markdown, DOCX) don't sniff reliably from their content. Longest extension first (e.g. .jats.xml before .xml)."""
     lower = name.lower()
-    for fmt in sorted(FORMATS, key=lambda f: len(f.extension), reverse=True):
-        if lower.endswith(fmt.extension):
+    extensions = [(f.extension, f) for f in FORMATS] + list(ALIASES.items())
+    for extension, fmt in sorted(extensions, key=lambda e: len(e[0]), reverse=True):
+        if lower.endswith(extension):
             return fmt
     return None
 

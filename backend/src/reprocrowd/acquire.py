@@ -453,10 +453,19 @@ def gitlab_fetch(job: _Job) -> None:
             job.add(Path(path).name, raw, int(entry["size"]) if entry.get("size") else 0, path)
 
 
+_OSF_NON_PROJECT = frozenset({
+    "about", "analytics", "assets", "collections", "components", "dashboard", "download",
+    "files", "forks", "institutions", "login", "meetings", "myprojects", "preprints",
+    "privacy", "profile", "quickfiles", "register", "registrations", "registries",
+    "search", "settings", "static", "support", "terms", "wiki",
+})
+
+
 def _osf_id(text: str) -> list[str]:
     found: list[str] = []
     for m in re.finditer(r"osf\.io/([A-Za-z0-9]{5,})", text):
-        found.append(m.group(1))
+        if m.group(1).lower() not in _OSF_NON_PROJECT:
+            found.append(m.group(1))
     return found
 
 
@@ -645,7 +654,7 @@ def _fulltext_text(pkg: Package, r: Resource) -> str:
     if flavor in ("jats", "tei"):
         from .formats.xmlmap import PARSER
         root = etree.parse(str(p), PARSER.copy()).getroot()  # (a shared parser serializes threads)
-        return " ".join(t for t in root.itertext() if t and t.strip())
+        return " ".join([t for t in root.itertext() if t and t.strip()] + _xml_link_targets(root))
     if flavor == "docling":
         import json
         doc = json.loads(p.read_text(encoding="utf-8"))
@@ -653,13 +662,41 @@ def _fulltext_text(pkg: Package, r: Resource) -> str:
     if flavor == "md":
         return p.read_text(encoding="utf-8")
     if flavor == "docx":
-        import docx
-        d = docx.Document(str(p))
-        return " ".join(para.text for para in d.paragraphs if para.text.strip())
+        return " ".join(_docx_texts(p))
     if flavor == "pdf":
         from .formats import pdf
         return " ".join(pdf.page_texts(p))
     raise ApiError(409, "no_fulltext", f"{r.name} ({formats.BY_NAME[flavor].description}) can't be scanned for links")
+
+
+_URL = re.compile(r"https?://\S+", re.I)
+
+
+def _xml_link_targets(root) -> list[str]:
+    """The HTTP(S) URLs in link attributes (xlink:href, href, target), in document order. A link whose URL is only in
+    an attribute (JATS <ext-link xlink:href>, TEI <ref target>) has no URL in the text."""
+    out: list[str] = []
+    for el in root.iter(tag=etree.Element):
+        for key, value in el.attrib.items():
+            if etree.QName(key).localname in ("href", "target"):
+                out += _URL.findall(value)  # a TEI target can list several URIs
+    return out
+
+
+def _docx_texts(path: Path) -> list[str]:
+    """The paragraphs of a DOCX body in document order, table cells included, then its external hyperlink targets
+    (a hyperlink's URL is in the relationships, not in the text)."""
+    import docx
+    from docx.opc.constants import RELATIONSHIP_TYPE as RT
+    from docx.oxml.ns import qn
+    from docx.text.paragraph import Paragraph
+    d = docx.Document(str(path))
+    body = d.element.body
+    texts = [t for t in (Paragraph(p, d).text for p in body.iter(qn("w:p"))) if t.strip()]
+    rels = {rid: r for rid, r in d.part.rels.items() if r.reltype == RT.HYPERLINK and r.is_external}
+    used = [h.get(qn("r:id")) for h in body.iter(qn("w:hyperlink"))]
+    order = list(dict.fromkeys(rid for rid in used if rid in rels))
+    return texts + [rels[rid].target_ref for rid in order if _URL.match(rels[rid].target_ref)]
 
 
 def acquire(pkg: Package, fulltext: str | None = None, role: str | None = None,
