@@ -65,7 +65,7 @@ def start(pkg: Package) -> Job:
         if exists:
             try:
                 plan = load_plan(pkg)
-                errors, warnings, _ = check_output(pkg.read_json(RESULTS), targets, plan)
+                errors, warnings, _ = check_output(pkg.read_json(RESULTS), targets, plan, root=pkg.root)
                 warnings += [] if plan else [NO_PLAN]
             except ValueError as e:
                 errors = [f"not valid JSON: {e}"]
@@ -155,9 +155,9 @@ def comparison(pkg: Package, st: CompareSettings) -> Comparison:
         raw: Any = pkg.read_json(RESULTS)
     except ValueError as e:
         raw = {"error": str(e)}
-    result = compare(targets, raw, st)
+    result = compare(targets, raw, st, root=pkg.root)
     result.basis = ComparisonBasis(results_sha256=evidence.digest(pkg, RESULTS), results_schema_sha256=evidence.digest(pkg, "results_schema.json"), created_at=now())
     plan = load_plan(pkg)
-    _, warnings, _ = check_output(raw, targets, plan)
+    _, warnings, _ = check_output(raw, targets, plan, root=pkg.root)
     result.output_warnings = warnings + ([] if plan else [NO_PLAN])
     return result

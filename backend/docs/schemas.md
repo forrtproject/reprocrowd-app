@@ -20,6 +20,7 @@ File: `schemas/execution-evidence.schema.json`
 | `stale` | list of string \| null |  |  |
 | `stale_reason` | string \| null |  |  |
 | `added_since_run` | list of string |  |  |
+| `stale_hashes` | map of string \| null |  | current hash of each stale or added file (null if deleted), so a later edit to an already stale file is detected |
 | `results_match_run` | boolean \| null |  |  |
 | `codegen` | object \| null |  |  |
 | `targets` | list of [TargetEvidence](#targetevidence) |  |  |

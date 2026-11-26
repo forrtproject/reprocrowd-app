@@ -2,9 +2,16 @@
 {{ m.header(paper, tpl, marker) }}
 
 # {{ marker }}: load required packages
+
+# Writes outputs/results.json at full precision: jsonlite rounds to 4 decimals unless digits = NA.
+write_reprocrowd_results <- function(results, path = "outputs/results.json") {
+  dir.create(dirname(path), recursive = TRUE, showWarnings = FALSE)
+  jsonlite::write_json(list(results = results), path, auto_unbox = TRUE, digits = NA, pretty = TRUE)
+  invisible(path)
+}
 {% for s in plan.steps %}
 
 {{ m.step_header(s) | trim }}
-# {{ marker }}: implement {{ s.id }}{% if s.kind == "results" %} (write outputs/results.json){% endif %}
+# {{ marker }}: implement {{ s.id }}{% if s.kind == "results" %} (write outputs/results.json with write_reprocrowd_results(results)){% endif %}
 
 {% endfor %}

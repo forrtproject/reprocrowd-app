@@ -5,6 +5,13 @@ library(targets)
 # {{ marker }}: declare packages
 tar_option_set(packages = c())
 
+# Writes outputs/results.json at full precision: jsonlite rounds to 4 decimals unless digits = NA.
+write_reprocrowd_results <- function(results, path = "outputs/results.json") {
+  dir.create(dirname(path), recursive = TRUE, showWarnings = FALSE)
+  jsonlite::write_json(list(results = results), path, auto_unbox = TRUE, digits = NA, pretty = TRUE)
+  invisible(path)
+}
+
 list(
 {% for s in plan.steps %}
   {{ m.step_header(s, "  ") | trim }}
@@ -12,7 +19,8 @@ list(
 {% if s.depends_on %}
     # uses: {{ s.depends_on | map("lower") | join(", ") }}
 {% endif %}
-    # {{ marker }}: implement {{ s.id }}
+    # {{ marker }}: implement {{ s.id }}{% if s.kind == "results" %} (write outputs/results.json with write_reprocrowd_results(results)){% endif %}
+
     {{ '"outputs/results.json"' if s.kind == "results" else "NULL" }}
   }{{ ', format = "file"' if s.kind == "results" }}){{ "," if not loop.last }}
 {% if not loop.last %}

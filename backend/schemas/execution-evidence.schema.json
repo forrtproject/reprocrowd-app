@@ -146,6 +146,21 @@
       "title": "Added Since Run",
       "type": "array"
     },
+    "stale_hashes": {
+      "additionalProperties": {
+        "anyOf": [
+          {
+            "type": "string"
+          },
+          {
+            "type": "null"
+          }
+        ]
+      },
+      "description": "current hash of each stale or added file (null if deleted), so a later edit to an already stale file is detected",
+      "title": "Stale Hashes",
+      "type": "object"
+    },
     "results_match_run": {
       "anyOf": [
         {

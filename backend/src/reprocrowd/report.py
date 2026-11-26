@@ -154,7 +154,8 @@ def recorded_comparison(pkg: Package) -> Comparison:
         # The archived evidence must still describe the scripts and inputs that are archived with it.
         live_evidence = evidence.get(pkg)
         if (published.get("stale") != live_evidence.stale or
-                published.get("added_since_run", []) != live_evidence.added_since_run):
+                published.get("added_since_run", []) != live_evidence.added_since_run or
+                published.get("stale_hashes", {}) != live_evidence.stale_hashes):  # a stale file edited again
             raise conflict("report_stale", "scripts or inputs changed since the report; regenerate the report and archive")
     if saved.basis is None:
         raise conflict("report_stale", "this report predates recorded comparisons; regenerate the report and archive")
