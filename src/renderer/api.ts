@@ -26,7 +26,7 @@ interface Bridge {
 }
 const bridge = (window as unknown as { reprocrowd: Bridge }).reprocrowd;
 
-interface Reply<T> { status: number; etag: string | null; location: string | null; total: number | null; data: T }
+interface Reply<T> { status: number; etag: string | null; location: string | null; total: number | null; type?: string | null; data: T }
 
 async function call<T>(method: string, ...args: unknown[]): Promise<T> {
   const r = await bridge.call(method, args);
@@ -139,6 +139,8 @@ export const pkg = {
   patch: <T>(sub: string, body: unknown) => data(call<Reply<T>>("pkg", "PATCH", sub, body)),
   del: (sub: string) => call<Reply<null>>("pkg", "DELETE", sub),
   bytes: (sub: string) => call<ArrayBuffer>("pkgBytes", sub),
+  /** The bytes with the media type the backend serves them as (null if it sent none). */
+  file: (sub: string) => call<{ data: ArrayBuffer; type: string | null }>("pkgFile", sub),
   text: (sub: string) => call<string>("pkgText", sub),
   upload: async <T>(kind: "inputs", file: File, fields: Record<string, string | boolean | undefined> = {}) => call<T>("upload", kind, await fileArg(file), fields),
   /** Scan a full text for data/code repository links (Zenodo, GitHub, GitLab, OSF, Figshare) and fetch them as inputs. */

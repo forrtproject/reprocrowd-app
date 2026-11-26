@@ -552,6 +552,30 @@ def test_the_size_limit_counts_pilot_json(client, pkg, gh, monkeypatch):
     problem(client.post(P + "/pilots:preview", json={}), 422, "pilot_asset_too_large")
 
 
+def test_leaving_out_the_inputs_brings_a_run_under_the_size_limit(client, pkg, gh, monkeypatch, tmp_path):
+    """The app previews the pilot again for every choice of files: a run over the limit with its input files passes
+    without them, and is refused again once they are back in."""
+    from reprocrowd import pilots
+    P = f"/v1/packages/{pkg}"
+    ready_published(client, pkg)
+    big = tmp_path / "raw.bin"
+    big.write_bytes(os.urandom(256 * 1024))  # incompressible: the ZIP grows by its size
+    assert client.post(P + "/inputs", json={"path": str(big)}).status_code == 201
+    problem(client.post(P + "/pilots:preview", json={}), 409, "report_stale")  # added after the report
+    assert client.put(P + "/report", json={}).status_code == 200
+    assert client.put(P + "/archive").status_code == 200
+    size = lambda pv: sum(a["bytes"] or 0 for a in pv["assets"])
+    full = client.post(P + "/pilots:preview", json={}).json()
+    assert full["exclude"] == ["paper"]  # the inputs are in by default
+    lean = client.post(P + "/pilots:preview", json={"exclude": ["paper", "inputs"]}).json()
+    assert size(full) - size(lean) > 200 * 1024
+    monkeypatch.setattr(pilots, "MAX_RUN", size(lean) + 100 * 1024)
+    problem(client.post(P + "/pilots:preview", json={}), 422, "pilot_asset_too_large")  # the default choice
+    assert client.post(P + "/pilots:preview", json={"exclude": ["paper", "inputs"]}).status_code == 200
+    problem(client.post(P + "/pilots:preview", json={"exclude": ["paper"]}), 422, "pilot_asset_too_large")  # inputs back in
+    assert gh.writes == []
+
+
 def _zip(**members):
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w") as z:
