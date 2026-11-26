@@ -207,8 +207,8 @@ export class ReportStep implements Step {
         this.exclude ??= new Set();
         if (cb.checked) this.exclude.delete(cb.dataset.group!);
         else this.exclude.add(cb.dataset.group!);
+        void this.refreshPilot(); // marks the pilot preview pending before the redraw
         this.w.draw();
-        void this.refreshPilot();
       }),
     );
     body.querySelector<HTMLTextAreaElement>("#rp-note")?.addEventListener("input", (e) => (this.note = (e.target as HTMLTextAreaElement).value));

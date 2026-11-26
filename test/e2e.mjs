@@ -378,7 +378,13 @@ json.dump({"results": [{"id": "T001", "value": 2.3149}, {"id": "T002", "value": 
   await pilot.getByText(tooLarge).waitFor({ timeout: 180_000 });
   assert.ok(await win.locator("#rp-pilot").isDisabled());
   assert.equal(await win.locator("[data-group=inputs]").isChecked(), true, "the inputs are in by default");
-  await win.locator("[data-group=inputs]").uncheck();
+  // Until the preview for the new choice is back, the card says so (and #rp-pilot waits): same task as the click.
+  const pendingShown = await win.evaluate(() => {
+    document.querySelector("[data-group=inputs]").click();
+    return [...document.querySelectorAll(".submit-card")].some((c) => c.textContent.includes("Checking the files for this choice"));
+  });
+  assert.ok(pendingShown, "the pilot card waits for the preview of the new choice");
+  assert.equal(await win.locator("[data-group=inputs]").isChecked(), false);
   await pilot.getByText("Licences: metadata").waitFor({ timeout: 120_000 });
   assert.doesNotMatch(await pilot.innerText(), tooLarge, "without the inputs the run is under the limit");
   await shot("06b-pilot-without-inputs");
