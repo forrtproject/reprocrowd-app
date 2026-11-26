@@ -22,11 +22,39 @@ File: `schemas/execution-evidence.schema.json`
 | `added_since_run` | list of string |  |  |
 | `stale_hashes` | map of string \| null |  | current hash of each stale or added file (null if deleted), so a later edit to an already stale file is detected |
 | `results_match_run` | boolean \| null |  |  |
+| `determinism` | [DeterminismCheck](#determinismcheck) \| null |  | two-run determinism check recorded by the latest run, if run twice |
+| `isolation` | [RunIsolation](#runisolation) \| null |  | clean-room isolation recorded by the latest run |
 | `codegen` | object \| null |  |  |
 | `targets` | list of [TargetEvidence](#targetevidence) |  |  |
 | `log_path` | string \| null |  |  |
 | `log_truncated` | boolean |  | default `False` |
 | `log_sha256` | string \| null |  |  |
+
+### DeterminismCheck
+
+Outcome of running the master script twice and comparing outputs/results.json and produced output files.
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `runs` | integer | yes |  |
+| `status` | `"identical"` \| `"numerically_close"` \| `"different"` \| `"failed"` | yes |  |
+| `run1_results_sha256` | string \| null |  |  |
+| `run2_results_sha256` | string \| null |  |  |
+| `differences` | list of [DeterminismDiff](#determinismdiff) |  |  |
+| `summary` | string | yes |  |
+
+### DeterminismDiff
+
+One difference observed between two consecutive runs of the master script.
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `target` | string \| null |  | target id in outputs/results.json, if applicable |
+| `path` | string \| null |  | package-relative output file path, if applicable |
+| `kind` | `"missing_in_run"` \| `"value_changed"` \| `"table_changed"` \| `"file_changed"` \| `"parse_error"` | yes |  |
+| `detail` | string | yes |  |
+| `max_rel_diff` | number \| null |  | largest relative numeric change between runs, if numeric |
+| `looks_like_clock` | boolean |  | heuristic: the difference looks like a clock/timestamp reading; default `False` |
 
 ### Ref
 
@@ -36,6 +64,18 @@ Points at one sentence, figure or table of an extraction.
 |---|---|---|---|
 | `extraction` | string | yes | resource name of the extraction, e.g. ex-grobid |
 | `id` | string | yes | sentence (sec3.p2.s1, fig1.s1), figure (fig1) or table (tab1) id in that extraction |
+
+### RunIsolation
+
+Clean-room settings applied to the script run (honest record, not an OS container).
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `network_denied_by` | `"namespace"` \| `"sandbox"` \| `"proxy"` | yes | how network access was denied: Linux network namespace, macOS sandbox-exec, or dead-proxy env vars only |
+| `clean_home` | boolean |  | private empty HOME/TMPDIR and scratch R library (user libraries stay readable); default `True` |
+| `tz` | string |  | default `UTC` |
+| `locale` | string |  | default `C.UTF-8` |
+| `runtime_caches` | list of string |  | runtime cache files left behind in the package by the run |
 
 ### TargetEvidence
 
@@ -799,6 +839,16 @@ jobs/<id>.json
 | `todo` | [TodoStatus](#todostatus) | yes |  |
 | `git_note` | string \| null |  | why git was skipped, if it was |
 
+### FailureHint
+
+Actionable hint parsed from a failed run's log.
+
+| Field | Type | Req. | Description |
+|---|---|---|---|
+| `kind` | `"missing_package"` \| `"path"` \| `"network"` \| `"encoding"` \| `"session_state"` \| `"permission"` \| `"syntax"` \| `"memory"` | yes |  |
+| `detail` | string | yes |  |
+| `suggestion` | string | yes |  |
+
 ### RunResult
 
 | Field | Type | Req. | Description |
@@ -814,6 +864,10 @@ jobs/<id>.json
 | `output_errors` | list of string |  | outputs/results.json problems (format, unknown ids) |
 | `output_warnings` | list of string |  | coverage problems (targets missing from the output) |
 | `commit_after` | string \| null |  |  |
+| `runs` | integer |  | number of script runs requested (2 = determinism check); default `1` |
+| `determinism` | [DeterminismCheck](#determinismcheck) \| null |  | two-run determinism check result when runs=2 |
+| `isolation` | [RunIsolation](#runisolation) \| null |  | clean-room environment and network isolation applied to the run |
+| `failure_hints` | list of [FailureHint](#failurehint) |  | structured failure hints parsed from the run log when a run fails |
 
 ### TodoFile
 

@@ -197,3 +197,191 @@ def test_a_missing_program_changes_nothing(client, pkg, monkeypatch):
     assert not (root / "jobs").exists() or not any((root / "jobs").iterdir())
     if gitrepo.available():
         assert gitrepo.head(run.Package(pkg, root)) == head
+
+
+def test_two_run_determinism_check(client, pkg):
+    root = package_with_targets(client, pkg)
+    P = f"/v1/packages/{pkg}"
+
+    # 1. Identical deterministic script -> status == "identical", recorded in evidence & report
+    (root / "analysis.py").write_text(SCRIPT)
+    r = client.post(P + "/jobs", json={"type": "run", "runs": 2})
+    assert r.status_code == 202
+    job = wait(client, pkg, r.json()["id"])
+    assert job["status"] == "succeeded", job
+    det = job["result"]["determinism"]
+    assert job["result"]["runs"] == 2
+    assert det["status"] == "identical" and det["differences"] == []
+    assert det["run1_results_sha256"] == det["run2_results_sha256"]
+    assert "Determinism check: run 2 of 2" in client.get(f"{P}/jobs/{job['id']}/stdout").text
+    ev = client.get(P + "/evidence").json()
+    assert ev["determinism"]["status"] == "identical"
+    assert client.put(P + "/report", json={"threshold": 5}).status_code == 201
+    assert "Determinism check (2 runs):" in client.get(P + "/report").text
+
+    # 2. Unseeded stochastic drift -> status == "different" with target diff
+    (root / "analysis.py").write_text("""import json, os, pathlib
+c = pathlib.Path('.counter')
+n = int(c.read_text()) + 1 if c.exists() else 1
+c.write_text(str(n))
+os.makedirs('outputs', exist_ok=True)
+json.dump({'results': [{'id': 'T001', 'value': 2.31 + n * 0.5, 'step': 'A01'}]}, open('outputs/results.json', 'w'))
+""")
+    job = wait(client, pkg, client.post(P + "/jobs", json={"type": "run", "runs": 2}).json()["id"])
+    assert job["status"] == "succeeded"
+    det = job["result"]["determinism"]
+    assert det["status"] == "different" and len(det["differences"]) == 1
+    assert det["differences"][0]["target"] == "T001" and det["differences"][0]["kind"] == "value_changed"
+    assert not det["differences"][0]["looks_like_clock"]
+
+    # 3. Tiny numeric drift (< 5e-5) -> status == "numerically_close"
+    (root / "analysis.py").write_text("""import json, os, pathlib
+c = pathlib.Path('.counter2')
+n = int(c.read_text()) + 1 if c.exists() else 1
+c.write_text(str(n))
+os.makedirs('outputs', exist_ok=True)
+json.dump({'results': [{'id': 'T001', 'value': 2.31 + n * 1e-6, 'step': 'A01'}]}, open('outputs/results.json', 'w'))
+""")
+    job = wait(client, pkg, client.post(P + "/jobs", json={"type": "run", "runs": 2}).json()["id"])
+    assert job["status"] == "succeeded"
+    assert job["result"]["determinism"]["status"] == "numerically_close"
+
+    # 4. Wall-clock timestamp output -> looks_like_clock == True and status == "different"
+    (root / "analysis.py").write_text("""import json, os, time
+os.makedirs('outputs', exist_ok=True)
+time.sleep(0.02)
+json.dump({'results': [{'id': 'T001', 'value': time.time(), 'step': 'A01'}]}, open('outputs/results.json', 'w'))
+""")
+    job = wait(client, pkg, client.post(P + "/jobs", json={"type": "run", "runs": 2}).json()["id"])
+    assert job["status"] == "succeeded"
+    det = job["result"]["determinism"]
+    assert det["status"] == "different" and det["differences"][0]["looks_like_clock"]
+
+    # 5. Run 2 fails -> job fails and determinism.status == "failed"
+    (root / "analysis.py").write_text("""import json, os, pathlib
+c = pathlib.Path('.counter3')
+n = int(c.read_text()) + 1 if c.exists() else 1
+c.write_text(str(n))
+if n >= 2:
+    raise SystemExit('run2 boom')
+os.makedirs('outputs', exist_ok=True)
+json.dump({'results': [{'id': 'T001', 'value': 2.31, 'step': 'A01'}]}, open('outputs/results.json', 'w'))
+""")
+    job = wait(client, pkg, client.post(P + "/jobs", json={"type": "run", "runs": 2}).json()["id"])
+    assert job["status"] == "failed" and job["result"]["determinism"]["status"] == "failed"
+
+    # 6. Run 1 fails -> run 2 does not start, determinism.status == "failed"
+    (root / "analysis.py").write_text("raise SystemExit('run1 boom')\n")
+    job = wait(client, pkg, client.post(P + "/jobs", json={"type": "run", "runs": 2}).json()["id"])
+    assert job["status"] == "failed" and job["result"]["determinism"]["status"] == "failed"
+    assert "Determinism check: run 2 of 2" not in client.get(f"{P}/jobs/{job['id']}/stdout").text
+
+    # 7. Metadata-only change (e.g. note) between runs must NOT report identical
+    (root / "analysis.py").write_text("""import json, os, pathlib
+c = pathlib.Path('.counter4')
+n = int(c.read_text()) + 1 if c.exists() else 1
+c.write_text(str(n))
+os.makedirs('outputs', exist_ok=True)
+json.dump({'results': [{'id': 'T001', 'value': 2.31, 'step': 'A01', 'note': f'run {n}'}]}, open('outputs/results.json', 'w'))
+""")
+    job = wait(client, pkg, client.post(P + "/jobs", json={"type": "run", "runs": 2}).json()["id"])
+    assert job["status"] == "succeeded" and job["result"]["determinism"]["status"] == "different"
+    assert any("metadata" in d["detail"] for d in job["result"]["determinism"]["differences"])
+
+    # 8. Pre-existing output file must not mask a conditional writer that skips writing on run 2
+    (root / "outputs" / "fig.png").write_bytes(b"stale-before-run")
+    (root / "analysis.py").write_text("""import json, os, pathlib
+c = pathlib.Path('.counter5')
+n = int(c.read_text()) + 1 if c.exists() else 1
+c.write_text(str(n))
+os.makedirs('outputs', exist_ok=True)
+if n == 1:
+    pathlib.Path('outputs/fig.png').write_bytes(b'run1-only')
+json.dump({'results': [{'id': 'T001', 'value': 2.31, 'step': 'A01'}]}, open('outputs/results.json', 'w'))
+""")
+    job = wait(client, pkg, client.post(P + "/jobs", json={"type": "run", "runs": 2}).json()["id"])
+    assert job["status"] == "succeeded" and job["result"]["determinism"]["status"] == "different"
+    assert any(d["path"] == "outputs/fig.png" and d["kind"] == "missing_in_run" for d in job["result"]["determinism"]["differences"])
+
+
+def test_clean_room_isolation_and_runtime_caches(client, pkg):
+    root = package_with_targets(client, pkg)
+    P = f"/v1/packages/{pkg}"
+    real_home = str(Path.home())
+
+    # Script checks clean-room env vars and intentionally writes a runtime cache file (.RData)
+    (root / "analysis.py").write_text("""import json, os, pathlib
+os.makedirs("outputs", exist_ok=True)
+pathlib.Path(".RData").write_text("stale workspace")
+env_check = {
+    "tz": os.environ.get("TZ"),
+    "home": os.environ.get("HOME"),
+    "pyutf8": os.environ.get("PYTHONUTF8"),
+    "pyhash": os.environ.get("PYTHONHASHSEED"),
+    "mpl": os.environ.get("MPLBACKEND"),
+    "proxy": os.environ.get("HTTP_PROXY"),
+}
+pathlib.Path("outputs/env.json").write_text(json.dumps(env_check))
+json.dump({"results": [{"id": "T001", "value": 2.31, "step": "A01"}]}, open("outputs/results.json", "w"))
+""")
+    job = wait(client, pkg, client.post(P + "/jobs", json={"type": "run"}).json()["id"])
+    assert job["status"] == "succeeded", job
+    env_seen = json.loads((root / "outputs/env.json").read_text())
+    assert env_seen["tz"] == "UTC"
+    assert env_seen["home"] != real_home and "reprocrowd-run-" in env_seen["home"]
+    assert not Path(env_seen["home"]).exists()  # temporary scratch home cleaned up on finish
+    assert env_seen["pyutf8"] == "1" and env_seen["pyhash"] == "0" and env_seen["mpl"] == "Agg"
+    assert env_seen["proxy"] == "http://127.0.0.1:9"
+    # Verify site-level R_PROFILE / R_ENVIRON and Windows USERPROFILE isolation
+    from reprocrowd import run as run_mod
+    import tempfile as _tf
+    with _tf.TemporaryDirectory() as td:
+        clean, _ = run_mod._prepare_clean_env(["python3", "analysis.py"], Path(td))
+        assert clean["R_PROFILE"].endswith(".Rprofile-site-none") and clean["R_ENVIRON"].endswith(".Renviron-site-none")
+        assert clean["R_PROFILE_USER"].endswith(".Rprofile-none") and clean["R_ENVIRON_USER"].endswith(".Renviron-none")
+
+    iso = job["result"]["isolation"]
+    assert iso["network_denied_by"] in ("namespace", "sandbox", "proxy")
+    assert iso["clean_home"] is True and iso["tz"] == "UTC"
+    assert ".RData" in iso["runtime_caches"]
+    assert any(".RData" in w for w in job["result"]["output_warnings"])
+
+    ev = client.get(P + "/evidence").json()
+    assert ev["isolation"]["network_denied_by"] == iso["network_denied_by"]
+    assert client.put(P + "/report", json={"threshold": 5}).status_code == 201
+    assert "Clean-room run settings:" in client.get(P + "/report").text
+
+
+def test_runtime_failure_hints_live_and_classifier(client, pkg):
+    from reprocrowd.run import classify_failure
+
+    # Live missing Python package -> structured missing_package hint naming the module
+    root = package_with_targets(client, pkg)
+    P = f"/v1/packages/{pkg}"
+    (root / "analysis.py").write_text("import definitely_not_an_installed_pkg_xyz\n")
+    job = wait(client, pkg, client.post(P + "/jobs", json={"type": "run"}).json()["id"])
+    assert job["status"] == "failed"
+    hints = job["result"]["failure_hints"]
+    assert any(h["kind"] == "missing_package" and "definitely_not_an_installed_pkg_xyz" in h["detail"] for h in hints), hints
+
+    # Live missing file -> path hint
+    (root / "analysis.py").write_text('open("inputs/no_such_file.csv").read()\n')
+    job = wait(client, pkg, client.post(P + "/jobs", json={"type": "run"}).json()["id"])
+    assert job["status"] == "failed"
+    assert any(h["kind"] == "path" for h in job["result"]["failure_hints"])
+
+    # Unit classifier checks for R, encoding, network, session_state, syntax, memory
+    r_pkg = classify_failure("Error in library(lme4) : there is no package called ‘lme4’")
+    assert any(h.kind == "missing_package" and "lme4" in h.detail for h in r_pkg)
+    enc = classify_failure("UnicodeDecodeError: 'utf-8' codec can't decode byte 0xe9")
+    assert any(h.kind == "encoding" for h in enc)
+    net = classify_failure("urllib.error.URLError: <urlopen error [Errno 8] nodename nor servname provided>", "sandbox")
+    assert any(h.kind == "network" and "sandbox" in h.detail for h in net)
+    obj = classify_failure("Error: object 'df_clean' not found")
+    assert any(h.kind == "session_state" and "df_clean" in h.detail for h in obj)
+    syn = classify_failure("SyntaxError: invalid syntax")
+    assert any(h.kind == "syntax" for h in syn)
+    mem = classify_failure("Error: cannot allocate vector of size 12.0 Gb")
+    assert any(h.kind == "memory" for h in mem)
+
+

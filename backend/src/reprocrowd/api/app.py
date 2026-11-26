@@ -732,7 +732,7 @@ def agent_profiles():
           responses=errors("script_missing", "job_running", "unknown_profile", "exec_restriction_unsupported", "job_start_failed", "program_not_found"))
 def create_job(pkg: Pkg, body: Annotated[M.JobCreate, Body()], response: Response):
     if isinstance(body, M.RunJobCreate):
-        job = run.start(pkg)
+        job = run.start(pkg, runs=body.runs)
     else:
         job = codegen.start(pkg, profile=body.profile, allow_exec=body.allow_exec, instructions=body.instructions, model=body.model)
     response.headers["Location"] = f"/v1/packages/{pkg.id}/jobs/{job.id}"

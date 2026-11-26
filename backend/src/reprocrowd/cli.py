@@ -477,9 +477,10 @@ def codegen(pkg: str, profile: Optional[str] = typer.Option(None, help="agent pr
 
 
 @app.command("run")
-def run_cmd(pkg: str, follow_: bool = typer.Option(True, "--follow/--detach", help="print the run log until it ends")):
+def run_cmd(pkg: str, follow_: bool = typer.Option(True, "--follow/--detach", help="print the run log until it ends"),
+            runs: int = typer.Option(1, "--runs", min=1, max=2, help="1 (default) or 2 (run twice and check determinism)")):
     """Run the master script with the template's command (a job), then check outputs/results.json."""
-    job = call("POST", f"/packages/{pkg}/jobs", {"type": "run"})
+    job = call("POST", f"/packages/{pkg}/jobs", {"type": "run", "runs": runs})
     if not follow_:
         out(job)
         return
@@ -488,6 +489,16 @@ def run_cmd(pkg: str, follow_: bool = typer.Option(True, "--follow/--detach", he
     res = final.get("result") or {}
     for e in res.get("output_errors", []):
         typer.echo(f"results.json: {e}", err=True)
+    if hints := res.get("failure_hints"):
+        typer.echo("failure hints:", err=True)
+        for h in hints:
+            typer.echo(f"  [{h['kind']}] {h['detail']} -> {h['suggestion']}", err=True)
+    if det := res.get("determinism"):
+        typer.echo(f"determinism ({det['runs']} runs): {det['status']} — {det['summary']}", err=True)
+        for d in det.get("differences", []):
+            loc = d.get("target") or d.get("path") or d["kind"]
+            clock = " [looks like clock]" if d.get("looks_like_clock") else ""
+            typer.echo(f"  - {loc}: {d['detail']}{clock}", err=True)
     if final["status"] != "succeeded":
         raise typer.Exit(1)
 
@@ -527,6 +538,11 @@ def evidence_cmd(pkg: str, json_: bool = typer.Option(False, "--json", help="mac
         changed = "unknown (" + (data["stale_reason"] or "no run") + ")" if data["stale"] is None else ", ".join(data["stale"]) or "none"
         typer.echo(f"Track: {data['track'] or 'unspecified (older package)'}")
         typer.echo(f"Run: {(data['run'] or {}).get('status', 'none')}; changed since run: {changed}; results match run: {data['results_match_run']}")
+        if det := data.get("determinism"):
+            typer.echo(f"Determinism ({det['runs']} runs): {det['status']} — {det['summary']}")
+        if iso := data.get("isolation"):
+            net = "best-effort via proxy env vars" if iso["network_denied_by"] == "proxy" else f"denied via {iso['network_denied_by']}"
+            typer.echo(f"Isolation: network {net}, TZ={iso['tz']}, locale={iso['locale']}, clean HOME={'yes' if iso['clean_home'] else 'no'}")
         typer.echo(f"Added since run: {', '.join(data['added_since_run']) or 'none'}; targets: {len(data['targets'])} (process-level evidence)")
 
 

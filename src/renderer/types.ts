@@ -128,6 +128,35 @@ export interface Candidate { id: string; label: string; url: string; format: str
 export interface TodoStatus { remaining: number; files: { path: string; remaining: number; lines: { line: number; text: string }[] }[] }
 export interface ScriptState { template: string | null; command: string | null; master: string | null; agent_prompt: string | null; todo: TodoStatus | null; files: Resource[] }
 
+export type DeterminismStatus = "identical" | "numerically_close" | "different" | "failed";
+export interface DeterminismDiff {
+  target?: string | null;
+  path?: string | null;
+  kind: "missing_in_run" | "value_changed" | "table_changed" | "file_changed" | "parse_error";
+  detail: string;
+  max_rel_diff?: number | null;
+  looks_like_clock: boolean;
+}
+export interface DeterminismCheck {
+  runs: number;
+  status: DeterminismStatus;
+  run1_results_sha256?: string | null;
+  run2_results_sha256?: string | null;
+  differences: DeterminismDiff[];
+  summary: string;
+}
+export interface RunIsolation {
+  network_denied_by: "namespace" | "sandbox" | "proxy";
+  clean_home: boolean;
+  tz: string;
+  locale: string;
+  runtime_caches: string[];
+}
+export interface FailureHint {
+  kind: "missing_package" | "path" | "network" | "encoding" | "session_state" | "permission" | "syntax" | "memory";
+  detail: string;
+  suggestion: string;
+}
 export interface CodeFinding {
   rule: string;
   severity: "warning" | "info";
@@ -159,7 +188,7 @@ export interface Job {
   stderr: string;
   result?:
     | { type: "codegen"; commit_before?: string | null; commit_after?: string | null; changed_files: string[]; todo: TodoStatus; git_note?: string | null }
-    | { type: "run"; command: string; log: string; results_file: boolean; output_errors: string[]; output_warnings: string[]; commit_after?: string | null }
+    | { type: "run"; command: string; log: string; results_file: boolean; output_errors: string[]; output_warnings: string[]; commit_after?: string | null; runs?: number; determinism?: DeterminismCheck | null; isolation?: RunIsolation | null; failure_hints?: FailureHint[] }
     | null;
   error?: string | null;
 }

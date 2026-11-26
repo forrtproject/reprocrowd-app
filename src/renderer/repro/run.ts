@@ -2,7 +2,7 @@
 // results with the targets: numbers by the reported rounding and a tolerance, tables cell by cell, figures side by
 // side with crops of the originals.
 import { ApiError, pkg } from "../api";
-import type { CodeCheckReport, Comparison, CompareRow, CropOutcome, FigureOriginal, ScriptState, Status } from "../types";
+import type { CodeCheckReport, Comparison, CompareRow, CropOutcome, DeterminismCheck, FailureHint, FigureOriginal, RunIsolation, ScriptState, Status } from "../types";
 import { FIGURE_HEIGHT } from "../state";
 import { blobUrl, esc, showError, trunc, when } from "../util";
 import { appendEvents, JobFollower, statusBadge } from "./jobs";
@@ -39,6 +39,7 @@ export class RunStep implements Step {
   private originals: FigureOriginal[] = [];
   private urls: string[] = [];
   private codeChecksSeq = 0;
+  private runTwice = false;
 
   constructor(private w: Wizard) {}
 
@@ -92,10 +93,14 @@ export class RunStep implements Step {
     body.innerHTML = `
     <div class="card">
       <div class="card-head"><h3>Full run</h3><span class="spacer"></span>
-        <button id="rp-run" class="primary" ${running || !this.script?.template ? "disabled" : ""}>${running ? "Running…" : "Run master script"}</button>
+        <label class="inline small" title="Run the master script twice sequentially and compare outputs/results.json and produced output files for determinism"><input id="rp-twice" type="checkbox" ${this.runTwice ? "checked" : ""} ${running ? "disabled" : ""} /> Verify determinism (2 runs)</label>
+        <button id="rp-run" class="primary" ${running || !this.script?.template ? "disabled" : ""}>${running ? "Running…" : this.runTwice ? "Run twice" : "Run master script"}</button>
         <button id="rp-stop" ${running ? "" : "disabled"}>Stop</button></div>
       <p class="hint">Runs <code>${esc(this.script?.command ?? "(no master script yet)")}</code> in the package folder, as configured in the template. The previous <code>outputs/results.json</code> is removed first, so a failed run never leaves stale results.</p>
       ${j ? `<p>${statusBadge(j)} · ${esc(when(j.created_at))}${res ? ` · results file ${res.results_file ? "✓" : "✗ missing"}` : ""}</p>` : ""}
+      ${res?.isolation ? isolationHtml(res.isolation) : ""}
+      ${res?.failure_hints?.length ? failureHintsHtml(res.failure_hints) : ""}
+      ${res?.determinism ? determinismHtml(res.determinism) : ""}
       ${res?.output_errors.length ? `<div class="warn"><b>outputs/results.json has problems:</b><ul>${res.output_errors.map((e) => `<li>${esc(e)}</li>`).join("")}</ul></div>` : ""}
       ${res?.output_warnings.length ? `<details class="warn-soft"><summary>${res.output_warnings.length} warning(s)</summary><ul>${res.output_warnings.map((e) => `<li>${esc(e)}</li>`).join("")}</ul></details>` : ""}
       ${this.codeChecks ? codeChecksHtml(this.codeChecks) : ""}
@@ -111,8 +116,12 @@ export class RunStep implements Step {
     </div>`;
     const log = body.querySelector<HTMLElement>("#rp-log");
     if (log) appendEvents(log, this.job.events, true);
+    body.querySelector<HTMLInputElement>("#rp-twice")!.addEventListener("change", (e) => {
+      this.runTwice = (e.target as HTMLInputElement).checked;
+      this.w.draw();
+    });
     body.querySelector("#rp-run")!.addEventListener("click", async () => {
-      await this.w.busy("run-start", "Starting the run", () => this.job.start({}));
+      await this.w.busy("run-start", this.runTwice ? "Starting 2-run determinism check" : "Starting the run", () => this.job.start({ runs: this.runTwice ? 2 : 1 }));
     });
     body.querySelector("#rp-stop")!.addEventListener("click", () => this.w.busy("stop", "Stopping the run", () => this.job.cancel()));
     const recompare = async () => {
@@ -162,6 +171,32 @@ export class RunStep implements Step {
       }
     }
   }
+}
+
+function isolationHtml(iso: RunIsolation): string {
+  const caches = iso.runtime_caches.length ? ` · <span class="warn-inline">caches left: ${esc(iso.runtime_caches.join(", "))}</span>` : "";
+  const net = iso.network_denied_by === "proxy"
+    ? `network restricted best-effort via <code>proxy</code> env vars`
+    : `network denied via <code>${esc(iso.network_denied_by)}</code>`;
+  return `<p class="small muted">Clean-room run: ${net} · <code>TZ=${esc(iso.tz)}</code> · locale <code>${esc(iso.locale)}</code>${iso.clean_home ? " · private <code>HOME</code>/<code>TMPDIR</code>" : ""}${caches}</p>`;
+}
+
+function failureHintsHtml(hints: FailureHint[]): string {
+  const items = hints.map((h) => `<li><code>${esc(h.kind)}</code> ${esc(h.detail)}<div class="muted small">${esc(h.suggestion)}</div></li>`).join("");
+  return `<div class="warn"><b>Likely cause${hints.length > 1 ? "s" : ""}:</b><ul>${items}</ul></div>`;
+}
+
+function determinismHtml(det: DeterminismCheck): string {
+  const cls = det.status === "identical" ? "ok-badge" : det.status === "numerically_close" ? "badge" : "warn-badge";
+  const label = det.status.replace("_", " ");
+  const header = `<span class="badge ${cls}">Determinism: ${esc(label)}</span> ${esc(det.summary)}`;
+  if (!det.differences.length) return `<p class="small">${header}</p>`;
+  const items = det.differences.map((d) => {
+    const loc = d.target ?? d.path ?? d.kind;
+    const clock = d.looks_like_clock ? ` <span class="badge warn-badge">clock/timestamp</span>` : "";
+    return `<li><code>${esc(loc)}</code>: ${esc(d.detail)}${clock}</li>`;
+  }).join("");
+  return `<details class="${det.status === "numerically_close" ? "warn-soft" : "warn"}" open><summary>${header}</summary><ul>${items}</ul></details>`;
 }
 
 function codeChecksHtml(cc: CodeCheckReport): string {

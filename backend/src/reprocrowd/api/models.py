@@ -365,6 +365,10 @@ class RunJobCreate(Req):
     """Run the master script with the template's command."""
 
     type: Literal["run"]
+    runs: Literal[1, 2] = Field(
+        default=1,
+        description="1 (default): single run. 2: run the master script twice sequentially and compare outputs/results.json and produced output files for determinism.",
+    )
 
 
 JobCreate = Annotated[Union[CodegenJobCreate, RunJobCreate], Field(discriminator="type")]
