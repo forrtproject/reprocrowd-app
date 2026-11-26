@@ -106,4 +106,27 @@ for (const env of [{}, { OPENCODE_PERMISSION: '{"*":"deny"}' }]) {
 // A profile written as an inline table cannot be spliced; the whole file is rewritten, still correctly.
 const inline = '# lost\n[llm.profiles]\nother = { argv = ["other"], output = "text" }\n';
 assert.deepEqual({ ...parse(replaceProfile(inline, 'llm', 'other', profile)).llm.profiles.other }, profile);
+// The package progress bar never moves backward: not within a step, across steps, or when a step is put in.
+const { advanceProgress, stepFill, progressHtml } = await load('src/renderer/progress.ts');
+assert(stepFill(0) > 0.05 && stepFill(1e9) < 0.93 && stepFill(-50) === stepFill(0));
+{
+  const snaps = [[1, 3, 0], [1, 3, 500], [1, 3, 400], [1, 3, 400], [1, 3, 9000], [1, 3, 8000], [2, 3, 0], [2, 3, 30000], [2, 3, 10],
+    [3, 4, 0], [3, 4, 200], [3, 4, 100], [4, 4, 0], [4, 4, 60000]];
+  let shown = null, lastOverall = -1, lastShownOverall = -1, lastFill = -1, lastKey = '';
+  for (const [step, steps, elapsed] of snaps) {
+    shown = advanceProgress(shown, { step, steps, elapsed, label: 'x', cancelling: false });
+    const overall = (shown.step - 1 + shown.fill) / shown.steps;
+    assert(overall >= lastOverall - 1e-12, `overall went backward at ${step}/${steps} after ${elapsed} ms`);
+    assert(shown.overall >= lastShownOverall - 1e-12, `shown.overall went backward at ${step}/${steps} after ${elapsed} ms`);
+    assert(shown.overall >= overall - 1e-12 && shown.overall < 1 && shown.fill <= 1 && shown.fill > 0);
+    if (`${step}/${steps}` === lastKey) assert(shown.fill >= lastFill, 'fill went backward within a step');
+    lastOverall = overall; lastShownOverall = shown.overall; lastFill = shown.fill; lastKey = `${step}/${steps}`;
+  }
+  assert(lastOverall < 1 && lastShownOverall < 1); // never full before the work is done
+  const html = progressHtml({ step: 2, steps: 3, elapsed: 3000, label: 'a <b>', cancelling: false });
+  assert.equal((html.match(/class="done"/g) || []).length, 1);
+  assert.match(html, /class="now" style="--pct: \d+\.\d%"/);
+  assert.equal((html.match(/a &lt;b&gt;/g) || []).length, 2);
+  assert(html.includes('class="spinner"'));
+}
 console.log('Model scoping, profile preservation/validation, failed-write/restart rollback and comment-preserving edits passed.');
