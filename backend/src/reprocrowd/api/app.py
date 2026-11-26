@@ -25,7 +25,7 @@ from starlette.datastructures import UploadFile as StarletteUploadFile
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from ..schemas.evidence import ExecutionEvidence
-from .. import evidence, providers
+from .. import evidence, lint, providers
 from .. import __version__, acquire, openalex, pilots, zenodo, codegen, coordinates, curation, database, figures, report, run, extractions, files, fulltexts, inputs, jobs, llm, metadata, scripts
 from ..config import settings
 from ..errors import ApiError, not_found
@@ -360,9 +360,18 @@ def delete_package(pkg: Pkg):
 
 @api.get("/packages/{pkg}/validation", tags=["packages"], response_model=ValidationReport, summary="Validate the whole package",
          description="Manifest model, Frictionless integrity (bytes, sha256), JSON Schema and model validation of every JSON "
-                     "resource, and semantic checks (references, inputs, dependency cycles, untracked files).")
+                     "resource, semantic checks (references, inputs, dependency cycles, untracked files), and advisory static code checks.")
 def validate(pkg: Pkg):
     return validate_package(pkg)
+
+
+@api.get("/packages/{pkg}/code-checks", tags=["script"], response_model=lint.CodeCheckReport, summary="Static code and portability checks",
+         description="Confidence-gated static checks on the package's generated R/Python scripts and archive hygiene "
+                     "(undeclared dependencies, external paths, network reads, runtime installs, unseeded stochasticity, "
+                     "forked parallel RNG hazards, non-UTF-8 input encoding, interactive calls, startup files, case collisions). "
+                     "Never runs code and never scans original author code in `inputs/`.")
+def get_code_checks(pkg: Pkg):
+    return lint.check_package(pkg)
 
 
 # ---------- metadata ----------

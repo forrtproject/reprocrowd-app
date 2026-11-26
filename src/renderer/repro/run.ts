@@ -2,7 +2,7 @@
 // results with the targets: numbers by the reported rounding and a tolerance, tables cell by cell, figures side by
 // side with crops of the originals.
 import { ApiError, pkg } from "../api";
-import type { Comparison, CompareRow, CropOutcome, FigureOriginal, ScriptState, Status } from "../types";
+import type { CodeCheckReport, Comparison, CompareRow, CropOutcome, FigureOriginal, ScriptState, Status } from "../types";
 import { FIGURE_HEIGHT } from "../state";
 import { blobUrl, esc, showError, trunc, when } from "../util";
 import { appendEvents, JobFollower, statusBadge } from "./jobs";
@@ -33,6 +33,7 @@ export class RunStep implements Step {
   title = "Run & compare";
   private job = new JobFollower("run");
   private script?: ScriptState;
+  private codeChecks?: CodeCheckReport;
   private cmp?: Comparison;
   private cmpError?: string;
   private originals: FigureOriginal[] = [];
@@ -41,7 +42,11 @@ export class RunStep implements Step {
   constructor(private w: Wizard) {}
 
   async load() {
-    [this.script] = await Promise.all([pkg.get<ScriptState>("/script"), this.job.load()]);
+    [this.script, this.codeChecks] = await Promise.all([
+      pkg.get<ScriptState>("/script"),
+      pkg.get<CodeCheckReport>("/code-checks").catch(() => undefined),
+      this.job.load(),
+    ]);
     await this.loadComparison();
     this.originals = await pkg.get<FigureOriginal[]>("/figures").catch(() => []);
   }
@@ -82,6 +87,7 @@ export class RunStep implements Step {
       ${j ? `<p>${statusBadge(j)} · ${esc(when(j.created_at))}${res ? ` · results file ${res.results_file ? "✓" : "✗ missing"}` : ""}</p>` : ""}
       ${res?.output_errors.length ? `<div class="warn"><b>outputs/results.json has problems:</b><ul>${res.output_errors.map((e) => `<li>${esc(e)}</li>`).join("")}</ul></div>` : ""}
       ${res?.output_warnings.length ? `<details class="warn-soft"><summary>${res.output_warnings.length} warning(s)</summary><ul>${res.output_warnings.map((e) => `<li>${esc(e)}</li>`).join("")}</ul></details>` : ""}
+      ${this.codeChecks ? codeChecksHtml(this.codeChecks) : ""}
       ${j ? `<details ${running || (j.status !== "succeeded") ? "open" : ""}><summary>Run log</summary><div id="rp-log" class="log"></div></details>` : ""}
     </div>
     <div class="card" id="rp-compare" style="--fig-h:${st.figureHeight}px">
@@ -145,6 +151,18 @@ export class RunStep implements Step {
       }
     }
   }
+}
+
+function codeChecksHtml(cc: CodeCheckReport): string {
+  if (!cc.checked_files.length && !cc.findings.length) return "";
+  if (!cc.findings.length) {
+    return `<p class="small muted">Static code checks (${esc(cc.checked_files.join(", "))}): ✓ no warnings.</p>`;
+  }
+  const items = cc.findings.map((f) => {
+    const loc = f.file ? (f.line ? `${f.file}:${f.line}` : f.file) : "";
+    return `<li><code>${esc(f.rule)}</code>${loc ? ` (<code>${esc(loc)}</code>)` : ""}: ${esc(f.message)}${f.suggestion ? `<div class="muted small">${esc(f.suggestion)}</div>` : ""}</li>`;
+  }).join("");
+  return `<details class="warn-soft"><summary>Static code checks: ${cc.findings.length} advisory warning${cc.findings.length === 1 ? "" : "s"}</summary><ul>${items}</ul></details>`;
 }
 
 export function compareHtml(cmp: Comparison, originals: FigureOriginal[] = []): string {

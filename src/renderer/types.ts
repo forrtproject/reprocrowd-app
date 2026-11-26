@@ -128,6 +128,21 @@ export interface Candidate { id: string; label: string; url: string; format: str
 export interface TodoStatus { remaining: number; files: { path: string; remaining: number; lines: { line: number; text: string }[] }[] }
 export interface ScriptState { template: string | null; command: string | null; master: string | null; agent_prompt: string | null; todo: TodoStatus | null; files: Resource[] }
 
+export interface CodeFinding {
+  rule: string;
+  severity: "warning" | "info";
+  file?: string | null;
+  line?: number | null;
+  message: string;
+  suggestion?: string | null;
+}
+export interface CodeCheckReport {
+  checked_files: string[];
+  detected_libraries: { r: string[]; python: string[] };
+  declared_libraries: { r: string[]; python: string[] };
+  findings: CodeFinding[];
+}
+
 export type JobStatus = "running" | "succeeded" | "failed" | "cancelled" | "timeout" | "interrupted";
 export interface Job {
   id: string;

@@ -12,7 +12,7 @@ from typing import Any
 
 from jinja2 import Environment, PackageLoader, StrictUndefined
 
-from . import jobs, evidence, licensing
+from . import jobs, evidence, licensing, lint
 from .errors import conflict
 from .figures import listing as figure_listing
 from .package import MANIFEST, Package, atomic_write, sha256_file, slug
@@ -75,6 +75,7 @@ def write_report(pkg: Package, st: CompareSettings) -> dict[str, Any]:
     graph = provenance.build(m, passages, plan, cmp, outputs, target_refs)
     traces = {t.id: provenance.trace(graph, t.id) for t in targets}
     validation = validate_package(pkg)
+    code_checks = lint.check_package(pkg)
     numeric = [r for r in cmp.rows if r.type != "figure"]
     env = Environment(loader=PackageLoader("reprocrowd", "templates"), undefined=StrictUndefined, autoescape=True, trim_blocks=True, lstrip_blocks=True)
     html = env.get_template("_report.html.j2").render(
@@ -84,7 +85,7 @@ def write_report(pkg: Package, st: CompareSettings) -> dict[str, Any]:
         reproduced=sum(r.status in ("match", "within") for r in numeric), numeric=len(numeric),
         plan=plan, source_text=lambda refs: " ".join(t for t in map(passages.text, refs) if t), svg=provenance.svg(graph), lineage=graph.lineage(), traces=traces, colors=provenance.COLORS, tpl=tpl, run=_last_run(pkg), codegen=codegen[-1] if codegen else None,
         inputs=m.by_kind("input"), extractions=m.by_kind("extraction"), fulltexts=m.by_kind("fulltext"), llm_runs=llm_runs,
-        figures=figures, validation=validation, resources=sorted(m.resources, key=lambda r: r.path))
+        figures=figures, validation=validation, code_checks=code_checks, resources=sorted(m.resources, key=lambda r: r.path))
     with pkg.edit() as m:
         atomic_write(pkg.path(REPORT), html.encode())
         pkg.put(m, pkg.describe("report", REPORT, type="file", format="html", mediatype="text/html", meta=OtherMeta(kind="report", added_at=now())))

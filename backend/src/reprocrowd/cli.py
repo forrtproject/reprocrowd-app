@@ -492,6 +492,32 @@ def run_cmd(pkg: str, follow_: bool = typer.Option(True, "--follow/--detach", he
         raise typer.Exit(1)
 
 
+@app.command("check")
+def check_cmd(pkg: str, json_: bool = typer.Option(False, "--json", help="machine-readable static code checks")):
+    """Run static code and portability checks on the package's generated scripts."""
+    data = call("GET", f"/packages/{pkg}/code-checks")
+    if json_:
+        out(data)
+        return
+    typer.echo(f"Checked: {', '.join(data['checked_files']) or '(no scripts)'}")
+    for lang in ("r", "python"):
+        det = data["detected_libraries"].get(lang) or []
+        dec = data["declared_libraries"].get(lang) or []
+        if det or dec:
+            typer.echo(f"  {lang} libraries — detected: {', '.join(det) or 'none'} · declared: {', '.join(dec) or 'none'}")
+    findings = data["findings"]
+    if not findings:
+        typer.echo("No static code warnings.")
+        return
+    typer.echo(f"{len(findings)} advisory warning(s):")
+    for f in findings:
+        loc = f"{f['file']}:{f['line']}" if f.get("file") and f.get("line") else (f.get("file") or "")
+        where = f" ({loc})" if loc else ""
+        typer.echo(f"  [{f['rule']}]{where} {f['message']}")
+        if f.get("suggestion"):
+            typer.echo(f"    -> {f['suggestion']}")
+
+
 @app.command("evidence")
 def evidence_cmd(pkg: str, json_: bool = typer.Option(False, "--json", help="machine-readable process evidence")):
     data = call("GET", f"/packages/{pkg}/evidence")
