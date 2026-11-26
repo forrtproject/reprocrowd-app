@@ -117,3 +117,66 @@ def test_llm_precision_edit_preserves_base(client, pkg):
     assert response.json()["item"]["printed"] == "0.170" and response.json()["item"]["decimals"] == 3
     raw = client.get(url, params={"view": "raw"}).json()
     assert raw["llm_runs"][0]["entries"][0]["base"] == item
+
+
+def test_type_transitions_clear_number_fields(client, pkg):
+    url = f"/v1/packages/{pkg}/targets"
+    base = dict(description="value", unreferenced=True, note="test")
+    ids = [client.post(url, json=base | {"type": "number", "expected": "< .050"}).json()["id"] for _ in range(3)]
+    r = client.patch(f"{url}/{ids[0]}", json={"type": "categorical", "expected": "significant"})
+    assert r.status_code == 200, r.text
+    item = r.json()["item"]
+    assert (item["type"], item["expected"], item["printed"], item["decimals"], item["comparator"]) == ("categorical", "significant", None, None, None)
+    r = client.patch(f"{url}/{ids[1]}", json={"type": "figure", "expected": None})
+    assert r.status_code == 200 and r.json()["item"]["expected"] is None and r.json()["item"]["comparator"] is None, r.text
+    r = client.patch(f"{url}/{ids[2]}", json={"type": "table", "expected": [["< .05", "1.20"]]})
+    assert r.status_code == 200 and r.json()["item"]["expected"] == [["< .05", "1.20"]] and r.json()["item"]["decimals"] is None, r.text
+    # And back: a categorical becomes a number with the typed precision and operator.
+    r = client.patch(f"{url}/{ids[0]}", json={"type": "number", "expected": ">= 0.10"})
+    assert r.status_code == 200, r.text
+    assert (r.json()["item"]["printed"], r.json()["item"]["decimals"], r.json()["item"]["comparator"]) == ("0.10", 2, ">=")
+    # A figure without an expected value in the patch: it is cleared, not kept.
+    tid = client.post(url, json=base | {"type": "number", "expected": "2.5"}).json()["id"]
+    r = client.patch(f"{url}/{tid}", json={"type": "figure"})
+    assert r.status_code == 200 and r.json()["item"]["expected"] is None, r.text
+    # Explicit number-only fields on another type are still rejected.
+    tid = client.post(url, json=base | {"type": "number", "expected": "2.5"}).json()["id"]
+    r = client.patch(f"{url}/{tid}", json={"type": "categorical", "expected": "x", "printed": "2.5"})
+    assert r.status_code == 422 and r.json()["code"] == "target_contradiction", r.text
+    for bad in ({"comparator": "<"}, {"decimals": 1}):
+        r = client.patch(f"{url}/{tid}", json={"type": "categorical", "expected": "x"} | bad)
+        assert r.status_code == 422 and r.json()["code"] == "schema_invalid", r.text
+    # An incompatible value for the new type is rejected.
+    assert client.patch(f"{url}/{tid}", json={"type": "table", "expected": "x"}).status_code == 422
+
+
+def test_legacy_number_without_printed_changes_type(client, pkg):
+    import json
+    from pathlib import Path
+
+    url = f"/v1/packages/{pkg}/targets"
+    base = dict(description="value", unreferenced=True, note="test")
+    tid = client.post(url, json=base | {"type": "number", "expected": 0.05, "decimals": 2, "comparator": "<"}).json()["id"]
+    root = Path(client.get(f"/v1/packages/{pkg}").json()["path"])
+    raw = json.loads((root / "targets.json").read_text())
+    assert raw["manual"][0].get("printed") is None and raw["manual"][0]["decimals"] == 2  # a legacy number: no printed token
+    r = client.patch(f"{url}/{tid}", json={"type": "categorical", "expected": "p < .05"})
+    assert r.status_code == 200, r.text
+    assert (r.json()["item"]["decimals"], r.json()["item"]["comparator"]) == (None, None)
+
+
+def test_llm_entry_type_change_preserves_base(client, pkg):
+    from test_api import setup_paper
+    setup_paper(client, pkg)
+    url = f"/v1/packages/{pkg}/targets"
+    run = client.post(url + "/runs", json={"extraction": "ex-paper-tei"}).json()
+    entry = next(e["base"] for e in run["entries"] if e["base"]["type"] == "number")
+    assert client.patch(f"{url}/{entry['id']}", json={"expected": "< 0.170"}).status_code == 200  # an edit with number-only fields
+    r = client.patch(f"{url}/{entry['id']}", json={"type": "categorical", "expected": "large"})
+    assert r.status_code == 200, r.text
+    assert (r.json()["item"]["type"], r.json()["item"]["printed"], r.json()["item"]["decimals"]) == ("categorical", None, None)
+    raw = client.get(url, params={"view": "raw"}).json()
+    stored = next(e for e in raw["llm_runs"][0]["entries"] if e["base"]["id"] == entry["id"])
+    assert stored["base"] == entry
+    r = client.patch(f"{url}/{entry['id']}", json={"type": "figure", "expected": None})
+    assert r.status_code == 200 and r.json()["item"]["expected"] is None, r.text

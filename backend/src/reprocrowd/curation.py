@@ -246,6 +246,12 @@ class Curation:
         if unknown:
             raise invalid("schema_invalid", f"cannot change {', '.join(sorted(unknown))}", {"editable": sorted(editable | {'disabled'})})
         changes = {k: v for k, v in patch.items() if k != "disabled"}
+        if self.spec.kind == "targets" and changes.get("type", "number") != "number":
+            # Number-only fields don't carry over to another type; explicitly sent ones are validated as usual.
+            for k in ("printed", "decimals", "comparator"):
+                changes.setdefault(k, None)
+            if changes["type"] == "figure":
+                changes.setdefault("expected", None)
         if self.spec.kind == "targets" and "expected" in changes:
             # An edited value replaces the previous printed token and derived precision.
             changes.setdefault("printed", None)

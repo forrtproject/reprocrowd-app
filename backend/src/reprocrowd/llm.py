@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import secrets
 import shutil
 import signal
@@ -161,19 +162,41 @@ def output_json(call: LlmCall) -> Any:
     return found if isinstance(found, (dict, list)) else extract_json(found)
 
 
-def extract_json(text: str) -> Any:
-    """The first JSON object in the output (tolerates prose and ``` fences around it)."""
-    t = text.replace("```json", "").replace("```", "")
-    start = t.find("{")
-    if start < 0:
-        raise ValueError("the output contains no JSON object")
-    end = t.rfind("}")
-    while end > start:
+def _json_objects(chunk: str) -> list[tuple[int, int, dict[str, Any]]]:
+    """Every top-level JSON object in ``chunk``, as ``(span, start, obj)``."""
+    decoder = json.JSONDecoder()
+    found: list[tuple[int, int, dict[str, Any]]] = []
+    start = chunk.find("{")
+    while start >= 0:
         try:
-            return json.loads(t[start:end + 1])
+            obj, end = decoder.raw_decode(chunk, start)
         except json.JSONDecodeError:
-            end = t.rfind("}", start, end)
+            start = chunk.find("{", start + 1)
+            continue
+        if isinstance(obj, dict):
+            found.append((end - start, start, obj))
+            start = chunk.find("{", end)
+        else:
+            start = chunk.find("{", start + 1)
+    return found
+
+
+def extract_json(text: str) -> Any:
+    """The JSON object in the output. Tolerates prose and ``` fences around it, and braces or small placeholder
+    objects (such as ``{}``) in the prose before or after it: fenced blocks are tried first, and within either
+    pass the largest top-level JSON object wins."""
+    fenced_objs = [(span, m.start(1) + start, obj) for m in _FENCE.finditer(text) for span, start, obj in _json_objects(m.group(1))]
+    if fenced_objs:
+        return max(fenced_objs, key=lambda c: (c[0], c[1]))[2]
+    plain_objs = _json_objects(text)
+    if plain_objs:
+        return max(plain_objs, key=lambda c: (c[0], c[1]))[2]
+    if "{" not in text:
+        raise ValueError("the output contains no JSON object")
     raise ValueError("the output contains no parseable JSON object")
+
+
+_FENCE = re.compile(r"```[A-Za-z0-9_-]*[ \t]*\r?\n?(.*?)```", re.S)
 
 
 def output_invalid(call: LlmCall, stage: str, errors: list[str]) -> ApiError:

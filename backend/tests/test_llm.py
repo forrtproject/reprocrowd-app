@@ -65,3 +65,33 @@ def test_calls_in_the_same_second_get_their_own_folders(tmp_path, monkeypatch):
     first, second = llm._new_call_folder(pkg, "reconcile"), llm._new_call_folder(pkg, "reconcile")
     assert [c for c, _ in (first, second)] == ["reconcile-20260101T000000-abcd", "reconcile-20260101T000000-ef01"]
     assert first[1].is_dir() and second[1].is_dir()
+
+
+def test_extract_json_skips_braces_in_prose():
+    text = 'I used the {variable} placeholder and a set {1, 2}. Here it is:\n{"targets": [{"id": "T1"}]}\nDone {ok}.'
+    assert llm.extract_json(text) == {"targets": [{"id": "T1"}]}
+
+
+def test_extract_json_skips_placeholder_objects_in_prose():
+    assert llm.extract_json('Use {} as a placeholder; result: {"targets": [{"id": "T1"}]}') == {"targets": [{"id": "T1"}]}
+    assert llm.extract_json('{"targets": [{"id": "T1"}]}\nNote: {} means empty.') == {"targets": [{"id": "T1"}]}
+    assert llm.extract_json('```json\n{}\n```\n```json\n{"targets": [{"id": "T1"}]}\n```') == {"targets": [{"id": "T1"}]}
+    assert llm.extract_json("{}") == {}
+
+
+def test_extract_json_reads_fenced_blocks_first():
+    text = 'Use {} as the default.\n```json\n{"a": 1, "b": {"c": [1, 2]}}\n```\nThe set {x} is unused.'
+    assert llm.extract_json(text) == {"a": 1, "b": {"c": [1, 2]}}
+    assert llm.extract_json('```\n{"plain": true}\n```') == {"plain": True}
+
+
+def test_extract_json_returns_the_outer_object():
+    assert llm.extract_json('{"outer": {"inner": {"deep": 1}}, "n": 2} trailing } brace') == {"outer": {"inner": {"deep": 1}}, "n": 2}
+
+
+def test_extract_json_without_an_object_is_an_error():
+    import pytest
+
+    for text in ("no json here", "[1, 2, 3]", "{not json} and {also: not}"):
+        with pytest.raises(ValueError):
+            llm.extract_json(text)
