@@ -18,11 +18,12 @@ from pydantic import BaseModel, ValidationError
 from .curation import CURATIONS, Context, Curation, find_cycle
 from .errors import ApiError, pydantic_errors
 from .files import untracked
+from . import lint
 from .package import MANIFEST, Package
 from .schemas import SCHEMAS, schema_path
 from .schemas.manifest import Manifest
 
-Stage = Literal["manifest", "frictionless", "jsonschema", "model", "semantic"]
+Stage = Literal["manifest", "frictionless", "jsonschema", "model", "semantic", "code"]
 
 
 class Issue(BaseModel):
@@ -38,7 +39,7 @@ class ValidationReport(BaseModel):
 
 
 
-def validate_package(pkg: Package) -> ValidationReport:
+def validate_package(pkg: Package, *, code_checks: lint.CodeCheckReport | None = None) -> ValidationReport:
     errors: list[Issue] = []
     warnings: list[Issue] = []
 
@@ -131,5 +132,10 @@ def validate_package(pkg: Package) -> ValidationReport:
                         warn("semantic", f"{a.id} uses input {i}, which is marked unused", kind)
     for rel in untracked(pkg, m):
         warn("semantic", f"untracked file {rel} (POST /packages/{{pkg}}:sync registers it)")
+    # 6. code: confidence-gated static code and portability warnings (never block validation)
+    cc = code_checks if code_checks is not None else lint.check_package(pkg)
+    for f in cc.findings:
+        loc = f"{f.file}:{f.line}" if f.file and f.line else f.file
+        warn("code", f"[{f.rule}] {f.message}", loc)
     return ValidationReport(valid=not errors, errors=errors, warnings=warnings)
 

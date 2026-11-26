@@ -128,6 +128,7 @@ export class ReportStep implements Step {
     const doi = this.doi();
     const a = this.account;
     const errs = this.validation?.errors ?? [];
+    const warns = this.validation?.warnings ?? [];
     const server = a?.sandbox ? "the Zenodo sandbox" : "Zenodo";
     const local = localFulltexts(this.manifest?.resources ?? []);
     const checks: [boolean, string, string?][] = [
@@ -166,6 +167,7 @@ export class ReportStep implements Step {
         <section class="card">
           <h3>Package archive</h3>
           ${errs.length ? `<details class="warn" open><summary>The package doesn't validate (${errs.length} problem${errs.length > 1 ? "s" : ""}); the ZIP needs a valid package</summary><ul>${errs.slice(0, 40).map((e) => `<li><code>${esc(e.stage)}</code> ${esc(e.resource ?? "")} ${esc(e.message)}</li>`).join("")}</ul></details>` : this.validation ? `<p class="ok">✓ The package validates (manifest, file hashes, schemas, references).</p>` : ""}
+          ${warns.length ? `<details class="warn-soft"><summary>${warns.length} advisory warning${warns.length === 1 ? "" : "s"} (do not block archiving)</summary><ul>${warns.slice(0, 40).map((w) => `<li><code>${esc(w.stage)}</code> ${esc(w.resource ?? "")} ${esc(w.message)}</li>`).join("")}</ul></details>` : ""}
           <div class="actions"><button id="rp-zip" ${this.report && !this.w.running.has("zip") ? "" : "disabled"}>${archive ? "Recreate ZIP" : "Create ZIP"}</button>${archive ? `<button id="rp-zip-show">Show file</button>` : ""}</div>
           ${archive ? `<p class="small"><code>${esc(archive.path)}</code> · ${sizeText(archive.bytes)} · ${archive.files} files · SHA-256 <code title="${esc(archive.sha256)}">${esc(archive.sha256.slice(0, 12))}…</code></p>` : `<p class="hint">A Frictionless zipped data package: <code>datapackage.json</code> and every file it lists.</p>`}
           ${reportStale ? `<p class="warn-inline small">The report is out of date: regenerate it first, then recreate the ZIP.</p>` : stale ? `<p class="warn-inline small">The package changed since the ZIP was made; recreate it before depositing.</p>` : ""}
