@@ -453,10 +453,19 @@ def gitlab_fetch(job: _Job) -> None:
             job.add(Path(path).name, raw, int(entry["size"]) if entry.get("size") else 0, path)
 
 
+_OSF_NON_PROJECT = frozenset({
+    "about", "analytics", "assets", "collections", "components", "dashboard", "download",
+    "files", "forks", "institutions", "login", "meetings", "myprojects", "preprints",
+    "privacy", "profile", "quickfiles", "register", "registrations", "registries",
+    "search", "settings", "static", "support", "terms", "wiki",
+})
+
+
 def _osf_id(text: str) -> list[str]:
     found: list[str] = []
     for m in re.finditer(r"osf\.io/([A-Za-z0-9]{5,})", text):
-        found.append(m.group(1))
+        if m.group(1).lower() not in _OSF_NON_PROJECT:
+            found.append(m.group(1))
     return found
 
 
@@ -686,7 +695,7 @@ def _docx_texts(path: Path) -> list[str]:
     texts = [t for t in (Paragraph(p, d).text for p in body.iter(qn("w:p"))) if t.strip()]
     rels = {rid: r for rid, r in d.part.rels.items() if r.reltype == RT.HYPERLINK and r.is_external}
     used = [h.get(qn("r:id")) for h in body.iter(qn("w:hyperlink"))]
-    order = list(dict.fromkeys([rid for rid in used if rid in rels] + list(rels)))
+    order = list(dict.fromkeys(rid for rid in used if rid in rels))
     return texts + [rels[rid].target_ref for rid in order if _URL.match(rels[rid].target_ref)]
 
 

@@ -520,12 +520,23 @@ def test_manuscript_text_docx_hyperlinks_and_tables(tmp_path):
     run.append(t)
     link.append(run)
     para._p.append(link)
+    # An orphaned hyperlink relationship not referenced in the body must not be picked up.
+    d.part.relate_to("https://zenodo.org/records/999", RT.HYPERLINK, is_external=True)
     d.add_table(rows=1, cols=2).cell(0, 1).text = "Code: https://osf.io/ab3cd"
     p = tmp_path / "paper.docx"
     d.save(str(p))
     text = _fulltext(_make_pkg(tmp_path), p)
     assert "on Zenodo" in text
-    assert [(l.repo, l.id) for l in acquire.detect(text)] == [("zenodo", "888"), ("osf", "ab3cd")]
+    assert {(l.repo, l.id) for l in acquire.detect(text)} == {("zenodo", "888"), ("osf", "ab3cd")}
+
+
+def test_osf_detect_ignores_non_project_routes():
+    text = (
+        "Preprint at https://osf.io/preprints/psyarxiv/abcde and "
+        "https://osf.io/meetings/sips2026 and https://osf.io/registries/discover "
+        "and https://osf.io/search?q=test; data at https://osf.io/xy9z2."
+    )
+    assert [(l.repo, l.id) for l in acquire.osf_detect(text)] == [("osf", "xy9z2")]
 
 
 # ---------------------------------------------------------------- preview & selection
